@@ -14,7 +14,13 @@ def get_simple_test_data() -> List[Dict[str, Any]]:
         {"id": 3, "name": "Charlie", "age": 35, "department": "Engineering", "salary": 85000.0},
         {"id": 4, "name": "Diana", "age": 28, "department": "Marketing", "salary": 70000.0},
         {"id": 5, "name": "Eve", "age": 32, "department": "Sales", "salary": 60000.0},
-        {"id": 6, "name": None, "age": 40, "department": "HR", "salary": 80000.0},  # Null name for testing
+        {
+            "id": 6,
+            "name": None,
+            "age": 40,
+            "department": "HR",
+            "salary": 80000.0,
+        },  # Null name for testing
     ]
 
 
@@ -29,7 +35,7 @@ def get_complex_test_data() -> List[Dict[str, Any]]:
             "is_active": True,
             "hobbies": ["reading", "swimming"],
             "metadata": {"department": "Engineering", "level": "Senior"},
-            "last_login": "2023-01-15T10:30:00Z"
+            "last_login": "2023-01-15T10:30:00Z",
         },
         {
             "id": 2,
@@ -39,7 +45,7 @@ def get_complex_test_data() -> List[Dict[str, Any]]:
             "is_active": False,
             "hobbies": ["gaming", "coding"],
             "metadata": {"department": "Marketing", "level": "Junior"},
-            "last_login": "2023-01-10T15:45:00Z"
+            "last_login": "2023-01-10T15:45:00Z",
         },
         {
             "id": 3,
@@ -49,7 +55,7 @@ def get_complex_test_data() -> List[Dict[str, Any]]:
             "is_active": True,
             "hobbies": [],
             "metadata": None,  # Null value
-            "last_login": "2023-01-20T09:15:00Z"
+            "last_login": "2023-01-20T09:15:00Z",
         },
         {
             "id": 4,
@@ -59,8 +65,8 @@ def get_complex_test_data() -> List[Dict[str, Any]]:
             "is_active": True,
             "hobbies": ["painting", "music", "travel"],
             "metadata": {"department": "Sales", "level": "Manager"},
-            "last_login": None  # Null value
-        }
+            "last_login": None,  # Null value
+        },
     ]
 
 
@@ -71,8 +77,13 @@ def get_edge_case_data() -> List[Dict[str, Any]]:
         {"id": -1, "name": " ", "age": -1, "value": -1.0},  # Negative values
         {"id": None, "name": None, "age": None, "value": None},  # All nulls
         {"id": 999999, "name": "A" * 1000, "age": 150, "value": 1e10},  # Large values
-        {"id": 1, "name": "Special\nChars\tHere", "age": 25, "value": 3.14159},  # Special characters
-        {"id": 2, "name": "Unicode: 你好世界", "age": 30, "value": float('inf')},  # Unicode and inf
+        {
+            "id": 1,
+            "name": "Special\nChars\tHere",
+            "age": 25,
+            "value": 3.14159,
+        },  # Special characters
+        {"id": 2, "name": "Unicode: 你好世界", "age": 30, "value": float("inf")},  # Unicode and inf
     ]
 
 
@@ -143,13 +154,15 @@ def get_large_dataset_data() -> List[Dict[str, Any]]:
     """Get larger dataset for performance testing."""
     data = []
     for i in range(1000):
-        data.append({
-            "id": i,
-            "name": f"User_{i}",
-            "age": 20 + (i % 50),
-            "salary": 50000 + (i * 100),
-            "department": ["Engineering", "Marketing", "Sales"][i % 3]
-        })
+        data.append(
+            {
+                "id": i,
+                "name": f"User_{i}",
+                "age": 20 + (i % 50),
+                "salary": 50000 + (i * 100),
+                "department": ["Engineering", "Marketing", "Sales"][i % 3],
+            }
+        )
     return data
 
 
@@ -178,7 +191,7 @@ def get_test_schemas() -> Dict[str, Dict[str, str]]:
             "name": "string",
             "age": "int",
             "department": "string",
-            "salary": "double"
+            "salary": "double",
         },
         "complex": {
             "id": "int",
@@ -188,21 +201,9 @@ def get_test_schemas() -> Dict[str, Dict[str, str]]:
             "is_active": "boolean",
             "hobbies": "array<string>",
             "metadata": "struct<department:string,level:string>",
-            "last_login": "timestamp"
+            "last_login": "timestamp",
         },
-        "numerical": {
-            "x": "double",
-            "y": "double",
-            "z": "double"
-        },
-        "string": {
-            "text": "string",
-            "category": "string",
-            "length": "int"
-        },
-        "date": {
-            "date": "date",
-            "timestamp": "timestamp",
-            "year": "int"
-        }
+        "numerical": {"x": "double", "y": "double", "z": "double"},
+        "string": {"text": "string", "category": "string", "length": "int"},
+        "date": {"date": "date", "timestamp": "timestamp", "year": "int"},
     }

@@ -69,6 +69,36 @@ def pyspark_dataframe(pyspark_environment, simple_data):
 
 
 @pytest.fixture
+def mock_empty_dataframe(mock_environment):
+    """Fixture providing empty mock_spark DataFrame."""
+    session = mock_environment["session"]
+    types = mock_environment["types"]
+    # Create empty DataFrame with the same schema as PySpark
+    schema = types.MockStructType(
+        [
+            types.MockStructField("id", types.IntegerType(), True),
+            types.MockStructField("name", types.StringType(), True),
+        ]
+    )
+    return session.createDataFrame([], schema)
+
+
+@pytest.fixture
+def pyspark_empty_dataframe(pyspark_environment):
+    """Fixture providing empty PySpark DataFrame."""
+    session = pyspark_environment["session"]
+    types = pyspark_environment["types"]
+    # Create empty DataFrame with a simple schema
+    schema = types.StructType(
+        [
+            types.StructField("id", types.IntegerType(), True),
+            types.StructField("name", types.StringType(), True),
+        ]
+    )
+    return session.createDataFrame([], schema)
+
+
+@pytest.fixture
 def mock_complex_dataframe(mock_environment, complex_data):
     """Fixture providing mock_spark DataFrame with complex data."""
     session = mock_environment["session"]
