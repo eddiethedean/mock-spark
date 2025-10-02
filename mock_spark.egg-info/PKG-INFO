@@ -1,4 +1,4 @@
-Metadata-Version: 2.4
+Metadata-Version: 2.1
 Name: mock-spark
 Version: 1.0.0
 Summary: A lightweight mock implementation of PySpark for testing and development
@@ -17,7 +17,6 @@ Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
 Classifier: Topic :: Software Development :: Testing
 Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Classifier: Topic :: Scientific/Engineering :: Information Analysis
@@ -37,7 +36,7 @@ Requires-Dist: types-psutil>=6.0.0; extra == "dev"
 Provides-Extra: test
 Requires-Dist: pytest>=7.0.0; extra == "test"
 Requires-Dist: pytest-cov>=4.0.0; extra == "test"
-Dynamic: license-file
+Requires-Dist: pyspark<3.4.0,>=3.2.0; extra == "test"
 
 # Mock Spark
 

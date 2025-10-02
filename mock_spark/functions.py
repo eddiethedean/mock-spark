@@ -26,30 +26,30 @@ class MockColumn:
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison."""
         if isinstance(other, MockColumn):
-            return MockColumnOperation(self, "eq", other)
-        return MockColumnOperation(self, "eq", other)
+            return MockColumnOperation(self, "==", other)
+        return MockColumnOperation(self, "==", other)
     
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
         if isinstance(other, MockColumn):
-            return MockColumnOperation(self, "ne", other)
-        return MockColumnOperation(self, "ne", other)
+            return MockColumnOperation(self, "!=", other)
+        return MockColumnOperation(self, "!=", other)
     
     def __lt__(self, other: Any) -> "MockColumnOperation":
         """Less than comparison."""
-        return MockColumnOperation(self, "lt", other)
+        return MockColumnOperation(self, "<", other)
     
     def __le__(self, other: Any) -> "MockColumnOperation":
         """Less than or equal comparison."""
-        return MockColumnOperation(self, "le", other)
+        return MockColumnOperation(self, "<=", other)
     
     def __gt__(self, other: Any) -> "MockColumnOperation":
         """Greater than comparison."""
-        return MockColumnOperation(self, "gt", other)
+        return MockColumnOperation(self, ">", other)
     
     def __ge__(self, other: Any) -> "MockColumnOperation":
         """Greater than or equal comparison."""
-        return MockColumnOperation(self, "ge", other)
+        return MockColumnOperation(self, ">=", other)
     
     def __and__(self, other: Any) -> "MockColumnOperation":
         """Logical AND."""
@@ -64,6 +64,34 @@ class MockColumn:
     def __invert__(self) -> "MockColumnOperation":
         """Logical NOT."""
         return MockColumnOperation(self, "not", None)
+    
+    def __add__(self, other: Any) -> "MockColumnOperation":
+        """Addition operation."""
+        return MockColumnOperation(self, "+", other)
+    
+    def __sub__(self, other: Any) -> "MockColumnOperation":
+        """Subtraction operation."""
+        return MockColumnOperation(self, "-", other)
+    
+    def __mul__(self, other: Any) -> "MockColumnOperation":
+        """Multiplication operation."""
+        return MockColumnOperation(self, "*", other)
+    
+    def __truediv__(self, other: Any) -> "MockColumnOperation":
+        """Division operation."""
+        return MockColumnOperation(self, "/", other)
+    
+    def __mod__(self, other: Any) -> "MockColumnOperation":
+        """Modulo operation."""
+        return MockColumnOperation(self, "%", other)
+    
+    def desc(self) -> "MockColumnOperation":
+        """Descending order."""
+        return MockColumnOperation(self, "desc", None)
+    
+    def asc(self) -> "MockColumnOperation":
+        """Ascending order."""
+        return MockColumnOperation(self, "asc", None)
     
     def isNull(self) -> "MockColumnOperation":
         """Check if column is null."""
@@ -118,6 +146,13 @@ class MockColumnOperation:
         self.value = value
         # Add operand attribute for compatibility
         self.operand = self.value
+        # Add name property for compatibility with select method
+        if operation in ["+", "-", "*", "/", "%"]:
+            self.name = f"({self.column.name} {operation} {value})"
+        elif operation in ["upper", "lower", "length"]:
+            self.name = f"{operation}({self.column.name})"
+        else:
+            self.name = f"{operation}({self.column.name})"
         if self.value is None:
             self.expr = f"MockColumnOperation({self.column}, '{self.operation}')"
         else:
@@ -125,15 +160,21 @@ class MockColumnOperation:
     
     def __and__(self, other: Any) -> "MockColumnOperation":
         """Logical AND."""
-        return MockColumnOperation(self.column, "and", other)
+        return MockColumnOperation(self, "and", other)
     
     def __or__(self, other: Any) -> "MockColumnOperation":
         """Logical OR."""
-        return MockColumnOperation(self.column, "or", other)
+        return MockColumnOperation(self, "or", other)
     
     def __invert__(self) -> "MockColumnOperation":
         """Logical NOT."""
         return MockColumnOperation(self.column, "not", None)
+    
+    def alias(self, name: str) -> "MockColumnOperation":
+        """Create an alias for the column operation."""
+        result = MockColumnOperation(self.column, self.operation, self.value)
+        result.name = name
+        return result
     
     def __repr__(self) -> str:
         if self.value is None:
@@ -150,57 +191,65 @@ class MockFunctions:
         return MockColumn(name, column_type)
     
     @staticmethod
-    def lit(value: Any, column_type: Optional[MockDataType] = None) -> MockColumn:
+    def lit(value: Any, column_type: Optional[MockDataType] = None) -> "MockLiteral":
         """Create a literal value."""
-        col = MockColumn(f"lit({value})", column_type)
-        # Add literal attributes for compatibility
-        setattr(col, '_is_literal', True)
-        setattr(col, '_literal_value', value)
-        return col
+        return MockLiteral(value, column_type)
     
     @staticmethod
-    def count(column: Optional[Union[str, MockColumn]] = None) -> MockColumn:
+    def count(column: Union[str, MockColumn] = "*") -> "MockAggregateFunction":
         """Count function."""
-        if column is None:
-            return MockColumn("count(*)")
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumn(f"count({column.name})")
+            return MockAggregateFunction("count", column)
+        return MockAggregateFunction("count", column.name)
     
     @staticmethod
-    def sum(column: Union[str, MockColumn]) -> MockColumn:
+    def sum(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Sum function."""
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumn(f"sum({column.name})")
+            return MockAggregateFunction("sum", column)
+        return MockAggregateFunction("sum", column.name)
     
     @staticmethod
-    def avg(column: Union[str, MockColumn]) -> MockColumn:
+    def avg(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Average function."""
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumn(f"avg({column.name})")
+            return MockAggregateFunction("avg", column)
+        return MockAggregateFunction("avg", column.name)
     
     @staticmethod
-    def max(column: Union[str, MockColumn]) -> MockColumn:
+    def max(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Max function."""
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumn(f"max({column.name})")
+            return MockAggregateFunction("max", column)
+        return MockAggregateFunction("max", column.name)
     
     @staticmethod
-    def min(column: Union[str, MockColumn]) -> MockColumn:
+    def min(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Min function."""
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumn(f"min({column.name})")
+            return MockAggregateFunction("min", column)
+        return MockAggregateFunction("min", column.name)
     
     @staticmethod
-    def countDistinct(column: Union[str, MockColumn]) -> MockColumn:
+    def countDistinct(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Count distinct function."""
         if isinstance(column, str):
+            return MockAggregateFunction("countDistinct", column)
+        return MockAggregateFunction("countDistinct", column.name)
+    
+    @staticmethod
+    def abs(column: Union[str, MockColumn]) -> MockColumn:
+        """Absolute value function."""
+        if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"countDistinct({column.name})")
+        return MockColumn(f"abs({column.name})")
+    
+    @staticmethod
+    def round(column: Union[str, MockColumn], scale: int = 0) -> MockColumn:
+        """Round function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return MockColumn(f"round({column.name}, {scale})")
     
     @staticmethod
     def when(condition: MockColumnOperation, value: Any) -> MockColumn:
@@ -340,19 +389,19 @@ class MockFunctions:
         return MockColumn(f"expr({expression})")
     
     @staticmethod
-    def row_number() -> MockColumn:
+    def row_number() -> "MockWindowFunction":
         """Row number window function."""
-        return MockColumn("row_number()")
+        return MockWindowFunction("row_number")
     
     @staticmethod
-    def rank() -> MockColumn:
+    def rank() -> "MockWindowFunction":
         """Rank window function."""
-        return MockColumn("rank()")
+        return MockWindowFunction("rank")
     
     @staticmethod
-    def dense_rank() -> MockColumn:
+    def dense_rank() -> "MockWindowFunction":
         """Dense rank window function."""
-        return MockColumn("dense_rank()")
+        return MockWindowFunction("dense_rank")
 
 
 # Create the functions module instance
@@ -372,6 +421,8 @@ __all__ = [
     "max",
     "min",
     "countDistinct",
+    "abs",
+    "round",
     "when",
     "current_timestamp",
     "current_date",
@@ -399,7 +450,17 @@ class MockLiteral:
     def __init__(self, value: Any, column_type: Optional[MockDataType] = None):
         """Initialize MockLiteral."""
         self.value = value
-        self.column_type = column_type or StringType()
+        # Use the correct type based on the value
+        if column_type is None:
+            from .spark_types import convert_python_type_to_mock_type, IntegerType
+            if isinstance(value, int):
+                self.column_type = IntegerType()
+            else:
+                self.column_type = convert_python_type_to_mock_type(type(value))
+        else:
+            self.column_type = column_type
+        # Add name attribute to match PySpark behavior - use the actual value as column name
+        self.name = str(value)
     
     def __repr__(self) -> str:
         """String representation."""
@@ -447,6 +508,8 @@ avg = F.avg
 max = F.max
 min = F.min
 countDistinct = F.countDistinct
+abs = F.abs
+round = F.round
 when = F.when
 current_timestamp = F.current_timestamp
 current_date = F.current_date

@@ -13,3 +13,4 @@ types-psutil>=6.0.0
 [test]
 pytest>=7.0.0
 pytest-cov>=4.0.0
+pyspark<3.4.0,>=3.2.0

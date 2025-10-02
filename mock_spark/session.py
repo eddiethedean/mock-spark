@@ -77,37 +77,40 @@ class MockSparkSession:
         if schema is None:
             # Infer schema from data
             if not data:
-                raise_value_error("Cannot infer schema from empty data")
-            
-            # Simple schema inference
-            sample_row = data[0]
-            if not isinstance(sample_row, (dict, tuple)):
-                raise_value_error("Data must be a list of dictionaries or tuples")  # type: ignore[unreachable]
-            
-            fields = []
-            if isinstance(sample_row, dict):
-                # Dictionary format
-                for key, value in sample_row.items():
-                    from .spark_types import StringType, IntegerType, DoubleType, BooleanType, MockDataType
-                    
-                    field_type: MockDataType
-                    if isinstance(value, int):
-                        field_type = IntegerType()
-                    elif isinstance(value, float):
-                        field_type = DoubleType()
-                    elif isinstance(value, bool):
-                        field_type = BooleanType()
-                    else:
-                        field_type = StringType()
-                    
-                    from .spark_types import MockStructField
-                    fields.append(MockStructField(key, field_type))
+                # Create empty DataFrame with empty schema
+                from .spark_types import MockStructType
+                schema = MockStructType([])
             else:
-                # Tuple format - need schema to convert
-                raise_value_error("Cannot infer schema from tuples without explicit schema")
-            
-            from .spark_types import MockStructType
-            schema = MockStructType(fields)
+                # Simple schema inference
+                sample_row = data[0]
+                if not isinstance(sample_row, (dict, tuple)):
+                    raise_value_error("Data must be a list of dictionaries or tuples")  # type: ignore[unreachable]
+                
+                fields = []
+                if isinstance(sample_row, dict):
+                    # Dictionary format - sort keys alphabetically to match PySpark behavior
+                    for key in sorted(sample_row.keys()):
+                        value = sample_row[key]
+                        from .spark_types import StringType, LongType, DoubleType, BooleanType, MockDataType
+                        
+                        field_type: MockDataType
+                        if isinstance(value, int):
+                            field_type = LongType()  # Use LongType to match PySpark
+                        elif isinstance(value, float):
+                            field_type = DoubleType()
+                        elif isinstance(value, bool):
+                            field_type = BooleanType()
+                        else:
+                            field_type = StringType()
+                        
+                        from .spark_types import MockStructField
+                        fields.append(MockStructField(key, field_type))
+                else:
+                    # Tuple format - need schema to convert
+                    raise_value_error("Cannot infer schema from tuples without explicit schema")
+                
+                from .spark_types import MockStructType
+                schema = MockStructType(fields)
         
         # Convert tuples to dictionaries if schema is provided
         if data and isinstance(data[0], tuple) and schema:
@@ -118,6 +121,15 @@ class MockSparkSession:
                     raise_value_error(f"Row length {len(row)} doesn't match schema field count {len(field_names)}")
                 converted_data.append(dict(zip(field_names, row)))
             data = converted_data  # type: ignore[assignment]
+        
+        # Sort data rows to match schema column order
+        if data and isinstance(data[0], dict):
+            field_names = [field.name for field in schema.fields]
+            sorted_data = []
+            for row in data:
+                sorted_row = {key: row[key] for key in field_names if key in row}
+                sorted_data.append(sorted_row)
+            data = sorted_data
         
         return MockDataFrame(data, schema, self.storage)  # type: ignore[arg-type]
     

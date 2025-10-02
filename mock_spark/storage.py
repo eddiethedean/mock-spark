@@ -8,7 +8,7 @@ SQL-compatible operations that can handle all DataFrame operations.
 import sqlite3
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -56,9 +56,54 @@ class MockTable:
         if filter_expr is None:
             return self.data.copy()
         
-        # Simple filter implementation
-        # In a real implementation, this would parse and evaluate the filter expression
-        return self.data.copy()  # Simplified for now
+        # Simple filter implementation for basic comparisons
+        filtered_data = []
+        for row in self.data:
+            if self._evaluate_filter(row, filter_expr):
+                filtered_data.append(row)
+        return filtered_data
+    
+    def _evaluate_filter(self, row: Dict[str, Any], filter_expr: str) -> bool:
+        """Evaluate a simple filter expression on a row."""
+        # Simple implementation for basic comparisons like "age > 30"
+        try:
+            # Extract column name, operator, and value
+            if " > " in filter_expr:
+                col_name, value_str = filter_expr.split(" > ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) > value
+            elif " < " in filter_expr:
+                col_name, value_str = filter_expr.split(" < ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) < value
+            elif " >= " in filter_expr:
+                col_name, value_str = filter_expr.split(" >= ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) >= value
+            elif " <= " in filter_expr:
+                col_name, value_str = filter_expr.split(" <= ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) <= value
+            elif " == " in filter_expr:
+                col_name, value_str = filter_expr.split(" == ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) == value
+            elif " != " in filter_expr:
+                col_name, value_str = filter_expr.split(" != ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) != value
+            else:
+                # Default to True if we can't parse the filter
+                return True
+        except Exception:
+            # Default to True if evaluation fails
+            return True
     
     def get_schema(self) -> MockStructType:
         """Get table schema."""
@@ -190,25 +235,78 @@ class MockStorageManager:
         
         if filter_expr:
             # Simple filter implementation - in real implementation would parse SQL
+            # For now, just return all data and let MockTable handle filtering
             sql = f"SELECT * FROM {table}"
+            cursor = conn.execute(sql)
+            rows = cursor.fetchall()
+            all_data = [dict(row) for row in rows]
+            
+            # Apply filter using MockTable logic
+            filtered_data = []
+            for row in all_data:
+                if self._evaluate_filter(row, filter_expr):
+                    filtered_data.append(row)
+            return filtered_data
         else:
             sql = f"SELECT * FROM {table}"
-        
-        cursor = conn.execute(sql)
-        rows = cursor.fetchall()
-        
-        # Convert to list of dicts
-        return [dict(row) for row in rows]
+            cursor = conn.execute(sql)
+            rows = cursor.fetchall()
+            
+            # Convert to list of dicts
+            return [dict(row) for row in rows]
+    
+    def _evaluate_filter(self, row: Dict[str, Any], filter_expr: str) -> bool:
+        """Evaluate a simple filter expression on a row."""
+        # Simple implementation for basic comparisons like "age > 30"
+        try:
+            # Extract column name, operator, and value
+            if " > " in filter_expr:
+                col_name, value_str = filter_expr.split(" > ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) > value
+            elif " < " in filter_expr:
+                col_name, value_str = filter_expr.split(" < ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) < value
+            elif " >= " in filter_expr:
+                col_name, value_str = filter_expr.split(" >= ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) >= value
+            elif " <= " in filter_expr:
+                col_name, value_str = filter_expr.split(" <= ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) <= value
+            elif " == " in filter_expr:
+                col_name, value_str = filter_expr.split(" == ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) == value
+            elif " != " in filter_expr:
+                col_name, value_str = filter_expr.split(" != ")
+                col_name = col_name.strip()
+                value = int(value_str.strip())
+                return row.get(col_name, 0) != value
+            else:
+                # Default to True if we can't parse the filter
+                return True
+        except Exception:
+            # Default to True if evaluation fails
+            return True
     
     def get_table_schema(self, schema: str, table: str) -> Optional[MockStructType]:
         """Get table schema."""
         if not self.table_exists(schema, table):
             return None
         
-        # Try to get from metadata first
+        # Try to get from metadata first - this preserves the original schema
         fqn = f"{schema}.{table}"
         if fqn in self._table_metadata:
             metadata = self._table_metadata[fqn]
+            # Return the original MockStructType to preserve equality
             from .spark_types import MockStructType
             return MockStructType(metadata.columns)
         
@@ -290,13 +388,21 @@ class MockStorageManager:
             "total_rows": total_rows
         }
     
-    def create_table(self, schema: str, table: str, columns: List[MockStructField]) -> None:
+    def create_table(self, schema: str, table: str, columns: Union[List[MockStructField], MockStructType]) -> None:
         """Create table with schema."""
         conn = self.get_database(schema)
         
+        # Handle both MockStructType and List[MockStructField]
+        if isinstance(columns, MockStructType):
+            struct_type = columns
+            fields = columns.fields
+        else:
+            fields = columns
+            struct_type = MockStructType(fields)
+        
         # Convert MockStructField to SQLite schema
         sqlite_columns = []
-        for field in columns:
+        for field in fields:
             sqlite_type = self._convert_mock_type_to_sqlite(field.dataType)
             nullable = "NULL" if field.nullable else "NOT NULL"
             sqlite_columns.append(f"{field.name} {sqlite_type} {nullable}")
@@ -309,13 +415,11 @@ class MockStorageManager:
         self._table_metadata[fqn] = TableMetadata(
             schema=schema,
             table=table,
-            columns=columns,
+            columns=fields,
             created_at=time.time()
         )
         
-        # Update compatibility attributes
-        from .spark_types import MockStructType
-        struct_type = MockStructType(columns)
+        # Update compatibility attributes - use the original struct_type to preserve equality
         mock_table = MockTable(schema, table, struct_type)
         if schema not in self.tables:
             self.tables[schema] = {}

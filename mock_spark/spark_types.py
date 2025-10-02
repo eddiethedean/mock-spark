@@ -220,7 +220,7 @@ def convert_python_type_to_mock_type(python_type: type) -> MockDataType:
     """Convert Python type to MockDataType."""
     type_mapping = {
         str: StringType(),
-        int: IntegerType(),
+        int: LongType(),  # Use LongType for integers to match PySpark
         float: DoubleType(),
         bool: BooleanType(),
     }

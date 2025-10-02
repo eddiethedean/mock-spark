@@ -27,8 +27,8 @@ class TestMockColumn:
         """Test equality operation."""
         col = F.col("age")
         result = col == 25
-        assert isinstance(result, MockColumn)
-        assert result.column_name == "age"
+        assert hasattr(result, 'column')
+        assert result.column.column_name == "age"
         assert result.operation == "=="
         assert result.operand == 25
     
@@ -158,7 +158,7 @@ class TestMockAggregateFunction:
         count_func = F.count()
         assert isinstance(count_func, MockAggregateFunction)
         assert count_func.function_name == "count"
-        assert count_func.column_name is None
+        assert count_func.column_name == "*"  # Default parameter is now "*"
     
     def test_count_function_with_column(self):
         """Test count function with column."""
