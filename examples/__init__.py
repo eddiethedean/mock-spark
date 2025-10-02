@@ -1,0 +1,3 @@
+"""
+Mock Spark examples package.
+"""
