@@ -7,7 +7,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-143%20passing%20%7C%2030%20skipped-green.svg)](https://github.com/odosmatthews/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-143%20passing%20%7C%2030%20skipped-green.svg)](https://github.com/eddiethedean/mock-spark)
 
 *No JVM required • Pure Python • Fast test execution • Full PySpark compatibility*
 
@@ -212,7 +212,7 @@ Mock Spark implements the complete PySpark API:
 
 ```bash
 # Clone and install
-git clone https://github.com/odosmatthews/mock-spark.git
+git clone https://github.com/eddiethedean/mock-spark.git
 cd mock-spark
 pip install -e ".[dev]"
 
@@ -269,9 +269,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: [https://github.com/odosmatthews/mock-spark](https://github.com/odosmatthews/mock-spark)
+- **GitHub**: [https://github.com/eddiethedean/mock-spark](https://github.com/eddiethedean/mock-spark)
 - **PyPI**: [https://pypi.org/project/mock-spark/](https://pypi.org/project/mock-spark/)
-- **Issues**: [https://github.com/odosmatthews/mock-spark/issues](https://github.com/odosmatthews/mock-spark/issues)
+- **Issues**: [https://github.com/eddiethedean/mock-spark/issues](https://github.com/eddiethedean/mock-spark/issues)
 
 ---
 

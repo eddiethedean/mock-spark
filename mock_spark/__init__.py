@@ -20,7 +20,7 @@ Example:
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name"))).show()
     
-Version: 0.0.1
+Version: 0.0.2
 Author: Odos Matthews
 """
 
@@ -47,7 +47,7 @@ from .errors import (
     IllegalArgumentException,
 )
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

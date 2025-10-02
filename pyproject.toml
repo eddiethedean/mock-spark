@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "0.0.1"
+version = "0.0.2"
 description = "A lightweight mock implementation of PySpark for testing and development"
 readme = "README.md"
 license = {text = "MIT"}
@@ -54,9 +54,9 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/odosmatthews/mock-spark"
-Repository = "https://github.com/odosmatthews/mock-spark"
-Issues = "https://github.com/odosmatthews/mock-spark/issues"
+Homepage = "https://github.com/eddiethedean/mock-spark"
+Repository = "https://github.com/eddiethedean/mock-spark"
+Issues = "https://github.com/eddiethedean/mock-spark/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
