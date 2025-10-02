@@ -242,7 +242,7 @@ class TestWindowFunctions:
         # Note: Window functions require Window specification
         try:
             from pyspark.sql.window import Window as PySparkWindow
-            from mock_spark.window import Window as MockWindow
+            from mock_spark.window import MockWindow
             
             # Create window specification
             mock_window = MockWindow.orderBy(mock_functions.col("age"))
@@ -329,8 +329,8 @@ class TestFunctionDiscrepancyDetection:
     def test_aggregate_function_types(self, mock_functions, pyspark_functions):
         """Test that aggregate functions return compatible types."""
         # Test count() function
-        mock_count = mock_functions.count()
-        pyspark_count = pyspark_functions.count()
+        mock_count = mock_functions.count("*")
+        pyspark_count = pyspark_functions.count("*")
         
         # Both should be aggregate function objects
         assert hasattr(mock_count, 'function_name') or hasattr(mock_count, 'name')

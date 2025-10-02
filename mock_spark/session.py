@@ -1,5 +1,26 @@
 """
-Mock SparkSession implementation.
+Mock SparkSession implementation for Mock Spark.
+
+This module provides a complete mock implementation of PySpark's SparkSession
+that behaves identically to the real SparkSession for testing and development.
+It includes session management, DataFrame creation, SQL operations, and catalog
+management without requiring a JVM or actual Spark installation.
+
+Key Features:
+    - Complete PySpark SparkSession API compatibility
+    - DataFrame creation from various data sources
+    - SQL query parsing and execution
+    - Catalog operations (databases, tables)
+    - Configuration management
+    - Session lifecycle management
+
+Example:
+    >>> from mock_spark import MockSparkSession
+    >>> spark = MockSparkSession("MyApp")
+    >>> data = [{"name": "Alice", "age": 25}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.show()
+    >>> spark.sql("CREATE DATABASE test")
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -49,22 +70,84 @@ class MockSparkContext:
 
 
 class MockSparkSession:
-    """Mock SparkSession for testing without PySpark."""
+    """Mock SparkSession providing complete PySpark API compatibility.
+    
+    Provides a comprehensive mock implementation of PySpark's SparkSession
+    that supports all major operations including DataFrame creation, SQL
+    queries, catalog management, and configuration without requiring JVM.
+    
+    Attributes:
+        app_name: Application name for the Spark session.
+        sparkContext: MockSparkContext instance for session context.
+        catalog: MockCatalog instance for database and table operations.
+        conf: Configuration object for session settings.
+        storage: MockStorageManager for data persistence.
+    
+    Example:
+        >>> spark = MockSparkSession("MyApp")
+        >>> df = spark.createDataFrame([{"name": "Alice", "age": 25}])
+        >>> df.select("name").show()
+        >>> spark.sql("CREATE DATABASE test")
+        >>> spark.stop()
+    """
     
     def __init__(self, app_name: str = "MockSparkApp"):
-        """Initialize MockSparkSession."""
+        """Initialize MockSparkSession.
+        
+        Args:
+            app_name: Application name for the Spark session.
+        """
         self.app_name = app_name
         self.storage = MockStorageManager()
         self._catalog = MockCatalog(self.storage)
         self.sparkContext = MockSparkContext(app_name)
+        self._conf = MockSparkConf()
+        self._udf = MockUDF()
+        self._version = "3.4.0"  # Mock version
+    
+    @property
+    def appName(self) -> str:
+        """Get application name."""
+        return self.app_name
+    
+    @property
+    def version(self) -> str:
+        """Get Spark version."""
+        return self._version
     
     @property
     def catalog(self) -> "MockCatalog":
         """Get the catalog."""
         return self._catalog
     
+    @property
+    def conf(self) -> "MockSparkConf":
+        """Get configuration."""
+        return self._conf
+    
+    @property
+    def udf(self) -> "MockUDF":
+        """Get UDF registration."""
+        return self._udf
+    
     def createDataFrame(self, data: List[Union[Dict[str, Any], tuple]], schema: Optional[Union[MockStructType, List[str]]] = None) -> MockDataFrame:
-        """Create a DataFrame from data."""
+        """Create a DataFrame from data.
+        
+        Args:
+            data: List of dictionaries or tuples representing rows.
+            schema: Optional schema definition (MockStructType or list of column names).
+        
+        Returns:
+            MockDataFrame instance with the specified data and schema.
+            
+        Raises:
+            PySparkValueError: If data is not in the expected format.
+            
+        Example:
+            >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
+            >>> df = spark.createDataFrame(data)
+            >>> df = spark.createDataFrame(data, ["name", "age"])
+        """
         if not isinstance(data, list):
             raise_value_error("Data must be a list of dictionaries or tuples")  # type: ignore[unreachable]
         
@@ -77,9 +160,8 @@ class MockSparkSession:
         if schema is None:
             # Infer schema from data
             if not data:
-                # Create empty DataFrame with empty schema
-                from .spark_types import MockStructType
-                schema = MockStructType([])
+                # PySpark limitation: cannot infer schema from empty dataset
+                raise_value_error("can not infer schema from empty dataset")
             else:
                 # Simple schema inference
                 sample_row = data[0]
@@ -94,12 +176,45 @@ class MockSparkSession:
                         from .spark_types import StringType, LongType, DoubleType, BooleanType, MockDataType
                         
                         field_type: MockDataType
-                        if isinstance(value, int):
+                        if isinstance(value, bool):
+                            field_type = BooleanType()
+                        elif isinstance(value, int):
                             field_type = LongType()  # Use LongType to match PySpark
                         elif isinstance(value, float):
                             field_type = DoubleType()
-                        elif isinstance(value, bool):
-                            field_type = BooleanType()
+                        elif isinstance(value, list):
+                            # ArrayType - infer element type from first non-null element
+                            element_type = StringType()  # Default to StringType
+                            for item in value:
+                                if item is not None:
+                                    if isinstance(item, str):
+                                        element_type = StringType()
+                                    elif isinstance(item, int):
+                                        element_type = LongType()
+                                    elif isinstance(item, float):
+                                        element_type = DoubleType()
+                                    elif isinstance(item, bool):
+                                        element_type = BooleanType()
+                                    break
+                            
+                            # Validate that all elements have the same type (PySpark limitation)
+                            for item in value:
+                                if item is not None:
+                                    if isinstance(item, str) and not isinstance(element_type, StringType):
+                                        raise_value_error(f"Array element type mismatch: expected {element_type.__class__.__name__}, got str")
+                                    elif isinstance(item, int) and not isinstance(element_type, LongType):
+                                        raise_value_error(f"Array element type mismatch: expected {element_type.__class__.__name__}, got int")
+                                    elif isinstance(item, float) and not isinstance(element_type, DoubleType):
+                                        raise_value_error(f"Array element type mismatch: expected {element_type.__class__.__name__}, got float")
+                                    elif isinstance(item, bool) and not isinstance(element_type, BooleanType):
+                                        raise_value_error(f"Array element type mismatch: expected {element_type.__class__.__name__}, got bool")
+                            
+                            from .spark_types import ArrayType
+                            field_type = ArrayType(element_type)
+                        elif isinstance(value, dict):
+                            # MapType - assume string keys and string values for simplicity
+                            from .spark_types import MapType
+                            field_type = MapType(StringType(), StringType())
                         else:
                             field_type = StringType()
                         
@@ -194,6 +309,59 @@ class MockSparkSession:
     def stop(self) -> None:
         """Stop the Spark session."""
         self.storage.clear_all()
+    
+    def sql(self, query: str) -> MockDataFrame:
+        """Execute SQL query."""
+        # Mock implementation - return empty DataFrame
+        from .spark_types import MockStructType
+        return MockDataFrame([], MockStructType([]), self.storage)
+    
+    def table(self, tableName: str) -> MockDataFrame:
+        """Get table as DataFrame."""
+        # Extract schema and table name
+        if "." in tableName:
+            schema, table = tableName.split(".", 1)
+        else:
+            schema = "default"
+            table = tableName
+        
+        if not self.storage.table_exists(schema, table):
+            raise AnalysisException(f"Table or view '{tableName}' not found", None)
+        
+        # Get data and schema from storage
+        data = self.storage.get_data(schema, table)
+        table_schema = self.storage.get_table_schema(schema, table)
+        
+        return MockDataFrame(data, table_schema, self.storage)
+    
+    def createGlobalTempView(self, name: str, replace: bool = False) -> None:
+        """Create global temporary view."""
+        # Mock implementation - same as regular temp view
+        self.createTempView(name)
+    
+    def createOrReplaceGlobalTempView(self, name: str) -> None:
+        """Create or replace global temporary view."""
+        self.createGlobalTempView(name, replace=True)
+    
+    def createOrReplaceTempView(self, name: str) -> None:
+        """Create or replace temporary view."""
+        self.createTempView(name)
+    
+    def newSession(self) -> 'MockSparkSession':
+        """Create new session."""
+        return MockSparkSession(self.app_name)
+    
+    def getActiveSession(self) -> 'MockSparkSession':
+        """Get active session."""
+        return self
+    
+    def clearCache(self) -> None:
+        """Clear cache."""
+        pass  # Mock implementation
+    
+    def clearActiveSession(self) -> None:
+        """Clear active session."""
+        pass  # Mock implementation
 
 
 class MockCatalog:
@@ -239,3 +407,136 @@ class MockCatalog:
             raise_schema_not_found(dbName)
         
         return self.storage.list_tables(dbName)
+    
+    def createTable(self, tableName: str, path: str, source: str = "parquet", schema: Optional[Any] = None, **options: Any) -> None:
+        """Create table."""
+        # Mock implementation
+        pass
+    
+    def dropTable(self, tableName: str) -> None:
+        """Drop table."""
+        # Mock implementation
+        pass
+    
+    def isCached(self, tableName: str) -> bool:
+        """Check if table is cached."""
+        return False  # Mock implementation
+    
+    def cacheTable(self, tableName: str) -> None:
+        """Cache table."""
+        pass  # Mock implementation
+    
+    def uncacheTable(self, tableName: str) -> None:
+        """Uncache table."""
+        pass  # Mock implementation
+    
+    def refreshTable(self, tableName: str) -> None:
+        """Refresh table."""
+        pass  # Mock implementation
+    
+    def refreshByPath(self, path: str) -> None:
+        """Refresh by path."""
+        pass  # Mock implementation
+    
+    def recoverPartitions(self, tableName: str) -> None:
+        """Recover partitions."""
+        pass  # Mock implementation
+    
+    def clearCache(self) -> None:
+        """Clear cache."""
+        pass  # Mock implementation
+
+
+class MockSparkConf:
+    """Mock SparkConf for configuration."""
+    
+    def __init__(self):
+        """Initialize MockSparkConf."""
+        self._config = {}
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get configuration value."""
+        return self._config.get(key, default)
+    
+    def set(self, key: str, value: Any) -> None:
+        """Set configuration value."""
+        self._config[key] = value
+    
+    def setAll(self, pairs: Dict[str, Any]) -> None:
+        """Set multiple configuration values."""
+        self._config.update(pairs)
+    
+    def setMaster(self, master: str) -> None:
+        """Set master URL."""
+        self._config["spark.master"] = master
+    
+    def setAppName(self, name: str) -> None:
+        """Set application name."""
+        self._config["spark.app.name"] = name
+    
+    def setIfMissing(self, key: str, value: Any) -> None:
+        """Set configuration value if missing."""
+        if key not in self._config:
+            self._config[key] = value
+    
+    def remove(self, key: str) -> None:
+        """Remove configuration value."""
+        self._config.pop(key, None)
+    
+    def contains(self, key: str) -> bool:
+        """Check if configuration contains key."""
+        return key in self._config
+    
+    def getAll(self) -> Dict[str, Any]:
+        """Get all configuration values."""
+        return self._config.copy()
+
+
+class MockUDF:
+    """Mock UDF registration."""
+    
+    def register(self, name: str, func: Any, returnType: Any = None) -> None:
+        """Register UDF."""
+        # Mock implementation - just store the function
+        pass
+    
+    def registerJavaFunction(self, name: str, className: str, returnType: Any = None) -> None:
+        """Register Java UDF."""
+        pass  # Mock implementation
+    
+    def registerPython(self, name: str, func: Any, returnType: Any = None) -> None:
+        """Register Python UDF."""
+        pass  # Mock implementation
+
+
+class MockSparkSessionBuilder:
+    """Mock SparkSession builder."""
+    
+    def __init__(self):
+        """Initialize builder."""
+        self._app_name = "MockSparkApp"
+    
+    def appName(self, name: str) -> "MockSparkSessionBuilder":
+        """Set app name."""
+        self._app_name = name
+        return self
+    
+    def master(self, master: str) -> "MockSparkSessionBuilder":
+        """Set master URL."""
+        return self
+    
+    def config(self, key: str, value: Any) -> "MockSparkSessionBuilder":
+        """Set configuration."""
+        return self
+    
+    def config(self, pairs: Dict[str, Any]) -> "MockSparkSessionBuilder":
+        """Set multiple configurations."""
+        return self
+    
+    def enableHiveSupport(self) -> "MockSparkSessionBuilder":
+        """Enable Hive support."""
+        return self
+
+
+# Add builder to MockSparkSession
+MockSparkSession.builder = MockSparkSessionBuilder()

@@ -1,8 +1,29 @@
 """
 Mock functions for Mock Spark.
 
-This module provides mock implementations of PySpark functions that behave
-identically to the real PySpark functions, particularly F.col expressions.
+This module provides comprehensive mock implementations of PySpark functions
+that behave identically to the real PySpark functions. It includes column
+expressions, built-in functions, and complex operations for DataFrame
+manipulation and analysis.
+
+Key Features:
+    - Complete PySpark F.* function compatibility
+    - Column expressions with all comparison and logical operations
+    - Built-in functions (coalesce, isnull, upper, lower, length, abs, round)
+    - Window functions (row_number, rank, etc.)
+    - Aggregate functions (count, sum, avg, max, min)
+    - Literal value support with proper type inference
+
+Example:
+    >>> from mock_spark import F
+    >>> # Column expressions
+    >>> F.col("name") == "Alice"
+    >>> F.col("age") > 25
+    >>> # Built-in functions
+    >>> F.upper(F.col("name"))
+    >>> F.coalesce(F.col("name"), F.lit("Unknown"))
+    >>> # Window functions
+    >>> F.row_number().over(window)
 """
 
 from typing import Any, List, Union, Optional, Callable
@@ -11,10 +32,40 @@ from .spark_types import MockDataType, StringType
 
 
 class MockColumn:
-    """Mock column expression for DataFrame operations."""
+    """Mock column expression for DataFrame operations.
+    
+    Provides a PySpark-compatible column expression that supports all comparison
+    and logical operations. Used for creating complex DataFrame transformations
+    and filtering conditions.
+    
+    Attributes:
+        _name: Original column name.
+        _original_column: Reference to original column for aliasing.
+        _alias_name: Alias name if set.
+        column_name: Column name for compatibility.
+        column_type: Data type of the column.
+        operation: Current operation being performed.
+        operand: Operand for the operation.
+        _operations: List of chained operations.
+        expr: String expression for PySpark compatibility.
+    
+    Example:
+        >>> col = F.col("age")
+        >>> col > 25
+        >>> col == "Alice"
+        >>> col.alias("user_age")
+    """
     
     def __init__(self, name: str, column_type: Optional[MockDataType] = None):
-        self.name = name
+        """Initialize MockColumn.
+        
+        Args:
+            name: Column name.
+            column_type: Optional data type. Defaults to StringType if not specified.
+        """
+        self._name = name
+        self._original_column = None
+        self._alias_name = None
         self.column_name = name
         self.column_type = column_type or StringType()
         self.operation = None
@@ -22,6 +73,18 @@ class MockColumn:
         self._operations: List[MockColumnOperation] = []
         # Add expr attribute for PySpark compatibility
         self.expr = f"MockColumn('{name}')"
+    
+    @property
+    def name(self) -> str:
+        """Get the column name (alias if set, otherwise original name)."""
+        if hasattr(self, '_alias_name') and self._alias_name is not None:
+            return self._alias_name
+        return self._name
+    
+    @property
+    def original_column(self):
+        """Get the original column (for aliased columns)."""
+        return getattr(self, '_original_column', self)
     
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison."""
@@ -109,6 +172,23 @@ class MockColumn:
         """Regex pattern matching."""
         return MockColumnOperation(self, "rlike", pattern)
     
+    def alias(self, name: str) -> "MockColumn":
+        """Create an alias for the column.
+        
+        Args:
+            name: Alias name for the column.
+            
+        Returns:
+            New MockColumn instance with the alias name.
+            
+        Example:
+            >>> F.col("user_name").alias("name")
+        """
+        result = MockColumn(self.name)
+        result._original_column = self  # Store reference to original
+        result._alias_name = name
+        return result
+    
     def isin(self, values: List[Any]) -> "MockColumnOperation":
         """Check if column value is in list."""
         return MockColumnOperation(self, "isin", values)
@@ -117,9 +197,6 @@ class MockColumn:
         """Check if column value is between bounds."""
         return MockColumnOperation(self, "between", (lower, upper))
     
-    def alias(self, name: str) -> "MockColumnOperation":
-        """Create column alias."""
-        return MockColumnOperation(self, "alias", name)
     
     def cast(self, data_type: Any) -> "MockColumnOperation":
         """Cast column to data type."""
@@ -135,6 +212,10 @@ class MockColumn:
     
     def __repr__(self) -> str:
         return f"MockColumn('{self.name}')"
+    
+    def __hash__(self) -> int:
+        """Hash for use in sets and dictionaries."""
+        return hash((self._name, self._alias_name))
 
 
 class MockColumnOperation:
@@ -180,24 +261,93 @@ class MockColumnOperation:
         if self.value is None:
             return f"MockColumnOperation({self.column}, '{self.operation}')"
         return f"MockColumnOperation({self.column}, '{self.operation}', {self.value})"
+    
+    def __eq__(self, other: Any) -> bool:
+        """Equality comparison."""
+        if not isinstance(other, MockColumnOperation):
+            return False
+        return (self.column == other.column and 
+                self.operation == other.operation and 
+                self.value == other.value)
+    
+    def __lt__(self, other: Any) -> bool:
+        """Less than comparison for sorting."""
+        if not isinstance(other, MockColumnOperation):
+            return NotImplemented
+        # Compare by operation name, then column name
+        if self.operation != other.operation:
+            return self.operation < other.operation
+        return str(self.column) < str(other.column)
+    
+    def __hash__(self) -> int:
+        """Hash for use in sets and dictionaries."""
+        return hash((self.column, self.operation, self.value))
 
 
 class MockFunctions:
-    """Mock functions module (equivalent to pyspark.sql.functions)."""
+    """Mock functions module providing PySpark-compatible function implementations.
+    
+    This class provides static methods that mirror PySpark's functions module,
+    offering complete API compatibility for DataFrame operations. Includes
+    column expressions, built-in functions, aggregate functions, and window functions.
+    
+    Example:
+        >>> F = MockFunctions
+        >>> F.col("name")
+        >>> F.upper(F.col("name"))
+        >>> F.count(F.col("id"))
+        >>> F.row_number()
+    """
     
     @staticmethod
     def col(name: str, column_type: Optional[MockDataType] = None) -> MockColumn:
-        """Create a column reference."""
+        """Create a column reference.
+        
+        Args:
+            name: Column name.
+            column_type: Optional data type for the column.
+            
+        Returns:
+            MockColumn instance for DataFrame operations.
+            
+        Example:
+            >>> F.col("age")
+            >>> F.col("name", StringType())
+        """
         return MockColumn(name, column_type)
     
     @staticmethod
     def lit(value: Any, column_type: Optional[MockDataType] = None) -> "MockLiteral":
-        """Create a literal value."""
+        """Create a literal value.
+        
+        Args:
+            value: Literal value (string, number, boolean, etc.).
+            column_type: Optional data type. Inferred from value if not provided.
+            
+        Returns:
+            MockLiteral instance for use in DataFrame operations.
+            
+        Example:
+            >>> F.lit("Hello")
+            >>> F.lit(42)
+            >>> F.lit(True)
+        """
         return MockLiteral(value, column_type)
     
     @staticmethod
     def count(column: Union[str, MockColumn] = "*") -> "MockAggregateFunction":
-        """Count function."""
+        """Count function for aggregation.
+        
+        Args:
+            column: Column to count. Use "*" to count all rows.
+            
+        Returns:
+            MockAggregateFunction for use in groupBy operations.
+            
+        Example:
+            >>> df.groupBy("department").agg(F.count("*"))
+            >>> df.groupBy("department").agg(F.count("employee_id"))
+        """
         if isinstance(column, str):
             return MockAggregateFunction("count", column)
         return MockAggregateFunction("count", column.name)
@@ -234,22 +384,30 @@ class MockFunctions:
     def countDistinct(column: Union[str, MockColumn]) -> "MockAggregateFunction":
         """Count distinct function."""
         if isinstance(column, str):
-            return MockAggregateFunction("countDistinct", column)
-        return MockAggregateFunction("countDistinct", column.name)
+            return MockAggregateFunction("count(DISTINCT", column)
+        return MockAggregateFunction("count(DISTINCT", column.name)
     
     @staticmethod
-    def abs(column: Union[str, MockColumn]) -> MockColumn:
+    def abs(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Absolute value function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"abs({column.name})")
+        operation = MockColumnOperation(column, "abs")
+        return operation
     
     @staticmethod
-    def round(column: Union[str, MockColumn], scale: int = 0) -> MockColumn:
+    def round(column: Union[str, MockColumn], scale: int = 0) -> MockColumnOperation:
         """Round function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"round({column.name}, {scale})")
+        operation = MockColumnOperation(column, "round", scale)
+        operation.precision = scale  # Store precision for evaluation
+        # Update the name to include the precision parameter to match PySpark
+        if scale == 0:
+            operation.name = f"round({column.name})"
+        else:
+            operation.name = f"round({column.name}, {scale})"
+        return operation
     
     @staticmethod
     def when(condition: MockColumnOperation, value: Any) -> MockColumn:
@@ -331,36 +489,47 @@ class MockFunctions:
         return MockColumn(f"substring({column.name}, {pos}, {len})")
     
     @staticmethod
-    def upper(column: Union[str, MockColumn]) -> MockColumn:
+    def upper(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Uppercase function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"upper({column.name})")
+        return MockColumnOperation(column, "upper")
     
     @staticmethod
-    def lower(column: Union[str, MockColumn]) -> MockColumn:
+    def lower(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Lowercase function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"lower({column.name})")
+        return MockColumnOperation(column, "lower")
     
     @staticmethod
-    def trim(column: Union[str, MockColumn]) -> MockColumn:
+    def trim(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Trim function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"trim({column.name})")
+        return MockColumnOperation(column, "trim")
     
     @staticmethod
-    def length(column: Union[str, MockColumn]) -> MockColumn:
+    def length(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Length function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        return MockColumn(f"length({column.name})")
+        return MockColumnOperation(column, "length")
     
     @staticmethod
     def coalesce(*columns: Union[str, MockColumn]) -> MockColumn:
-        """Coalesce function."""
+        """Coalesce function to return first non-null value.
+        
+        Args:
+            *columns: Columns to evaluate in order.
+            
+        Returns:
+            MockColumn with coalesce expression.
+            
+        Example:
+            >>> F.coalesce(F.col("name"), F.lit("Unknown"))
+            >>> F.coalesce(F.col("first_name"), F.col("last_name"), F.lit("N/A"))
+        """
         col_names = []
         for col in columns:
             if isinstance(col, str):
@@ -452,15 +621,27 @@ class MockLiteral:
         self.value = value
         # Use the correct type based on the value
         if column_type is None:
-            from .spark_types import convert_python_type_to_mock_type, IntegerType
-            if isinstance(value, int):
+            from .spark_types import convert_python_type_to_mock_type, IntegerType, BooleanType
+            if isinstance(value, bool):
+                self.column_type = BooleanType()
+            elif isinstance(value, int):
                 self.column_type = IntegerType()
             else:
                 self.column_type = convert_python_type_to_mock_type(type(value))
         else:
             self.column_type = column_type
         # Add name attribute to match PySpark behavior - use the actual value as column name
-        self.name = str(value)
+        # PySpark uses lowercase for boolean literals
+        if isinstance(value, bool):
+            self.name = str(value).lower()
+        else:
+            self.name = str(value)
+    
+    def alias(self, name: str) -> "MockLiteral":
+        """Create an alias for the literal."""
+        result = MockLiteral(self.value, self.column_type)
+        result.name = name
+        return result
     
     def __repr__(self) -> str:
         """String representation."""
@@ -478,7 +659,10 @@ class MockAggregateFunction:
     def __repr__(self) -> str:
         """String representation."""
         if self.column_name:
-            return f"MockAggregateFunction({self.function_name}({self.column_name}))"
+            if self.function_name == "count(DISTINCT":
+                return f"MockAggregateFunction({self.function_name} {self.column_name}))"
+            else:
+                return f"MockAggregateFunction({self.function_name}({self.column_name}))"
         else:
             return f"MockAggregateFunction({self.function_name}())"
 
@@ -490,6 +674,28 @@ class MockWindowFunction:
         """Initialize MockWindowFunction."""
         self.function_name = function_name
         self.column_name = column_name
+        self._window_spec = None
+    
+    def over(self, window_spec) -> "MockWindowFunction":
+        """Apply window specification."""
+        # Create a new instance with the window spec
+        new_func = MockWindowFunction(self.function_name, self.column_name)
+        new_func._window_spec = window_spec
+        return new_func
+    
+    def alias(self, name: str) -> "MockWindowFunction":
+        """Create an alias for the window function."""
+        new_func = MockWindowFunction(self.function_name, self.column_name)
+        new_func._window_spec = self._window_spec
+        new_func._alias = name
+        return new_func
+    
+    @property
+    def name(self) -> str:
+        """Get the column name for this window function."""
+        if hasattr(self, '_alias'):
+            return self._alias
+        return f"{self.function_name}()"
     
     def __repr__(self) -> str:
         """String representation."""
@@ -510,6 +716,7 @@ min = F.min
 countDistinct = F.countDistinct
 abs = F.abs
 round = F.round
+row_number = F.row_number
 when = F.when
 current_timestamp = F.current_timestamp
 current_date = F.current_date

@@ -29,9 +29,19 @@ class TestDataFrameCreation:
     
     def test_create_dataframe_empty(self, mock_environment, pyspark_environment, empty_data):
         """Test empty DataFrame creation."""
-        mock_df = mock_environment["session"].createDataFrame(empty_data)
-        pyspark_df = pyspark_environment["session"].createDataFrame(empty_data)
-        assert_dataframes_equal(mock_df, pyspark_df)
+        # Both mock_spark and PySpark should fail with empty data (PySpark limitation)
+        try:
+            mock_df = mock_environment["session"].createDataFrame(empty_data)
+            pytest.fail("Mock should have failed with empty data")
+        except Exception as e:
+            assert "can not infer schema from empty dataset" in str(e)
+        
+        # Test with explicit schema - should work
+        from mock_spark.spark_types import MockStructType, MockStructField, StringType
+        schema = MockStructType([MockStructField('name', StringType())])
+        mock_df = mock_environment["session"].createDataFrame(empty_data, schema)
+        assert mock_df.count() == 0
+        assert len(mock_df.schema.fields) == 1
 
 
 class TestDataFrameBasicOperations:
@@ -85,8 +95,8 @@ class TestDataFrameAggregations:
     
     def test_group_by_count(self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions):
         """Test groupBy with count."""
-        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.count())
-        pyspark_result = pyspark_dataframe.groupBy("department").agg(pyspark_functions.count())
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.count("*"))
+        pyspark_result = pyspark_dataframe.groupBy("department").agg(pyspark_functions.count("*"))
         assert_dataframes_equal(mock_result, pyspark_result)
     
     def test_group_by_sum(self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions):
@@ -260,11 +270,11 @@ class TestDiscrepancyDetection:
         """Comprehensive test to identify any discrepancies."""
         # Test multiple operations in sequence
         operations = [
-            ("select", lambda df, f: df.select(f.col("name"), f.col("age"))),
+            ("select", lambda df, f: df.select(f.col("name"), f.col("age"), f.col("department"))),
             ("filter", lambda df, f: df.filter(f.col("age") > 25)),
             ("withColumn", lambda df, f: df.withColumn("age_double", f.col("age") * 2)),
             ("groupBy", lambda df, f: df.groupBy("department").count()),
-            ("orderBy", lambda df, f: df.orderBy(f.col("age"))),
+            ("orderBy", lambda df, f: df.orderBy(f.col("count"))),
             ("limit", lambda df, f: df.limit(2)),
         ]
         
@@ -291,10 +301,20 @@ class TestDiscrepancyDetection:
         """Test edge cases to identify discrepancies."""
         # Test with empty DataFrame
         empty_data = []
-        mock_empty = mock_environment["session"].createDataFrame(empty_data)
-        pyspark_empty = pyspark_environment["session"].createDataFrame(empty_data)
         
-        assert_dataframes_equal(mock_empty, pyspark_empty)
+        # Both mock_spark and PySpark should fail with empty data (PySpark limitation)
+        try:
+            mock_empty = mock_environment["session"].createDataFrame(empty_data)
+            pytest.fail("Mock should have failed with empty data")
+        except Exception as e:
+            assert "can not infer schema from empty dataset" in str(e)
+        
+        # Test with explicit schema - should work
+        from mock_spark.spark_types import MockStructType, MockStructField, StringType
+        schema = MockStructType([MockStructField('name', StringType())])
+        mock_empty = mock_environment["session"].createDataFrame(empty_data, schema)
+        assert mock_empty.count() == 0
+        assert len(mock_empty.schema.fields) == 1
         
         # Test with single row
         single_data = [{"id": 1, "name": "test", "value": 42}]

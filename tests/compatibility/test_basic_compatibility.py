@@ -124,7 +124,7 @@ class TestBasicCompatibility:
         mock_lit = mock_functions.lit("test_value")
         assert hasattr(mock_lit, 'name') or hasattr(mock_lit, 'column_name')
         
-        mock_count = mock_functions.count()
+        mock_count = mock_functions.count("*")
         assert hasattr(mock_count, 'function_name') or hasattr(mock_count, 'name')
         
         mock_sum = mock_functions.sum("test_column")
@@ -142,7 +142,7 @@ class TestBasicCompatibility:
             pyspark_lit = pyspark_functions.lit("test_value")
             assert hasattr(pyspark_lit, 'name')
             
-            pyspark_count = pyspark_functions.count()
+            pyspark_count = pyspark_functions.count("*")
             assert hasattr(pyspark_count, 'name')
             
             pyspark_sum = pyspark_functions.sum("test_column")
@@ -288,7 +288,8 @@ class TestBasicCompatibility:
         pandas_df = df.toPandas()
         assert isinstance(pandas_df, pd.DataFrame)
         assert len(pandas_df) == 2
-        assert list(pandas_df.columns) == ["id", "name", "age"]
+        # PySpark sorts columns alphabetically, so expect ['age', 'id', 'name']
+        assert list(pandas_df.columns) == ["age", "id", "name"]
         
         print("✅ DataFrame collect behavior is correct")
     

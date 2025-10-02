@@ -139,11 +139,12 @@ class TestDataFrameMethods:
         mock_result = mock_dataframe.take(2)
         pyspark_result = pyspark_dataframe.take(2)
         
-        # Convert PySpark Rows to dictionaries for comparison
+        # Convert both to dictionaries for comparison
+        mock_dicts = [row.asDict() for row in mock_result]
         pyspark_dicts = [row.asDict() for row in pyspark_result]
         
-        assert len(mock_result) == len(pyspark_dicts)
-        for mock_row, pyspark_row in zip(mock_result, pyspark_dicts):
+        assert len(mock_dicts) == len(pyspark_dicts)
+        for mock_row, pyspark_row in zip(mock_dicts, pyspark_dicts):
             assert mock_row == pyspark_row
     
     def test_dtypes_property(self, mock_dataframe, pyspark_dataframe):
@@ -154,8 +155,8 @@ class TestDataFrameMethods:
         assert len(mock_dtypes) == len(pyspark_dtypes)
         for mock_dtype, pyspark_dtype in zip(mock_dtypes, pyspark_dtypes):
             assert mock_dtype[0] == pyspark_dtype[0]  # Column name
-            # Type names might differ slightly, so we check if they're compatible
-            assert mock_dtype[1] in ["StringType", "IntegerType", "LongType", "DoubleType", "BooleanType"]
+            # Type names should match PySpark format
+            assert mock_dtype[1] == pyspark_dtype[1]  # Type name should match exactly
     
     def test_desc_ordering(self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions):
         """Test descending order with desc() method."""
@@ -198,16 +199,20 @@ class TestEmptyDataFrame:
     def test_empty_dataframe_creation(self, mock_environment, pyspark_environment):
         """Test creating empty DataFrame."""
         empty_data = []
-        mock_df = mock_environment["session"].createDataFrame(empty_data)
-        pyspark_df = pyspark_environment["session"].createDataFrame(empty_data)
         
-        # Both should have 0 rows
+        # Both mock_spark and PySpark should fail with empty data (PySpark limitation)
+        try:
+            mock_df = mock_environment["session"].createDataFrame(empty_data)
+            pytest.fail("Mock should have failed with empty data")
+        except Exception as e:
+            assert "can not infer schema from empty dataset" in str(e)
+        
+        # Test with explicit schema - should work
+        from mock_spark.spark_types import MockStructType, MockStructField, StringType
+        schema = MockStructType([MockStructField('name', StringType())])
+        mock_df = mock_environment["session"].createDataFrame(empty_data, schema)
         assert mock_df.count() == 0
-        assert pyspark_df.count() == 0
-        
-        # Both should have empty schemas
-        assert len(mock_df.schema.fields) == 0
-        assert len(pyspark_df.schema.fields) == 0
+        assert len(mock_df.schema.fields) == 1
 
 
 class TestRowObjects:

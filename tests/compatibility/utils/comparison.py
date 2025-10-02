@@ -40,7 +40,21 @@ def compare_dataframes(
     try:
         # Convert to pandas for easier comparison
         mock_pandas = mock_df.toPandas() if hasattr(mock_df, 'toPandas') else pd.DataFrame(mock_df.data)
-        pyspark_pandas = pyspark_df.toPandas()
+        
+        # Handle NumPy np.bool deprecation issue in PySpark's toPandas()
+        try:
+            pyspark_pandas = pyspark_df.toPandas()
+        except AttributeError as e:
+            if "module 'numpy' has no attribute 'bool'" in str(e):
+                # Fallback: convert PySpark DataFrame to pandas manually
+                # This is a workaround for the NumPy deprecation issue
+                pyspark_pandas = pyspark_df.collect()
+                if pyspark_pandas:
+                    pyspark_pandas = pd.DataFrame([row.asDict() for row in pyspark_pandas])
+                else:
+                    pyspark_pandas = pd.DataFrame()
+            else:
+                raise
         
         # Compare row counts
         mock_rows = len(mock_pandas)
@@ -75,9 +89,32 @@ def compare_dataframes(
         
         # Compare data content
         if check_data and result["row_count_match"] and result["column_count_match"]:
+            # Special case: if both DataFrames are empty, they are equivalent
+            if mock_rows == 0 and pyspark_rows == 0:
+                result["data_match"] = True
+                return result
+            
             # Sort dataframes by all columns to ensure consistent ordering
-            mock_sorted = mock_pandas.sort_values(list(mock_pandas.columns)).reset_index(drop=True)
-            pyspark_sorted = pyspark_pandas.sort_values(list(pyspark_pandas.columns)).reset_index(drop=True)
+            # Skip sorting if there are complex data types (lists, dicts) as they're unhashable
+            has_complex_data = False
+            for col in mock_pandas.columns:
+                if len(mock_pandas[col]) > 0:
+                    try:
+                        first_val = mock_pandas[col].iloc[0]
+                        if isinstance(first_val, (list, dict)):
+                            has_complex_data = True
+                            break
+                    except:
+                        pass
+            
+            if has_complex_data:
+                # Don't sort complex data - use as is
+                mock_sorted = mock_pandas.reset_index(drop=True)
+                pyspark_sorted = pyspark_pandas.reset_index(drop=True)
+            else:
+                # Sort dataframes by all columns to ensure consistent ordering
+                mock_sorted = mock_pandas.sort_values(list(mock_pandas.columns)).reset_index(drop=True)
+                pyspark_sorted = pyspark_pandas.sort_values(list(pyspark_pandas.columns)).reset_index(drop=True)
             
             # Compare column by column
             for col in mock_pandas.columns:
@@ -109,17 +146,66 @@ def compare_dataframes(
                 
                 # Try different comparison methods based on data type
                 try:
-                    if pd.api.types.is_numeric_dtype(mock_non_null):
-                        # Numerical comparison with tolerance
-                        diff = np.abs(mock_non_null - pyspark_non_null)
-                        if not np.allclose(mock_non_null, pyspark_non_null, atol=tolerance, rtol=tolerance):
+                    # Check if this is complex data (lists or dicts) first
+                    is_complex_data = False
+                    if len(mock_non_null) > 0:
+                        try:
+                            first_val = mock_non_null.iloc[0]
+                            is_complex_data = isinstance(first_val, (list, dict))
+                        except:
+                            pass
+                    
+                    if is_complex_data:
+                        # Complex data comparison - convert to string for comparison
+                        try:
+                            mock_str = mock_non_null.astype(str)
+                            pyspark_str = pyspark_non_null.astype(str)
+                            if not mock_str.equals(pyspark_str):
+                                result["equivalent"] = False
+                                result["errors"].append(f"Complex values differ in column '{col}'")
+                        except Exception as complex_e:
                             result["equivalent"] = False
-                            result["errors"].append(f"Numerical values differ in column '{col}' (max diff: {diff.max()})")
-                    else:
-                        # String/categorical comparison
+                            result["errors"].append(f"Error comparing complex column '{col}': {str(complex_e)}")
+                    elif pd.api.types.is_bool_dtype(mock_non_null):
+                        # Boolean comparison
                         if not mock_non_null.equals(pyspark_non_null):
                             result["equivalent"] = False
-                            result["errors"].append(f"String values differ in column '{col}'")
+                            result["errors"].append(f"Boolean values differ in column '{col}'")
+                    elif pd.api.types.is_numeric_dtype(mock_non_null):
+                        # Numerical comparison with tolerance
+                        try:
+                            diff = np.abs(mock_non_null - pyspark_non_null)
+                            if not np.allclose(mock_non_null, pyspark_non_null, atol=tolerance, rtol=tolerance):
+                                result["equivalent"] = False
+                                result["errors"].append(f"Numerical values differ in column '{col}' (max diff: {diff.max()})")
+                        except Exception as numeric_e:
+                            # Fallback to string comparison for numeric data that can't be compared
+                            try:
+                                mock_str = mock_non_null.astype(str)
+                                pyspark_str = pyspark_non_null.astype(str)
+                                if not mock_str.equals(pyspark_str):
+                                    result["equivalent"] = False
+                                    result["errors"].append(f"Values differ in column '{col}' (numeric fallback)")
+                            except:
+                                result["equivalent"] = False
+                                result["errors"].append(f"Error comparing numeric column '{col}': {str(numeric_e)}")
+                    else:
+                        # String/categorical comparison
+                        try:
+                            if not mock_non_null.equals(pyspark_non_null):
+                                result["equivalent"] = False
+                                result["errors"].append(f"String values differ in column '{col}'")
+                        except Exception as string_e:
+                            # Fallback to string comparison
+                            try:
+                                mock_str = mock_non_null.astype(str)
+                                pyspark_str = pyspark_non_null.astype(str)
+                                if not mock_str.equals(pyspark_str):
+                                    result["equivalent"] = False
+                                    result["errors"].append(f"Values differ in column '{col}' (string fallback)")
+                            except:
+                                result["equivalent"] = False
+                                result["errors"].append(f"Error comparing string column '{col}': {str(string_e)}")
                 except Exception as e:
                     result["equivalent"] = False
                     result["errors"].append(f"Error comparing column '{col}': {str(e)}")

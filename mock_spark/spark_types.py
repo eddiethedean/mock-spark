@@ -1,8 +1,26 @@
 """
 Mock data types and schema system for Mock Spark.
 
-This module provides mock implementations of PySpark data types and schema
-structures that behave identically to the real PySpark types.
+This module provides comprehensive mock implementations of PySpark data types
+and schema structures that behave identically to the real PySpark types.
+Includes primitive types, complex types, schema definitions, and Row objects
+for complete type system compatibility.
+
+Key Features:
+    - Complete PySpark data type hierarchy
+    - Primitive types (String, Integer, Long, Double, Boolean)
+    - Complex types (Array, Map, Struct)
+    - Schema definition with MockStructType and MockStructField
+    - Row objects with PySpark-compatible interface
+    - Type inference and conversion utilities
+
+Example:
+    >>> from mock_spark.spark_types import StringType, IntegerType, MockStructType, MockStructField
+    >>> schema = MockStructType([
+    ...     MockStructField("name", StringType()),
+    ...     MockStructField("age", IntegerType())
+    ... ])
+    >>> df = spark.createDataFrame(data, schema)
 """
 
 from typing import Any, Dict, List, Optional, Union, Iterator, KeysView, ValuesView, ItemsView
@@ -10,7 +28,20 @@ from dataclasses import dataclass
 
 
 class MockDataType:
-    """Base class for mock data types."""
+    """Base class for mock data types.
+    
+    Provides the foundation for all data types in the Mock Spark type system.
+    Supports nullable/non-nullable semantics and PySpark-compatible type names.
+    
+    Attributes:
+        nullable: Whether the data type allows null values.
+    
+    Example:
+        >>> StringType()
+        StringType(nullable=True)
+        >>> IntegerType(nullable=False)
+        IntegerType(nullable=False)
+    """
     
     def __init__(self, nullable: bool = True):
         self.nullable = nullable
@@ -20,6 +51,27 @@ class MockDataType:
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(nullable={self.nullable})"
+    
+    def typeName(self) -> str:
+        """Get PySpark-compatible type name."""
+        type_mapping = {
+            "StringType": "string",
+            "IntegerType": "int", 
+            "LongType": "bigint",
+            "DoubleType": "double",
+            "BooleanType": "boolean",
+            "DateType": "date",
+            "TimestampType": "timestamp",
+            "FloatType": "float",
+            "ShortType": "smallint",
+            "ByteType": "tinyint",
+            "DecimalType": "decimal",
+            "BinaryType": "binary",
+            "ArrayType": "array",
+            "MapType": "map",
+            "StructType": "struct"
+        }
+        return type_mapping.get(self.__class__.__name__, self.__class__.__name__.lower())
 
 
 class StringType(MockDataType):
@@ -255,7 +307,23 @@ def create_schema_from_columns(columns: List[str]) -> MockStructType:
 
 
 class MockRow:
-    """Mock row for DataFrame operations."""
+    """Mock Row object providing PySpark-compatible row interface.
+    
+    Represents a single row in a DataFrame with PySpark-compatible methods
+    for accessing data by index, key, or attribute.
+    
+    Attributes:
+        data: Dictionary containing row data.
+    
+    Example:
+        >>> row = MockRow({"name": "Alice", "age": 25})
+        >>> row.name
+        'Alice'
+        >>> row[0]
+        'Alice'
+        >>> row.asDict()
+        {'name': 'Alice', 'age': 25}
+    """
     
     def __init__(self, data: Dict[str, Any]):
         """Initialize MockRow."""
@@ -286,6 +354,43 @@ class MockRow:
     def __len__(self) -> int:
         """Get length."""
         return len(self.data)
+    
+    def __eq__(self, other: Any) -> bool:
+        """Compare with another row object."""
+        if hasattr(other, 'data'):
+            # Compare with another MockRow
+            return self.data == other.data
+        elif hasattr(other, '__dict__'):
+            # Compare with PySpark Row object
+            # PySpark Row objects have attributes for each column
+            try:
+                for key, value in self.data.items():
+                    if not hasattr(other, key) or getattr(other, key) != value:
+                        return False
+                return True
+            except:
+                return False
+        else:
+            return False
+    
+    def asDict(self) -> Dict[str, Any]:
+        """Convert to dictionary (PySpark compatibility)."""
+        return self.data.copy()
+    
+    def __getattr__(self, name: str) -> Any:
+        """Get value by attribute name (PySpark compatibility)."""
+        if name in self.data:
+            return self.data[name]
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    
+    def __repr__(self) -> str:
+        """String representation matching PySpark format."""
+        values_str = ", ".join(f"{k}={v}" for k, v in self.data.items())
+        return f"Row({values_str})"
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get value by key with default."""
+        return self.data.get(key, default)
     
     def __repr__(self) -> str:
         """String representation."""

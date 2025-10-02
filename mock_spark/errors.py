@@ -1,31 +1,82 @@
 """
 Error handling for Mock Spark.
 
-This module provides real PySpark error integration for maximum compatibility.
+This module provides comprehensive error handling that matches PySpark's
+exception hierarchy for maximum compatibility. Includes all major PySpark
+exceptions and helper functions for consistent error reporting.
+
+Key Features:
+    - Complete PySpark exception hierarchy
+    - AnalysisException for SQL analysis errors
+    - IllegalArgumentException for invalid arguments
+    - ParseException for SQL parsing errors
+    - QueryExecutionException for execution errors
+    - Helper functions for common error scenarios
+
+Example:
+    >>> from mock_spark.errors import AnalysisException
+    >>> raise AnalysisException("Column 'unknown' does not exist")
+    AnalysisException: Column 'unknown' does not exist
 """
 
 from typing import Any
 
 # Define all exceptions as fallbacks to avoid import issues
 class MockException(Exception):
-    """Base mock exception."""
+    """Base mock exception for all Mock Spark errors.
+    
+    Provides the foundation for all exceptions in the Mock Spark error hierarchy.
+    Includes stackTrace support for PySpark compatibility.
+    
+    Args:
+        message: Error message describing the issue.
+        stackTrace: Optional stack trace information.
+    """
     def __init__(self, message: str, stackTrace: Any = None):
         super().__init__(message)
 
 class AnalysisException(MockException):
-    """Mock analysis exception."""
+    """Exception raised for SQL analysis errors.
+    
+    Raised when SQL queries or DataFrame operations fail due to analysis
+    errors such as column not found, invalid syntax, or type mismatches.
+    
+    Example:
+        >>> raise AnalysisException("Column 'unknown' does not exist")
+    """
     pass
 
 class IllegalArgumentException(MockException):
-    """Mock illegal argument exception."""
+    """Exception raised for invalid arguments.
+    
+    Raised when invalid arguments are passed to functions or methods,
+    such as incorrect data types or invalid parameter values.
+    
+    Example:
+        >>> raise IllegalArgumentException("Invalid data type provided")
+    """
     pass
 
 class ParseException(MockException):
-    """Mock parse exception."""
+    """Exception raised for SQL parsing errors.
+    
+    Raised when SQL queries cannot be parsed due to syntax errors
+    or invalid SQL constructs.
+    
+    Example:
+        >>> raise ParseException("Invalid SQL syntax")
+    """
     pass
 
 class QueryExecutionException(MockException):
-    """Mock query execution exception."""
+    """Exception raised for query execution errors.
+    
+    Raised when SQL queries or DataFrame operations fail during
+    execution due to runtime errors or data issues.
+    
+    Example:
+        >>> raise QueryExecutionException("Failed to execute query")
+    """
     pass
 
 class SparkUpgradeException(MockException):

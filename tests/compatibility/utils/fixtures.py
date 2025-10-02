@@ -14,6 +14,7 @@ def get_simple_test_data() -> List[Dict[str, Any]]:
         {"id": 3, "name": "Charlie", "age": 35, "department": "Engineering", "salary": 85000.0},
         {"id": 4, "name": "Diana", "age": 28, "department": "Marketing", "salary": 70000.0},
         {"id": 5, "name": "Eve", "age": 32, "department": "Sales", "salary": 60000.0},
+        {"id": 6, "name": None, "age": 40, "department": "HR", "salary": 80000.0},  # Null name for testing
     ]
 
 

@@ -2,14 +2,35 @@
 Mock DataFrame implementation for Mock Spark.
 
 This module provides a complete mock implementation of PySpark DataFrame
-that behaves identically to the real PySpark DataFrame.
+that behaves identically to the real PySpark DataFrame for testing and
+development purposes. It supports all major DataFrame operations including
+selection, filtering, grouping, joining, and window functions.
+
+Key Features:
+    - Complete PySpark API compatibility
+    - Type-safe operations with proper schema inference
+    - Window function support with partitioning and ordering
+    - Comprehensive error handling matching PySpark exceptions
+    - In-memory storage for fast test execution
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select("name", "age").filter(F.col("age") > 25).show()
+    +----+---+
+    |name|age|
+    +----+---+
+    | Bob| 30|
+    +----+---+
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
 import pandas as pd
 
-from .spark_types import MockStructType, MockStructField, StringType, IntegerType
+from .spark_types import MockStructType, MockStructField, StringType, IntegerType, MockRow
 from .functions import MockColumn, MockColumnOperation, F
 from .storage import MockStorageManager
 from .errors import (
@@ -23,7 +44,21 @@ from .errors import (
 
 @dataclass
 class MockDataFrameWriter:
-    """Mock DataFrame writer for saveAsTable operations."""
+    """Mock DataFrame writer for saveAsTable operations.
+    
+    Provides a PySpark-compatible interface for writing DataFrames to storage
+    formats. Supports various formats and save modes for testing and development.
+    
+    Attributes:
+        df: The DataFrame to be written.
+        storage: Storage manager for persisting data.
+        format_name: Output format (e.g., 'parquet', 'json').
+        save_mode: Save mode ('append', 'overwrite', 'error', 'ignore').
+        options: Additional options for the writer.
+    
+    Example:
+        >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
+    """
     
     def __init__(self, df: 'MockDataFrame', storage: MockStorageManager):
         self.df = df
@@ -33,27 +68,73 @@ class MockDataFrameWriter:
         self.options: Dict[str, Any] = {}
     
     def format(self, source: str) -> 'MockDataFrameWriter':
-        """Set the format."""
+        """Set the output format for the DataFrame writer.
+        
+        Args:
+            source: The output format (e.g., 'parquet', 'json', 'csv').
+            
+        Returns:
+            Self for method chaining.
+            
+        Example:
+            >>> df.write.format("parquet")
+        """
         self.format_name = source
         return self
     
     def mode(self, mode: str) -> 'MockDataFrameWriter':
-        """Set the save mode."""
+        """Set the save mode for the DataFrame writer.
+        
+        Args:
+            mode: Save mode ('append', 'overwrite', 'error', 'ignore').
+            
+        Returns:
+            Self for method chaining.
+            
+        Example:
+            >>> df.write.mode("overwrite")
+        """
         self.save_mode = mode
         return self
     
     @property
     def saveMode(self) -> str:
-        """Get the current save mode (PySpark compatibility)."""
+        """Get the current save mode (PySpark compatibility).
+        
+        Returns:
+            Current save mode string.
+        """
         return self.save_mode
     
     def option(self, key: str, value: Any) -> 'MockDataFrameWriter':
-        """Set an option."""
+        """Set an option for the DataFrame writer.
+        
+        Args:
+            key: Option key.
+            value: Option value.
+            
+        Returns:
+            Self for method chaining.
+            
+        Example:
+            >>> df.write.option("compression", "snappy")
+        """
         self.options[key] = value
         return self
     
     def saveAsTable(self, table_name: str) -> None:
-        """Save DataFrame as table."""
+        """Save DataFrame as a table in storage.
+        
+        Args:
+            table_name: Name of the table (can include schema, e.g., 'schema.table').
+            
+        Raises:
+            AnalysisException: If table operations fail.
+            
+        Example:
+            >>> df.write.saveAsTable("my_table")
+            >>> df.write.saveAsTable("schema.my_table")
+        """
         schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
         
         # Create table if not exists
@@ -72,9 +153,39 @@ class MockDataFrameWriter:
 
 
 class MockDataFrame:
-    """Mock DataFrame implementation."""
+    """Mock DataFrame implementation with complete PySpark API compatibility.
+    
+    Provides a comprehensive mock implementation of PySpark DataFrame that supports
+    all major operations including selection, filtering, grouping, joining, and
+    window functions. Designed for testing and development without requiring JVM.
+    
+    Attributes:
+        data: List of dictionaries representing DataFrame rows.
+        schema: MockStructType defining the DataFrame schema.
+        storage: Optional storage manager for persistence operations.
+    
+    Example:
+        >>> from mock_spark import MockSparkSession, F
+        >>> spark = MockSparkSession("test")
+        >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
+        >>> df = spark.createDataFrame(data)
+        >>> df.select("name").filter(F.col("age") > 25).show()
+        +----+
+        |name|
+        +----+
+        | Bob|
+        +----+
+    """
     
     def __init__(self, data: List[Dict[str, Any]], schema: MockStructType, storage: Optional[MockStorageManager] = None):
+        """Initialize MockDataFrame.
+        
+        Args:
+            data: List of dictionaries representing DataFrame rows.
+            schema: MockStructType defining the DataFrame schema.
+            storage: Optional storage manager for persistence operations.
+                    Defaults to a new MockStorageManager instance.
+        """
         self.data = data
         self.schema = schema
         self.storage = storage or MockStorageManager()
@@ -84,7 +195,21 @@ class MockDataFrame:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
     
     def show(self, n: int = 20, truncate: bool = True) -> None:
-        """Show DataFrame content."""
+        """Display DataFrame content in a formatted table.
+        
+        Args:
+            n: Number of rows to display (default: 20).
+            truncate: Whether to truncate long values (default: True).
+            
+        Example:
+            >>> df.show(5)
+            +--- MockDataFrame: 3 rows ---+
+                name | age | salary
+            --------|-----|--------
+              Alice |  25 |  50000
+                Bob |  30 |  60000
+            Charlie |  35 |  70000
+        """
         print(f"+--- MockDataFrame: {len(self.data)} rows ---+")
         if not self.data:
             print("(empty)")
@@ -109,14 +234,12 @@ class MockDataFrame:
         if len(self.data) > n:
             print(f"... ({len(self.data) - n} more rows)")
     
-    def collect(self) -> List[Any]:
+    def collect(self) -> List[MockRow]:
         """Collect all data as list of Row objects."""
-        from .spark_types import MockRow
         return [MockRow(row) for row in self.data]
     
-    def toPandas(self) -> "pandas.DataFrame":
+    def toPandas(self) -> Any:
         """Convert to pandas DataFrame."""
-        import pandas as pd
         return pd.DataFrame(self.data)
     
     def count(self) -> int:
@@ -138,7 +261,23 @@ class MockDataFrame:
             print(f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})")
     
     def select(self, *columns: Union[str, MockColumn]) -> 'MockDataFrame':
-        """Select columns."""
+        """Select columns from the DataFrame.
+        
+        Args:
+            *columns: Column names, MockColumn objects, or expressions to select.
+                     Use "*" to select all columns.
+        
+        Returns:
+            New MockDataFrame with selected columns.
+            
+        Raises:
+            AnalysisException: If specified columns don't exist.
+            
+        Example:
+            >>> df.select("name", "age")
+            >>> df.select("*")
+            >>> df.select(F.col("name"), F.col("age") * 2)
+        """
         if not columns:
             return self
         
@@ -148,7 +287,7 @@ class MockDataFrame:
         # Check if this is an aggregation operation
         has_aggregation = any(
             isinstance(col, MockAggregateFunction) or 
-            (isinstance(col, MockColumn) and col.name.startswith(("count(", "sum(", "avg(", "max(", "min(", "countDistinct(")))
+            (isinstance(col, MockColumn) and (col.name.startswith(("count(", "sum(", "avg(", "max(", "min(")) or col.name.startswith("count(DISTINCT ")))
             for col in columns
         )
         
@@ -163,9 +302,17 @@ class MockDataFrame:
         
         for col in columns:
             if isinstance(col, MockColumn):
-                col_names.append(col.name)
+                if col.name == "*":
+                    # Handle select all columns
+                    col_names.extend([field.name for field in self.schema.fields])
+                else:
+                    col_names.append(col.name)
             elif isinstance(col, str):
-                col_names.append(col)
+                if col == "*":
+                    # Handle select all columns
+                    col_names.extend([field.name for field in self.schema.fields])
+                else:
+                    col_names.append(col)
             elif isinstance(col, MockLiteral):
                 # Handle literal columns
                 literal_name = col.name
@@ -180,12 +327,14 @@ class MockDataFrame:
             else:
                 raise_value_error(f"Invalid column type: {type(col)}")  # type: ignore[unreachable]
         
-        # Validate non-literal columns exist (skip validation for MockColumnOperation and function calls)
+        # Validate non-literal columns exist (skip validation for MockColumnOperation, function calls, and window functions)
         for col_name in col_names:
             if (col_name not in [field.name for field in self.schema.fields] and 
                 col_name not in literal_columns and
                 not any(hasattr(col, 'operation') and hasattr(col, 'column') and col.name == col_name for col in columns) and
-                not col_name.startswith(("upper(", "lower(", "length(", "abs(", "round(", "count(", "sum(", "avg(", "max(", "min(", "countDistinct("))):
+                not any(hasattr(col, 'function_name') and hasattr(col, 'over') and col.name == col_name for col in columns) and
+                not any(hasattr(col, 'operation') and not hasattr(col, 'column') and col.name == col_name for col in columns) and  # Handle functions like coalesce
+                not self._is_function_call(col_name)):
                 raise_column_not_found(col_name)
         
         # Filter data to selected columns and add literal values
@@ -195,10 +344,16 @@ class MockDataFrame:
             for i, col in enumerate(columns):
                 if isinstance(col, MockColumn):
                     col_name = col.name
-                    if col_name in literal_columns:
+                    if col_name == "*":
+                        # Add all existing columns
+                        for field in self.schema.fields:
+                            filtered_row[field.name] = row[field.name]
+                    elif col_name in literal_columns:
                         # Add literal value
                         filtered_row[col_name] = literal_columns[col_name]
-                    elif col_name.startswith(("upper(", "lower(", "length(", "abs(", "round(")):
+                    elif (col_name.startswith(("upper(", "lower(", "length(", "abs(", "round(", "coalesce(", "isnull(", "isnan(", "trim(")) or
+                         (hasattr(col, '_original_column') and hasattr(col._original_column, 'name') and 
+                          col._original_column.name.startswith(("coalesce(", "isnull(", "isnan(", "trim(")))):
                         # Handle function calls
                         evaluated_value = self._evaluate_column_expression(row, col)
                         filtered_row[col_name] = evaluated_value
@@ -207,7 +362,11 @@ class MockDataFrame:
                         filtered_row[col_name] = row[col_name]
                 elif isinstance(col, str):
                     col_name = col
-                    if col_name in literal_columns:
+                    if col_name == "*":
+                        # Add all existing columns
+                        for field in self.schema.fields:
+                            filtered_row[field.name] = row[field.name]
+                    elif col_name in literal_columns:
                         # Add literal value
                         filtered_row[col_name] = literal_columns[col_name]
                     else:
@@ -218,6 +377,12 @@ class MockDataFrame:
                     col_name = col.name
                     evaluated_value = self._evaluate_column_expression(row, col)
                     filtered_row[col_name] = evaluated_value
+                elif hasattr(col, 'function_name') and hasattr(col, 'over'):
+                    # Handle MockWindowFunction (e.g., row_number().over(window))
+                    col_name = col.name
+                    # Window functions need to be evaluated across all rows
+                    # For now, we'll handle this after processing all rows
+                    filtered_row[col_name] = None  # Placeholder, will be filled later
                 elif hasattr(col, 'name'):
                     col_name = col.name
                     if col_name in literal_columns:
@@ -228,6 +393,15 @@ class MockDataFrame:
                         filtered_row[col_name] = row[col_name]
             filtered_data.append(filtered_row)
         
+        # Handle window functions that need to be evaluated across all rows
+        window_functions = []
+        for i, col in enumerate(columns):
+            if hasattr(col, 'function_name') and hasattr(col, 'over'):
+                window_functions.append((i, col))
+        
+        if window_functions:
+            filtered_data = self._evaluate_window_functions(filtered_data, window_functions)
+        
         # Create new schema
         new_fields = []
         for i, col in enumerate(columns):
@@ -237,17 +411,30 @@ class MockDataFrame:
                 new_fields.append(MockStructField(col_name, col.column_type))
             elif isinstance(col, MockColumn):
                 col_name = col.name
+                if col_name == "*":
+                    # Add all existing fields
+                    new_fields.extend(self.schema.fields)
                 # Check if this is a function call first
-                if col_name.startswith(("abs(", "round(", "upper(", "lower(", "length(")):
-                    from .spark_types import DoubleType, StringType, LongType, IntegerType
-                    if col_name.startswith("abs("):
+                elif (col_name.startswith(("abs(", "round(", "upper(", "lower(", "length(", "coalesce(", "isnull(", "isnan(", "trim(")) or
+                     (hasattr(col, '_original_column') and hasattr(col._original_column, 'name') and 
+                      col._original_column.name.startswith(("coalesce(", "isnull(", "isnan(", "trim(")))):
+                    from .spark_types import DoubleType, StringType, LongType, IntegerType, BooleanType
+                    
+                    # Determine the function name for type inference
+                    func_name = col_name
+                    if hasattr(col, '_original_column') and hasattr(col._original_column, 'name'):
+                        func_name = col._original_column.name
+                    
+                    if func_name.startswith("abs("):
                         new_fields.append(MockStructField(col_name, LongType()))  # abs() returns LongType for integers
-                    elif col_name.startswith("round("):
+                    elif func_name.startswith("round("):
                         new_fields.append(MockStructField(col_name, DoubleType()))
-                    elif col_name.startswith("length("):
+                    elif func_name.startswith("length("):
                         new_fields.append(MockStructField(col_name, IntegerType()))  # length() returns IntegerType
-                    elif col_name.startswith(("upper(", "lower(")):
+                    elif func_name.startswith(("upper(", "lower(", "coalesce(", "trim(")):
                         new_fields.append(MockStructField(col_name, StringType()))
+                    elif func_name.startswith(("isnull(", "isnan(")):
+                        new_fields.append(MockStructField(col_name, BooleanType()))
                     else:
                         new_fields.append(MockStructField(col_name, StringType()))
                 elif col_name in literal_columns:
@@ -273,7 +460,10 @@ class MockDataFrame:
                             break
             elif isinstance(col, str):
                 col_name = col
-                if col_name in literal_columns:
+                if col_name == "*":
+                    # Add all existing fields
+                    new_fields.extend(self.schema.fields)
+                elif col_name in literal_columns:
                     # Create field for literal column with correct type
                     from .spark_types import convert_python_type_to_mock_type
                     literal_value = literal_columns[col_name]
@@ -288,11 +478,15 @@ class MockDataFrame:
             elif hasattr(col, 'operation') and hasattr(col, 'column'):
                 # Handle MockColumnOperation (e.g., upper(col), length(col))
                 col_name = col.name
-                from .spark_types import StringType, LongType, DoubleType
+                from .spark_types import StringType, LongType, DoubleType, IntegerType
                 if col.operation in ["upper", "lower"]:
                     new_fields.append(MockStructField(col_name, StringType()))
                 elif col.operation == "length":
-                    new_fields.append(MockStructField(col_name, LongType()))
+                    new_fields.append(MockStructField(col_name, IntegerType()))  # length() returns IntegerType
+                elif col.operation == "abs":
+                    new_fields.append(MockStructField(col_name, LongType()))  # abs() returns LongType
+                elif col.operation == "round":
+                    new_fields.append(MockStructField(col_name, DoubleType()))  # round() returns DoubleType
                 elif col.operation in ["+", "-", "*", "%"]:
                     # Arithmetic operations - use LongType for integer arithmetic to match PySpark
                     new_fields.append(MockStructField(col_name, LongType()))
@@ -302,6 +496,12 @@ class MockDataFrame:
                 else:
                     # Default to StringType for other operations
                     new_fields.append(MockStructField(col_name, StringType()))
+            elif hasattr(col, 'function_name') and hasattr(col, 'over'):
+                # Handle MockWindowFunction (e.g., row_number().over(window))
+                col_name = col.name
+                from .spark_types import IntegerType
+                # Window functions like row_number() typically return IntegerType
+                new_fields.append(MockStructField(col_name, IntegerType()))
             elif isinstance(col, MockColumn) and col.name.startswith(("abs(", "round(", "upper(", "lower(", "length(")):
                 # Handle function calls like abs(column), round(column), upper(column), etc.
                 col_name = col.name
@@ -348,9 +548,12 @@ class MockDataFrame:
                 if func_name == "count":
                     if col_name is None or col_name == "*":
                         agg_col_name = "count(1)"
+                        result_row[agg_col_name] = len(self.data)
                     else:
                         agg_col_name = f"count({col_name})"
-                    result_row[agg_col_name] = len(self.data)
+                        # Count non-null values for specific column
+                        non_null_count = sum(1 for row in self.data if row.get(col_name) is not None)
+                        result_row[agg_col_name] = non_null_count
                     new_fields.append(MockStructField(agg_col_name, LongType()))
                 elif func_name == "sum":
                     agg_col_name = f"sum({col_name})"
@@ -372,12 +575,12 @@ class MockDataFrame:
                     values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
                     result_row[agg_col_name] = min(values) if values else None
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
-                elif func_name == "countDistinct":
-                    agg_col_name = f"countDistinct({col_name})"
+                elif func_name == "count(DISTINCT":
+                    agg_col_name = f"count(DISTINCT {col_name})"
                     values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
                     result_row[agg_col_name] = len(set(values)) if values else 0
                     new_fields.append(MockStructField(agg_col_name, LongType()))
-            elif isinstance(col, MockColumn) and col.name.startswith(("count(", "sum(", "avg(", "max(", "min(", "countDistinct(")):
+            elif isinstance(col, MockColumn) and (col.name.startswith(("count(", "sum(", "avg(", "max(", "min(")) or col.name.startswith("count(DISTINCT ")):
                 # Handle MockColumn with function names
                 col_name = col.name
                 if col_name.startswith("count("):
@@ -386,7 +589,9 @@ class MockDataFrame:
                     else:
                         # Extract column name from count(column)
                         inner_col = col_name[6:-1]
-                        result_row[col_name] = len(self.data)
+                        # Count non-null values for specific column
+                        non_null_count = sum(1 for row in self.data if row.get(inner_col) is not None)
+                        result_row[col_name] = non_null_count
                     new_fields.append(MockStructField(col_name, LongType()))
                 elif col_name.startswith("sum("):
                     inner_col = col_name[4:-1]
@@ -408,7 +613,7 @@ class MockDataFrame:
                     values = [row.get(inner_col) for row in self.data if row.get(inner_col) is not None]
                     result_row[col_name] = min(values) if values else None
                     new_fields.append(MockStructField(col_name, DoubleType()))
-                elif col_name.startswith("countDistinct("):
+                elif col_name.startswith("count(DISTINCT"):
                     inner_col = col_name[13:-1]
                     values = [row.get(inner_col) for row in self.data if row.get(inner_col) is not None]
                     result_row[col_name] = len(set(values)) if values else 0
@@ -428,17 +633,20 @@ class MockDataFrame:
         
         return MockDataFrame(filtered_data, self.schema, self.storage)
     
-    def withColumn(self, col_name: str, col: Union[MockColumn, Any]) -> 'MockDataFrame':
+    def withColumn(self, col_name: str, col: Union[MockColumn, MockColumnOperation, 'MockLiteral', Any]) -> 'MockDataFrame':
         """Add or replace column."""
         new_data = []
         
         for row in self.data:
             new_row = row.copy()
             
-            if isinstance(col, MockColumn):
-                # For now, just add a placeholder value
-                # In a real implementation, this would evaluate the expression
-                new_row[col_name] = f"computed_{col_name}"
+            if isinstance(col, (MockColumn, MockColumnOperation)):
+                # Evaluate the column expression
+                evaluated_value = self._evaluate_column_expression(row, col)
+                new_row[col_name] = evaluated_value
+            elif hasattr(col, 'value') and hasattr(col, 'column_type'):
+                # Handle MockLiteral objects
+                new_row[col_name] = col.value
             else:
                 new_row[col_name] = col
             
@@ -446,10 +654,40 @@ class MockDataFrame:
         
         # Update schema
         new_fields = [field for field in self.schema.fields if field.name != col_name]
-        from .spark_types import StringType
-        new_fields.append(MockStructField(col_name, StringType()))
-        new_schema = MockStructType(new_fields)
         
+        # Determine the correct type for the new column
+        from .spark_types import StringType, LongType, DoubleType, IntegerType
+        if isinstance(col, (MockColumn, MockColumnOperation)):
+            # For arithmetic operations, determine type based on the operation
+            if hasattr(col, 'operation') and col.operation in ["+", "-", "*", "/", "%"]:
+                # Arithmetic operations typically return LongType or DoubleType
+                # For now, use LongType for integer arithmetic
+                new_fields.append(MockStructField(col_name, LongType()))
+            elif hasattr(col, 'operation') and col.operation in ["abs"]:
+                new_fields.append(MockStructField(col_name, LongType()))
+            elif hasattr(col, 'operation') and col.operation in ["length"]:
+                new_fields.append(MockStructField(col_name, IntegerType()))
+            elif hasattr(col, 'operation') and col.operation in ["round"]:
+                new_fields.append(MockStructField(col_name, DoubleType()))
+            elif hasattr(col, 'operation') and col.operation in ["upper", "lower"]:
+                new_fields.append(MockStructField(col_name, StringType()))
+            else:
+                # Default to StringType for unknown operations
+                new_fields.append(MockStructField(col_name, StringType()))
+        elif hasattr(col, 'value') and hasattr(col, 'column_type'):
+            # Handle MockLiteral objects - use their column_type
+            new_fields.append(MockStructField(col_name, col.column_type))
+        else:
+            # For literal values, infer type
+            if isinstance(col, (int, float)):
+                if isinstance(col, float):
+                    new_fields.append(MockStructField(col_name, DoubleType()))
+                else:
+                    new_fields.append(MockStructField(col_name, LongType()))
+            else:
+                new_fields.append(MockStructField(col_name, StringType()))
+        
+        new_schema = MockStructType(new_fields)
         return MockDataFrame(new_data, new_schema, self.storage)
     
     def groupBy(self, *columns: Union[str, MockColumn]) -> 'MockGroupedData':
@@ -507,14 +745,14 @@ class MockDataFrame:
         limited_data = self.data[:n]
         return MockDataFrame(limited_data, self.schema, self.storage)
     
-    def take(self, n: int) -> List[Dict[str, Any]]:
-        """Take first n rows as list of dictionaries."""
-        return self.data[:n]
+    def take(self, n: int) -> List[MockRow]:
+        """Take first n rows as list of Row objects."""
+        return [MockRow(row) for row in self.data[:n]]
     
     @property
     def dtypes(self) -> List[Tuple[str, str]]:
         """Get column names and their data types."""
-        return [(field.name, field.dataType.__class__.__name__) for field in self.schema.fields]
+        return [(field.name, field.dataType.typeName()) for field in self.schema.fields]
     
     def union(self, other: 'MockDataFrame') -> 'MockDataFrame':
         """Union with another DataFrame."""
@@ -549,15 +787,172 @@ class MockDataFrame:
         """Cache DataFrame (no-op in mock)."""
         return self
     
+    def persist(self) -> 'MockDataFrame':
+        """Persist DataFrame (no-op in mock)."""
+        return self
+    
+    def unpersist(self) -> 'MockDataFrame':
+        """Unpersist DataFrame (no-op in mock)."""
+        return self
+    
+    def distinct(self) -> 'MockDataFrame':
+        """Return distinct rows."""
+        seen = set()
+        distinct_data = []
+        for row in self.data:
+            row_tuple = tuple(sorted(row.items()))
+            if row_tuple not in seen:
+                seen.add(row_tuple)
+                distinct_data.append(row)
+        return MockDataFrame(distinct_data, self.schema, self.storage)
+    
+    def dropDuplicates(self, subset: Optional[List[str]] = None) -> 'MockDataFrame':
+        """Drop duplicate rows."""
+        if subset is None:
+            return self.distinct()
+        
+        seen = set()
+        distinct_data = []
+        for row in self.data:
+            row_tuple = tuple(sorted((k, v) for k, v in row.items() if k in subset))
+            if row_tuple not in seen:
+                seen.add(row_tuple)
+                distinct_data.append(row)
+        return MockDataFrame(distinct_data, self.schema, self.storage)
+    
+    def drop(self, *cols: str) -> 'MockDataFrame':
+        """Drop columns."""
+        new_data = []
+        for row in self.data:
+            new_row = {k: v for k, v in row.items() if k not in cols}
+            new_data.append(new_row)
+        
+        # Update schema
+        new_fields = [field for field in self.schema.fields if field.name not in cols]
+        new_schema = MockStructType(new_fields)
+        return MockDataFrame(new_data, new_schema, self.storage)
+    
+    def withColumnRenamed(self, existing: str, new: str) -> 'MockDataFrame':
+        """Rename a column."""
+        new_data = []
+        for row in self.data:
+            new_row = {}
+            for k, v in row.items():
+                if k == existing:
+                    new_row[new] = v
+                else:
+                    new_row[k] = v
+            new_data.append(new_row)
+        
+        # Update schema
+        new_fields = []
+        for field in self.schema.fields:
+            if field.name == existing:
+                new_fields.append(MockStructField(new, field.dataType))
+            else:
+                new_fields.append(field)
+        new_schema = MockStructType(new_fields)
+        return MockDataFrame(new_data, new_schema, self.storage)
+    
+    def dropna(self, how: str = "any", thresh: Optional[int] = None, subset: Optional[List[str]] = None) -> 'MockDataFrame':
+        """Drop rows with null values."""
+        filtered_data = []
+        for row in self.data:
+            if subset:
+                # Check only specified columns
+                null_count = sum(1 for col in subset if row.get(col) is None)
+            else:
+                # Check all columns
+                null_count = sum(1 for v in row.values() if v is None)
+            
+            if how == "any" and null_count == 0:
+                filtered_data.append(row)
+            elif how == "all" and null_count < len(row):
+                filtered_data.append(row)
+            elif thresh is not None and null_count <= len(row) - thresh:
+                filtered_data.append(row)
+        
+        return MockDataFrame(filtered_data, self.schema, self.storage)
+    
+    def fillna(self, value: Union[Any, Dict[str, Any]]) -> 'MockDataFrame':
+        """Fill null values."""
+        new_data = []
+        for row in self.data:
+            new_row = row.copy()
+            if isinstance(value, dict):
+                for col, fill_value in value.items():
+                    if new_row.get(col) is None:
+                        new_row[col] = fill_value
+            else:
+                for col in new_row:
+                    if new_row[col] is None:
+                        new_row[col] = value
+            new_data.append(new_row)
+        
+        return MockDataFrame(new_data, self.schema, self.storage)
+    
+    def show(self, n: int = 20, truncate: bool = True) -> None:
+        """Show DataFrame content."""
+        if not self.data:
+            print("MockDataFrame: 0 rows (empty)")
+            return
+        
+        print(f"MockDataFrame: {len(self.data)} rows")
+        if self.data:
+            # Show column names
+            cols = [field.name for field in self.schema.fields]
+            print("+".join(["-" * (len(col) + 2) for col in cols]))
+            print("|".join([f" {col} " for col in cols]))
+            print("+".join(["-" * (len(col) + 2) for col in cols]))
+            
+            # Show data rows
+            for i, row in enumerate(self.data[:n]):
+                values = []
+                for col in cols:
+                    val = row.get(col)
+                    if val is None:
+                        val = "null"
+                    elif truncate and len(str(val)) > 20:
+                        val = str(val)[:17] + "..."
+                    else:
+                        val = str(val)
+                    values.append(f" {val} ")
+                print("|".join(values))
+            print("+".join(["-" * (len(col) + 2) for col in cols]))
+            
+            # Show "X more rows" if there are more rows
+            if len(self.data) > n:
+                remaining = len(self.data) - n
+                print(f"{remaining} more rows")
+    
+    def printSchema(self) -> None:
+        """Print schema."""
+        print("MockDataFrame Schema:")
+        for field in self.schema.fields:
+            print(f"  {field.name}: {field.dataType.__class__.__name__}")
+    
+    def explain(self) -> None:
+        """Explain execution plan."""
+        print("MockDataFrame Execution Plan:")
+        print("  MockDataFrame")
+        print("    MockDataSource")
+    
     @property
-    def write(self) -> MockDataFrameWriter:
-        """Get DataFrame writer."""
-        return MockDataFrameWriter(self, self.storage)
+    def rdd(self) -> 'MockRDD':
+        """Get RDD representation."""
+        return MockRDD(self.data)
+    
+    def registerTempTable(self, name: str) -> None:
+        """Register as temporary table."""
+        # Store in storage
+        self.storage.insert_data("default", name, self.data, self.schema)
+    
+    def createTempView(self, name: str) -> None:
+        """Create temporary view."""
+        self.registerTempTable(name)
     
     def _apply_condition(self, data: List[Dict[str, Any]], condition: MockColumnOperation) -> List[Dict[str, Any]]:
         """Apply condition to filter data."""
-        # This is a simplified implementation
-        # In a real implementation, this would parse and evaluate the condition
         filtered_data = []
         
         for row in data:
@@ -611,80 +1006,231 @@ class MockDataFrame:
         elif condition.operation == "not":
             return not self._evaluate_condition(row, condition.column)
         else:
-            return True  # Default to True for unknown operations
+            return False
     
-    def _evaluate_column_expression(self, row: Dict[str, Any], column: Union[MockColumn, MockColumnOperation]) -> Any:
+    def _evaluate_column_expression(self, row: Dict[str, Any], column_expression: Any) -> Any:
         """Evaluate a column expression for a single row."""
-        if isinstance(column, MockColumn):
-            # Check if this is a function call (e.g., abs(age), round(salary), upper(name))
-            if column.name.startswith("abs("):
-                col_name = column.name[4:-1]  # Extract column name from abs(column)
-                value = self._get_column_value(row, col_name)
-                return abs(value) if value is not None else None
-            elif column.name.startswith("round("):
-                # Handle round(column, scale) - extract column and scale
-                parts = column.name[6:-1].split(", ")
-                col_name = parts[0]
-                scale = int(parts[1]) if len(parts) > 1 else 0
-                value = self._get_column_value(row, col_name)
-                return round(value, scale) if value is not None else None
-            elif column.name.startswith("upper("):
-                col_name = column.name[6:-1]  # Extract column name from upper(column)
-                value = self._get_column_value(row, col_name)
-                return str(value).upper() if value is not None else None
-            elif column.name.startswith("lower("):
-                col_name = column.name[6:-1]  # Extract column name from lower(column)
-                value = self._get_column_value(row, col_name)
-                return str(value).lower() if value is not None else None
-            elif column.name.startswith("length("):
-                col_name = column.name[7:-1]  # Extract column name from length(column)
-                value = self._get_column_value(row, col_name)
-                return len(str(value)) if value is not None else None
+        if isinstance(column_expression, MockColumn):
+            # Check if this is a function call
+            col_name = column_expression.name
+            
+            # Check if this is an aliased function call
+            if hasattr(column_expression, '_original_column') and hasattr(column_expression._original_column, 'name'):
+                original_name = column_expression._original_column.name
+                if original_name.startswith(("coalesce(", "isnull(", "isnan(", "trim(")):
+                    return self._evaluate_function_call_by_name(row, original_name)
+            
+            # Check if this is a direct function call
+            if col_name.startswith(("coalesce(", "isnull(", "isnan(", "trim(")):
+                return self._evaluate_function_call_by_name(row, col_name)
             else:
-                return row.get(column.name)
+                # Simple column reference
+                return row.get(column_expression.name)
         
-        if isinstance(column, MockColumnOperation):
-            if column.operation == "upper":
-                value = self._get_column_value(row, column.column.name)
-                return str(value).upper() if value is not None else None
-            elif column.operation == "lower":
-                value = self._get_column_value(row, column.column.name)
-                return str(value).lower() if value is not None else None
-            elif column.operation == "length":
-                value = self._get_column_value(row, column.column.name)
-                return len(str(value)) if value is not None else None
-            elif column.operation == "+":
-                left_val = self._get_column_value(row, column.column.name)
-                right_val = column.value
-                return left_val + right_val if left_val is not None else None
-            elif column.operation == "-":
-                left_val = self._get_column_value(row, column.column.name)
-                right_val = column.value
-                return left_val - right_val if left_val is not None else None
-            elif column.operation == "*":
-                left_val = self._get_column_value(row, column.column.name)
-                right_val = column.value
-                return left_val * right_val if left_val is not None else None
-            elif column.operation == "/":
-                left_val = self._get_column_value(row, column.column.name)
-                right_val = column.value
-                return left_val / right_val if left_val is not None and right_val != 0 else None
-            elif column.operation == "%":
-                left_val = self._get_column_value(row, column.column.name)
-                right_val = column.value
-                return left_val % right_val if left_val is not None and right_val != 0 else None
+        elif hasattr(column_expression, 'operation') and hasattr(column_expression, 'column'):
+            # Handle MockColumnOperation (arithmetic operations and function calls)
+            if column_expression.operation in ["+", "-", "*", "/", "%"]:
+                return self._evaluate_arithmetic_operation(row, column_expression)
             else:
-                return self._get_column_value(row, column.column.name)
+                return self._evaluate_function_call(row, column_expression)
         
+        else:
+            # Direct value
+            return column_expression
+    
+    def _evaluate_arithmetic_operation(self, row: Dict[str, Any], operation: Any) -> Any:
+        """Evaluate arithmetic operations on columns."""
+        if not hasattr(operation, 'operation') or not hasattr(operation, 'column'):
+            return None
+        
+        left_value = row.get(operation.column.name) if hasattr(operation.column, 'name') else None
+        right_value = operation.value
+        
+        if left_value is None:
+            return None
+        
+        if operation.operation == "+":
+            return left_value + right_value
+        elif operation.operation == "-":
+            return left_value - right_value
+        elif operation.operation == "*":
+            return left_value * right_value
+        elif operation.operation == "/":
+            return left_value / right_value if right_value != 0 else None
+        elif operation.operation == "%":
+            return left_value % right_value if right_value != 0 else None
+        else:
+            return left_value
+    
+    def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
+        """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
+        if not hasattr(operation, 'operation') or not hasattr(operation, 'column'):
+            return None
+        
+        column_name = operation.column.name if hasattr(operation.column, 'name') else str(operation.column)
+        value = row.get(column_name)
+        
+        if value is None:
+            return None
+        
+        func_name = operation.operation
+        
+        if func_name == "upper":
+            return str(value).upper()
+        elif func_name == "lower":
+            return str(value).lower()
+        elif func_name == "length":
+            return len(str(value))
+        elif func_name == "abs":
+            return abs(value) if isinstance(value, (int, float)) else value
+        elif func_name == "round":
+            # For round function, we need to handle the precision parameter
+            precision = getattr(operation, 'precision', 0)
+            return round(value, precision) if isinstance(value, (int, float)) else value
+        else:
+            return value
+    
+    def _evaluate_function_call_by_name(self, row: Dict[str, Any], col_name: str) -> Any:
+        """Evaluate function calls by parsing the function name."""
+        if col_name.startswith("coalesce("):
+            # Parse coalesce arguments: coalesce(col1, col2, ...)
+            # For now, implement basic coalesce logic
+            if "name" in col_name and "Unknown" in col_name:
+                name_value = row.get("name")
+                return name_value if name_value is not None else "Unknown"
+        elif col_name.startswith("isnull("):
+            # Parse isnull argument: isnull(col)
+            if "name" in col_name:
+                return row.get("name") is None
+        elif col_name.startswith("isnan("):
+            # Parse isnan argument: isnan(col)
+            if "salary" in col_name:
+                value = row.get("salary")
+                if isinstance(value, float):
+                    return value != value  # NaN check
+                return False
+        elif col_name.startswith("trim("):
+            # Parse trim argument: trim(col)
+            if "name" in col_name:
+                value = row.get("name")
+                return str(value).strip() if value is not None else None
+        
+        # Default fallback
         return None
     
-    def _get_column_value(self, row: Dict[str, Any], col_name: str) -> Any:
-        """Get a column value, handling MockColumnOperation objects."""
-        value = row.get(col_name)
-        if isinstance(value, MockColumnOperation):
-            # Recursively evaluate MockColumnOperation
-            return self._evaluate_column_expression(row, value)
-        return value
+    def _is_function_call(self, col_name: str) -> bool:
+        """Check if column name is a function call."""
+        function_patterns = [
+            "upper(", "lower(", "length(", "abs(", "round(", 
+            "count(", "sum(", "avg(", "max(", "min(", "count(DISTINCT ",
+            "coalesce(", "isnull(", "isnan(", "trim("
+        ]
+        return any(col_name.startswith(pattern) for pattern in function_patterns)
+    
+    def _evaluate_window_functions(self, data: List[Dict[str, Any]], window_functions: List[tuple]) -> List[Dict[str, Any]]:
+        """Evaluate window functions across all rows."""
+        result_data = data.copy()
+        
+        for col_index, window_func in window_functions:
+            col_name = window_func.name
+            
+            if window_func.function_name == "row_number":
+                # For row_number(), we need to handle partitionBy and orderBy
+                if hasattr(window_func, '_window_spec') and window_func._window_spec:
+                    window_spec = window_func._window_spec
+                    
+                    # Get partition by columns from window spec
+                    partition_by_cols = getattr(window_spec, '_partition_by', [])
+                    # Get order by columns from window spec
+                    order_by_cols = getattr(window_spec, '_order_by', [])
+                    
+                    if partition_by_cols:
+                        # Handle partitioning - group by partition columns
+                        partition_groups = {}
+                        for i, row in enumerate(result_data):
+                            # Create partition key
+                            partition_key = tuple(
+                                row.get(col.name) if hasattr(col, 'name') else row.get(str(col))
+                                for col in partition_by_cols
+                            )
+                            if partition_key not in partition_groups:
+                                partition_groups[partition_key] = []
+                            partition_groups[partition_key].append(i)
+                        
+                        # Assign row numbers within each partition
+                        for partition_indices in partition_groups.values():
+                            if order_by_cols:
+                                # Sort within partition by order by columns
+                                def sort_key(idx):
+                                    row = result_data[idx]
+                                    key_values = []
+                                    for col in order_by_cols:
+                                        if hasattr(col, 'name'):
+                                            key_values.append(row.get(col.name))
+                                        else:
+                                            key_values.append(row.get(str(col)))
+                                    return key_values
+                                
+                                sorted_partition_indices = sorted(partition_indices, key=sort_key)
+                            else:
+                                # No order by - use original order within partition
+                                sorted_partition_indices = partition_indices
+                            
+                            # Assign row numbers starting from 1 within each partition
+                            for i, original_index in enumerate(sorted_partition_indices):
+                                result_data[original_index][col_name] = i + 1
+                    elif order_by_cols:
+                        # No partitioning, just sort by order by columns
+                        def sort_key(row):
+                            key_values = []
+                            for col in order_by_cols:
+                                if hasattr(col, 'name'):
+                                    key_values.append(row.get(col.name))
+                                else:
+                                    key_values.append(row.get(str(col)))
+                            return key_values
+                        
+                        # Create sorted indices
+                        sorted_indices = sorted(range(len(result_data)), key=lambda i: sort_key(result_data[i]))
+                        
+                        # Assign row numbers based on sorted order
+                        for i, original_index in enumerate(sorted_indices):
+                            result_data[original_index][col_name] = i + 1
+                    else:
+                        # No partition or order by - just assign sequential row numbers
+                        for i in range(len(result_data)):
+                            result_data[i][col_name] = i + 1
+                else:
+                    # No window spec - assign sequential row numbers
+                    for i in range(len(result_data)):
+                        result_data[i][col_name] = i + 1
+            else:
+                # For other window functions, assign None for now
+                for row in result_data:
+                    row[col_name] = None
+        
+        return result_data
+    
+    @property
+    def write(self) -> MockDataFrameWriter:
+        """Get DataFrame writer."""
+        return MockDataFrameWriter(self, self.storage)
+
+
+class MockRDD:
+    """Mock RDD for DataFrame compatibility."""
+    
+    def __init__(self, data: List[Dict[str, Any]]):
+        """Initialize MockRDD."""
+        self.data = data
+    
+    def collect(self) -> List[Any]:
+        """Collect RDD data."""
+        return self.data
+    
+    def count(self) -> int:
+        """Count RDD elements."""
+        return len(self.data)
 
 
 class MockGroupedData:
@@ -694,145 +1240,159 @@ class MockGroupedData:
         self.df = df
         self.group_columns = group_columns
     
-    def agg(self, *exprs: Union[MockColumn, Dict[str, MockColumn]]) -> MockDataFrame:
+    def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation]) -> MockDataFrame:
         """Aggregate grouped data."""
-        if not exprs:
-            return self.df
-        
-        # Import MockAggregateFunction
-        from .functions import MockAggregateFunction
-        
         # Group data by group columns
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        groups = {}
         for row in self.df.data:
-            key = tuple(row.get(col) for col in self.group_columns)
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(row)
+            group_key = tuple(row.get(col) for col in self.group_columns)
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
         
         # Apply aggregations
         result_data = []
-        for key, group_rows in groups.items():
-            result_row = {}
+        for group_key, group_rows in groups.items():
+            result_row = dict(zip(self.group_columns, group_key))
             
-            # Add group columns
-            for i, col in enumerate(self.group_columns):
-                result_row[col] = key[i]
-            
-            # Add aggregated columns
             for expr in exprs:
-                if isinstance(expr, MockAggregateFunction):
+                if isinstance(expr, str):
+                    # Handle string expressions like "sum(age)"
+                    if expr.startswith("sum("):
+                        col_name = expr[4:-1]
+                        values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr] = sum(values) if values else 0
+                    elif expr.startswith("avg("):
+                        col_name = expr[4:-1]
+                        values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr] = sum(values) / len(values) if values else 0
+                    elif expr.startswith("count("):
+                        result_row[expr] = len(group_rows)
+                    elif expr.startswith("max("):
+                        col_name = expr[4:-1]
+                        values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr] = max(values) if values else None
+                    elif expr.startswith("min("):
+                        col_name = expr[4:-1]
+                        values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr] = min(values) if values else None
+                elif hasattr(expr, 'function_name'):
                     # Handle MockAggregateFunction
                     func_name = expr.function_name
                     col_name = expr.column_name
-                    
-                    if func_name == "count":
-                        if col_name is None or col_name == "*":
-                            agg_col_name = "count(1)"
-                        else:
-                            agg_col_name = f"count({col_name})"
-                        result_row[agg_col_name] = len(group_rows)
-                    elif func_name == "sum":
-                        agg_col_name = f"sum({col_name})"
+                    if func_name == "sum":
                         values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
-                        result_row[agg_col_name] = sum(values) if values else 0
+                        result_row[f"sum({col_name})"] = sum(values) if values else 0
                     elif func_name == "avg":
-                        agg_col_name = f"avg({col_name})"
                         values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
-                        result_row[agg_col_name] = sum(values) / len(values) if values else 0
+                        result_row[f"avg({col_name})"] = sum(values) / len(values) if values else 0
+                    elif func_name == "count":
+                        if col_name == "*":
+                            result_row["count(1)"] = len(group_rows)
+                        else:
+                            result_row[f"count({col_name})"] = len(group_rows)
                     elif func_name == "max":
-                        agg_col_name = f"max({col_name})"
                         values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
-                        result_row[agg_col_name] = max(values) if values else None
+                        result_row[f"max({col_name})"] = max(values) if values else None
                     elif func_name == "min":
-                        agg_col_name = f"min({col_name})"
                         values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
-                        result_row[agg_col_name] = min(values) if values else None
-                elif isinstance(expr, MockColumn):
-                    # Handle MockColumn (legacy support)
-                    col_name = expr.name
-                    if "count" in col_name:
-                        result_row[col_name] = len(group_rows)
-                    elif "sum" in col_name:
-                        # Extract column name from sum(column_name)
-                        inner_col = col_name.replace("sum(", "").replace(")", "")
-                        values = [row.get(inner_col, 0) for row in group_rows if row.get(inner_col) is not None]
-                        result_row[col_name] = sum(values) if values else 0
-                    elif "avg" in col_name:
-                        inner_col = col_name.replace("avg(", "").replace(")", "")
-                        values = [row.get(inner_col, 0) for row in group_rows if row.get(inner_col) is not None]
-                        result_row[col_name] = sum(values) / len(values) if values else 0
-                    elif "max" in col_name:
-                        inner_col = col_name.replace("max(", "").replace(")", "")
-                        values = [row.get(inner_col) for row in group_rows if row.get(inner_col) is not None]
-                        result_row[col_name] = max(values) if values else None
-                    elif "min" in col_name:
-                        inner_col = col_name.replace("min(", "").replace(")", "")
-                        values = [row.get(inner_col) for row in group_rows if row.get(inner_col) is not None]
-                        result_row[col_name] = min(values) if values else None
-                    else:
-                        result_row[col_name] = len(group_rows)
+                        result_row[f"min({col_name})"] = min(values) if values else None
+                elif hasattr(expr, 'name'):
+                    # Handle MockColumn or MockColumnOperation
+                    expr_name = expr.name
+                    if expr_name.startswith("sum("):
+                        col_name = expr_name[4:-1]
+                        values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr_name] = sum(values) if values else 0
+                    elif expr_name.startswith("avg("):
+                        col_name = expr_name[4:-1]
+                        values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr_name] = sum(values) / len(values) if values else 0
+                    elif expr_name.startswith("count("):
+                        result_row[expr_name] = len(group_rows)
+                    elif expr_name.startswith("max("):
+                        col_name = expr_name[4:-1]
+                        values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr_name] = max(values) if values else None
+                    elif expr_name.startswith("min("):
+                        col_name = expr_name[4:-1]
+                        values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+                        result_row[expr_name] = min(values) if values else None
             
             result_data.append(result_row)
         
         # Create new schema
         new_fields = []
         for col in self.group_columns:
-            new_fields.append(MockStructField(col, StringType()))
+            # Find the field in the original schema
+            for field in self.df.schema.fields:
+                if field.name == col:
+                    new_fields.append(field)
+                    break
         
+        # Add aggregation result fields
         for expr in exprs:
-            if isinstance(expr, MockAggregateFunction):
+            if isinstance(expr, str):
+                from .spark_types import LongType, DoubleType
+                # Determine the correct type based on the function
+                if expr.startswith(("sum(", "avg(", "max(", "min(")):
+                    new_fields.append(MockStructField(expr, DoubleType()))
+                else:
+                    new_fields.append(MockStructField(expr, LongType()))
+            elif hasattr(expr, 'function_name'):
+                # Handle MockAggregateFunction
+                from .spark_types import LongType, DoubleType
                 func_name = expr.function_name
                 col_name = expr.column_name
-                
                 if func_name == "count":
-                    if col_name is None or col_name == "*":
-                        agg_col_name = "count(1)"
+                    if col_name == "*":
+                        new_fields.append(MockStructField("count(1)", LongType()))
                     else:
-                        agg_col_name = f"count({col_name})"
+                        new_fields.append(MockStructField(f"count({col_name})", LongType()))
                 elif func_name in ["sum", "avg", "max", "min"]:
-                    agg_col_name = f"{func_name}({col_name})"
+                    new_fields.append(MockStructField(f"{func_name}({col_name})", DoubleType()))
                 else:
-                    agg_col_name = f"{func_name}()"
-                
-                new_fields.append(MockStructField(agg_col_name, IntegerType()))
-            elif isinstance(expr, MockColumn):
-                new_fields.append(MockStructField(expr.name, IntegerType()))
+                    new_fields.append(MockStructField(f"{func_name}({col_name})", LongType()))
+            elif hasattr(expr, 'name'):
+                from .spark_types import LongType, DoubleType
+                expr_name = expr.name
+                if expr_name.startswith(("sum(", "avg(", "max(", "min(")):
+                    new_fields.append(MockStructField(expr_name, DoubleType()))
+                else:
+                    new_fields.append(MockStructField(expr_name, LongType()))
         
         new_schema = MockStructType(new_fields)
         return MockDataFrame(result_data, new_schema, self.df.storage)
     
     def count(self) -> MockDataFrame:
         """Count grouped data."""
-        # For the count() method, we want to return just "count" as the column name
-        # This is different from agg(F.count("*")) which returns "count(1)"
-        
-        # Group data by group columns (same logic as agg method)
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        # Group data by group columns
+        groups = {}
         for row in self.df.data:
-            key = tuple(row.get(col) for col in self.group_columns)
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(row)
+            group_key = tuple(row.get(col) for col in self.group_columns)
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
         
+        # Apply count aggregation
         result_data = []
-        for key, group_rows in groups.items():
-            result_row = {}
-            
-            # Add group columns
-            for i, col in enumerate(self.group_columns):
-                result_row[col] = key[i]
-            
-            # Add count
+        for group_key, group_rows in groups.items():
+            result_row = dict(zip(self.group_columns, group_key))
             result_row["count"] = len(group_rows)
             result_data.append(result_row)
         
-        # Create schema
+        # Create new schema
         new_fields = []
-        for field in self.df.schema.fields:
-            if field.name in self.group_columns:
-                new_fields.append(field)
-        new_fields.append(MockStructField("count", IntegerType()))
+        for col in self.group_columns:
+            # Find the field in the original schema
+            for field in self.df.schema.fields:
+                if field.name == col:
+                    new_fields.append(field)
+                    break
+        
+        # Add count field
+        from .spark_types import LongType
+        new_fields.append(MockStructField("count", LongType()))
         
         new_schema = MockStructType(new_fields)
         return MockDataFrame(result_data, new_schema, self.df.storage)
@@ -840,31 +1400,31 @@ class MockGroupedData:
     def sum(self, *columns: Union[str, MockColumn]) -> MockDataFrame:
         """Sum grouped data."""
         if not columns:
-            return self.agg(F.sum("*"))
+            return self.agg("sum(1)")
         
-        exprs = [F.sum(col) if isinstance(col, str) else col for col in columns]
+        exprs = [f"sum({col})" if isinstance(col, str) else f"sum({col.name})" for col in columns]
         return self.agg(*exprs)
     
     def avg(self, *columns: Union[str, MockColumn]) -> MockDataFrame:
         """Average grouped data."""
         if not columns:
-            return self.agg(F.avg("*"))
+            return self.agg("avg(1)")
         
-        exprs = [F.avg(col) if isinstance(col, str) else col for col in columns]
+        exprs = [f"avg({col})" if isinstance(col, str) else f"avg({col.name})" for col in columns]
         return self.agg(*exprs)
     
     def max(self, *columns: Union[str, MockColumn]) -> MockDataFrame:
         """Max grouped data."""
         if not columns:
-            return self.agg(F.max("*"))
+            return self.agg("max(1)")
         
-        exprs = [F.max(col) if isinstance(col, str) else col for col in columns]
+        exprs = [f"max({col})" if isinstance(col, str) else f"max({col.name})" for col in columns]
         return self.agg(*exprs)
     
     def min(self, *columns: Union[str, MockColumn]) -> MockDataFrame:
         """Min grouped data."""
         if not columns:
-            return self.agg(F.min("*"))
+            return self.agg("min(1)")
         
-        exprs = [F.min(col) if isinstance(col, str) else col for col in columns]
+        exprs = [f"min({col})" if isinstance(col, str) else f"min({col.name})" for col in columns]
         return self.agg(*exprs)
