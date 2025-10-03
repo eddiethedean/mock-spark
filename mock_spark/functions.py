@@ -208,13 +208,17 @@ class MockColumn:
         """Cast column to data type."""
         return MockColumnOperation(self, "cast", data_type)
 
-    def when(self, condition: Any, value: Any) -> "MockColumnOperation":
+    def when(self, condition: Any, value: Any) -> "MockCaseWhen":
         """CASE WHEN condition."""
-        return MockColumnOperation(self, "when", (condition, value))
+        case_when = MockCaseWhen()
+        case_when.when(condition, value)
+        return case_when
 
-    def otherwise(self, value: Any) -> "MockColumnOperation":
+    def otherwise(self, value: Any) -> "MockCaseWhen":
         """CASE WHEN ... ELSE."""
-        return MockColumnOperation(self, "otherwise", value)
+        case_when = MockCaseWhen()
+        case_when.otherwise(value)
+        return case_when
 
     def __repr__(self) -> str:
         return f"MockColumn('{self.name}')"
@@ -723,6 +727,13 @@ class MockFunctions:
             column = MockColumn(column)
         operation = MockColumnOperation(column, "sqrt")
         return operation
+
+    @staticmethod
+    def when(condition: Any, value: Any) -> "MockCaseWhen":
+        """Create a CASE WHEN expression."""
+        case_when = MockCaseWhen()
+        case_when.when(condition, value)
+        return case_when
 
 
 # Create the functions module instance

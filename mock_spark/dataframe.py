@@ -2480,16 +2480,16 @@ class MockDataFrame:
             # Handle MockColumnOperation conditions
             if condition.operation == ">":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value > condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value > condition.value  # type: ignore[no-any-return]
             elif condition.operation == ">=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value >= condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value >= condition.value  # type: ignore[no-any-return]
             elif condition.operation == "<":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value < condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value < condition.value  # type: ignore[no-any-return]
             elif condition.operation == "<=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value <= condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value <= condition.value  # type: ignore[no-any-return]
             elif condition.operation == "==":
                 col_value = self._get_column_value(row, condition.column)
                 return col_value == condition.value  # type: ignore[no-any-return]
@@ -2503,6 +2503,9 @@ class MockDataFrame:
         if hasattr(value, "operation") and hasattr(value, "column"):
             # It's a MockColumnOperation
             return self._evaluate_column_expression(row, value)
+        elif hasattr(value, "value") and hasattr(value, "name"):
+            # It's a MockLiteral
+            return value.value
         elif hasattr(value, "name"):
             # It's a column reference
             return self._get_column_value(row, value)
