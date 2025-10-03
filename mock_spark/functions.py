@@ -479,6 +479,62 @@ class MockFunctions:
         return MockAggregateFunction("count(DISTINCT", column.name)
 
     @staticmethod
+    def collect_list(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Collect list function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("collect_list", column)
+        return MockAggregateFunction("collect_list", column.name)
+
+    @staticmethod
+    def collect_set(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Collect set function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("collect_set", column)
+        return MockAggregateFunction("collect_set", column.name)
+
+    @staticmethod
+    def first(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """First function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("first", column)
+        return MockAggregateFunction("first", column.name)
+
+    @staticmethod
+    def last(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Last function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("last", column)
+        return MockAggregateFunction("last", column.name)
+
+    @staticmethod
+    def stddev(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Standard deviation function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("stddev", column)
+        return MockAggregateFunction("stddev", column.name)
+
+    @staticmethod
+    def variance(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Variance function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("variance", column)
+        return MockAggregateFunction("variance", column.name)
+
+    @staticmethod
+    def skewness(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Skewness function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("skewness", column)
+        return MockAggregateFunction("skewness", column.name)
+
+    @staticmethod
+    def kurtosis(column: Union[str, MockColumn]) -> "MockAggregateFunction":
+        """Kurtosis function."""
+        if isinstance(column, str):
+            return MockAggregateFunction("kurtosis", column)
+        return MockAggregateFunction("kurtosis", column.name)
+
+    @staticmethod
     def abs(column: Union[str, MockColumn]) -> MockColumnOperation:
         """Absolute value function."""
         if isinstance(column, str):
@@ -753,6 +809,14 @@ __all__ = [
     "max",
     "min",
     "countDistinct",
+    "collect_list",
+    "collect_set",
+    "first",
+    "last",
+    "stddev",
+    "variance",
+    "skewness",
+    "kurtosis",
     "abs",
     "round",
     "when",
@@ -944,6 +1008,14 @@ avg = F.avg
 max = F.max
 min = F.min
 countDistinct = F.countDistinct
+collect_list = F.collect_list
+collect_set = F.collect_set
+first = F.first
+last = F.last
+stddev = F.stddev
+variance = F.variance
+skewness = F.skewness
+kurtosis = F.kurtosis
 abs = F.abs
 round = F.round
 row_number = F.row_number

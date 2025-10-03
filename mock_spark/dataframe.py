@@ -1398,6 +1398,12 @@ class MockDataFrame:
 
         return MockGroupedData(self, col_names)
 
+    def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation]) -> "MockDataFrame":
+        """Aggregate DataFrame without grouping."""
+        # Create a single group with all data
+        grouped_data = MockGroupedData(self, [])
+        return grouped_data.agg(*exprs)
+
     def orderBy(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Order by columns."""
         col_names: List[str] = []
@@ -2807,6 +2813,104 @@ class MockGroupedData:
                         ]
                         result_key = alias_name if alias_name else f"min({col_name})"
                         result_row[result_key] = min(values) if values else None
+                    elif func_name == "collect_list":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None
+                        ]
+                        result_key = alias_name if alias_name else f"collect_list({col_name})"
+                        result_row[result_key] = values
+                    elif func_name == "collect_set":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None
+                        ]
+                        result_key = alias_name if alias_name else f"collect_set({col_name})"
+                        result_row[result_key] = list(set(values))
+                    elif func_name == "first":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None
+                        ]
+                        result_key = alias_name if alias_name else f"first({col_name})"
+                        result_row[result_key] = values[0] if values else None
+                    elif func_name == "last":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None
+                        ]
+                        result_key = alias_name if alias_name else f"last({col_name})"
+                        result_row[result_key] = values[-1] if values else None
+                    elif func_name == "stddev":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                        ]
+                        if values:
+                            import statistics
+                            result_key = alias_name if alias_name else f"stddev({col_name})"
+                            result_row[result_key] = statistics.stdev(values) if len(values) > 1 else 0.0
+                        else:
+                            result_key = alias_name if alias_name else f"stddev({col_name})"
+                            result_row[result_key] = None
+                    elif func_name == "variance":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                        ]
+                        if values:
+                            import statistics
+                            result_key = alias_name if alias_name else f"variance({col_name})"
+                            result_row[result_key] = statistics.variance(values) if len(values) > 1 else 0.0
+                        else:
+                            result_key = alias_name if alias_name else f"variance({col_name})"
+                            result_row[result_key] = None
+                    elif func_name == "skewness":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                        ]
+                        if values and len(values) > 2:
+                            import statistics
+                            mean_val = statistics.mean(values)
+                            std_val = statistics.stdev(values)
+                            if std_val > 0:
+                                skewness = sum((x - mean_val) ** 3 for x in values) / (len(values) * std_val ** 3)
+                                result_key = alias_name if alias_name else f"skewness({col_name})"
+                                result_row[result_key] = skewness
+                            else:
+                                result_key = alias_name if alias_name else f"skewness({col_name})"
+                                result_row[result_key] = 0.0
+                        else:
+                            result_key = alias_name if alias_name else f"skewness({col_name})"
+                            result_row[result_key] = None
+                    elif func_name == "kurtosis":
+                        values = [
+                            row.get(col_name)
+                            for row in group_rows
+                            if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                        ]
+                        if values and len(values) > 3:
+                            import statistics
+                            mean_val = statistics.mean(values)
+                            std_val = statistics.stdev(values)
+                            if std_val > 0:
+                                kurtosis = sum((x - mean_val) ** 4 for x in values) / (len(values) * std_val ** 4) - 3
+                                result_key = alias_name if alias_name else f"kurtosis({col_name})"
+                                result_row[result_key] = kurtosis
+                            else:
+                                result_key = alias_name if alias_name else f"kurtosis({col_name})"
+                                result_row[result_key] = 0.0
+                        else:
+                            result_key = alias_name if alias_name else f"kurtosis({col_name})"
+                            result_row[result_key] = None
                 elif hasattr(expr, "name"):
                     # Handle MockColumn or MockColumnOperation
                     expr_name = expr.name
