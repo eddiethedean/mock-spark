@@ -32,7 +32,8 @@ Version: 0.2.0
 Author: Odos Matthews
 """
 
-from .session import MockSparkSession, MockSparkContext, MockJVMContext
+from .session import MockSparkSession, MockSparkSessionBuilder
+from .session.context import MockSparkContext, MockJVMContext
 from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData
 from .functions import MockFunctions, MockColumn, MockColumnOperation, F
 from .window import MockWindow, MockWindowSpec

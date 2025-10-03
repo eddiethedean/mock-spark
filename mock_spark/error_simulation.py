@@ -67,9 +67,13 @@ class MockErrorSimulator:
         Example:
             >>> error_sim.add_rule("table", lambda name: "nonexistent" in name, AnalysisException("Table not found"))
         """
-        if method_name not in self.error_rules:
-            self.error_rules[method_name] = []
-        self.error_rules[method_name].append((condition, exception))
+        if hasattr(self.spark_session, '_add_error_rule'):
+            self.spark_session._add_error_rule(method_name, condition, exception)
+        else:
+            # Fallback for old session structure
+            if method_name not in self.error_rules:
+                self.error_rules[method_name] = []
+            self.error_rules[method_name].append((condition, exception))
 
     def remove_rule(
         self, method_name: str, condition: Optional[Callable[..., bool]] = None
@@ -80,17 +84,21 @@ class MockErrorSimulator:
             method_name: Name of the method to remove rules from.
             condition: Specific condition to remove. If None, removes all rules for the method.
         """
-        if method_name not in self.error_rules:
-            return
-
-        if condition is None:
-            self.error_rules[method_name] = []
+        if hasattr(self.spark_session, '_remove_error_rule'):
+            self.spark_session._remove_error_rule(method_name, condition)
         else:
-            self.error_rules[method_name] = [
-                (cond, exc)
-                for cond, exc in self.error_rules[method_name]
-                if cond != condition
-            ]
+            # Fallback for old session structure
+            if method_name not in self.error_rules:
+                return
+
+            if condition is None:
+                self.error_rules[method_name] = []
+            else:
+                self.error_rules[method_name] = [
+                    (cond, exc)
+                    for cond, exc in self.error_rules[method_name]
+                    if cond != condition
+                ]
 
     def clear_rules(self, method_name: Optional[str] = None) -> None:
         """Clear all error rules.
@@ -98,10 +106,17 @@ class MockErrorSimulator:
         Args:
             method_name: Specific method to clear rules for. If None, clears all rules.
         """
-        if method_name:
-            self.error_rules[method_name] = []
+        if hasattr(self.spark_session, '_remove_error_rule'):
+            if method_name:
+                self.spark_session._remove_error_rule(method_name)
+            else:
+                self.spark_session.clear_error_rules()
         else:
-            self.error_rules.clear()
+            # Fallback for old session structure
+            if method_name:
+                self.error_rules[method_name] = []
+            else:
+                self.error_rules.clear()
 
     def should_raise_error(
         self, method_name: str, *args, **kwargs
@@ -116,17 +131,21 @@ class MockErrorSimulator:
         Returns:
             Exception to raise if conditions are met, None otherwise.
         """
-        if method_name not in self.error_rules:
-            return None
+        if hasattr(self.spark_session, '_should_raise_error'):
+            return self.spark_session._should_raise_error(method_name, *args, **kwargs)
+        else:
+            # Fallback for old session structure
+            if method_name not in self.error_rules:
+                return None
 
-        for condition, exception in self.error_rules[method_name]:
-            try:
-                if condition(*args, **kwargs):
-                    return exception  # type: ignore[no-any-return]
-            except Exception:
-                # If condition evaluation fails, skip this rule
-                continue
-        return None
+            for condition, exception in self.error_rules[method_name]:
+                try:
+                    if condition(*args, **kwargs):
+                        return exception  # type: ignore[no-any-return]
+                except Exception:
+                    # If condition evaluation fails, skip this rule
+                    continue
+            return None
 
     def enable_error_simulation(self):
         """Enable error simulation by wrapping methods."""
