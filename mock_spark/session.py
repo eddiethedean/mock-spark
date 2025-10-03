@@ -53,6 +53,12 @@ class MockJVMContext:
 
     def __getattr__(self, name: str) -> Any:
         """Return mock functions for any attribute access."""
+        if name == "read":
+            raise AttributeError(
+                f"MockJVMContext does not support '{name}'. "
+                f"Use MockSparkSession.createDataFrame() to create DataFrames instead. "
+                f"Available methods: {list(self.functions.__dict__.keys())}"
+            )
         return getattr(self.functions, name, None)
 
 
@@ -110,6 +116,11 @@ class MockSparkSession:
         self._udf = MockUDF()
         self._version = "3.4.0"  # Mock version
 
+        # Mockable method implementations
+        self._createDataFrame_impl = self._real_createDataFrame
+        self._table_impl = self._real_table
+        self._sql_impl = self._real_sql
+
     @property
     def appName(self) -> str:
         """Get application name."""
@@ -136,6 +147,14 @@ class MockSparkSession:
         return self._udf
 
     def createDataFrame(
+        self,
+        data: List[Union[Dict[str, Any], tuple]],
+        schema: Optional[Union[MockStructType, List[str]]] = None,
+    ) -> MockDataFrame:
+        """Create a DataFrame from data (mockable version)."""
+        return self._createDataFrame_impl(data, schema)
+
+    def _real_createDataFrame(
         self,
         data: List[Union[Dict[str, Any], tuple]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
@@ -286,13 +305,24 @@ class MockSparkSession:
             field_names = [field.name for field in schema.fields]
             sorted_data = []
             for row in data:
-                sorted_row = {key: row[key] for key in field_names if key in row}
+                if isinstance(row, dict):
+                    sorted_row = {key: row[key] for key in field_names if key in row}
+                else:
+                    # Handle tuple data
+                    sorted_row = {
+                        field_names[i]: row[i]
+                        for i in range(min(len(row), len(field_names)))
+                    }
                 sorted_data.append(sorted_row)
-            data = sorted_data
+            data = sorted_data  # type: ignore[assignment]
 
         return MockDataFrame(data, schema, self.storage)  # type: ignore[arg-type]
 
     def table(self, table_name: str) -> MockDataFrame:
+        """Get a table as DataFrame (mockable version)."""
+        return self._table_impl(table_name)
+
+    def _real_table(self, table_name: str) -> MockDataFrame:
         """Get a table as DataFrame."""
         if not isinstance(table_name, str):
             raise_value_error("Table name must be a string")  # type: ignore[unreachable]  # type: ignore[unreachable]
@@ -313,7 +343,11 @@ class MockSparkSession:
         assert table is not None
         return MockDataFrame(table.data, table.schema, self.storage)
 
-    def sql(self, query: str) -> MockDataFrame:  # type: ignore[return]
+    def sql(self, query: str) -> MockDataFrame:
+        """Execute SQL query (mockable version)."""
+        return self._sql_impl(query)
+
+    def _real_sql(self, query: str) -> MockDataFrame:  # type: ignore[return]
         """Execute SQL query."""
         if not isinstance(query, str):
             raise_value_error("Query must be a string")  # type: ignore[unreachable]
@@ -364,24 +398,6 @@ class MockSparkSession:
         """Context manager exit."""
         self.stop()
 
-    def table(self, tableName: str) -> MockDataFrame:
-        """Get table as DataFrame."""
-        # Extract schema and table name
-        if "." in tableName:
-            schema, table = tableName.split(".", 1)
-        else:
-            schema = "default"
-            table = tableName
-
-        if not self.storage.table_exists(schema, table):
-            raise AnalysisException(f"Table or view '{tableName}' not found", None)
-
-        # Get data and schema from storage
-        data = self.storage.get_data(schema, table)
-        table_schema = self.storage.get_table_schema(schema, table)
-
-        return MockDataFrame(data, table_schema, self.storage)
-
     def createGlobalTempView(self, name: str, replace: bool = False) -> None:
         """Create global temporary view."""
         # Mock implementation - same as regular temp view
@@ -411,6 +427,102 @@ class MockSparkSession:
         """Clear active session."""
         pass  # Mock implementation
 
+    # Mocking methods for error testing
+    def mock_createDataFrame(self, side_effect=None, return_value=None):
+        """Mock createDataFrame method for error testing.
+
+        Args:
+            side_effect: Exception to raise when createDataFrame is called
+            return_value: Value to return when createDataFrame is called
+        """
+        if side_effect:
+
+            def raise_exception(*args, **kwargs):
+                raise side_effect
+
+            self._createDataFrame_impl = raise_exception
+        elif return_value:
+
+            def return_value_func(*args, **kwargs):
+                return return_value
+
+            self._createDataFrame_impl = return_value_func
+        else:
+            self._createDataFrame_impl = self._real_createDataFrame
+
+    def mock_table(self, side_effect=None, return_value=None):
+        """Mock table method for error testing.
+
+        Args:
+            side_effect: Exception to raise when table is called
+            return_value: Value to return when table is called
+        """
+        if side_effect:
+
+            def raise_exception(*args, **kwargs):
+                raise side_effect
+
+            self._table_impl = raise_exception
+        elif return_value:
+
+            def return_value_func(*args, **kwargs):
+                return return_value
+
+            self._table_impl = return_value_func
+        else:
+            self._table_impl = self._real_table
+
+    def mock_sql(self, side_effect=None, return_value=None):
+        """Mock sql method for error testing.
+
+        Args:
+            side_effect: Exception to raise when sql is called
+            return_value: Value to return when sql is called
+        """
+        if side_effect:
+
+            def raise_exception(*args, **kwargs):
+                raise side_effect
+
+            self._sql_impl = raise_exception
+        elif return_value:
+
+            def return_value_func(*args, **kwargs):
+                return return_value
+
+            self._sql_impl = return_value_func
+        else:
+            self._sql_impl = self._real_sql
+
+    def reset_mocks(self):
+        """Reset all mocked methods to their real implementations."""
+        self._createDataFrame_impl = self._real_createDataFrame
+        self._table_impl = self._real_table
+        self._sql_impl = self._real_sql
+
+    def __getattr__(self, name: str) -> Any:
+        """Handle attribute access with helpful error messages."""
+        if name == "read":
+            raise AttributeError(
+                f"MockSparkSession does not support '{name}'. "
+                f"Use createDataFrame() to create DataFrames instead. "
+                f"Available methods: createDataFrame, table, sql, catalog, conf, udf"
+            )
+        elif name == "streams":
+            raise AttributeError(
+                f"MockSparkSession does not support '{name}'. "
+                f"Streaming operations are not supported in mock mode. "
+                f"Use createDataFrame() for batch operations instead."
+            )
+        elif name == "sparkContext":
+            return self.sparkContext
+        else:
+            raise AttributeError(
+                f"MockSparkSession has no attribute '{name}'. "
+                f"Available methods: createDataFrame, table, sql, catalog, conf, udf, "
+                f"createTempView, createGlobalTempView, newSession, stop"
+            )
+
 
 class MockCatalog:
     """Mock Catalog for Spark session."""
@@ -434,7 +546,14 @@ class MockCatalog:
         if not ignoreIfExists and self.storage.schema_exists(name):
             raise AnalysisException(f"Database '{name}' already exists", None)
 
-        self.storage.create_schema(name)
+        try:
+            self.storage.create_schema(name)
+        except Exception as e:
+            if isinstance(e, (AnalysisException, IllegalArgumentException)):
+                raise
+            raise AnalysisException(
+                f"Failed to create database '{name}': {str(e)}", None
+            )
 
     def tableExists(self, dbName: str, tableName: str) -> bool:
         """Check if table exists."""
@@ -444,17 +563,41 @@ class MockCatalog:
         if not isinstance(tableName, str):
             raise_value_error("Table name must be a string")  # type: ignore[unreachable]
 
-        return self.storage.table_exists(dbName, tableName)
+        if not dbName:
+            raise_value_error("Database name cannot be empty")
+
+        if not tableName:
+            raise_value_error("Table name cannot be empty")
+
+        try:
+            return self.storage.table_exists(dbName, tableName)
+        except Exception as e:
+            if isinstance(e, (AnalysisException, IllegalArgumentException)):
+                raise
+            raise AnalysisException(
+                f"Failed to check table existence '{dbName}.{tableName}': {str(e)}",
+                None,
+            )
 
     def listTables(self, dbName: str) -> List[str]:
         """List tables in database."""
         if not isinstance(dbName, str):
             raise_value_error("Database name must be a string")  # type: ignore[unreachable]
 
+        if not dbName:
+            raise_value_error("Database name cannot be empty")
+
         if not self.storage.schema_exists(dbName):
             raise_schema_not_found(dbName)
 
-        return self.storage.list_tables(dbName)
+        try:
+            return self.storage.list_tables(dbName)
+        except Exception as e:
+            if isinstance(e, (AnalysisException, IllegalArgumentException)):
+                raise
+            raise AnalysisException(
+                f"Failed to list tables in database '{dbName}': {str(e)}", None
+            )
 
     def createTable(
         self,
@@ -599,4 +742,4 @@ class MockSparkSessionBuilder:
 
 
 # Add builder to MockSparkSession
-MockSparkSession.builder = MockSparkSessionBuilder()
+setattr(MockSparkSession, "builder", MockSparkSessionBuilder())

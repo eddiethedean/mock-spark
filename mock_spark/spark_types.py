@@ -77,6 +77,7 @@ class MockDataType:
             "ByteType": "tinyint",
             "DecimalType": "decimal",
             "BinaryType": "binary",
+            "NullType": "null",
             "ArrayType": "array",
             "MapType": "map",
             "StructType": "struct",
@@ -169,6 +170,36 @@ class MapType(MockDataType):
     def __repr__(self) -> str:
         """String representation."""
         return f"MapType({self.key_type}, {self.value_type})"
+
+
+class BinaryType(MockDataType):
+    """Mock BinaryType for binary data."""
+
+    pass
+
+
+class NullType(MockDataType):
+    """Mock NullType for null values."""
+
+    pass
+
+
+class FloatType(MockDataType):
+    """Mock FloatType for single precision floating point numbers."""
+
+    pass
+
+
+class ShortType(MockDataType):
+    """Mock ShortType for short integers."""
+
+    pass
+
+
+class ByteType(MockDataType):
+    """Mock ByteType for byte values."""
+
+    pass
 
 
 @dataclass
@@ -298,6 +329,8 @@ def convert_python_type_to_mock_type(python_type: type) -> MockDataType:
         int: LongType(),  # Use LongType for integers to match PySpark
         float: DoubleType(),
         bool: BooleanType(),
+        bytes: BinaryType(),
+        type(None): NullType(),
     }
 
     return type_mapping.get(python_type, StringType())

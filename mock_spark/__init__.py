@@ -7,11 +7,19 @@ without requiring a Java Virtual Machine (JVM) or actual Spark installation.
 Key Features:
     - Complete PySpark API compatibility
     - No JVM required - pure Python implementation
-    - Comprehensive test suite with 173 tests (80% pass rate)
+    - Comprehensive test suite with 250+ tests (100% pass rate)
+    - 100% mypy compliance with zero type errors
+    - Black-formatted code for production readiness
     - Advanced functions (coalesce, isnull, upper, lower, length, abs, round)
     - Window functions with proper partitioning and ordering
     - Type-safe operations with proper schema inference
     - Edge case handling (null values, unicode, large numbers)
+    - Error simulation framework for comprehensive testing
+    - Performance simulation with configurable limits
+    - Data generation utilities for realistic test data
+    - Mockable methods for error scenario testing
+    - Enhanced DataFrameWriter with all save modes
+    - 15+ data types including complex types
 
 Example:
     >>> from mock_spark import MockSparkSession, F
@@ -20,7 +28,7 @@ Example:
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name"))).show()
     
-Version: 0.1.0
+Version: 0.2.0
 Author: Odos Matthews
 """
 
@@ -32,8 +40,19 @@ from .spark_types import (
     MockDataType,
     StringType,
     IntegerType,
+    LongType,
     DoubleType,
     BooleanType,
+    DateType,
+    TimestampType,
+    DecimalType,
+    ArrayType,
+    MapType,
+    BinaryType,
+    NullType,
+    FloatType,
+    ShortType,
+    ByteType,
     MockStructType,
     MockStructField,
 )
@@ -46,8 +65,30 @@ from .errors import (
     PySparkRuntimeError,
     IllegalArgumentException,
 )
+from .error_simulation import (
+    MockErrorSimulator,
+    MockErrorSimulatorBuilder,
+    create_table_not_found_simulator,
+    create_data_too_large_simulator,
+    create_sql_error_simulator,
+)
+from .performance_simulation import (
+    MockPerformanceSimulator,
+    MockPerformanceSimulatorBuilder,
+    performance_simulation,
+    create_slow_simulator,
+    create_memory_limited_simulator,
+    create_high_performance_simulator,
+)
+from .data_generation import (
+    MockDataGenerator,
+    MockDataGeneratorBuilder,
+    create_test_data,
+    create_corrupted_data,
+    create_realistic_data,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -72,8 +113,19 @@ __all__ = [
     "MockDataType",
     "StringType",
     "IntegerType",
+    "LongType",
     "DoubleType",
     "BooleanType",
+    "DateType",
+    "TimestampType",
+    "DecimalType",
+    "ArrayType",
+    "MapType",
+    "BinaryType",
+    "NullType",
+    "FloatType",
+    "ShortType",
+    "ByteType",
     "MockStructType",
     "MockStructField",
     # Storage
@@ -86,4 +138,23 @@ __all__ = [
     "PySparkTypeError",
     "PySparkRuntimeError",
     "IllegalArgumentException",
+    # Error Simulation
+    "MockErrorSimulator",
+    "MockErrorSimulatorBuilder",
+    "create_table_not_found_simulator",
+    "create_data_too_large_simulator",
+    "create_sql_error_simulator",
+    # Performance Simulation
+    "MockPerformanceSimulator",
+    "MockPerformanceSimulatorBuilder",
+    "performance_simulation",
+    "create_slow_simulator",
+    "create_memory_limited_simulator",
+    "create_high_performance_simulator",
+    # Data Generation
+    "MockDataGenerator",
+    "MockDataGeneratorBuilder",
+    "create_test_data",
+    "create_corrupted_data",
+    "create_realistic_data",
 ]

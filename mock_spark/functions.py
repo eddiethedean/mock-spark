@@ -26,7 +26,7 @@ Example:
     >>> F.row_number().over(window)
 """
 
-from typing import Any, List, Union, Optional, Callable, TYPE_CHECKING
+from typing import Any, List, Union, Optional, Callable, TYPE_CHECKING, Tuple
 from dataclasses import dataclass
 from .spark_types import MockDataType, StringType
 
@@ -278,7 +278,7 @@ class MockColumnOperation:
 
     def __invert__(self) -> "MockColumnOperation":
         """Logical NOT."""
-        return MockColumnOperation(self.column, "not", None)
+        return MockColumnOperation(self, "not", None)
 
     def __add__(self, other: Any) -> "MockColumnOperation":
         """Addition operation."""
@@ -384,6 +384,42 @@ class MockFunctions:
             >>> F.lit(True)
         """
         return MockLiteral(value, column_type)
+
+    @staticmethod
+    def desc(column: Union[MockColumn, str]) -> "MockColumnOperation":
+        """Create a descending order expression.
+
+        Args:
+            column: Column to order by in descending order.
+
+        Returns:
+            MockColumnOperation for descending order.
+
+        Example:
+            >>> F.desc("age")
+            >>> F.desc(F.col("salary"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return column.desc()
+
+    @staticmethod
+    def asc(column: Union[MockColumn, str]) -> "MockColumnOperation":
+        """Create an ascending order expression.
+
+        Args:
+            column: Column to order by in ascending order.
+
+        Returns:
+            MockColumnOperation for ascending order.
+
+        Example:
+            >>> F.asc("age")
+            >>> F.asc(F.col("salary"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return column.asc()
 
     @staticmethod
     def count(column: Union[str, MockColumn] = "*") -> "MockAggregateFunction":

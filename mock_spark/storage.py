@@ -167,6 +167,11 @@ class MockStorageManager:
 
     def create_schema(self, schema: str) -> None:
         """Create a schema (database)."""
+        if not schema:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Schema name cannot be empty")
+
         if schema not in self._databases:
             conn = sqlite3.connect(":memory:")
             conn.row_factory = sqlite3.Row
@@ -246,7 +251,17 @@ class MockStorageManager:
             )
 
             for row in data:
-                values = [row.get(col) for col in columns]
+                values = []
+                for col in columns:
+                    value = row.get(col)
+                    # Convert complex types to strings for SQLite storage
+                    if isinstance(value, (list, dict)):
+                        import json
+
+                        value = json.dumps(value)
+                    elif isinstance(value, datetime):
+                        value = value.isoformat()
+                    values.append(value)
                 conn.execute(insert_sql, values)
 
             conn.commit()
@@ -444,6 +459,21 @@ class MockStorageManager:
         columns: Union[List[MockStructField], MockStructType],
     ) -> None:
         """Create table with schema."""
+        if not schema:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Schema name cannot be empty")
+
+        if not table:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        if not self.schema_exists(schema):
+            from .errors import AnalysisException
+
+            raise AnalysisException(f"Schema '{schema}' does not exist")
+
         conn = self.get_database(schema)
 
         # Handle both MockStructType and List[MockStructField]
@@ -454,9 +484,19 @@ class MockStorageManager:
             fields = columns
             struct_type = MockStructType(fields)
 
+        # Validate fields
+        if not fields:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Table must have at least one column")
+
         # Convert MockStructField to SQLite schema
         sqlite_columns = []
         for field in fields:
+            if not field.name:
+                from .errors import IllegalArgumentException
+
+                raise IllegalArgumentException("Column name cannot be empty")
             sqlite_type = self._convert_mock_type_to_sqlite(field.dataType)
             nullable = "NULL" if field.nullable else "NOT NULL"
             sqlite_columns.append(f"{field.name} {sqlite_type} {nullable}")
@@ -478,8 +518,25 @@ class MockStorageManager:
 
     def drop_table(self, schema: str, table: str) -> None:
         """Drop table."""
-        if schema not in self._databases:
-            return  # Schema doesn't exist, nothing to drop
+        if not schema:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Schema name cannot be empty")
+
+        if not table:
+            from .errors import IllegalArgumentException
+
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        if not self.schema_exists(schema):
+            from .errors import AnalysisException
+
+            raise AnalysisException(f"Schema '{schema}' does not exist")
+
+        if not self.table_exists(schema, table):
+            from .errors import AnalysisException
+
+            raise AnalysisException(f"Table '{schema}.{table}' does not exist")
 
         conn = self.get_database(schema)
         conn.execute(
@@ -544,6 +601,10 @@ class MockStorageManager:
             "schema": metadata.schema,
             "table": metadata.table,
         }
+
+    def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
+        """Get data from table."""
+        return self.query_table(schema, table)
 
     def create_temp_view(self, name: str, dataframe) -> None:
         """Create a temporary view from a DataFrame."""

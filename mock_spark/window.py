@@ -20,6 +20,7 @@ Example:
     >>> df.select(F.row_number().over(window).alias("rank"))
 """
 
+import sys
 from typing import List, Optional, Union, Tuple
 from .functions import MockColumn
 
@@ -49,22 +50,88 @@ class MockWindowSpec:
         self._range_between: Optional[Tuple[int, int]] = None
 
     def partitionBy(self, *cols: Union[str, MockColumn]) -> "MockWindowSpec":
-        """Add partition by columns."""
+        """Add partition by columns.
+
+        Args:
+            *cols: Column names or MockColumn objects to partition by.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If no columns provided or invalid column types.
+        """
+        if not cols:
+            raise ValueError("At least one column must be specified for partitionBy")
+
+        for col in cols:
+            if not isinstance(col, (str, MockColumn)) and not hasattr(col, "column"):
+                raise ValueError(
+                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                )
+
         self._partition_by = list(cols)
         return self
 
     def orderBy(self, *cols: Union[str, MockColumn]) -> "MockWindowSpec":
-        """Add order by columns."""
+        """Add order by columns.
+
+        Args:
+            *cols: Column names or MockColumn objects to order by.
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If no columns provided or invalid column types.
+        """
+        if not cols:
+            raise ValueError("At least one column must be specified for orderBy")
+
+        for col in cols:
+            if not isinstance(col, (str, MockColumn)) and not hasattr(col, "column"):
+                raise ValueError(
+                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                )
+
         self._order_by = list(cols)
         return self
 
     def rowsBetween(self, start: int, end: int) -> "MockWindowSpec":
-        """Set rows between boundaries."""
+        """Set rows between boundaries.
+
+        Args:
+            start: Starting row offset (negative for preceding rows).
+            end: Ending row offset (positive for following rows).
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If start > end or invalid values.
+        """
+        if start > end:
+            raise ValueError(f"start ({start}) cannot be greater than end ({end})")
+
         self._rows_between = (start, end)
         return self
 
     def rangeBetween(self, start: int, end: int) -> "MockWindowSpec":
-        """Set range between boundaries."""
+        """Set range between boundaries.
+
+        Args:
+            start: Starting range offset (negative for preceding range).
+            end: Ending range offset (positive for following range).
+
+        Returns:
+            Self for method chaining.
+
+        Raises:
+            ValueError: If start > end or invalid values.
+        """
+        if start > end:
+            raise ValueError(f"start ({start}) cannot be greater than end ({end})")
+
         self._range_between = (start, end)
         return self
 
@@ -99,6 +166,11 @@ class MockWindow:
         >>> MockWindow.orderBy("salary")
         >>> MockWindow.partitionBy("department").orderBy("salary")
     """
+
+    # Window boundary constants
+    currentRow = 0
+    unboundedPreceding = -sys.maxsize - 1
+    unboundedFollowing = sys.maxsize
 
     @staticmethod
     def partitionBy(*cols: Union[str, MockColumn]) -> MockWindowSpec:

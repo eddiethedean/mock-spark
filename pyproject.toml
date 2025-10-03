@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "0.1.0"
-description = "A lightweight mock implementation of PySpark for testing and development"
+version = "0.2.0"
+description = "A lightweight, type-safe mock implementation of PySpark for testing and development with 250+ tests, 100% mypy compliance, and enterprise-grade features"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -16,7 +16,8 @@ maintainers = [
 ]
 keywords = [
     "spark", "pyspark", "mock", "testing", "development", "data-engineering",
-    "dataframe", "spark-session", "unit-testing"
+    "dataframe", "spark-session", "unit-testing", "type-safe", "mypy",
+    "error-simulation", "performance-testing", "data-generation", "enterprise"
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -114,3 +115,26 @@ module = [
     "psutil.*",
 ]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=mock_spark",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "compatibility: marks tests as compatibility tests with real PySpark",
+    "fast: marks tests as fast unit tests without PySpark",
+]

@@ -10,8 +10,8 @@ echo "Python Version: $(python --version)"
 echo "PySpark Version: $(python -c 'import pyspark; print(pyspark.__version__)')"
 echo ""
 
-# Run all tests
-python -m pytest tests/ -v --tb=short
+# Run all tests (from tests directory)
+python -m pytest . -v --tb=short
 
 echo ""
 echo "✅ Test run completed!"
