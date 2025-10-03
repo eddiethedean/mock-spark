@@ -543,6 +543,12 @@ class MockDataFrame:
                             "sqrt(",
                             "regexp_replace(",
                             "split(",
+                            "to_date(",
+                            "to_timestamp(",
+                            "hour(",
+                            "day(",
+                            "month(",
+                            "year(",
                         )
                     ) or (
                         hasattr(col, "_original_column")
@@ -559,6 +565,12 @@ class MockDataFrame:
                                 "sqrt(",
                                 "regexp_replace(",
                                 "split(",
+                                "to_date(",
+                                "to_timestamp(",
+                                "hour(",
+                                "day(",
+                                "month(",
+                                "year(",
                             )
                         )
                     ):
@@ -1718,6 +1730,12 @@ class MockDataFrame:
                         "sqrt(",
                         "regexp_replace(",
                         "split(",
+                        "to_date(",
+                        "to_timestamp(",
+                        "hour(",
+                        "day(",
+                        "month(",
+                        "year(",
                     )
                 ):
                     return self._evaluate_function_call_by_name(row, original_name)
@@ -1734,6 +1752,12 @@ class MockDataFrame:
                     "sqrt(",
                     "regexp_replace(",
                     "split(",
+                    "to_date(",
+                    "to_timestamp(",
+                    "hour(",
+                    "day(",
+                    "month(",
+                    "year(",
                 )
             ):
                 return self._evaluate_function_call_by_name(row, col_name)
@@ -1952,6 +1976,120 @@ class MockDataFrame:
                     if isinstance(value, (int, float)) and value >= 0
                     else None
                 )
+        elif col_name.startswith("to_date("):
+            # Parse to_date argument: to_date(col)
+            import re
+            from datetime import datetime
+            
+            # Extract column name from function call
+            match = re.search(r'to_date\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        # Try to parse as datetime first, then extract date
+                        if isinstance(value, str):
+                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return dt.date()
+                        elif hasattr(value, 'date'):
+                            return value.date()
+                    except:
+                        return None
+            return None
+        elif col_name.startswith("to_timestamp("):
+            # Parse to_timestamp argument: to_timestamp(col)
+            import re
+            from datetime import datetime
+            
+            # Extract column name from function call
+            match = re.search(r'to_timestamp\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        if isinstance(value, str):
+                            return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    except:
+                        return None
+            return None
+        elif col_name.startswith("hour("):
+            # Parse hour argument: hour(col)
+            import re
+            from datetime import datetime
+            
+            match = re.search(r'hour\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        if isinstance(value, str):
+                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return dt.hour
+                        elif hasattr(value, 'hour'):
+                            return value.hour
+                    except:
+                        return None
+            return None
+        elif col_name.startswith("day("):
+            # Parse day argument: day(col)
+            import re
+            from datetime import datetime
+            
+            match = re.search(r'day\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        if isinstance(value, str):
+                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return dt.day
+                        elif hasattr(value, 'day'):
+                            return value.day
+                    except:
+                        return None
+            return None
+        elif col_name.startswith("month("):
+            # Parse month argument: month(col)
+            import re
+            from datetime import datetime
+            
+            match = re.search(r'month\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        if isinstance(value, str):
+                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return dt.month
+                        elif hasattr(value, 'month'):
+                            return value.month
+                    except:
+                        return None
+            return None
+        elif col_name.startswith("year("):
+            # Parse year argument: year(col)
+            import re
+            from datetime import datetime
+            
+            match = re.search(r'year\(([^)]+)\)', col_name)
+            if match:
+                column_name = match.group(1)
+                value = row.get(column_name)
+                if value is not None:
+                    try:
+                        if isinstance(value, str):
+                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return dt.year
+                        elif hasattr(value, 'year'):
+                            return value.year
+                    except:
+                        return None
+            return None
         elif col_name.startswith("regexp_replace("):
             # Parse regexp_replace arguments: regexp_replace(col, pattern, replacement)
             if "name" in col_name:
