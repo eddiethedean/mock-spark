@@ -9,10 +9,34 @@ import pandas as pd
 def get_simple_test_data() -> List[Dict[str, Any]]:
     """Get simple test data for basic operations."""
     return [
-        {"id": 1, "name": "Alice", "age": 25, "department": "Engineering", "salary": 75000.0},
-        {"id": 2, "name": "Bob", "age": 30, "department": "Marketing", "salary": 65000.0},
-        {"id": 3, "name": "Charlie", "age": 35, "department": "Engineering", "salary": 85000.0},
-        {"id": 4, "name": "Diana", "age": 28, "department": "Marketing", "salary": 70000.0},
+        {
+            "id": 1,
+            "name": "Alice",
+            "age": 25,
+            "department": "Engineering",
+            "salary": 75000.0,
+        },
+        {
+            "id": 2,
+            "name": "Bob",
+            "age": 30,
+            "department": "Marketing",
+            "salary": 65000.0,
+        },
+        {
+            "id": 3,
+            "name": "Charlie",
+            "age": 35,
+            "department": "Engineering",
+            "salary": 85000.0,
+        },
+        {
+            "id": 4,
+            "name": "Diana",
+            "age": 28,
+            "department": "Marketing",
+            "salary": 70000.0,
+        },
         {"id": 5, "name": "Eve", "age": 32, "department": "Sales", "salary": 60000.0},
         {
             "id": 6,
@@ -83,7 +107,12 @@ def get_edge_case_data() -> List[Dict[str, Any]]:
             "age": 25,
             "value": 3.14159,
         },  # Special characters
-        {"id": 2, "name": "Unicode: 你好世界", "age": 30, "value": float("inf")},  # Unicode and inf
+        {
+            "id": 2,
+            "name": "Unicode: 你好世界",
+            "age": 30,
+            "value": float("inf"),
+        },  # Unicode and inf
     ]
 
 
@@ -115,7 +144,11 @@ def get_date_test_data() -> List[Dict[str, Any]]:
         {"date": "2023-01-01", "timestamp": "2023-01-01T00:00:00Z", "year": 2023},
         {"date": "2023-06-15", "timestamp": "2023-06-15T12:30:00Z", "year": 2023},
         {"date": "2023-12-31", "timestamp": "2023-12-31T23:59:59Z", "year": 2023},
-        {"date": "2024-02-29", "timestamp": "2024-02-29T12:00:00Z", "year": 2024},  # Leap year
+        {
+            "date": "2024-02-29",
+            "timestamp": "2024-02-29T12:00:00Z",
+            "year": 2024,
+        },  # Leap year
         {"date": "2022-12-25", "timestamp": "2022-12-25T08:15:30Z", "year": 2022},
     ]
 

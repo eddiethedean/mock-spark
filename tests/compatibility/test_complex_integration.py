@@ -20,7 +20,9 @@ class TestComplexDataProcessing:
             mock_cleaned = (
                 mock_dataframe.select(
                     mock_functions.col("*"),
-                    mock_functions.upper(mock_functions.col("name")).alias("name_upper"),
+                    mock_functions.upper(mock_functions.col("name")).alias(
+                        "name_upper"
+                    ),
                     mock_functions.col("salary").cast("double").alias("salary_double"),
                     mock_functions.when(mock_functions.col("age") > 30, "Senior")
                     .when(mock_functions.col("age") > 25, "Mid")
@@ -35,8 +37,12 @@ class TestComplexDataProcessing:
             pyspark_cleaned = (
                 pyspark_dataframe.select(
                     pyspark_functions.col("*"),
-                    pyspark_functions.upper(pyspark_functions.col("name")).alias("name_upper"),
-                    pyspark_functions.col("salary").cast("double").alias("salary_double"),
+                    pyspark_functions.upper(pyspark_functions.col("name")).alias(
+                        "name_upper"
+                    ),
+                    pyspark_functions.col("salary")
+                    .cast("double")
+                    .alias("salary_double"),
                     pyspark_functions.when(pyspark_functions.col("age") > 30, "Senior")
                     .when(pyspark_functions.col("age") > 25, "Mid")
                     .otherwise("Junior")
@@ -48,7 +54,10 @@ class TestComplexDataProcessing:
 
             assert_dataframes_equal(mock_cleaned, pyspark_cleaned)
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Complex data cleaning pipeline not fully implemented: {e}")
+            # Complex data cleaning pipeline should now be implemented
+            raise AssertionError(
+                f"Complex data cleaning pipeline should be implemented: {e}"
+            )
 
     def test_analytical_queries(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -59,12 +68,12 @@ class TestComplexDataProcessing:
             from mock_spark.window import MockWindow
 
             # Mock analytical query
-            mock_window = MockWindow.partitionBy(mock_functions.col("department")).orderBy(
-                mock_functions.col("salary").desc()
-            )
-            pyspark_window = PySparkWindow.partitionBy(pyspark_functions.col("department")).orderBy(
-                pyspark_functions.col("salary").desc()
-            )
+            mock_window = MockWindow.partitionBy(
+                mock_functions.col("department")
+            ).orderBy(mock_functions.col("salary").desc())
+            pyspark_window = PySparkWindow.partitionBy(
+                pyspark_functions.col("department")
+            ).orderBy(pyspark_functions.col("salary").desc())
 
             mock_analytics = mock_dataframe.select(
                 mock_functions.col("*"),
@@ -85,7 +94,8 @@ class TestComplexDataProcessing:
 
             assert_dataframes_equal(mock_analytics, pyspark_analytics)
         except (ImportError, AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Analytical queries not fully implemented: {e}")
+            # Analytical queries should now be implemented
+            raise AssertionError(f"Analytical queries should be implemented: {e}")
 
     def test_data_transformation_workflow(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -102,7 +112,9 @@ class TestComplexDataProcessing:
             pyspark_step1 = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
                 (pyspark_functions.col("salary") * 1.1).alias("salary_with_bonus"),
-                pyspark_functions.length(pyspark_functions.col("name")).alias("name_length"),
+                pyspark_functions.length(pyspark_functions.col("name")).alias(
+                    "name_length"
+                ),
             )
 
             # Step 2: Filtering and grouping
@@ -111,7 +123,9 @@ class TestComplexDataProcessing:
                 .groupBy(mock_functions.col("department"))
                 .agg(
                     mock_functions.count("*").alias("employee_count"),
-                    mock_functions.avg("salary_with_bonus").alias("avg_salary_with_bonus"),
+                    mock_functions.avg("salary_with_bonus").alias(
+                        "avg_salary_with_bonus"
+                    ),
                 )
             )
 
@@ -120,13 +134,18 @@ class TestComplexDataProcessing:
                 .groupBy(pyspark_functions.col("department"))
                 .agg(
                     pyspark_functions.count("*").alias("employee_count"),
-                    pyspark_functions.avg("salary_with_bonus").alias("avg_salary_with_bonus"),
+                    pyspark_functions.avg("salary_with_bonus").alias(
+                        "avg_salary_with_bonus"
+                    ),
                 )
             )
 
             assert_dataframes_equal(mock_step2, pyspark_step2)
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Data transformation workflow not fully implemented: {e}")
+            # Data transformation workflow should now be implemented
+            raise AssertionError(
+                f"Data transformation workflow should be implemented: {e}"
+            )
 
 
 class TestRealWorldScenarios:
@@ -156,9 +175,10 @@ class TestRealWorldScenarios:
             mock_analytics = (
                 mock_df.select(
                     mock_functions.col("*"),
-                    (mock_functions.col("quantity") * mock_functions.col("unit_price")).alias(
-                        "total_amount"
-                    ),
+                    (
+                        mock_functions.col("quantity")
+                        * mock_functions.col("unit_price")
+                    ).alias("total_amount"),
                 )
                 .groupBy(mock_functions.col("product_category"))
                 .agg(
@@ -170,15 +190,18 @@ class TestRealWorldScenarios:
             )
 
             # PySpark e-commerce analytics
-            pyspark_session = SparkSession.builder.appName("ecommerce-test").getOrCreate()
+            pyspark_session = SparkSession.builder.appName(
+                "ecommerce-test"
+            ).getOrCreate()
             pyspark_df = pyspark_session.createDataFrame(ecommerce_data)
 
             pyspark_analytics = (
                 pyspark_df.select(
                     pyspark_functions.col("*"),
-                    (pyspark_functions.col("quantity") * pyspark_functions.col("unit_price")).alias(
-                        "total_amount"
-                    ),
+                    (
+                        pyspark_functions.col("quantity")
+                        * pyspark_functions.col("unit_price")
+                    ).alias("total_amount"),
                 )
                 .groupBy(pyspark_functions.col("product_category"))
                 .agg(
@@ -194,9 +217,9 @@ class TestRealWorldScenarios:
             pyspark_session.stop()
             mock_session.stop()
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"E-commerce analytics not fully implemented: {e}")
+            # E-commerce analytics should now be implemented
+            raise AssertionError(f"E-commerce analytics should be implemented: {e}")
 
-    @pytest.mark.skip(reason="Unary minus operation (-column) not implemented yet")
     def test_financial_data_processing(self, mock_functions, pyspark_functions):
         """Test financial data processing scenario."""
         try:
@@ -208,7 +231,9 @@ class TestRealWorldScenarios:
                         "transaction_id": f"TXN_{i:06d}",
                         "account_id": f"ACC_{i % 50:03d}",
                         "transaction_type": "DEBIT" if i % 3 == 0 else "CREDIT",
-                        "amount": abs((i * 100) % 10000 - 5000),  # Mix of positive and negative
+                        "amount": abs(
+                            (i * 100) % 10000 - 5000
+                        ),  # Mix of positive and negative
                         "transaction_date": f"2024-01-{(i % 28) + 1:02d}",
                         "merchant_category": f"CAT_{i % 10}",
                     }
@@ -240,7 +265,9 @@ class TestRealWorldScenarios:
             )
 
             # PySpark financial processing
-            pyspark_session = SparkSession.builder.appName("financial-test").getOrCreate()
+            pyspark_session = SparkSession.builder.appName(
+                "financial-test"
+            ).getOrCreate()
             pyspark_df = pyspark_session.createDataFrame(financial_data)
 
             pyspark_financial = (
@@ -269,7 +296,10 @@ class TestRealWorldScenarios:
             pyspark_session.stop()
             mock_session.stop()
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Financial data processing not fully implemented: {e}")
+            # Financial data processing should now be implemented
+            raise AssertionError(
+                f"Financial data processing should be implemented: {e}"
+            )
 
     def test_log_analysis_scenario(self, mock_functions, pyspark_functions):
         """Test log analysis scenario."""
@@ -278,7 +308,13 @@ class TestRealWorldScenarios:
             log_data = []
             status_codes = [200, 404, 500, 301, 403]
             methods = ["GET", "POST", "PUT", "DELETE"]
-            endpoints = ["/api/users", "/api/products", "/api/orders", "/api/auth", "/api/admin"]
+            endpoints = [
+                "/api/users",
+                "/api/products",
+                "/api/orders",
+                "/api/auth",
+                "/api/admin",
+            ]
 
             for i in range(300):
                 log_data.append(
@@ -299,18 +335,26 @@ class TestRealWorldScenarios:
             mock_log_analysis = (
                 mock_df.select(
                     mock_functions.col("*"),
-                    mock_functions.when(mock_functions.col("status_code") >= 400, "ERROR")
+                    mock_functions.when(
+                        mock_functions.col("status_code") >= 400, "ERROR"
+                    )
                     .when(mock_functions.col("status_code") >= 300, "REDIRECT")
                     .otherwise("SUCCESS")
                     .alias("status_category"),
                 )
-                .groupBy(mock_functions.col("endpoint"), mock_functions.col("status_category"))
+                .groupBy(
+                    mock_functions.col("endpoint"),
+                    mock_functions.col("status_category"),
+                )
                 .agg(
                     mock_functions.count("*").alias("request_count"),
                     mock_functions.avg("response_time_ms").alias("avg_response_time"),
                     mock_functions.max("response_time_ms").alias("max_response_time"),
                 )
-                .orderBy(mock_functions.col("endpoint"), mock_functions.col("request_count").desc())
+                .orderBy(
+                    mock_functions.col("endpoint"),
+                    mock_functions.col("request_count").desc(),
+                )
             )
 
             # PySpark log analysis
@@ -320,21 +364,29 @@ class TestRealWorldScenarios:
             pyspark_log_analysis = (
                 pyspark_df.select(
                     pyspark_functions.col("*"),
-                    pyspark_functions.when(pyspark_functions.col("status_code") >= 400, "ERROR")
+                    pyspark_functions.when(
+                        pyspark_functions.col("status_code") >= 400, "ERROR"
+                    )
                     .when(pyspark_functions.col("status_code") >= 300, "REDIRECT")
                     .otherwise("SUCCESS")
                     .alias("status_category"),
                 )
                 .groupBy(
-                    pyspark_functions.col("endpoint"), pyspark_functions.col("status_category")
+                    pyspark_functions.col("endpoint"),
+                    pyspark_functions.col("status_category"),
                 )
                 .agg(
                     pyspark_functions.count("*").alias("request_count"),
-                    pyspark_functions.avg("response_time_ms").alias("avg_response_time"),
-                    pyspark_functions.max("response_time_ms").alias("max_response_time"),
+                    pyspark_functions.avg("response_time_ms").alias(
+                        "avg_response_time"
+                    ),
+                    pyspark_functions.max("response_time_ms").alias(
+                        "max_response_time"
+                    ),
                 )
                 .orderBy(
-                    pyspark_functions.col("endpoint"), pyspark_functions.col("request_count").desc()
+                    pyspark_functions.col("endpoint"),
+                    pyspark_functions.col("request_count").desc(),
                 )
             )
 
@@ -343,7 +395,8 @@ class TestRealWorldScenarios:
             pyspark_session.stop()
             mock_session.stop()
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Log analysis scenario not fully implemented: {e}")
+            # Log analysis scenario should now be implemented
+            raise AssertionError(f"Log analysis scenario should be implemented: {e}")
 
 
 class TestCrossFeatureIntegration:
@@ -358,12 +411,12 @@ class TestCrossFeatureIntegration:
             from mock_spark.window import MockWindow
 
             # Mock window with aggregation
-            mock_window = MockWindow.partitionBy(mock_functions.col("department")).orderBy(
-                mock_functions.col("salary").desc()
-            )
-            pyspark_window = PySparkWindow.partitionBy(pyspark_functions.col("department")).orderBy(
-                pyspark_functions.col("salary").desc()
-            )
+            mock_window = MockWindow.partitionBy(
+                mock_functions.col("department")
+            ).orderBy(mock_functions.col("salary").desc())
+            pyspark_window = PySparkWindow.partitionBy(
+                pyspark_functions.col("department")
+            ).orderBy(pyspark_functions.col("salary").desc())
 
             mock_result = (
                 mock_dataframe.select(
@@ -398,9 +451,11 @@ class TestCrossFeatureIntegration:
 
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Window with aggregation integration not fully implemented: {e}")
+            # Window with aggregation integration should now be implemented
+            raise AssertionError(
+                f"Window with aggregation integration should be implemented: {e}"
+            )
 
-    @pytest.mark.skip(reason="Complex join operations not fully implemented yet")
     def test_complex_join_simulation(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
@@ -408,7 +463,11 @@ class TestCrossFeatureIntegration:
         try:
             # Create a second dataset for join simulation
             dept_data = [
-                {"department": "Engineering", "manager": "Alice Manager", "budget": 1000000},
+                {
+                    "department": "Engineering",
+                    "manager": "Alice Manager",
+                    "budget": 1000000,
+                },
                 {"department": "Marketing", "manager": "Bob Manager", "budget": 500000},
                 {"department": "Sales", "manager": "Charlie Manager", "budget": 750000},
             ]
@@ -419,11 +478,15 @@ class TestCrossFeatureIntegration:
 
             mock_joined = (
                 mock_dataframe.select(
-                    mock_functions.col("*"), mock_functions.lit("temp").alias("join_key")
+                    mock_functions.col("*"),
+                    mock_functions.lit("temp").alias("join_key"),
                 )
                 .join(
                     mock_dept_df.select(
-                        mock_functions.col("*"), mock_functions.lit("temp").alias("join_key")
+                        mock_functions.col("department").alias("dept_name"),
+                        mock_functions.col("manager"),
+                        mock_functions.col("budget"),
+                        mock_functions.lit("temp").alias("join_key"),
                     ),
                     "join_key",
                 )
@@ -442,11 +505,15 @@ class TestCrossFeatureIntegration:
 
             pyspark_joined = (
                 pyspark_dataframe.select(
-                    pyspark_functions.col("*"), pyspark_functions.lit("temp").alias("join_key")
+                    pyspark_functions.col("*"),
+                    pyspark_functions.lit("temp").alias("join_key"),
                 )
                 .join(
                     pyspark_dept_df.select(
-                        pyspark_functions.col("*"), pyspark_functions.lit("temp").alias("join_key")
+                        pyspark_functions.col("department").alias("dept_name"),
+                        pyspark_functions.col("manager"),
+                        pyspark_functions.col("budget"),
+                        pyspark_functions.lit("temp").alias("join_key"),
                     ),
                     "join_key",
                 )
@@ -464,7 +531,8 @@ class TestCrossFeatureIntegration:
             pyspark_session.stop()
             mock_session.stop()
         except (AttributeError, NotImplementedError) as e:
-            pytest.skip(f"Complex join simulation not fully implemented: {e}")
+            # Complex join simulation should now be implemented
+            raise AssertionError(f"Complex join simulation should be implemented: {e}")
 
 
 # Import required modules

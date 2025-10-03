@@ -62,7 +62,9 @@ class TestErrorHandling:
         with pytest.raises(Exception):
             pyspark_dataframe.groupBy("non_existent_column").count()
 
-    def test_empty_dataframe_operations(self, mock_empty_dataframe, pyspark_empty_dataframe):
+    def test_empty_dataframe_operations(
+        self, mock_empty_dataframe, pyspark_empty_dataframe
+    ):
         """Test operations on empty DataFrames."""
         # Test count on empty DataFrame
         assert mock_empty_dataframe.count() == 0
@@ -79,14 +81,18 @@ class TestErrorHandling:
     ):
         """Test null value handling in various operations."""
         # Test arithmetic with null values
-        mock_result = mock_dataframe.select(mock_functions.col("salary") + mock_functions.lit(None))
+        mock_result = mock_dataframe.select(
+            mock_functions.col("salary") + mock_functions.lit(None)
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.col("salary") + pyspark_functions.lit(None)
         )
         assert len(mock_result.collect()) == len(pyspark_result.collect())
 
         # Test comparison with null values
-        mock_result = mock_dataframe.select(mock_functions.col("name") == mock_functions.lit(None))
+        mock_result = mock_dataframe.select(
+            mock_functions.col("name") == mock_functions.lit(None)
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.col("name") == pyspark_functions.lit(None)
         )
@@ -101,7 +107,9 @@ class TestEdgeCases:
     ):
         """Test handling of very large numbers."""
         large_number = 1e20
-        mock_result = mock_dataframe.select(mock_functions.lit(large_number).alias("large_num"))
+        mock_result = mock_dataframe.select(
+            mock_functions.lit(large_number).alias("large_num")
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit(large_number).alias("large_num")
         )
@@ -112,7 +120,9 @@ class TestEdgeCases:
     ):
         """Test handling of very small numbers."""
         small_number = 1e-20
-        mock_result = mock_dataframe.select(mock_functions.lit(small_number).alias("small_num"))
+        mock_result = mock_dataframe.select(
+            mock_functions.lit(small_number).alias("small_num")
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit(small_number).alias("small_num")
         )
@@ -123,7 +133,9 @@ class TestEdgeCases:
     ):
         """Test handling of unicode strings."""
         unicode_string = "Hello 世界 🌍"
-        mock_result = mock_dataframe.select(mock_functions.lit(unicode_string).alias("unicode_str"))
+        mock_result = mock_dataframe.select(
+            mock_functions.lit(unicode_string).alias("unicode_str")
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit(unicode_string).alias("unicode_str")
         )
@@ -134,7 +146,9 @@ class TestEdgeCases:
     ):
         """Test handling of very long strings."""
         long_string = "a" * 10000  # 10KB string
-        mock_result = mock_dataframe.select(mock_functions.lit(long_string).alias("long_str"))
+        mock_result = mock_dataframe.select(
+            mock_functions.lit(long_string).alias("long_str")
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit(long_string).alias("long_str")
         )
@@ -146,7 +160,8 @@ class TestEdgeCases:
         """Test boolean edge cases."""
         # Test boolean operations
         mock_result = mock_dataframe.select(
-            mock_functions.lit(True).alias("true_val"), mock_functions.lit(False).alias("false_val")
+            mock_functions.lit(True).alias("true_val"),
+            mock_functions.lit(False).alias("false_val"),
         )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit(True).alias("true_val"),
@@ -182,7 +197,9 @@ class TestSchemaEdgeCases:
         """Test handling of empty column names."""
         try:
             mock_result = mock_dataframe.select(mock_functions.lit("value").alias(""))
-            pyspark_result = pyspark_dataframe.select(pyspark_functions.lit("value").alias(""))
+            pyspark_result = pyspark_dataframe.select(
+                pyspark_functions.lit("value").alias("")
+            )
             assert len(mock_result.collect()) == len(pyspark_result.collect())
         except Exception:
             # Both should handle empty column names consistently
@@ -193,7 +210,9 @@ class TestSchemaEdgeCases:
     ):
         """Test handling of special character column names."""
         special_name = "col@#$%^&*()_+-=[]{}|;':\",./<>?"
-        mock_result = mock_dataframe.select(mock_functions.lit("value").alias(special_name))
+        mock_result = mock_dataframe.select(
+            mock_functions.lit("value").alias(special_name)
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lit("value").alias(special_name)
         )
@@ -217,7 +236,6 @@ class TestPerformanceEdgeCases:
         assert len(mock_result.collect()) == len(pyspark_result.collect())
         assert len(mock_result.columns) == len(pyspark_result.columns)
 
-    @pytest.mark.skip(reason="Deep nested operations edge case not implemented yet")
     def test_deep_nested_operations(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):

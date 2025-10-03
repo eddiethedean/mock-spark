@@ -4,7 +4,10 @@ Shared fixtures and configuration for compatibility tests.
 
 import pytest
 from typing import Dict, Any, List
-from tests.compatibility.utils.environment import import_environment_modules, cleanup_environment
+from tests.compatibility.utils.environment import (
+    import_environment_modules,
+    cleanup_environment,
+)
 from tests.compatibility.utils.fixtures import get_test_dataframes_dict
 
 
@@ -16,7 +19,7 @@ def mock_environment():
     cleanup_environment(modules, "mock")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def pyspark_environment():
     """Fixture for PySpark environment."""
     modules = import_environment_modules("pyspark")

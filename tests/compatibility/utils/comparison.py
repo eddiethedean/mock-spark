@@ -40,7 +40,9 @@ def compare_dataframes(
     try:
         # Convert to pandas for easier comparison
         mock_pandas = (
-            mock_df.toPandas() if hasattr(mock_df, "toPandas") else pd.DataFrame(mock_df.data)
+            mock_df.toPandas()
+            if hasattr(mock_df, "toPandas")
+            else pd.DataFrame(mock_df.data)
         )
 
         # Handle NumPy np.bool deprecation issue in PySpark's toPandas()
@@ -52,7 +54,9 @@ def compare_dataframes(
                 # This is a workaround for the NumPy deprecation issue
                 pyspark_pandas = pyspark_df.collect()
                 if pyspark_pandas:
-                    pyspark_pandas = pd.DataFrame([row.asDict() for row in pyspark_pandas])
+                    pyspark_pandas = pd.DataFrame(
+                        [row.asDict() for row in pyspark_pandas]
+                    )
                 else:
                     pyspark_pandas = pd.DataFrame()
             else:
@@ -66,14 +70,19 @@ def compare_dataframes(
 
         if not result["row_count_match"]:
             result["equivalent"] = False
-            result["errors"].append(f"Row count mismatch: mock={mock_rows}, pyspark={pyspark_rows}")
+            result["errors"].append(
+                f"Row count mismatch: mock={mock_rows}, pyspark={pyspark_rows}"
+            )
             return result
 
         # Compare column counts
         mock_cols = len(mock_pandas.columns)
         pyspark_cols = len(pyspark_pandas.columns)
         result["column_count_match"] = mock_cols == pyspark_cols
-        result["details"]["column_counts"] = {"mock": mock_cols, "pyspark": pyspark_cols}
+        result["details"]["column_counts"] = {
+            "mock": mock_cols,
+            "pyspark": pyspark_cols,
+        }
 
         if not result["column_count_match"]:
             result["equivalent"] = False
@@ -117,9 +126,9 @@ def compare_dataframes(
                 pyspark_sorted = pyspark_pandas.reset_index(drop=True)
             else:
                 # Sort dataframes by all columns to ensure consistent ordering
-                mock_sorted = mock_pandas.sort_values(list(mock_pandas.columns)).reset_index(
-                    drop=True
-                )
+                mock_sorted = mock_pandas.sort_values(
+                    list(mock_pandas.columns)
+                ).reset_index(drop=True)
                 pyspark_sorted = pyspark_pandas.sort_values(
                     list(pyspark_pandas.columns)
                 ).reset_index(drop=True)
@@ -140,7 +149,9 @@ def compare_dataframes(
 
                 if not mock_na.equals(pyspark_na):
                     result["equivalent"] = False
-                    result["errors"].append(f"Null value pattern mismatch in column '{col}'")
+                    result["errors"].append(
+                        f"Null value pattern mismatch in column '{col}'"
+                    )
                     continue
 
                 # Compare non-null values
@@ -149,7 +160,9 @@ def compare_dataframes(
 
                 if len(mock_non_null) != len(pyspark_non_null):
                     result["equivalent"] = False
-                    result["errors"].append(f"Non-null value count mismatch in column '{col}'")
+                    result["errors"].append(
+                        f"Non-null value count mismatch in column '{col}'"
+                    )
                     continue
 
                 # Try different comparison methods based on data type
@@ -170,7 +183,9 @@ def compare_dataframes(
                             pyspark_str = pyspark_non_null.astype(str)
                             if not mock_str.equals(pyspark_str):
                                 result["equivalent"] = False
-                                result["errors"].append(f"Complex values differ in column '{col}'")
+                                result["errors"].append(
+                                    f"Complex values differ in column '{col}'"
+                                )
                         except Exception as complex_e:
                             result["equivalent"] = False
                             result["errors"].append(
@@ -180,13 +195,18 @@ def compare_dataframes(
                         # Boolean comparison
                         if not mock_non_null.equals(pyspark_non_null):
                             result["equivalent"] = False
-                            result["errors"].append(f"Boolean values differ in column '{col}'")
+                            result["errors"].append(
+                                f"Boolean values differ in column '{col}'"
+                            )
                     elif pd.api.types.is_numeric_dtype(mock_non_null):
                         # Numerical comparison with tolerance
                         try:
                             diff = np.abs(mock_non_null - pyspark_non_null)
                             if not np.allclose(
-                                mock_non_null, pyspark_non_null, atol=tolerance, rtol=tolerance
+                                mock_non_null,
+                                pyspark_non_null,
+                                atol=tolerance,
+                                rtol=tolerance,
                             ):
                                 result["equivalent"] = False
                                 result["errors"].append(
@@ -212,7 +232,9 @@ def compare_dataframes(
                         try:
                             if not mock_non_null.equals(pyspark_non_null):
                                 result["equivalent"] = False
-                                result["errors"].append(f"String values differ in column '{col}'")
+                                result["errors"].append(
+                                    f"String values differ in column '{col}'"
+                                )
                         except Exception as string_e:
                             # Fallback to string comparison
                             try:
@@ -261,11 +283,16 @@ def compare_schemas(mock_df: Any, pyspark_df: Any) -> Dict[str, Any]:
 
         # Compare field counts
         mock_fields = (
-            len(mock_schema.fields) if hasattr(mock_schema, "fields") else len(mock_schema)
+            len(mock_schema.fields)
+            if hasattr(mock_schema, "fields")
+            else len(mock_schema)
         )
         pyspark_fields = len(pyspark_schema.fields)
 
-        result["details"]["field_counts"] = {"mock": mock_fields, "pyspark": pyspark_fields}
+        result["details"]["field_counts"] = {
+            "mock": mock_fields,
+            "pyspark": pyspark_fields,
+        }
 
         if mock_fields != pyspark_fields:
             result["equivalent"] = False
@@ -298,7 +325,9 @@ def compare_schemas(mock_df: Any, pyspark_df: Any) -> Dict[str, Any]:
         for i, (mock_field, pyspark_field) in enumerate(
             zip(mock_schema.fields, pyspark_schema.fields)
         ):
-            type_result = compare_data_types(mock_field.dataType, pyspark_field.dataType)
+            type_result = compare_data_types(
+                mock_field.dataType, pyspark_field.dataType
+            )
             if not type_result["equivalent"]:
                 result["equivalent"] = False
                 result["errors"].append(
@@ -332,7 +361,10 @@ def compare_data_types(mock_type: Any, pyspark_type: Any) -> Dict[str, Any]:
         mock_type_name = mock_type.__class__.__name__
         pyspark_type_name = pyspark_type.__class__.__name__
 
-        result["details"]["type_names"] = {"mock": mock_type_name, "pyspark": pyspark_type_name}
+        result["details"]["type_names"] = {
+            "mock": mock_type_name,
+            "pyspark": pyspark_type_name,
+        }
 
         # Map mock_spark type names to PySpark equivalents
         type_mapping = {
@@ -369,12 +401,19 @@ def compare_data_types(mock_type: Any, pyspark_type: Any) -> Dict[str, Any]:
                 f"Nullable mismatch: mock={mock_nullable}, pyspark={pyspark_nullable}"
             )
 
-        result["details"]["nullable"] = {"mock": mock_nullable, "pyspark": pyspark_nullable}
+        result["details"]["nullable"] = {
+            "mock": mock_nullable,
+            "pyspark": pyspark_nullable,
+        }
 
         # Handle complex types
         if mock_type_name in ["ArrayType", "MapType", "StructType", "MockStructType"]:
-            if hasattr(mock_type, "elementType") and hasattr(pyspark_type, "elementType"):
-                element_result = compare_data_types(mock_type.elementType, pyspark_type.elementType)
+            if hasattr(mock_type, "elementType") and hasattr(
+                pyspark_type, "elementType"
+            ):
+                element_result = compare_data_types(
+                    mock_type.elementType, pyspark_type.elementType
+                )
                 if not element_result["equivalent"]:
                     result["equivalent"] = False
                     result["errors"].extend(element_result["errors"])
@@ -394,7 +433,9 @@ def compare_data_types(mock_type: Any, pyspark_type: Any) -> Dict[str, Any]:
                         f"Struct field count mismatch: mock={len(mock_type.fields)}, pyspark={len(pyspark_type.fields)}"
                     )
                 else:
-                    for mock_field, pyspark_field in zip(mock_type.fields, pyspark_type.fields):
+                    for mock_field, pyspark_field in zip(
+                        mock_type.fields, pyspark_type.fields
+                    ):
                         field_result = compare_data_types(
                             mock_field.dataType, pyspark_field.dataType
                         )
@@ -438,14 +479,22 @@ def compare_error_behavior(
         mock_result = mock_func(*args, **kwargs)
         result["mock_error"] = None
     except Exception as e:
-        result["mock_error"] = {"type": type(e).__name__, "message": str(e), "exception": e}
+        result["mock_error"] = {
+            "type": type(e).__name__,
+            "message": str(e),
+            "exception": e,
+        }
 
     # Test PySpark function
     try:
         pyspark_result = pyspark_func(*args, **kwargs)
         result["pyspark_error"] = None
     except Exception as e:
-        result["pyspark_error"] = {"type": type(e).__name__, "message": str(e), "exception": e}
+        result["pyspark_error"] = {
+            "type": type(e).__name__,
+            "message": str(e),
+            "exception": e,
+        }
 
     # Compare results
     if result["mock_error"] is None and result["pyspark_error"] is None:
@@ -478,9 +527,13 @@ def compare_error_behavior(
         # One succeeded, one failed
         result["equivalent"] = False
         if result["mock_error"] is None:
-            result["errors"].append("Mock function succeeded but PySpark function failed")
+            result["errors"].append(
+                "Mock function succeeded but PySpark function failed"
+            )
         else:
-            result["errors"].append("PySpark function succeeded but mock function failed")
+            result["errors"].append(
+                "PySpark function succeeded but mock function failed"
+            )
 
     return result
 

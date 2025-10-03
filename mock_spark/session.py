@@ -68,6 +68,11 @@ class MockSparkContext:
         """Set log level."""
         pass  # Mock implementation
 
+    @property
+    def appName(self) -> str:
+        """Get application name."""
+        return self.app_name
+
 
 class MockSparkSession:
     """Mock SparkSession providing complete PySpark API compatibility.
@@ -197,7 +202,9 @@ class MockSparkSession:
                             field_type = DoubleType()
                         elif isinstance(value, list):
                             # ArrayType - infer element type from first non-null element
-                            element_type: MockDataType = StringType()  # Default to StringType
+                            element_type: MockDataType = (
+                                StringType()
+                            )  # Default to StringType
                             for item in value:
                                 if item is not None:
                                     if isinstance(item, str):
@@ -254,7 +261,9 @@ class MockSparkSession:
                         fields.append(MockStructField(key, field_type))
                 else:
                     # Tuple format - need schema to convert
-                    raise_value_error("Cannot infer schema from tuples without explicit schema")
+                    raise_value_error(
+                        "Cannot infer schema from tuples without explicit schema"
+                    )
 
                 from .spark_types import MockStructType
 
@@ -347,12 +356,13 @@ class MockSparkSession:
         """Stop the Spark session."""
         self.storage.clear_all()
 
-    def sql(self, query: str) -> MockDataFrame:
-        """Execute SQL query."""
-        # Mock implementation - return empty DataFrame
-        from .spark_types import MockStructType
+    def __enter__(self) -> "MockSparkSession":
+        """Context manager entry."""
+        return self
 
-        return MockDataFrame([], MockStructType([]), self.storage)
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit."""
+        self.stop()
 
     def table(self, tableName: str) -> MockDataFrame:
         """Get table as DataFrame."""
@@ -497,7 +507,12 @@ class MockSparkConf:
 
     def __init__(self):
         """Initialize MockSparkConf."""
-        self._config = {}
+        self._config = {
+            "spark.app.name": "MockSparkApp",
+            "spark.master": "local[*]",
+            "spark.sql.adaptive.enabled": "true",
+            "spark.sql.adaptive.coalescePartitions.enabled": "true",
+        }
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value."""
@@ -545,7 +560,9 @@ class MockUDF:
         # Mock implementation - just store the function
         pass
 
-    def registerJavaFunction(self, name: str, className: str, returnType: Any = None) -> None:
+    def registerJavaFunction(
+        self, name: str, className: str, returnType: Any = None
+    ) -> None:
         """Register Java UDF."""
         pass  # Mock implementation
 
@@ -570,12 +587,10 @@ class MockSparkSessionBuilder:
         """Set master URL."""
         return self
 
-    def config(self, key: str, value: Any) -> "MockSparkSessionBuilder":
+    def config(
+        self, key_or_pairs: Union[str, Dict[str, Any]], value: Any = None
+    ) -> "MockSparkSessionBuilder":
         """Set configuration."""
-        return self
-
-    def config(self, pairs: Dict[str, Any]) -> "MockSparkSessionBuilder":
-        """Set multiple configurations."""
         return self
 
     def enableHiveSupport(self) -> "MockSparkSessionBuilder":

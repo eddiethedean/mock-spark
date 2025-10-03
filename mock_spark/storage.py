@@ -12,7 +12,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from .spark_types import MockStructType, MockStructField, IntegerType, StringType, MockDataType
+from .spark_types import (
+    MockStructType,
+    MockStructField,
+    IntegerType,
+    StringType,
+    MockDataType,
+)
 
 
 @dataclass
@@ -235,7 +241,9 @@ class MockStorageManager:
         if data:
             columns = list(data[0].keys())
             placeholders = ", ".join("?" for _ in columns)
-            insert_sql = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+            insert_sql = (
+                f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+            )
 
             for row in data:
                 values = [row.get(col) for col in columns]
@@ -430,7 +438,10 @@ class MockStorageManager:
         }
 
     def create_table(
-        self, schema: str, table: str, columns: Union[List[MockStructField], MockStructType]
+        self,
+        schema: str,
+        table: str,
+        columns: Union[List[MockStructField], MockStructType],
     ) -> None:
         """Create table with schema."""
         conn = self.get_database(schema)
@@ -533,3 +544,86 @@ class MockStorageManager:
             "schema": metadata.schema,
             "table": metadata.table,
         }
+
+    def create_temp_view(self, name: str, dataframe) -> None:
+        """Create a temporary view from a DataFrame."""
+        # Store the DataFrame as a temporary view
+        self._temp_tables.add(name)
+
+        # Create a schema and table for the temporary view
+        schema = "default"
+        self.create_schema(schema)
+
+        # Convert DataFrame data to table format
+        if hasattr(dataframe, "collect"):
+            data = dataframe.collect()
+        else:
+            data = dataframe.df.data if hasattr(dataframe, "df") else []
+
+        # Create table metadata
+        fqn = f"{schema}.{name}"
+        columns = []
+        if hasattr(dataframe, "schema") and dataframe.schema:
+            columns = dataframe.schema.fields
+        elif data:
+            # Infer columns from first row
+            first_row = data[0] if data else {}
+            for col_name, value in first_row.items():
+                from .spark_types import MockStructField, StringType
+
+                columns.append(MockStructField(col_name, StringType()))
+
+        metadata = TableMetadata(
+            schema=schema,
+            table=name,
+            columns=columns,
+            created_at=time.time(),
+            row_count=len(data),
+        )
+
+        self._table_metadata[fqn] = metadata
+
+        # Store in compatibility tables dict
+        if schema not in self.tables:
+            self.tables[schema] = {}
+
+        from .spark_types import MockStructType
+
+        struct_type = MockStructType(columns)
+        mock_table = MockTable(schema, name, struct_type)
+        mock_table.data = data
+        self.tables[schema][name] = mock_table
+
+        # Also create the table in SQLite database for list_tables compatibility
+        self._create_table_in_sqlite(schema, name, columns, data)
+
+    def _create_table_in_sqlite(
+        self,
+        schema: str,
+        table: str,
+        columns: List[MockStructField],
+        data: List[Dict[str, Any]],
+    ) -> None:
+        """Create a table in SQLite database."""
+        conn = self.get_database(schema)
+
+        # Create table schema
+        column_defs = []
+        for field in columns:
+            sql_type = self._convert_mock_type_to_sqlite(field.dataType)
+            column_defs.append(f"{field.name} {sql_type}")
+
+        create_sql = f"CREATE TABLE IF NOT EXISTS {table} ({', '.join(column_defs)})"
+        conn.execute(create_sql)
+
+        # Insert data
+        if data:
+            column_names = [field.name for field in columns]
+            placeholders = ", ".join(["?" for _ in column_names])
+            insert_sql = f"INSERT INTO {table} ({', '.join(column_names)}) VALUES ({placeholders})"
+
+            for row in data:
+                values = [row.get(col_name) for col_name in column_names]
+                conn.execute(insert_sql, values)
+
+        conn.commit()

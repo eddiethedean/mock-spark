@@ -72,13 +72,19 @@ class MockWindowSpec:
         """String representation."""
         parts = []
         if self._partition_by:
-            parts.append(f"partitionBy({', '.join(str(col) for col in self._partition_by)})")
+            parts.append(
+                f"partitionBy({', '.join(str(col) for col in self._partition_by)})"
+            )
         if self._order_by:
             parts.append(f"orderBy({', '.join(str(col) for col in self._order_by)})")
         if self._rows_between:
-            parts.append(f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})")
+            parts.append(
+                f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})"
+            )
         if self._range_between:
-            parts.append(f"rangeBetween({self._range_between[0]}, {self._range_between[1]})")
+            parts.append(
+                f"rangeBetween({self._range_between[0]}, {self._range_between[1]})"
+            )
         return f"MockWindowSpec({', '.join(parts)})"
 
 

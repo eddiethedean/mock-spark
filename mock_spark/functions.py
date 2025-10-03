@@ -151,6 +151,10 @@ class MockColumn:
         """Modulo operation."""
         return MockColumnOperation(self, "%", other)
 
+    def __neg__(self) -> "MockColumnOperation":
+        """Unary minus operation."""
+        return MockColumnOperation(self, "-", None)
+
     def desc(self) -> "MockColumnOperation":
         """Descending order."""
         return MockColumnOperation(self, "desc", None)
@@ -226,7 +230,10 @@ class MockColumnOperation:
     name: str  # Type annotation for mypy
 
     def __init__(
-        self, column: Union[MockColumn, "MockColumnOperation"], operation: str, value: Any = None
+        self,
+        column: Union[MockColumn, "MockColumnOperation"],
+        operation: str,
+        value: Any = None,
     ):
         self.column = column
         self.operation = operation
@@ -236,17 +243,30 @@ class MockColumnOperation:
         self.operand = self.value
         # Add name property for compatibility with select method
         # Store the name for the operation
-        column_name: str = self.column.name if hasattr(self.column, "name") else str(self.column)
+        column_name: str = (
+            self.column.name if hasattr(self.column, "name") else str(self.column)
+        )
         if operation in ["+", "-", "*", "/", "%"]:
-            self.name = f"({column_name} {operation} {value})"
-        elif operation in ["upper", "lower", "length"]:
+            if value is None and operation == "-":
+                # Unary minus operation
+                self.name = f"-({column_name})"
+            else:
+                # Handle nested operations
+                if hasattr(value, "name"):
+                    value_str = value.name
+                else:
+                    value_str = str(value)
+                self.name = f"({column_name} {operation} {value_str})"
+        elif operation in ["upper", "lower", "length", "ceil", "floor", "sqrt"]:
             self.name = f"{operation}({column_name})"
         else:
             self.name = f"{operation}({column_name})"
         if self.value is None:
             self.expr = f"MockColumnOperation({self.column}, '{self.operation}')"
         else:
-            self.expr = f"MockColumnOperation({self.column}, '{self.operation}', {self.value})"
+            self.expr = (
+                f"MockColumnOperation({self.column}, '{self.operation}', {self.value})"
+            )
 
     def __and__(self, other: Any) -> "MockColumnOperation":
         """Logical AND."""
@@ -259,6 +279,26 @@ class MockColumnOperation:
     def __invert__(self) -> "MockColumnOperation":
         """Logical NOT."""
         return MockColumnOperation(self.column, "not", None)
+
+    def __add__(self, other: Any) -> "MockColumnOperation":
+        """Addition operation."""
+        return MockColumnOperation(self, "+", other)
+
+    def __sub__(self, other: Any) -> "MockColumnOperation":
+        """Subtraction operation."""
+        return MockColumnOperation(self, "-", other)
+
+    def __mul__(self, other: Any) -> "MockColumnOperation":
+        """Multiplication operation."""
+        return MockColumnOperation(self, "*", other)
+
+    def __truediv__(self, other: Any) -> "MockColumnOperation":
+        """Division operation."""
+        return MockColumnOperation(self, "/", other)
+
+    def __mod__(self, other: Any) -> "MockColumnOperation":
+        """Modulo operation."""
+        return MockColumnOperation(self, "%", other)
 
     def alias(self, name: str) -> "MockColumnOperation":
         """Create an alias for the column operation."""
@@ -421,9 +461,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def when(condition: MockColumnOperation, value: Any) -> MockColumn:
+    def when(condition: MockColumnOperation, value: Any) -> "MockCaseWhen":
         """CASE WHEN condition."""
-        return MockColumn(f"when({condition}, {value})")
+        return MockCaseWhen().when(condition, value)
 
     @staticmethod
     def current_timestamp() -> MockColumn:
@@ -436,7 +476,9 @@ class MockFunctions:
         return MockColumn("current_date()")
 
     @staticmethod
-    def to_date(column: Union[str, MockColumn], format: Optional[str] = None) -> MockColumn:
+    def to_date(
+        column: Union[str, MockColumn], format: Optional[str] = None
+    ) -> MockColumn:
         """Convert to date function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -445,7 +487,9 @@ class MockFunctions:
         return MockColumn(f"to_date({column.name})")
 
     @staticmethod
-    def to_timestamp(column: Union[str, MockColumn], format: Optional[str] = None) -> MockColumn:
+    def to_timestamp(
+        column: Union[str, MockColumn], format: Optional[str] = None
+    ) -> MockColumn:
         """Convert to timestamp function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -583,6 +627,67 @@ class MockFunctions:
         """Dense rank window function."""
         return MockWindowFunction("dense_rank")
 
+    @staticmethod
+    def lag(
+        column: Union[str, MockColumn], offset: int = 1, default_value: Any = None
+    ) -> "MockWindowFunction":
+        """Lag window function - get previous row value."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return MockWindowFunction("lag", column.name, offset, default_value)
+
+    @staticmethod
+    def lead(
+        column: Union[str, MockColumn], offset: int = 1, default_value: Any = None
+    ) -> "MockWindowFunction":
+        """Lead window function - get next row value."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return MockWindowFunction("lead", column.name, offset, default_value)
+
+    @staticmethod
+    def regexp_replace(
+        column: Union[str, MockColumn], pattern: str, replacement: str
+    ) -> MockColumn:
+        """Regex replace function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        return MockColumn(
+            f"regexp_replace({column.name}, '{pattern}', '{replacement}')"
+        )
+
+    @staticmethod
+    def split(column: Union[str, MockColumn], delimiter: str) -> MockColumnOperation:
+        """Split function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        operation = MockColumnOperation(column, "split", delimiter)
+        return operation
+
+    @staticmethod
+    def ceil(column: Union[str, MockColumn]) -> MockColumnOperation:
+        """Ceiling function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        operation = MockColumnOperation(column, "ceil")
+        return operation
+
+    @staticmethod
+    def floor(column: Union[str, MockColumn]) -> MockColumnOperation:
+        """Floor function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        operation = MockColumnOperation(column, "floor")
+        return operation
+
+    @staticmethod
+    def sqrt(column: Union[str, MockColumn]) -> MockColumnOperation:
+        """Square root function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        operation = MockColumnOperation(column, "sqrt")
+        return operation
+
 
 # Create the functions module instance
 F = MockFunctions()
@@ -621,6 +726,16 @@ __all__ = [
     "coalesce",
     "isnan",
     "isnull",
+    "regexp_replace",
+    "split",
+    "ceil",
+    "floor",
+    "sqrt",
+    "rank",
+    "dense_rank",
+    "row_number",
+    "lag",
+    "lead",
 ]
 
 
@@ -675,14 +790,31 @@ class MockAggregateFunction:
         """Initialize MockAggregateFunction."""
         self.function_name = function_name
         self.column_name = column_name
+        self._alias: Optional[str] = None
+
+    def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
+        """Apply window specification to aggregate function."""
+        # Convert aggregate function to window function
+        window_func = MockWindowFunction(self.function_name, self.column_name)
+        return window_func.over(window_spec)
+
+    def alias(self, name: str) -> "MockAggregateFunction":
+        """Create an alias for the aggregate function."""
+        new_func = MockAggregateFunction(self.function_name, self.column_name)
+        new_func._alias = name
+        return new_func
 
     def __repr__(self) -> str:
         """String representation."""
         if self.column_name:
             if self.function_name == "count(DISTINCT":
-                return f"MockAggregateFunction({self.function_name} {self.column_name}))"
+                return (
+                    f"MockAggregateFunction({self.function_name} {self.column_name}))"
+                )
             else:
-                return f"MockAggregateFunction({self.function_name}({self.column_name}))"
+                return (
+                    f"MockAggregateFunction({self.function_name}({self.column_name}))"
+                )
         else:
             return f"MockAggregateFunction({self.function_name}())"
 
@@ -690,23 +822,35 @@ class MockAggregateFunction:
 class MockWindowFunction:
     """Mock window function."""
 
-    def __init__(self, function_name: str, column_name: Optional[str] = None):
+    def __init__(
+        self,
+        function_name: str,
+        column_name: Optional[str] = None,
+        offset: Optional[int] = None,
+        default_value: Any = None,
+    ):
         """Initialize MockWindowFunction."""
         self.function_name = function_name
         self.column_name = column_name
+        self.offset = offset
+        self.default_value = default_value
         self._window_spec: Optional["MockWindowSpec"] = None
         self._alias: Optional[str] = None
 
     def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
         """Apply window specification."""
         # Create a new instance with the window spec
-        new_func = MockWindowFunction(self.function_name, self.column_name)
+        new_func = MockWindowFunction(
+            self.function_name, self.column_name, self.offset, self.default_value
+        )
         new_func._window_spec = window_spec
         return new_func
 
     def alias(self, name: str) -> "MockWindowFunction":
         """Create an alias for the window function."""
-        new_func = MockWindowFunction(self.function_name, self.column_name)
+        new_func = MockWindowFunction(
+            self.function_name, self.column_name, self.offset, self.default_value
+        )
         new_func._window_spec = self._window_spec
         new_func._alias = name
         return new_func
@@ -716,11 +860,29 @@ class MockWindowFunction:
         """Get the column name for this window function."""
         if hasattr(self, "_alias") and self._alias is not None:
             return self._alias
-        return f"{self.function_name}()"
+
+        if self.function_name in ["lag", "lead"] and self.column_name:
+            if self.default_value is not None:
+                return f"{self.function_name}({self.column_name}, {self.offset}, {self.default_value})"
+            elif self.offset != 1:
+                return f"{self.function_name}({self.column_name}, {self.offset})"
+            else:
+                return f"{self.function_name}({self.column_name})"
+        elif self.column_name:
+            return f"{self.function_name}({self.column_name})"
+        else:
+            return f"{self.function_name}()"
 
     def __repr__(self) -> str:
         """String representation."""
-        if self.column_name:
+        if self.function_name in ["lag", "lead"] and self.column_name:
+            if self.default_value is not None:
+                return f"MockWindowFunction({self.function_name}({self.column_name}, {self.offset}, {self.default_value}))"
+            elif self.offset != 1:
+                return f"MockWindowFunction({self.function_name}({self.column_name}, {self.offset}))"
+            else:
+                return f"MockWindowFunction({self.function_name}({self.column_name}))"
+        elif self.column_name:
             return f"MockWindowFunction({self.function_name}({self.column_name}))"
         else:
             return f"MockWindowFunction({self.function_name}())"
@@ -738,6 +900,10 @@ countDistinct = F.countDistinct
 abs = F.abs
 round = F.round
 row_number = F.row_number
+rank = F.rank
+dense_rank = F.dense_rank
+lag = F.lag
+lead = F.lead
 when = F.when
 current_timestamp = F.current_timestamp
 current_date = F.current_date
@@ -753,6 +919,60 @@ upper = F.upper
 lower = F.lower
 trim = F.trim
 length = F.length
+ceil = F.ceil
+floor = F.floor
+sqrt = F.sqrt
+regexp_replace = F.regexp_replace
+split = F.split
 coalesce = F.coalesce
 isnan = F.isnan
 isnull = F.isnull
+
+
+class MockCaseWhen:
+    """Mock CASE WHEN expression."""
+
+    def __init__(self) -> None:
+        """Initialize MockCaseWhen."""
+        self.conditions: List[Tuple[Any, Any]] = []
+        self.else_value = None
+        self._alias: Optional[str] = None
+
+    def when(self, condition: Any, value: Any) -> "MockCaseWhen":
+        """Add WHEN condition."""
+        self.conditions.append((condition, value))
+        return self
+
+    def otherwise(self, value: Any) -> "MockCaseWhen":
+        """Add ELSE value."""
+        self.else_value = value
+        return self
+
+    def alias(self, name: str) -> "MockCaseWhen":
+        """Create an alias for the CASE WHEN expression."""
+        new_case = MockCaseWhen()
+        new_case.conditions = self.conditions.copy()
+        new_case.else_value = self.else_value
+        new_case._alias = name
+        return new_case
+
+    @property
+    def name(self) -> str:
+        """Get the CASE WHEN expression name."""
+        if self._alias is not None:
+            return self._alias
+
+        when_parts: List[str] = []
+        for condition, value in self.conditions:
+            when_parts.append(f"WHEN {condition} THEN {value}")
+
+        case_expr: str = "CASE " + " ".join(when_parts)
+        if self.else_value is not None:
+            case_expr += f" ELSE {self.else_value}"
+        case_expr += " END"
+
+        return case_expr
+
+    def __repr__(self) -> str:
+        """String representation."""
+        return f"MockCaseWhen({self.name})"

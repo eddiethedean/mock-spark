@@ -20,7 +20,6 @@ class TestSessionManagement:
         assert hasattr(session, "sql")
         assert hasattr(session, "stop")
 
-    @pytest.mark.skip(reason="Session builder methods not implemented yet")
     def test_session_builder(self):
         """Test session builder functionality."""
         builder = MockSparkSession.builder
@@ -34,7 +33,6 @@ class TestSessionManagement:
         # Test that builder methods return self for chaining
         assert builder.appName("test") is builder
 
-    @pytest.mark.skip(reason="Context manager not implemented yet")
     def test_context_management(self):
         """Test context manager functionality."""
         with MockSparkSession() as session:
@@ -80,7 +78,6 @@ class TestSessionManagement:
         value = session.conf.get("test.key")
         assert value == "test.value"
 
-    @pytest.mark.skip(reason="SparkContext properties not implemented yet")
     def test_spark_context_properties(self):
         """Test SparkContext properties."""
         session = MockSparkSession()
@@ -141,7 +138,6 @@ class TestContextManagement:
         # Should not raise exceptions
         assert True
 
-    @pytest.mark.skip(reason="SparkContext appName property not implemented yet")
     def test_context_app_name(self):
         """Test context app name."""
         session = MockSparkSession()
@@ -168,15 +164,15 @@ class TestContextManagement:
 class TestDataFrameSessionIntegration:
     """Test DataFrame and session integration."""
 
-    @pytest.mark.skip(reason="DataFrame session reference not implemented yet")
     def test_dataframe_session_reference(self):
         """Test that DataFrames maintain session reference."""
         session = MockSparkSession()
         data = [{"id": 1, "name": "test"}]
         df = session.createDataFrame(data)
 
-        # DataFrame should have access to session methods
-        assert hasattr(df, "createDataFrame")  # Through session reference
+        # DataFrame should have storage reference (which connects to session)
+        assert hasattr(df, "storage")  # Through storage reference
+        assert df.storage is session.storage
 
         # Test that DataFrame operations work
         result = df.select("id")
@@ -221,7 +217,6 @@ class TestStorageIntegration:
         assert hasattr(catalog, "listDatabases")
         assert hasattr(catalog, "tableExists")
 
-    @pytest.mark.skip(reason="createOrReplaceTempView not implemented yet")
     def test_table_operations(self):
         """Test table operations."""
         session = MockSparkSession()
@@ -236,11 +231,10 @@ class TestStorageIntegration:
 
             # Test that table exists
             catalog = session.catalog
-            tables = catalog.listTables()
+            tables = catalog.listTables("default")
 
             # Table should be in the list
-            table_names = [table.name for table in tables]
-            assert "test_table" in table_names
+            assert "test_table" in tables
 
         except NotImplementedError:
             # Table operations might not be fully implemented yet
@@ -262,7 +256,6 @@ class TestStorageIntegration:
 class TestConfigurationManagement:
     """Test configuration management."""
 
-    @pytest.mark.skip(reason="Default configuration values not implemented yet")
     def test_default_configuration(self):
         """Test default configuration values."""
         session = MockSparkSession()

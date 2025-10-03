@@ -112,7 +112,9 @@ def create_test_json(data: list, filename: str = None) -> str:
 def create_test_parquet(data: list, filename: str = None) -> str:
     """Create a temporary Parquet file with the given data."""
     if filename is None:
-        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".parquet", delete=False)
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".parquet", delete=False
+        )
         filename = temp_file.name
         temp_file.close()
 
@@ -203,9 +205,22 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
 
     elif env_type == "pyspark":
         import pyspark
+        from pyspark import SparkContext
         from pyspark.sql import SparkSession
         from pyspark.sql import functions as pyspark_functions
         from pyspark.sql import types as pyspark_types
+
+        # Clean up any existing Spark sessions first
+        try:
+            active_session = SparkSession.getActiveSession()
+            if active_session is not None:
+                active_session.stop()
+
+            active_context = SparkContext._active_spark_context
+            if active_context is not None:
+                active_context.stop()
+        except Exception:
+            pass
 
         # Create Spark session with test configuration optimized for compatibility
         spark = (
@@ -219,6 +234,8 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
             .config("spark.driver.memory", "1g")
             .config("spark.executor.memory", "1g")
             .config("spark.driver.maxResultSize", "1g")
+            .config("spark.ui.enabled", "false")
+            .config("spark.sql.warehouse.dir", "/tmp/spark-warehouse")
             .getOrCreate()
         )
 
@@ -236,4 +253,26 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
 def cleanup_environment(modules: Dict[str, Any], env_type: str) -> None:
     """Clean up environment resources."""
     if env_type == "pyspark" and "session" in modules:
-        modules["session"].stop()
+        try:
+            modules["session"].stop()
+        except Exception:
+            # Ignore errors during cleanup
+            pass
+
+        # Also try to clean up any active Spark context
+        try:
+            from pyspark import SparkContext
+            from pyspark.sql import SparkSession
+
+            # Stop active session if any
+            active_session = SparkSession.getActiveSession()
+            if active_session is not None:
+                active_session.stop()
+
+            # Stop active context if any
+            active_context = SparkContext._active_spark_context
+            if active_context is not None:
+                active_context.stop()
+        except Exception:
+            # Ignore cleanup errors
+            pass

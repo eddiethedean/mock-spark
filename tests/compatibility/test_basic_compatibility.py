@@ -20,9 +20,27 @@ class TestBasicCompatibility:
 
         # Test data
         data = [
-            {"id": 1, "name": "Alice", "age": 25, "department": "Engineering", "salary": 75000.0},
-            {"id": 2, "name": "Bob", "age": 30, "department": "Marketing", "salary": 65000.0},
-            {"id": 3, "name": "Charlie", "age": 35, "department": "Engineering", "salary": 85000.0},
+            {
+                "id": 1,
+                "name": "Alice",
+                "age": 25,
+                "department": "Engineering",
+                "salary": 75000.0,
+            },
+            {
+                "id": 2,
+                "name": "Bob",
+                "age": 30,
+                "department": "Marketing",
+                "salary": 65000.0,
+            },
+            {
+                "id": 3,
+                "name": "Charlie",
+                "age": 35,
+                "department": "Engineering",
+                "salary": 85000.0,
+            },
         ]
 
         # Create DataFrame
@@ -82,7 +100,13 @@ class TestBasicCompatibility:
                     "department": "Engineering",
                     "salary": 75000.0,
                 },
-                {"id": 2, "name": "Bob", "age": 30, "department": "Marketing", "salary": 65000.0},
+                {
+                    "id": 2,
+                    "name": "Bob",
+                    "age": 30,
+                    "department": "Marketing",
+                    "salary": 65000.0,
+                },
                 {
                     "id": 3,
                     "name": "Charlie",
@@ -124,7 +148,8 @@ class TestBasicCompatibility:
             print("✅ PySpark basic operations working correctly")
 
         except Exception as e:
-            pytest.skip(f"PySpark not available or failed: {e}")
+            # PySpark should now be available
+            raise AssertionError(f"PySpark should be available: {e}")
 
     def test_function_compatibility(self):
         """Test function compatibility between mock and PySpark."""
@@ -164,7 +189,8 @@ class TestBasicCompatibility:
             print("✅ PySpark functions have expected attributes")
 
         except Exception as e:
-            pytest.skip(f"PySpark not available: {e}")
+            # PySpark should now be available
+            raise AssertionError(f"PySpark should be available: {e}")
 
     def test_schema_compatibility(self):
         """Test schema compatibility between mock and PySpark."""
@@ -208,7 +234,8 @@ class TestBasicCompatibility:
             print("✅ PySpark types have expected structure")
 
         except Exception as e:
-            pytest.skip(f"PySpark not available: {e}")
+            # PySpark should now be available
+            raise AssertionError(f"PySpark should be available: {e}")
 
     def test_operation_symbols_compatibility(self):
         """Test that operation symbols match between mock and PySpark."""

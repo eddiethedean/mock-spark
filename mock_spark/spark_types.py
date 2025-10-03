@@ -23,7 +23,17 @@ Example:
     >>> df = spark.createDataFrame(data, schema)
 """
 
-from typing import Any, Dict, List, Optional, Union, Iterator, KeysView, ValuesView, ItemsView
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Union,
+    Iterator,
+    KeysView,
+    ValuesView,
+    ItemsView,
+)
 from dataclasses import dataclass
 
 
@@ -71,7 +81,9 @@ class MockDataType:
             "MapType": "map",
             "StructType": "struct",
         }
-        return type_mapping.get(self.__class__.__name__, self.__class__.__name__.lower())
+        return type_mapping.get(
+            self.__class__.__name__, self.__class__.__name__.lower()
+        )
 
 
 class StringType(MockDataType):
@@ -146,7 +158,9 @@ class ArrayType(MockDataType):
 class MapType(MockDataType):
     """Mock map type."""
 
-    def __init__(self, key_type: MockDataType, value_type: MockDataType, nullable: bool = True):
+    def __init__(
+        self, key_type: MockDataType, value_type: MockDataType, nullable: bool = True
+    ):
         """Initialize MapType."""
         super().__init__(nullable)
         self.key_type = key_type
@@ -187,7 +201,9 @@ class MockStructField:
 class StructType(MockDataType):
     """Mock struct type."""
 
-    def __init__(self, fields: Optional[List[MockStructField]] = None, nullable: bool = True):
+    def __init__(
+        self, fields: Optional[List[MockStructField]] = None, nullable: bool = True
+    ):
         """Initialize StructType."""
         super().__init__(nullable)
         self.fields = fields or []
@@ -389,7 +405,9 @@ class MockRow:
         """Get value by attribute name (PySpark compatibility)."""
         if name in self.data:
             return self.data[name]
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'"
+        )
 
     def __repr__(self) -> str:
         """String representation matching PySpark format."""
