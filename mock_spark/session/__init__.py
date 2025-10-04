@@ -20,7 +20,7 @@ from .config import MockConfiguration
 
 __all__ = [
     "MockSparkSession",
-    "MockSparkSessionBuilder", 
+    "MockSparkSessionBuilder",
     "MockSparkContext",
     "MockJVMContext",
     "MockCatalog",

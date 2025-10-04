@@ -15,13 +15,22 @@ Key Features:
 
 Example:
     >>> from mock_spark.window import MockWindow
-    >>> from mock_spark import F
+    >>> from mock_spark import F, MockSparkSession
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"department": "IT", "salary": 50000}, {"department": "IT", "salary": 60000}]
+    >>> df = spark.createDataFrame(data)
     >>> window = MockWindow.partitionBy("department").orderBy("salary")
-    >>> df.select(F.row_number().over(window).alias("rank"))
+    >>> result = df.select(F.row_number().over(window).alias("rank"))
+    >>> result.show()
+    +--- MockDataFrame: 2 rows ---+
+            rank
+    ------------
+               1
+               2
 """
 
 import sys
-from typing import List, Optional, Union, Tuple, TYPE_CHECKING
+from typing import List, Optional, Union, Tuple, TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
     from .functions import MockColumn
@@ -67,16 +76,9 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for partitionBy")
 
         for col in cols:
-            try:
-                from .functions import MockColumn
-                valid_types = (str, MockColumn)
-            except ImportError:
-                valid_types = (str,)
-            
-            if not isinstance(col, valid_types) and not hasattr(col, "column"):
-                raise ValueError(
-                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
-                )
+            # Check if it's a string or has the name attribute (MockColumn-like)
+            if not isinstance(col, str) and not hasattr(col, "name"):
+                raise ValueError(f"Invalid column type: {type(col)}. Must be str or MockColumn")
 
         self._partition_by = list(cols)
         return self
@@ -97,16 +99,9 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for orderBy")
 
         for col in cols:
-            try:
-                from .functions import MockColumn
-                valid_types = (str, MockColumn)
-            except ImportError:
-                valid_types = (str,)
-            
-            if not isinstance(col, valid_types) and not hasattr(col, "column"):
-                raise ValueError(
-                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
-                )
+            # Check if it's a string or has the name attribute (MockColumn-like)
+            if not isinstance(col, str) and not hasattr(col, "name"):
+                raise ValueError(f"Invalid column type: {type(col)}. Must be str or MockColumn")
 
         self._order_by = list(cols)
         return self
@@ -153,19 +148,13 @@ class MockWindowSpec:
         """String representation."""
         parts = []
         if self._partition_by:
-            parts.append(
-                f"partitionBy({', '.join(str(col) for col in self._partition_by)})"
-            )
+            parts.append(f"partitionBy({', '.join(str(col) for col in self._partition_by)})")
         if self._order_by:
             parts.append(f"orderBy({', '.join(str(col) for col in self._order_by)})")
         if self._rows_between:
-            parts.append(
-                f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})"
-            )
+            parts.append(f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})")
         if self._range_between:
-            parts.append(
-                f"rangeBetween({self._range_between[0]}, {self._range_between[1]})"
-            )
+            parts.append(f"rangeBetween({self._range_between[0]}, {self._range_between[1]})")
         return f"MockWindowSpec({', '.join(parts)})"
 
 

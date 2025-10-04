@@ -2,7 +2,26 @@
 Mock DataFrameWriter implementation for DataFrame write operations.
 
 This module provides DataFrame writing functionality, maintaining compatibility
-with PySpark's DataFrameWriter interface.
+with PySpark's DataFrameWriter interface. Supports writing to various data sinks
+including tables, files, and custom storage backends with multiple save modes.
+
+Key Features:
+    - Complete PySpark DataFrameWriter API compatibility
+    - Support for multiple output formats (parquet, json, csv)
+    - Multiple save modes (append, overwrite, error, ignore)
+    - Flexible options configuration
+    - Integration with storage manager
+    - Table and file output support
+    - Error handling for invalid configurations
+
+Example:
+    >>> from mock_spark import MockSparkSession
+    >>> spark = MockSparkSession("test")
+    >>> df = spark.createDataFrame([{"name": "Alice", "age": 25}])
+    >>> # Save as table
+    >>> df.write.mode("overwrite").saveAsTable("users")
+    >>> # Save to file with options
+    >>> df.write.format("parquet").option("compression", "snappy").save("/path")
 """
 
 from typing import Any, Dict, Optional, TYPE_CHECKING
@@ -31,7 +50,7 @@ class MockDataFrameWriter:
 
     def __init__(self, df: "MockDataFrame", storage: MemoryStorageManager):
         """Initialize MockDataFrameWriter.
-        
+
         Args:
             df: The DataFrame to be written.
             storage: Storage manager for persisting data.
@@ -75,6 +94,7 @@ class MockDataFrameWriter:
         valid_modes = ["append", "overwrite", "error", "ignore"]
         if mode not in valid_modes:
             from ..errors import IllegalArgumentException
+
             raise IllegalArgumentException(
                 f"Unknown save mode: {mode}. Must be one of {valid_modes}"
             )
@@ -138,11 +158,10 @@ class MockDataFrameWriter:
         """
         if not table_name:
             from ..errors import IllegalArgumentException
+
             raise IllegalArgumentException("Table name cannot be empty")
 
-        schema, table = (
-            table_name.split(".", 1) if "." in table_name else ("default", table_name)
-        )
+        schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
 
         # Ensure schema exists
         if not self.storage.schema_exists(schema):
@@ -152,6 +171,7 @@ class MockDataFrameWriter:
         if self.save_mode == "error":
             if self.storage.table_exists(schema, table):
                 from ..errors import AnalysisException
+
                 raise AnalysisException(f"Table '{schema}.{table}' already exists")
             self.storage.create_table(schema, table, self.df.schema.fields)
 
@@ -190,10 +210,12 @@ class MockDataFrameWriter:
         """
         if path is None:
             from ..errors import IllegalArgumentException
+
             raise IllegalArgumentException("Path cannot be None")
 
         if not path:
             from ..errors import IllegalArgumentException
+
             raise IllegalArgumentException("Path cannot be empty")
 
         # For mock implementation, we'll just log the operation

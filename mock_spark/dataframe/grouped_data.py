@@ -3,6 +3,29 @@ Mock GroupedData implementation for DataFrame aggregation operations.
 
 This module provides grouped data functionality for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
+Supports all major aggregation operations including count, sum, avg, max, min,
+and custom aggregation expressions.
+
+Key Features:
+    - Complete PySpark GroupedData API compatibility
+    - Support for multiple group columns
+    - Comprehensive aggregation functions (count, sum, avg, max, min, stddev, variance)
+    - Custom aggregation expressions
+    - Type-safe operations with proper return types
+    - Efficient in-memory grouping and aggregation
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"dept": "IT", "salary": 50000}, {"dept": "IT", "salary": 60000}]
+    >>> df = spark.createDataFrame(data)
+    >>> grouped = df.groupBy("dept")
+    >>> result = grouped.agg(F.avg("salary").alias("avg_salary"))
+    >>> result.show()
+    +--- MockDataFrame: 1 rows ---+
+            dept |   avg_salary
+    ---------------------------
+              IT |      55000.0
 """
 
 from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
@@ -15,14 +38,14 @@ if TYPE_CHECKING:
 
 class MockGroupedData:
     """Mock grouped data for aggregation operations.
-    
+
     Provides grouped data functionality for DataFrame aggregation operations,
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
     def __init__(self, df: "MockDataFrame", group_columns: List[str]):
         """Initialize MockGroupedData.
-        
+
         Args:
             df: The DataFrame being grouped.
             group_columns: List of column names to group by.
@@ -30,12 +53,14 @@ class MockGroupedData:
         self.df = df
         self.group_columns = group_columns
 
-    def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation, MockAggregateFunction]) -> "MockDataFrame":
+    def agg(
+        self, *exprs: Union[str, MockColumn, MockColumnOperation, MockAggregateFunction]
+    ) -> "MockDataFrame":
         """Aggregate grouped data.
-        
+
         Args:
             *exprs: Aggregation expressions.
-            
+
         Returns:
             New MockDataFrame with aggregated results.
         """
@@ -59,7 +84,12 @@ class MockGroupedData:
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name"):
                     # Handle MockAggregateFunction
-                    result_key, result_value = self._evaluate_aggregate_function(expr, group_rows)
+                    from typing import cast
+                    from ..functions import MockAggregateFunction
+
+                    result_key, result_value = self._evaluate_aggregate_function(
+                        cast(MockAggregateFunction, expr), group_rows
+                    )
                     result_row[result_key] = result_value
                 elif hasattr(expr, "name"):
                     # Handle MockColumn or MockColumnOperation
@@ -71,7 +101,7 @@ class MockGroupedData:
         # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
         from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
-        
+
         # Create schema based on the first result row
         if result_data:
             fields = []
@@ -88,15 +118,17 @@ class MockGroupedData:
             return MockDataFrame(result_data, schema)
         else:
             # Empty result
-            return MockDataFrame(result_data)
+            return MockDataFrame(result_data, MockStructType([]))
 
-    def _evaluate_string_expression(self, expr: str, group_rows: List[Dict[str, Any]]) -> Tuple[str, Any]:
+    def _evaluate_string_expression(
+        self, expr: str, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate string aggregation expression.
-        
+
         Args:
             expr: String expression to evaluate.
             group_rows: Rows in the group.
-            
+
         Returns:
             Tuple of (result_key, result_value).
         """
@@ -121,23 +153,24 @@ class MockGroupedData:
         else:
             return expr, None
 
-    def _evaluate_aggregate_function(self, expr: MockAggregateFunction, group_rows: List[Dict[str, Any]]) -> Tuple[str, Any]:
+    def _evaluate_aggregate_function(
+        self, expr: MockAggregateFunction, group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate MockAggregateFunction.
-        
+
         Args:
             expr: Aggregate function to evaluate.
             group_rows: Rows in the group.
-            
+
         Returns:
             Tuple of (result_key, result_value).
         """
         func_name = expr.function_name
         col_name = getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
-        
+
         # Check if the function has an alias set
         has_alias = expr.name != expr._generate_name()
         alias_name = expr.name if has_alias else None
-        
 
         if func_name == "sum":
             values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
@@ -180,44 +213,58 @@ class MockGroupedData:
             result_key = alias_name if alias_name else f"last({col_name})"
             return result_key, values[-1] if values else None
         elif func_name == "stddev":
-            values = [row.get(col_name) for row in group_rows 
-                     if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))]
+            values = [
+                row.get(col_name)
+                for row in group_rows
+                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+            ]
             result_key = alias_name if alias_name else f"stddev({col_name})"
             if values:
                 return result_key, statistics.stdev(values) if len(values) > 1 else 0.0
             else:
                 return result_key, None
         elif func_name == "variance":
-            values = [row.get(col_name) for row in group_rows 
-                     if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))]
+            values = [
+                row.get(col_name)
+                for row in group_rows
+                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+            ]
             result_key = alias_name if alias_name else f"variance({col_name})"
             if values:
                 return result_key, statistics.variance(values) if len(values) > 1 else 0.0
             else:
                 return result_key, None
         elif func_name == "skewness":
-            values = [row.get(col_name) for row in group_rows 
-                     if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))]
+            values = [
+                row.get(col_name)
+                for row in group_rows
+                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+            ]
             result_key = alias_name if alias_name else f"skewness({col_name})"
             if values and len(values) > 2:
                 mean_val = statistics.mean(values)
                 std_val = statistics.stdev(values)
                 if std_val > 0:
-                    skewness = sum((x - mean_val) ** 3 for x in values) / (len(values) * std_val ** 3)
+                    skewness = sum((x - mean_val) ** 3 for x in values) / (len(values) * std_val**3)
                     return result_key, skewness
                 else:
                     return result_key, 0.0
             else:
                 return result_key, None
         elif func_name == "kurtosis":
-            values = [row.get(col_name) for row in group_rows 
-                     if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))]
+            values = [
+                row.get(col_name)
+                for row in group_rows
+                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+            ]
             result_key = alias_name if alias_name else f"kurtosis({col_name})"
             if values and len(values) > 3:
                 mean_val = statistics.mean(values)
                 std_val = statistics.stdev(values)
                 if std_val > 0:
-                    kurtosis = sum((x - mean_val) ** 4 for x in values) / (len(values) * std_val ** 4) - 3
+                    kurtosis = (
+                        sum((x - mean_val) ** 4 for x in values) / (len(values) * std_val**4) - 3
+                    )
                     return result_key, kurtosis
                 else:
                     return result_key, 0.0
@@ -227,13 +274,15 @@ class MockGroupedData:
             result_key = alias_name if alias_name else f"{func_name}({col_name})"
             return result_key, None
 
-    def _evaluate_column_expression(self, expr: Union[MockColumn, MockColumnOperation], group_rows: List[Dict[str, Any]]) -> Tuple[str, Any]:
+    def _evaluate_column_expression(
+        self, expr: Union[MockColumn, MockColumnOperation], group_rows: List[Dict[str, Any]]
+    ) -> Tuple[str, Any]:
         """Evaluate MockColumn or MockColumnOperation.
-        
+
         Args:
             expr: Column expression to evaluate.
             group_rows: Rows in the group.
-            
+
         Returns:
             Tuple of (result_key, result_value).
         """
@@ -261,10 +310,10 @@ class MockGroupedData:
 
     def sum(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Sum grouped data.
-        
+
         Args:
             *columns: Columns to sum.
-            
+
         Returns:
             MockDataFrame with sum aggregations.
         """
@@ -276,10 +325,10 @@ class MockGroupedData:
 
     def avg(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Average grouped data.
-        
+
         Args:
             *columns: Columns to average.
-            
+
         Returns:
             MockDataFrame with average aggregations.
         """
@@ -291,27 +340,30 @@ class MockGroupedData:
 
     def count(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Count grouped data.
-        
+
         Args:
             *columns: Columns to count.
-            
+
         Returns:
             MockDataFrame with count aggregations.
         """
         if not columns:
             # Use MockAggregateFunction for count(*) to get proper naming
             from ..functions.aggregate import AggregateFunctions
+
             return self.agg(AggregateFunctions.count())
 
-        exprs = [f"count({col})" if isinstance(col, str) else f"count({col.name})" for col in columns]
+        exprs = [
+            f"count({col})" if isinstance(col, str) else f"count({col.name})" for col in columns
+        ]
         return self.agg(*exprs)
 
     def max(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Max grouped data.
-        
+
         Args:
             *columns: Columns to get max of.
-            
+
         Returns:
             MockDataFrame with max aggregations.
         """
@@ -323,10 +375,10 @@ class MockGroupedData:
 
     def min(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Min grouped data.
-        
+
         Args:
             *columns: Columns to get min of.
-            
+
         Returns:
             MockDataFrame with min aggregations.
         """

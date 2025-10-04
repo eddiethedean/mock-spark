@@ -26,8 +26,8 @@ Example:
     ...     spark.table("nonexistent.table")
 """
 
-from typing import Any, Callable, Dict, List, Optional, Union
-from .errors import AnalysisException, IllegalArgumentException, PySparkValueError
+from typing import Callable, Dict, List, Optional, Union
+from .errors import AnalysisException, PySparkValueError
 
 
 class MockErrorSimulator:
@@ -67,7 +67,7 @@ class MockErrorSimulator:
         Example:
             >>> error_sim.add_rule("table", lambda name: "nonexistent" in name, AnalysisException("Table not found"))
         """
-        if hasattr(self.spark_session, '_add_error_rule'):
+        if hasattr(self.spark_session, "_add_error_rule"):
             self.spark_session._add_error_rule(method_name, condition, exception)
         else:
             # Fallback for old session structure
@@ -84,7 +84,7 @@ class MockErrorSimulator:
             method_name: Name of the method to remove rules from.
             condition: Specific condition to remove. If None, removes all rules for the method.
         """
-        if hasattr(self.spark_session, '_remove_error_rule'):
+        if hasattr(self.spark_session, "_remove_error_rule"):
             self.spark_session._remove_error_rule(method_name, condition)
         else:
             # Fallback for old session structure
@@ -95,9 +95,7 @@ class MockErrorSimulator:
                 self.error_rules[method_name] = []
             else:
                 self.error_rules[method_name] = [
-                    (cond, exc)
-                    for cond, exc in self.error_rules[method_name]
-                    if cond != condition
+                    (cond, exc) for cond, exc in self.error_rules[method_name] if cond != condition
                 ]
 
     def clear_rules(self, method_name: Optional[str] = None) -> None:
@@ -106,7 +104,7 @@ class MockErrorSimulator:
         Args:
             method_name: Specific method to clear rules for. If None, clears all rules.
         """
-        if hasattr(self.spark_session, '_remove_error_rule'):
+        if hasattr(self.spark_session, "_remove_error_rule"):
             if method_name:
                 self.spark_session._remove_error_rule(method_name)
             else:
@@ -118,9 +116,7 @@ class MockErrorSimulator:
             else:
                 self.error_rules.clear()
 
-    def should_raise_error(
-        self, method_name: str, *args, **kwargs
-    ) -> Optional[Exception]:
+    def should_raise_error(self, method_name: str, *args, **kwargs) -> Optional[Exception]:
         """Check if an error should be raised for a method call.
 
         Args:
@@ -131,8 +127,9 @@ class MockErrorSimulator:
         Returns:
             Exception to raise if conditions are met, None otherwise.
         """
-        if hasattr(self.spark_session, '_should_raise_error'):
-            return self.spark_session._should_raise_error(method_name, *args, **kwargs)
+        if hasattr(self.spark_session, "_should_raise_error"):
+            result = self.spark_session._should_raise_error(method_name, *args, **kwargs)
+            return result if isinstance(result, Exception) else None
         else:
             # Fallback for old session structure
             if method_name not in self.error_rules:
@@ -280,9 +277,7 @@ class MockErrorSimulatorBuilder:
 
 
 # Convenience functions for common error scenarios
-def create_table_not_found_simulator(
-    spark_session, table_pattern: str = "nonexistent.*"
-):
+def create_table_not_found_simulator(spark_session, table_pattern: str = "nonexistent.*"):
     """Create a simulator that raises table not found errors.
 
     Args:
@@ -292,9 +287,7 @@ def create_table_not_found_simulator(
     Returns:
         MockErrorSimulator configured for table not found errors.
     """
-    return (
-        MockErrorSimulatorBuilder(spark_session).table_not_found(table_pattern).build()
-    )
+    return MockErrorSimulatorBuilder(spark_session).table_not_found(table_pattern).build()
 
 
 def create_data_too_large_simulator(spark_session, max_rows: int = 1000):
@@ -320,6 +313,4 @@ def create_sql_error_simulator(spark_session, error_pattern: str = "INVALID.*"):
     Returns:
         MockErrorSimulator configured for SQL syntax errors.
     """
-    return (
-        MockErrorSimulatorBuilder(spark_session).sql_syntax_error(error_pattern).build()
-    )
+    return MockErrorSimulatorBuilder(spark_session).sql_syntax_error(error_pattern).build()

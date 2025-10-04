@@ -27,8 +27,7 @@ Example:
 """
 
 import time
-import psutil
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Optional
 from contextlib import contextmanager
 
 
@@ -292,9 +291,7 @@ def create_slow_simulator(spark_session, slowdown_factor: float = 2.0):
     Returns:
         MockPerformanceSimulator configured for slow operations.
     """
-    return (
-        MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
-    )
+    return MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
 
 
 def create_memory_limited_simulator(spark_session, memory_limit: int = 1000):
@@ -307,11 +304,7 @@ def create_memory_limited_simulator(spark_session, memory_limit: int = 1000):
     Returns:
         MockPerformanceSimulator configured for memory limits.
     """
-    return (
-        MockPerformanceSimulatorBuilder(spark_session)
-        .memory_limit(memory_limit)
-        .build()
-    )
+    return MockPerformanceSimulatorBuilder(spark_session).memory_limit(memory_limit).build()
 
 
 def create_high_performance_simulator(spark_session):

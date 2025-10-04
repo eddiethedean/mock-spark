@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "0.2.0"
-description = "A lightweight, type-safe mock implementation of PySpark for testing and development with 250+ tests, 100% mypy compliance, and enterprise-grade features"
+version = "0.2.1"
+description = "A lightweight, type-safe mock implementation of PySpark for testing and development with 387+ tests, 89% mypy error reduction, and enterprise-grade features"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [

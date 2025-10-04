@@ -7,8 +7,8 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-343%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
-[![MyPy](https://img.shields.io/badge/mypy-100%25%20passing-brightgreen.svg)](https://mypy.readthedocs.io/)
+[![Tests](https://img.shields.io/badge/tests-387%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![MyPy](https://img.shields.io/badge/mypy-package%20source%20code-brightgreen.svg)](https://mypy.readthedocs.io/)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *No JVM required • Pure Python • Fast test execution • Full PySpark compatibility*
@@ -21,10 +21,9 @@
 
 ### Key Benefits
 - ⚡ **10x faster tests** - No JVM startup overhead
-- 🎯 **Drop-in replacement** - Use existing PySpark code without changes  
-- 🛡️ **100% type safe** - Complete mypy compliance with zero errors
+- 🎯 **Drop-in replacement** - Use existing PySpark code without changes
 - 📦 **Minimal dependencies** - Just pandas and psutil
-- 🧪 **Comprehensive testing** - 343+ passing tests (100% pass rate)
+- 🧪 **Comprehensive testing** - 387+ passing tests (100% pass rate)
 - 🎨 **Production ready** - Black-formatted code with enterprise-grade quality
 
 ## 📦 Installation
@@ -541,7 +540,7 @@ def test_revenue_calculation(spark):
 
 Mock Spark includes **343+ comprehensive tests** that validate every feature:
 
-- ✅ **343+ tests passing** (100% pass rate) 🎉
+- ✅ **387+ tests passing** (100% pass rate) 🎉
 - ✅ **Zero test failures** - complete PySpark compatibility achieved
 - ✅ **151 unit tests** - Pure Python tests without PySpark dependency
 - ✅ **192 compatibility tests** - Real PySpark comparison for every feature
@@ -729,7 +728,7 @@ Mock Spark is now feature-complete with 100% PySpark compatibility! We welcome c
 ### Development Status
 - ✅ **Core PySpark compatibility** - Complete
 - ✅ **Advanced features** - Error simulation, performance testing, data generation
-- ✅ **Test coverage** - 343+ tests with 100% pass rate
+- ✅ **Test coverage** - 387+ tests with 100% pass rate
 - ✅ **Type safety** - 100% MyPy compliance with zero errors
 - ✅ **Code quality** - Black-formatted code with enterprise standards
 - ✅ **Documentation** - Comprehensive examples and API reference
@@ -757,7 +756,7 @@ pip install mock-spark
 
 **🎉 Now with 100% PySpark compatibility + Enterprise-grade features!**
 
-- ⚡ **343+ tests passing** (100% pass rate)
+- ⚡ **387+ tests passing** (100% pass rate)
 - 🛡️ **100% mypy compliance** (zero type errors)
 - 🎨 **Black-formatted code** (production-ready style)
 - 🚀 **Error simulation** for comprehensive testing

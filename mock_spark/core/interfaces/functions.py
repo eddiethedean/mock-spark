@@ -177,7 +177,9 @@ class IDateTimeFunction(IColumnFunction):
         pass
 
     @abstractmethod
-    def to_timestamp(self, column: Union[str, Any], format: Optional[str] = None) -> "IDateTimeFunction":
+    def to_timestamp(
+        self, column: Union[str, Any], format: Optional[str] = None
+    ) -> "IDateTimeFunction":
         """Convert to timestamp."""
         pass
 

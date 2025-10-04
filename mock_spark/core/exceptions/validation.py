@@ -97,7 +97,13 @@ class InputValidationException(ValidationException):
         >>> raise InputValidationException("age", -5, "Age must be positive")
     """
 
-    def __init__(self, field_name: str, value: Any, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        field_name: str,
+        value: Any,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"Validation failed for field '{field_name}' with value {value}"
         super().__init__(message, stackTrace)
@@ -123,8 +129,15 @@ class RangeValidationException(ValidationException):
         >>> raise RangeValidationException("age", 150, 0, 120)
     """
 
-    def __init__(self, field_name: str, value: Any, min_value: Any, max_value: Any, 
-                 message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        field_name: str,
+        value: Any,
+        min_value: Any,
+        max_value: Any,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"Value {value} for field '{field_name}' is outside range [{min_value}, {max_value}]"
         super().__init__(message, stackTrace)
@@ -149,7 +162,9 @@ class RequiredFieldException(ValidationException):
         >>> raise RequiredFieldException("name")
     """
 
-    def __init__(self, field_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, field_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Required field '{field_name}' is missing"
         super().__init__(message, stackTrace)
@@ -173,10 +188,18 @@ class FormatValidationException(ValidationException):
         >>> raise FormatValidationException("date", "2023-13-01", "YYYY-MM-DD")
     """
 
-    def __init__(self, field_name: str, value: Any, expected_format: str, 
-                 message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        field_name: str,
+        value: Any,
+        expected_format: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
-            message = f"Value {value} for field '{field_name}' does not match format '{expected_format}'"
+            message = (
+                f"Value {value} for field '{field_name}' does not match format '{expected_format}'"
+            )
         super().__init__(message, stackTrace)
         self.field_name = field_name
         self.value = value

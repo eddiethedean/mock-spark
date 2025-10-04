@@ -4,10 +4,8 @@ Conditional functions for Mock Spark.
 This module contains conditional functions including CASE WHEN expressions.
 """
 
-from typing import Any, List, Union, Optional
-from mock_spark.spark_types import MockDataType, StringType, BooleanType
+from typing import Any, List, Union
 from mock_spark.functions.base import MockColumn, MockColumnOperation
-import math
 
 
 class MockCaseWhen:
@@ -28,10 +26,10 @@ class MockCaseWhen:
         self.column = column
         self.conditions: List[tuple] = []
         self.default_value: Any = None
-        
+
         if condition is not None and value is not None:
             self.conditions.append((condition, value))
-        
+
         self.name = "CASE WHEN"
 
     @property
@@ -94,7 +92,7 @@ class MockCaseWhen:
         for condition, value in self.conditions:
             if self._evaluate_condition(row, condition):
                 return self._evaluate_value(row, value)
-        
+
         # Return default value if no condition matches
         return self._evaluate_value(row, self.default_value)
 
@@ -108,12 +106,13 @@ class MockCaseWhen:
         Returns:
             True if condition is met, False otherwise.
         """
-        if hasattr(condition, 'operation') and hasattr(condition, 'column'):
+        if hasattr(condition, "operation") and hasattr(condition, "column"):
             # Handle MockColumnOperation
             from mock_spark.functions.base import MockColumnOperation
+
             if isinstance(condition, MockColumnOperation):
                 return self._evaluate_column_operation(row, condition)
-        
+
         # For simple values, check if truthy
         return bool(condition) if condition is not None else False
 
@@ -130,11 +129,11 @@ class MockCaseWhen:
         if operation.operation == "==":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value == right_value
+            return bool(left_value == right_value)
         elif operation.operation == "!=":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value != right_value
+            return bool(left_value != right_value)
         elif operation.operation == ">":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
@@ -172,9 +171,9 @@ class MockCaseWhen:
         Returns:
             The column value.
         """
-        if hasattr(column, 'name'):
+        if hasattr(column, "name"):
             return row.get(column.name)
-        elif hasattr(column, 'value'):
+        elif hasattr(column, "value"):
             return column.value
         else:
             return column
@@ -189,14 +188,15 @@ class MockCaseWhen:
         Returns:
             The evaluated value.
         """
-        if hasattr(value, 'operation') and hasattr(value, 'column'):
+        if hasattr(value, "operation") and hasattr(value, "column"):
             # Handle MockColumnOperation (e.g., unary minus, arithmetic operations)
             from mock_spark.functions.base import MockColumnOperation
+
             if isinstance(value, MockColumnOperation):
                 return self._evaluate_column_operation_value(row, value)
-        elif hasattr(value, 'name'):
+        elif hasattr(value, "name"):
             return row.get(value.name)
-        elif hasattr(value, 'value'):
+        elif hasattr(value, "value"):
             return value.value
         else:
             return value
@@ -224,10 +224,10 @@ class MockCaseWhen:
             # Binary arithmetic operations
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            
+
             if left_value is None or right_value is None:
                 return None
-                
+
             if operation.operation == "+":
                 return left_value + right_value
             elif operation.operation == "-":
@@ -249,10 +249,10 @@ class ConditionalFunctions:
     @staticmethod
     def coalesce(*columns: Union[MockColumn, str, Any]) -> MockColumnOperation:
         """Return the first non-null value from a list of columns.
-        
+
         Args:
             *columns: Variable number of columns or values to check.
-            
+
         Returns:
             MockColumnOperation representing the coalesce function.
         """
@@ -263,7 +263,7 @@ class ConditionalFunctions:
                 mock_columns.append(MockColumn(col))
             else:
                 mock_columns.append(col)
-        
+
         # Create operation with first column as base
         operation = MockColumnOperation(mock_columns[0], "coalesce", mock_columns[1:])
         operation.name = f"coalesce({', '.join([str(c) for c in mock_columns])})"
@@ -272,16 +272,16 @@ class ConditionalFunctions:
     @staticmethod
     def isnull(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if a column is null.
-        
+
         Args:
             column: The column to check.
-            
+
         Returns:
             MockColumnOperation representing the isnull function.
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "isnull")
         operation.name = f"isnull({column.name})"
         return operation
@@ -289,16 +289,16 @@ class ConditionalFunctions:
     @staticmethod
     def isnotnull(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if a column is not null.
-        
+
         Args:
             column: The column to check.
-            
+
         Returns:
             MockColumnOperation representing the isnotnull function.
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "isnotnull")
         operation.name = f"isnotnull({column.name})"
         return operation
@@ -306,16 +306,16 @@ class ConditionalFunctions:
     @staticmethod
     def isnan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if a column is NaN (Not a Number).
-        
+
         Args:
             column: The column to check.
-            
+
         Returns:
             MockColumnOperation representing the isnan function.
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "isnan")
         operation.name = f"isnan({column.name})"
         return operation
@@ -323,11 +323,11 @@ class ConditionalFunctions:
     @staticmethod
     def when(condition: Any, value: Any = None) -> MockCaseWhen:
         """Start a CASE WHEN expression.
-        
+
         Args:
             condition: The initial condition.
             value: Optional value for the condition.
-            
+
         Returns:
             MockCaseWhen object for chaining.
         """

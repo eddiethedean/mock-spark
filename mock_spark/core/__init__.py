@@ -13,7 +13,7 @@ from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
 
 __all__ = [
     "IDataFrame",
-    "IDataFrameWriter", 
+    "IDataFrameWriter",
     "IDataFrameReader",
     "ISession",
     "ISparkContext",

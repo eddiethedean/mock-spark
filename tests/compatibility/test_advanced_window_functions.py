@@ -34,9 +34,7 @@ class TestAdvancedWindowFunctions:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_dense_rank_function(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -56,16 +54,12 @@ class TestAdvancedWindowFunctions:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.dense_rank()
-                .over(pyspark_window)
-                .alias("dense_rank_num"),
+                pyspark_functions.dense_rank().over(pyspark_window).alias("dense_rank_num"),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_lag_function(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -94,9 +88,7 @@ class TestAdvancedWindowFunctions:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_lead_function(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -125,9 +117,7 @@ class TestAdvancedWindowFunctions:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_window_partition_by(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -138,12 +128,12 @@ class TestAdvancedWindowFunctions:
             from mock_spark.window import MockWindow
 
             # Create window specification with partition
-            mock_window = MockWindow.partitionBy(
-                mock_functions.col("department")
-            ).orderBy(mock_functions.col("age"))
-            pyspark_window = PySparkWindow.partitionBy(
-                pyspark_functions.col("department")
-            ).orderBy(pyspark_functions.col("age"))
+            mock_window = MockWindow.partitionBy(mock_functions.col("department")).orderBy(
+                mock_functions.col("age")
+            )
+            pyspark_window = PySparkWindow.partitionBy(pyspark_functions.col("department")).orderBy(
+                pyspark_functions.col("age")
+            )
 
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
@@ -151,16 +141,12 @@ class TestAdvancedWindowFunctions:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.row_number()
-                .over(pyspark_window)
-                .alias("dept_row_num"),
+                pyspark_functions.row_number().over(pyspark_window).alias("dept_row_num"),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_window_rows_between(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -171,12 +157,8 @@ class TestAdvancedWindowFunctions:
             from mock_spark.window import MockWindow
 
             # Create window specification with rows between
-            mock_window = MockWindow.orderBy(mock_functions.col("age")).rowsBetween(
-                -1, 1
-            )
-            pyspark_window = PySparkWindow.orderBy(
-                pyspark_functions.col("age")
-            ).rowsBetween(-1, 1)
+            mock_window = MockWindow.orderBy(mock_functions.col("age")).rowsBetween(-1, 1)
+            pyspark_window = PySparkWindow.orderBy(pyspark_functions.col("age")).rowsBetween(-1, 1)
 
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
@@ -193,9 +175,7 @@ class TestAdvancedWindowFunctions:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
 
 class TestWindowFunctionEdgeCases:
@@ -228,9 +208,7 @@ class TestWindowFunctionEdgeCases:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_window_single_row(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -259,9 +237,7 @@ class TestWindowFunctionEdgeCases:
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")
 
     def test_window_multiple_columns(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
@@ -273,9 +249,9 @@ class TestWindowFunctionEdgeCases:
 
             # Create multiple window specifications
             mock_window1 = MockWindow.orderBy(mock_functions.col("age"))
-            mock_window2 = MockWindow.partitionBy(
-                mock_functions.col("department")
-            ).orderBy(mock_functions.col("salary"))
+            mock_window2 = MockWindow.partitionBy(mock_functions.col("department")).orderBy(
+                mock_functions.col("salary")
+            )
             pyspark_window1 = PySparkWindow.orderBy(pyspark_functions.col("age"))
             pyspark_window2 = PySparkWindow.partitionBy(
                 pyspark_functions.col("department")
@@ -288,14 +264,10 @@ class TestWindowFunctionEdgeCases:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.row_number()
-                .over(pyspark_window1)
-                .alias("global_row"),
+                pyspark_functions.row_number().over(pyspark_window1).alias("global_row"),
                 pyspark_functions.row_number().over(pyspark_window2).alias("dept_row"),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (ImportError, AttributeError) as e:
             # Advanced window functions should now be implemented
-            raise AssertionError(
-                f"Advanced window functions should be implemented: {e}"
-            )
+            raise AssertionError(f"Advanced window functions should be implemented: {e}")

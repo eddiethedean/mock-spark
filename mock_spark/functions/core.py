@@ -2,10 +2,31 @@
 Core functions module for Mock Spark.
 
 This module provides the main F namespace and re-exports all function classes
-for backward compatibility with the original functions.py structure.
+for backward compatibility with the original functions.py structure. The MockFunctions
+class serves as the primary interface for all PySpark-compatible functions.
+
+Key Features:
+    - Complete PySpark F namespace compatibility
+    - Column functions (col, lit, when, coalesce, isnull)
+    - String functions (upper, lower, length, trim, regexp_replace, split)
+    - Math functions (abs, round, ceil, floor, sqrt, exp, log, pow, sin, cos, tan)
+    - Aggregate functions (count, sum, avg, max, min, stddev, variance)
+    - DateTime functions (current_timestamp, current_date, to_date, to_timestamp)
+    - Window functions (row_number, rank, dense_rank, lag, lead)
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"name": "Alice", "age": 25}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select(F.upper(F.col("name")), F.col("age") * 2).show()
+    +--- MockDataFrame: 1 rows ---+
+     upper(name) |    (age * 2)
+    ---------------------------
+           ALICE |           50
 """
 
-from typing import Any, Optional, Union, List
+from typing import Any, Optional, Union
 from .base import MockColumn, MockColumnOperation, MockLiteral, MockAggregateFunction
 from .conditional import MockCaseWhen, ConditionalFunctions
 from .window_execution import MockWindowFunction
@@ -17,7 +38,7 @@ from .datetime import DateTimeFunctions
 
 class MockFunctions:
     """Main functions namespace (F) for Mock Spark.
-    
+
     This class provides access to all functions in a PySpark-compatible way.
     """
 
@@ -64,7 +85,9 @@ class MockFunctions:
         return StringFunctions.rtrim(column)
 
     @staticmethod
-    def regexp_replace(column: Union[MockColumn, str], pattern: str, replacement: str) -> MockColumnOperation:
+    def regexp_replace(
+        column: Union[MockColumn, str], pattern: str, replacement: str
+    ) -> MockColumnOperation:
         """Replace regex pattern."""
         return StringFunctions.regexp_replace(column, pattern, replacement)
 
@@ -74,7 +97,9 @@ class MockFunctions:
         return StringFunctions.split(column, delimiter)
 
     @staticmethod
-    def substring(column: Union[MockColumn, str], start: int, length: Optional[int] = None) -> MockColumnOperation:
+    def substring(
+        column: Union[MockColumn, str], start: int, length: Optional[int] = None
+    ) -> MockColumnOperation:
         """Extract substring."""
         return StringFunctions.substring(column, start, length)
 
@@ -120,7 +145,9 @@ class MockFunctions:
         return MathFunctions.log(column, base)
 
     @staticmethod
-    def pow(column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]) -> MockColumnOperation:
+    def pow(
+        column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]
+    ) -> MockColumnOperation:
         """Power."""
         return MathFunctions.pow(column, exponent)
 
@@ -299,13 +326,12 @@ class MockFunctions:
         """Extract quarter."""
         return DateTimeFunctions.quarter(column)
 
-
     @staticmethod
     def nvl(column, default_value) -> MockColumnOperation:
         """Return default if null."""
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "nvl", default_value)
         operation.name = f"nvl({column.name}, {default_value})"
         return operation
@@ -315,7 +341,7 @@ class MockFunctions:
         """Return value based on null check."""
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "nvl2", (value_if_not_null, value_if_null))
         operation.name = f"nvl2({column.name}, {value_if_not_null}, {value_if_null})"
         return operation
@@ -326,6 +352,7 @@ class MockFunctions:
         """Row number window function."""
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+
         dummy_column = MockColumn("__row_number__")
         operation = MockColumnOperation(dummy_column, "row_number")
         operation.name = "row_number()"
@@ -337,6 +364,7 @@ class MockFunctions:
         """Rank window function."""
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+
         dummy_column = MockColumn("__rank__")
         operation = MockColumnOperation(dummy_column, "rank")
         operation.name = "rank()"
@@ -348,6 +376,7 @@ class MockFunctions:
         """Dense rank window function."""
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+
         dummy_column = MockColumn("__dense_rank__")
         operation = MockColumnOperation(dummy_column, "dense_rank")
         operation.name = "dense_rank()"
@@ -359,7 +388,7 @@ class MockFunctions:
         """Lag window function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "lag", (offset, default_value))
         operation.name = f"lag({column.name}, {offset})"
         operation.function_name = "lag"
@@ -370,7 +399,7 @@ class MockFunctions:
         """Lead window function."""
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "lead", (offset, default_value))
         operation.name = f"lead({column.name}, {offset})"
         operation.function_name = "lead"
@@ -381,7 +410,7 @@ class MockFunctions:
         """Create descending order column."""
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "desc", None, name=f"{column.name} DESC")
         operation.function_name = "desc"
         return operation
@@ -393,7 +422,7 @@ F = MockFunctions()
 # Re-export all the main classes for backward compatibility
 __all__ = [
     "MockColumn",
-    "MockColumnOperation", 
+    "MockColumnOperation",
     "MockLiteral",
     "MockAggregateFunction",
     "MockCaseWhen",
@@ -401,7 +430,7 @@ __all__ = [
     "MockFunctions",
     "F",
     "StringFunctions",
-    "MathFunctions", 
+    "MathFunctions",
     "AggregateFunctions",
     "DateTimeFunctions",
 ]

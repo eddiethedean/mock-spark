@@ -30,14 +30,11 @@ Example:
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
-from dataclasses import dataclass
 import pandas as pd
 
 from ..spark_types import (
     MockStructType,
     MockStructField,
-    StringType,
-    IntegerType,
     MockRow,
 )
 from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
@@ -98,9 +95,7 @@ class MockDataFrame:
         self._cached_count: Optional[int] = None
 
     def __repr__(self) -> str:
-        return (
-            f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
-        )
+        return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
 
     def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a formatted table.
@@ -127,9 +122,7 @@ class MockDataFrame:
         display_data = self.data[:n]
 
         # Get column names
-        columns = (
-            list(display_data[0].keys()) if display_data else self.schema.fieldNames()
-        )
+        columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
 
         # Print header
         header = " | ".join(f"{col:>12}" for col in columns)
@@ -171,11 +164,9 @@ class MockDataFrame:
         print("MockDataFrame Schema:")
         for field in self.schema.fields:
             nullable = "nullable" if field.nullable else "not nullable"
-            print(
-                f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
-            )
+            print(f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})")
 
-    def select(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def select(self, *columns: Union[str, MockColumn, MockLiteral, Any]) -> "MockDataFrame":
         """Select columns from the DataFrame.
 
         Args:
@@ -282,9 +273,7 @@ class MockDataFrame:
                     for col in columns
                 )  # Handle functions like coalesce
                 and not any(
-                    hasattr(col, "conditions")
-                    and hasattr(col, "name")
-                    and col.name == col_name
+                    hasattr(col, "conditions") and hasattr(col, "name") and col.name == col_name
                     for col in columns
                 )  # Handle MockCaseWhen objects
                 and not self._is_function_call(col_name)
@@ -389,10 +378,7 @@ class MockDataFrame:
                         filtered_row[col_name] = evaluated_value
                     else:
                         # Handle aliased columns - get value from original column name
-                        if (
-                            hasattr(col, "_original_column")
-                            and col._original_column is not None
-                        ):
+                        if hasattr(col, "_original_column") and col._original_column is not None:
                             # This is an aliased column, get value from original column
                             original_name = col._original_column.name
                             if original_name in (
@@ -456,9 +442,7 @@ class MockDataFrame:
                 window_functions.append((i, col))
 
         if window_functions:
-            filtered_data = self._evaluate_window_functions(
-                filtered_data, window_functions
-            )
+            filtered_data = self._evaluate_window_functions(filtered_data, window_functions)
 
         # Create new schema
         new_fields = []
@@ -539,15 +523,14 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(
-                        MockStructField(col_name, ArrayType(StringType()))
-                    )
+                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
                 elif col.operation == "regexp_replace":
                     # Regexp replace function returns StringType
                     new_fields.append(MockStructField(col_name, StringType()))
                 elif col.operation in ["isnull", "isnan"]:
                     # isnull and isnan functions return BooleanType
                     from ..spark_types import BooleanType
+
                     new_fields.append(MockStructField(col_name, BooleanType()))
                 elif col.operation == "cast":
                     # Cast operation - infer type from the cast parameter
@@ -619,7 +602,23 @@ class MockDataFrame:
                     )
                     or (
                         hasattr(col, "operation")
-                        and col.operation in ("isnull", "isnan", "coalesce", "trim", "ceil", "floor", "sqrt", "regexp_replace", "split", "abs", "round", "upper", "lower", "length")
+                        and col.operation
+                        in (
+                            "isnull",
+                            "isnan",
+                            "coalesce",
+                            "trim",
+                            "ceil",
+                            "floor",
+                            "sqrt",
+                            "regexp_replace",
+                            "split",
+                            "abs",
+                            "round",
+                            "upper",
+                            "lower",
+                            "length",
+                        )
                     )
                 ):
                     from ..spark_types import (
@@ -642,7 +641,7 @@ class MockDataFrame:
                         func_name = col._original_column.name
                     elif hasattr(col, "operation"):
                         # For MockColumnOperation, use the operation name
-                        func_name = col.operation
+                        func_name = col.operation or "unknown"
 
                     if func_name.startswith("abs(") or func_name == "abs":
                         new_fields.append(
@@ -658,13 +657,19 @@ class MockDataFrame:
                         ("upper(", "lower(", "coalesce(", "trim(")
                     ) or func_name in ("upper", "lower", "coalesce", "trim"):
                         new_fields.append(MockStructField(col_name, StringType()))
-                    elif func_name.startswith(("isnull(", "isnan(")) or func_name in ("isnull", "isnan"):
+                    elif func_name.startswith(("isnull(", "isnan(")) or func_name in (
+                        "isnull",
+                        "isnan",
+                    ):
                         new_fields.append(MockStructField(col_name, BooleanType()))
                     elif func_name == "current_timestamp()" or func_name == "current_timestamp":
                         new_fields.append(MockStructField(col_name, TimestampType()))
                     elif func_name == "current_date()" or func_name == "current_date":
                         new_fields.append(MockStructField(col_name, DateType()))
-                    elif func_name.startswith(("ceil(", "floor(")) or func_name in ("ceil", "floor"):
+                    elif func_name.startswith(("ceil(", "floor(")) or func_name in (
+                        "ceil",
+                        "floor",
+                    ):
                         new_fields.append(MockStructField(col_name, LongType()))
                     elif func_name.startswith("sqrt(") or func_name == "sqrt":
                         new_fields.append(MockStructField(col_name, DoubleType()))
@@ -679,9 +684,7 @@ class MockDataFrame:
                     if col_name in literal_objects:
                         # Use the MockLiteral object's column_type
                         literal_obj = literal_objects[col_name]
-                        new_fields.append(
-                            MockStructField(col_name, literal_obj.column_type)
-                        )
+                        new_fields.append(MockStructField(col_name, literal_obj.column_type))
                     else:
                         # Fallback to type inference
                         from ..spark_types import (
@@ -694,9 +697,7 @@ class MockDataFrame:
                         if isinstance(literal_value, int):
                             literal_type_4: MockDataType = IntegerType()
                         else:
-                            literal_type_4 = convert_python_type_to_mock_type(
-                                type(literal_value)
-                            )
+                            literal_type_4 = convert_python_type_to_mock_type(type(literal_value))
                         new_fields.append(MockStructField(col_name, literal_type_4))
                 else:
                     # Use existing field
@@ -773,15 +774,14 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(
-                        MockStructField(col_name, ArrayType(StringType()))
-                    )
+                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
                 elif col.operation == "regexp_replace":
                     # Regexp replace function returns StringType
                     new_fields.append(MockStructField(col_name, StringType()))
                 elif col.operation in ["isnull", "isnan"]:
                     # isnull and isnan functions return BooleanType
                     from ..spark_types import BooleanType
+
                     new_fields.append(MockStructField(col_name, BooleanType()))
                 elif col.operation == "cast":
                     # Cast operation - infer type from the cast parameter
@@ -869,9 +869,7 @@ class MockDataFrame:
                 # Infer type from the first condition's value
                 if col.conditions:
                     first_value = col.conditions[0][1]  # First condition's value
-                    if hasattr(first_value, "column") and hasattr(
-                        first_value.column, "name"
-                    ):
+                    if hasattr(first_value, "column") and hasattr(first_value.column, "name"):
                         # It's a column reference, get its type
                         source_col_name = first_value.column.name
                         source_type = None
@@ -917,9 +915,7 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(
-                        MockStructField(col_name, ArrayType(StringType()))
-                    )
+                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
                 elif col.name.startswith(("upper(", "lower(", "regexp_replace(")):
                     new_fields.append(MockStructField(col_name, StringType()))
                 else:
@@ -939,10 +935,7 @@ class MockDataFrame:
                     # Use existing field
                     # For aliased columns, look up the original column name
                     lookup_name = col_name
-                    if (
-                        hasattr(col, "_original_column")
-                        and col._original_column is not None
-                    ):
+                    if hasattr(col, "_original_column") and col._original_column is not None:
                         lookup_name = col._original_column.name
 
                     for field in self.schema.fields:
@@ -952,9 +945,7 @@ class MockDataFrame:
                                 hasattr(col, "_original_column")
                                 and col._original_column is not None
                             ):
-                                new_fields.append(
-                                    MockStructField(col_name, field.dataType)
-                                )
+                                new_fields.append(MockStructField(col_name, field.dataType))
                             else:
                                 new_fields.append(field)
                             break
@@ -963,7 +954,7 @@ class MockDataFrame:
         return MockDataFrame(filtered_data, new_schema, self.storage)
 
     def _handle_aggregation_select(
-        self, columns: List[Union[str, MockColumn]]
+        self, columns: List[Union[str, MockColumn, MockLiteral, Any]]
     ) -> "MockDataFrame":
         """Handle aggregation select operations."""
         from ..functions import MockAggregateFunction
@@ -976,7 +967,7 @@ class MockDataFrame:
             if isinstance(col, MockAggregateFunction):
                 func_name = col.function_name
                 col_name = col.column_name
-                
+
                 # Check if the function has an alias set
                 has_alias = col.name != col._generate_name()
                 if has_alias:
@@ -1016,7 +1007,7 @@ class MockDataFrame:
                         ]
                         result_row[agg_col_name] = sum(values) if values else 0
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
                 elif func_name == "avg":
                     if not has_alias:
@@ -1027,62 +1018,52 @@ class MockDataFrame:
                             for row in self.data
                             if row.get(col_name) is not None
                         ]
-                        result_row[agg_col_name] = (
-                            sum(values) / len(values) if values else 0
-                        )
+                        result_row[agg_col_name] = sum(values) / len(values) if values else 0
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
                 elif func_name == "countDistinct":
                     if not has_alias:
                         agg_col_name = f"count(DISTINCT {col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
+                            row.get(col_name) for row in self.data if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = len(set(values))
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, LongType()))
                 elif func_name == "max":
                     if not has_alias:
                         agg_col_name = f"max({col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
+                            row.get(col_name) for row in self.data if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = max(values) if values else 0
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
                 elif func_name == "min":
                     if not has_alias:
                         agg_col_name = f"min({col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
+                            row.get(col_name) for row in self.data if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = min(values) if values else 0
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
                 elif func_name == "count(DISTINCT":
                     agg_col_name = f"count(DISTINCT {col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
+                            row.get(col_name) for row in self.data if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = len(set(values)) if values else 0
                     else:
-                        result_row[agg_col_name] = 0
+                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, LongType()))
             elif isinstance(col, MockColumn) and (
                 col.name.startswith(("count(", "sum(", "avg(", "max(", "min("))
@@ -1105,55 +1086,41 @@ class MockDataFrame:
                 elif col_name.startswith("sum("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col, 0)
-                        for row in self.data
-                        if row.get(inner_col) is not None
+                        row.get(inner_col, 0) for row in self.data if row.get(inner_col) is not None
                     ]
                     # Ensure values are numeric for sum calculation
                     numeric_values = [v for v in values if isinstance(v, (int, float))]
-                    result_row[col_name] = (
-                        float(sum(numeric_values)) if numeric_values else 0.0
-                    )
+                    result_row[col_name] = float(sum(numeric_values)) if numeric_values else 0.0
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("avg("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col, 0)
-                        for row in self.data
-                        if row.get(inner_col) is not None
+                        row.get(inner_col, 0) for row in self.data if row.get(inner_col) is not None
                     ]
                     # Ensure values are numeric for average calculation
                     numeric_values = [v for v in values if isinstance(v, (int, float))]
                     result_row[col_name] = (
-                        float(sum(numeric_values)) / len(numeric_values)
-                        if numeric_values
-                        else 0.0
+                        float(sum(numeric_values)) / len(numeric_values) if numeric_values else 0.0
                     )
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("max("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col)
-                        for row in self.data
-                        if row.get(inner_col) is not None
+                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = float(max(values)) if values else 0.0
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("min("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col)
-                        for row in self.data
-                        if row.get(inner_col) is not None
+                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = float(min(values)) if values else 0.0
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("count(DISTINCT"):
                     inner_col = col_name[13:-1]
                     values = [
-                        row.get(inner_col)
-                        for row in self.data
-                        if row.get(inner_col) is not None
+                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = len(set(values)) if values else 0
                     new_fields.append(MockStructField(col_name, LongType()))
@@ -1161,15 +1128,11 @@ class MockDataFrame:
         new_schema = MockStructType(new_fields)
         return MockDataFrame([result_row], new_schema, self.storage)
 
-    def filter(
-        self, condition: Union[MockColumnOperation, MockColumn]
-    ) -> "MockDataFrame":
+    def filter(self, condition: Union[MockColumnOperation, MockColumn]) -> "MockDataFrame":
         """Filter rows based on condition."""
         if isinstance(condition, MockColumn):
             # Simple column reference - return all non-null rows
-            filtered_data = [
-                row for row in self.data if row.get(condition.name) is not None
-            ]
+            filtered_data = [row for row in self.data if row.get(condition.name) is not None]
         else:
             # Apply condition logic
             filtered_data = self._apply_condition(self.data, condition)
@@ -1476,9 +1439,7 @@ class MockDataFrame:
         # Create table with schema first
         self.storage.create_table("default", name, self.schema.fields)
         # Then insert data
-        dict_data = [
-            row.asDict() if hasattr(row, "asDict") else row for row in self.data
-        ]
+        dict_data = [row.asDict() if hasattr(row, "asDict") else row for row in self.data]
         self.storage.insert_data("default", name, dict_data)
 
     def createTempView(self, name: str) -> None:
@@ -1527,11 +1488,13 @@ class MockDataFrame:
 
         # Logical operations
         if operation in ["and", "&"]:
-            return (self._evaluate_condition(row, condition.column) and 
-                   self._evaluate_condition(row, condition.value))
+            return self._evaluate_condition(row, condition.column) and self._evaluate_condition(
+                row, condition.value
+            )
         elif operation in ["or", "|"]:
-            return (self._evaluate_condition(row, condition.column) or 
-                   self._evaluate_condition(row, condition.value))
+            return self._evaluate_condition(row, condition.column) or self._evaluate_condition(
+                row, condition.value
+            )
         elif operation in ["not", "!"]:
             return not self._evaluate_condition(row, condition.column)
 
@@ -1541,7 +1504,7 @@ class MockDataFrame:
         """Evaluate comparison operations."""
         if col_value is None:
             return operation == "!="  # Only != returns True for null values
-        
+
         if operation == "==":
             return bool(col_value == condition_value)
         elif operation == "!=":
@@ -1554,15 +1517,16 @@ class MockDataFrame:
             return bool(col_value < condition_value)
         elif operation == "<=":
             return bool(col_value <= condition_value)
-        
+
         return False
 
     def _evaluate_like_operation(self, col_value: Any, pattern: str) -> bool:
         """Evaluate LIKE operation."""
         if col_value is None:
             return False
-        
+
         import re
+
         value = str(col_value)
         regex_pattern = str(pattern).replace("%", ".*")
         return bool(re.match(regex_pattern, value))
@@ -1575,13 +1539,11 @@ class MockDataFrame:
         """Evaluate BETWEEN operation."""
         if col_value is None:
             return False
-        
+
         lower, upper = bounds
         return bool(lower <= col_value <= upper)
 
-    def _evaluate_column_expression(
-        self, row: Dict[str, Any], column_expression: Any
-    ) -> Any:
+    def _evaluate_column_expression(self, row: Dict[str, Any], column_expression: Any) -> Any:
         """Evaluate a column expression for a single row."""
         if isinstance(column_expression, MockColumn):
             return self._evaluate_mock_column(row, column_expression)
@@ -1593,12 +1555,13 @@ class MockDataFrame:
     def _evaluate_mock_column(self, row: Dict[str, Any], column: MockColumn) -> Any:
         """Evaluate a MockColumn expression."""
         col_name = column.name
-        
+
         # Check if this is an aliased function call
         if self._is_aliased_function_call(column):
-            original_name = column._original_column.name
-            return self._evaluate_function_call_by_name(row, original_name)
-        
+            if column._original_column is not None:
+                original_name = column._original_column.name
+                return self._evaluate_function_call_by_name(row, original_name)
+
         # Check if this is a direct function call
         if self._is_function_call_name(col_name):
             return self._evaluate_function_call_by_name(row, col_name)
@@ -1618,9 +1581,21 @@ class MockDataFrame:
     def _is_function_call_name(self, name: str) -> bool:
         """Check if name is a function call."""
         function_prefixes = (
-            "coalesce(", "isnull(", "isnan(", "trim(", "ceil(", "floor(",
-            "sqrt(", "regexp_replace(", "split(", "to_date(", "to_timestamp(",
-            "hour(", "day(", "month(", "year("
+            "coalesce(",
+            "isnull(",
+            "isnan(",
+            "trim(",
+            "ceil(",
+            "floor(",
+            "sqrt(",
+            "regexp_replace(",
+            "split(",
+            "to_date(",
+            "to_timestamp(",
+            "hour(",
+            "day(",
+            "month(",
+            "year(",
         )
         return name.startswith(function_prefixes)
 
@@ -1635,19 +1610,13 @@ class MockDataFrame:
         """Evaluate a direct value."""
         return value
 
-    def _evaluate_arithmetic_operation(
-        self, row: Dict[str, Any], operation: Any
-    ) -> Any:
+    def _evaluate_arithmetic_operation(self, row: Dict[str, Any], operation: Any) -> Any:
         """Evaluate arithmetic operations on columns."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
 
         # Extract left value from row
-        left_value = (
-            row.get(operation.column.name)
-            if hasattr(operation.column, "name")
-            else None
-        )
+        left_value = row.get(operation.column.name) if hasattr(operation.column, "name") else None
 
         # Extract right value - handle MockColumn, MockLiteral, or primitive values
         right_value = operation.value
@@ -1689,9 +1658,7 @@ class MockDataFrame:
             return None
 
         # Evaluate the column expression (could be a nested operation)
-        if hasattr(operation.column, "operation") and hasattr(
-            operation.column, "column"
-        ):
+        if hasattr(operation.column, "operation") and hasattr(operation.column, "column"):
             # The column is itself a MockColumnOperation, evaluate it first
             value = self._evaluate_column_expression(row, operation.column)
         else:
@@ -1710,23 +1677,23 @@ class MockDataFrame:
             # Check the main column first
             if value is not None:
                 return value
-            
+
             # If main column is None, check the literal values
-            if hasattr(operation, 'value') and isinstance(operation.value, list):
+            if hasattr(operation, "value") and isinstance(operation.value, list):
                 for i, col in enumerate(operation.value):
                     # Check if it's a MockLiteral object
-                    if hasattr(col, 'value') and hasattr(col, 'name') and hasattr(col, 'data_type'):
+                    if hasattr(col, "value") and hasattr(col, "name") and hasattr(col, "data_type"):
                         # This is a MockLiteral
                         col_value = col.value
-                    elif hasattr(col, 'name'):
+                    elif hasattr(col, "name"):
                         col_value = row.get(col.name)
-                    elif hasattr(col, 'value'):
+                    elif hasattr(col, "value"):
                         col_value = col.value  # For other values
                     else:
                         col_value = col
                     if col_value is not None:
                         return col_value
-            
+
             return None
 
         # Handle isnull function before the None check
@@ -1738,16 +1705,19 @@ class MockDataFrame:
         if func_name == "isnan":
             # Check if value is NaN
             import math
+
             return isinstance(value, float) and math.isnan(value)
 
         # Handle datetime functions before the None check
         if func_name == "current_timestamp":
             # Return current timestamp
             import datetime
+
             return datetime.datetime.now()
         elif func_name == "current_date":
             # Return current date
             import datetime
+
             return datetime.date.today()
 
         if value is None:
@@ -1778,11 +1748,7 @@ class MockDataFrame:
         elif func_name == "sqrt":
             import math
 
-            return (
-                math.sqrt(value)
-                if isinstance(value, (int, float)) and value >= 0
-                else None
-            )
+            return math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
         elif func_name == "split":
             if value is None:
                 return None
@@ -1791,11 +1757,7 @@ class MockDataFrame:
         elif func_name == "regexp_replace":
             if value is None:
                 return None
-            pattern = (
-                operation.value[0]
-                if isinstance(operation.value, tuple)
-                else operation.value
-            )
+            pattern = operation.value[0] if isinstance(operation.value, tuple) else operation.value
             replacement = (
                 operation.value[1]
                 if isinstance(operation.value, tuple) and len(operation.value) > 1
@@ -1814,9 +1776,7 @@ class MockDataFrame:
                 if cast_type.lower() in ["double", "float"]:
                     return float(value)
                 elif cast_type.lower() in ["int", "integer", "long", "bigint"]:
-                    return int(
-                        float(value)
-                    )  # Convert via float to handle decimal strings
+                    return int(float(value))  # Convert via float to handle decimal strings
                 elif cast_type.lower() in ["string", "varchar"]:
                     return str(value)
                 else:
@@ -1827,9 +1787,7 @@ class MockDataFrame:
         else:
             return value
 
-    def _evaluate_function_call_by_name(
-        self, row: Dict[str, Any], col_name: str
-    ) -> Any:
+    def _evaluate_function_call_by_name(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate function calls by parsing the function name."""
         if col_name.startswith("coalesce("):
             # Parse coalesce arguments: coalesce(col1, col2, ...)
@@ -1883,18 +1841,14 @@ class MockDataFrame:
 
             if "value" in col_name:
                 value = row.get("value")
-                return (
-                    math.sqrt(value)
-                    if isinstance(value, (int, float)) and value >= 0
-                    else None
-                )
+                return math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
         elif col_name.startswith("to_date("):
             # Parse to_date argument: to_date(col)
             import re
             from datetime import datetime
-            
+
             # Extract column name from function call
-            match = re.search(r'to_date\(([^)]+)\)', col_name)
+            match = re.search(r"to_date\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
@@ -1902,9 +1856,9 @@ class MockDataFrame:
                     try:
                         # Try to parse as datetime first, then extract date
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                             return dt.date()
-                        elif hasattr(value, 'date'):
+                        elif hasattr(value, "date"):
                             return value.date()
                     except:
                         return None
@@ -1913,16 +1867,16 @@ class MockDataFrame:
             # Parse to_timestamp argument: to_timestamp(col)
             import re
             from datetime import datetime
-            
+
             # Extract column name from function call
-            match = re.search(r'to_timestamp\(([^)]+)\)', col_name)
+            match = re.search(r"to_timestamp\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            return datetime.fromisoformat(value.replace("Z", "+00:00"))
                     except:
                         return None
             return None
@@ -1930,17 +1884,17 @@ class MockDataFrame:
             # Parse hour argument: hour(col)
             import re
             from datetime import datetime
-            
-            match = re.search(r'hour\(([^)]+)\)', col_name)
+
+            match = re.search(r"hour\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                             return dt.hour
-                        elif hasattr(value, 'hour'):
+                        elif hasattr(value, "hour"):
                             return value.hour
                     except:
                         return None
@@ -1949,17 +1903,17 @@ class MockDataFrame:
             # Parse day argument: day(col)
             import re
             from datetime import datetime
-            
-            match = re.search(r'day\(([^)]+)\)', col_name)
+
+            match = re.search(r"day\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                             return dt.day
-                        elif hasattr(value, 'day'):
+                        elif hasattr(value, "day"):
                             return value.day
                     except:
                         return None
@@ -1968,17 +1922,17 @@ class MockDataFrame:
             # Parse month argument: month(col)
             import re
             from datetime import datetime
-            
-            match = re.search(r'month\(([^)]+)\)', col_name)
+
+            match = re.search(r"month\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                             return dt.month
-                        elif hasattr(value, 'month'):
+                        elif hasattr(value, "month"):
                             return value.month
                     except:
                         return None
@@ -1987,17 +1941,17 @@ class MockDataFrame:
             # Parse year argument: year(col)
             import re
             from datetime import datetime
-            
-            match = re.search(r'year\(([^)]+)\)', col_name)
+
+            match = re.search(r"year\(([^)]+)\)", col_name)
             if match:
                 column_name = match.group(1)
                 value = row.get(column_name)
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
                             return dt.year
-                        elif hasattr(value, 'year'):
+                        elif hasattr(value, "year"):
                             return value.year
                     except:
                         return None
@@ -2075,11 +2029,7 @@ class MockDataFrame:
                         for i, row in enumerate(result_data):
                             # Create partition key
                             partition_key = tuple(
-                                (
-                                    row.get(col.name)
-                                    if hasattr(col, "name")
-                                    else row.get(str(col))
-                                )
+                                (row.get(col.name) if hasattr(col, "name") else row.get(str(col)))
                                 for col in partition_by_cols
                             )
                             if partition_key not in partition_groups:
@@ -2098,9 +2048,7 @@ class MockDataFrame:
                                 sorted_partition_indices = partition_indices  # type: ignore[assignment]
 
                             # Assign row numbers starting from 1 within each partition
-                            for i, original_index in enumerate(
-                                sorted_partition_indices
-                            ):
+                            for i, original_index in enumerate(sorted_partition_indices):
                                 result_data[original_index][col_name] = i + 1
                     elif order_by_cols:
                         # No partitioning, just sort by order by columns using corrected ordering logic
@@ -2121,14 +2069,10 @@ class MockDataFrame:
                         result_data[i][col_name] = i + 1
             elif window_func.function_name == "lag":
                 # Handle lag function - get previous row value
-                self._evaluate_lag_lead(
-                    result_data, window_func, col_name, is_lead=False
-                )
+                self._evaluate_lag_lead(result_data, window_func, col_name, is_lead=False)
             elif window_func.function_name == "lead":
                 # Handle lead function - get next row value
-                self._evaluate_lag_lead(
-                    result_data, window_func, col_name, is_lead=True
-                )
+                self._evaluate_lag_lead(result_data, window_func, col_name, is_lead=True)
             elif window_func.function_name in ["rank", "dense_rank"]:
                 # Handle rank and dense_rank functions
                 self._evaluate_rank_functions(result_data, window_func, col_name)
@@ -2141,9 +2085,7 @@ class MockDataFrame:
                 "min",
             ]:
                 # Handle aggregate window functions
-                self._evaluate_aggregate_window_functions(
-                    result_data, window_func, col_name
-                )
+                self._evaluate_aggregate_window_functions(result_data, window_func, col_name)
             else:
                 # For other window functions, assign None for now
                 for row in result_data:
@@ -2201,9 +2143,7 @@ class MockDataFrame:
             else:
                 # No partitioning, apply to entire dataset with ordering
                 all_indices = list(range(len(data)))
-                ordered_indices = self._apply_ordering_to_indices(
-                    data, all_indices, order_by_cols
-                )
+                ordered_indices = self._apply_ordering_to_indices(data, all_indices, order_by_cols)
                 self._apply_lag_lead_to_partition(
                     data,
                     ordered_indices,
@@ -2249,8 +2189,7 @@ class MockDataFrame:
 
         # Check if any column has desc operation
         has_desc = any(
-            hasattr(col, "operation") and col.operation == "desc"
-            for col in order_by_cols
+            hasattr(col, "operation") and col.operation == "desc" for col in order_by_cols
         )
 
         # Sort indices based on the ordering
@@ -2363,7 +2302,7 @@ class MockDataFrame:
                     value = row.get(order_col_name)
                     current_values.append(value)
 
-                if previous_values is not None and current_values != previous_values:
+                if previous_values is not None and current_values != previous_values:  # type: ignore[unreachable]
                     current_rank += 1
 
                 data[idx][col_name] = current_rank
@@ -2433,18 +2372,12 @@ class MockDataFrame:
                     ordered_indices = self._apply_ordering_to_indices(
                         data, partition_indices, order_by_cols
                     )
-                    self._apply_aggregate_to_partition(
-                        data, ordered_indices, window_func, col_name
-                    )
+                    self._apply_aggregate_to_partition(data, ordered_indices, window_func, col_name)
             else:
                 # No partitioning, apply to entire dataset with ordering
                 all_indices = list(range(len(data)))
-                ordered_indices = self._apply_ordering_to_indices(
-                    data, all_indices, order_by_cols
-                )
-                self._apply_aggregate_to_partition(
-                    data, ordered_indices, window_func, col_name
-                )
+                ordered_indices = self._apply_ordering_to_indices(data, all_indices, order_by_cols)
+                self._apply_aggregate_to_partition(data, ordered_indices, window_func, col_name)
         else:
             # No window spec, apply to entire dataset
             all_indices = list(range(len(data)))
@@ -2530,22 +2463,22 @@ class MockDataFrame:
             # Handle MockColumnOperation conditions
             if condition.operation == ">":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value is not None and col_value > condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value > condition.value
             elif condition.operation == ">=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value is not None and col_value >= condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value >= condition.value
             elif condition.operation == "<":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value is not None and col_value < condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value < condition.value
             elif condition.operation == "<=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value is not None and col_value <= condition.value  # type: ignore[no-any-return]
+                return col_value is not None and col_value <= condition.value
             elif condition.operation == "==":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value == condition.value  # type: ignore[no-any-return]
+                return col_value == condition.value
             elif condition.operation == "!=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value != condition.value  # type: ignore[no-any-return]
+                return col_value != condition.value
         return False
 
     def _evaluate_value(self, row: Dict[str, Any], value) -> Any:
@@ -2587,5 +2520,3 @@ class MockDataFrame:
     def write(self) -> MockDataFrameWriter:
         """Get DataFrame writer."""
         return MockDataFrameWriter(self, self.storage)
-
-

@@ -5,8 +5,7 @@ This module contains the base classes and interfaces for all function types
 including column expressions, built-in functions, and aggregate functions.
 """
 
-from typing import Any, List, Union, Optional, Callable, TYPE_CHECKING
-from dataclasses import dataclass
+from typing import Any, List, Union, Optional, TYPE_CHECKING
 from mock_spark.spark_types import MockDataType, StringType
 from ..core.interfaces.functions import IColumn
 
@@ -194,16 +193,19 @@ class MockColumn:
     def when(self, condition: "MockColumnOperation", value: Any) -> "MockCaseWhen":
         """Start a CASE WHEN expression."""
         from .conditional import MockCaseWhen
+
         return MockCaseWhen(self, condition, value)
 
     def otherwise(self, value: Any) -> "MockCaseWhen":
         """End a CASE WHEN expression with default value."""
         from .conditional import MockCaseWhen
+
         return MockCaseWhen(self, None, value)
 
     def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
         """Apply window function over window specification."""
         from .window_execution import MockWindowFunction
+
         return MockWindowFunction(self, window_spec)
 
 
@@ -214,7 +216,13 @@ class MockColumnOperation(IColumn):
     during DataFrame operations.
     """
 
-    def __init__(self, column: MockColumn, operation: str, value: Any = None, name: Optional[str] = None):
+    def __init__(
+        self,
+        column: Union[MockColumn, "MockColumnOperation"],
+        operation: str,
+        value: Any = None,
+        name: Optional[str] = None,
+    ):
         """Initialize MockColumnOperation.
 
         Args:
@@ -233,7 +241,7 @@ class MockColumnOperation(IColumn):
     def name(self) -> str:
         """Get column name."""
         return self._name
-    
+
     @name.setter
     def name(self, value: str) -> None:
         """Set column name."""
@@ -264,12 +272,12 @@ class MockColumnOperation(IColumn):
         elif self.operation == "%":
             return f"({self.column.name} % {self.value})"
         elif self.operation == "&":
-            if hasattr(self.value, 'name'):
+            if hasattr(self.value, "name"):
                 return f"({self.column.name} & {self.value.name})"
             else:
                 return f"({self.column.name} & {self.value})"
         elif self.operation == "|":
-            if hasattr(self.value, 'name'):
+            if hasattr(self.value, "name"):
                 return f"({self.column.name} | {self.value.name})"
             else:
                 return f"({self.column.name} | {self.value})"
@@ -355,6 +363,7 @@ class MockColumnOperation(IColumn):
     def over(self, window_spec) -> "MockWindowFunction":
         """Apply window function over window specification."""
         from .window_execution import MockWindowFunction
+
         return MockWindowFunction(self, window_spec)
 
     def alias(self, name: str) -> "IColumn":
@@ -399,8 +408,14 @@ class MockLiteral:
 
     def _infer_type(self, value: Any) -> MockDataType:
         """Infer the data type from the value."""
-        from mock_spark.spark_types import StringType, IntegerType, LongType, DoubleType, BooleanType
-        
+        from mock_spark.spark_types import (
+            StringType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            BooleanType,
+        )
+
         if isinstance(value, bool):
             return BooleanType()
         elif isinstance(value, int):
@@ -491,7 +506,12 @@ class MockAggregateFunction:
     including count, sum, avg, max, min, etc.
     """
 
-    def __init__(self, column: Union[MockColumn, str, None], function_name: str, data_type: Optional[MockDataType] = None):
+    def __init__(
+        self,
+        column: Union[MockColumn, str, None],
+        function_name: str,
+        data_type: Optional[MockDataType] = None,
+    ):
         """Initialize MockAggregateFunction.
 
         Args:
@@ -565,7 +585,7 @@ class MockAggregateFunction:
         """Evaluate sum function."""
         if self.column is None:
             return 0
-        
+
         column_name = self.column if isinstance(self.column, str) else self.column.name
         total = 0
         for row in data:
@@ -578,11 +598,12 @@ class MockAggregateFunction:
         """Evaluate average function."""
         if self.column is None:
             return 0.0
-        
+
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [row.get(column_name) for row in data if row.get(column_name) is not None]
-        if values:
-            return sum(values) / len(values)
+        numeric_values = [v for v in values if isinstance(v, (int, float))]
+        if numeric_values:
+            return sum(numeric_values) / len(numeric_values)
         else:
             return None
 
@@ -590,7 +611,7 @@ class MockAggregateFunction:
         """Evaluate max function."""
         if self.column is None:
             return None
-        
+
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [row.get(column_name) for row in data if row.get(column_name) is not None]
         if values:
@@ -602,7 +623,7 @@ class MockAggregateFunction:
         """Evaluate min function."""
         if self.column is None:
             return None
-        
+
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [row.get(column_name) for row in data if row.get(column_name) is not None]
         if values:
@@ -613,6 +634,7 @@ class MockAggregateFunction:
     def over(self, window_spec) -> "MockWindowFunction":
         """Apply window function over window specification."""
         from .window_execution import MockWindowFunction
+
         return MockWindowFunction(self, window_spec)
 
     def alias(self, name: str) -> "MockAggregateFunction":

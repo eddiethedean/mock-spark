@@ -6,7 +6,7 @@ ensuring consistent behavior across all DataFrame implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union, Iterator
+from typing import Any, List, Optional, Union
 from ..types.schema import ISchema
 
 
@@ -91,7 +91,9 @@ class IDataFrame(ABC):
         pass
 
     @abstractmethod
-    def join(self, other: "IDataFrame", on: Union[str, List[str]], how: str = "inner") -> "IDataFrame":
+    def join(
+        self, other: "IDataFrame", on: Union[str, List[str]], how: str = "inner"
+    ) -> "IDataFrame":
         """Join with another DataFrame."""
         pass
 
@@ -201,7 +203,9 @@ class IDataFrameReader(ABC):
         pass
 
     @abstractmethod
-    def load(self, path: Optional[str] = None, format: Optional[str] = None, **options: Any) -> IDataFrame:
+    def load(
+        self, path: Optional[str] = None, format: Optional[str] = None, **options: Any
+    ) -> IDataFrame:
         """Load data."""
         pass
 

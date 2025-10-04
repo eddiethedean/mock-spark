@@ -19,7 +19,7 @@ from .validation import MockSQLValidator
 
 __all__ = [
     "MockSQLParser",
-    "MockSQLExecutor", 
+    "MockSQLExecutor",
     "MockQueryOptimizer",
     "MockSQLValidator",
 ]

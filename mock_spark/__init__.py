@@ -7,8 +7,8 @@ without requiring a Java Virtual Machine (JVM) or actual Spark installation.
 Key Features:
     - Complete PySpark API compatibility
     - No JVM required - pure Python implementation
-    - Comprehensive test suite with 250+ tests (100% pass rate)
-    - 100% mypy compliance with zero type errors
+    - Comprehensive test suite with 387+ tests (100% pass rate)
+    - Highly type safe with 59% reduction in mypy errors (214 → 24 in package source)
     - Black-formatted code for production readiness
     - Advanced functions (coalesce, isnull, upper, lower, length, abs, round)
     - Window functions with proper partitioning and ordering
@@ -27,12 +27,17 @@ Example:
     >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name"))).show()
+    +--- MockDataFrame: 2 rows ---+
+     upper(name)
+    ------------
+           ALICE
+             BOB
     
-Version: 0.2.0
+Version: 0.2.1
 Author: Odos Matthews
 """
 
-from .session import MockSparkSession, MockSparkSessionBuilder
+from .session import MockSparkSession
 from .session.context import MockSparkContext, MockJVMContext
 from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData
 from .functions import MockFunctions, MockColumn, MockColumnOperation, F
@@ -89,7 +94,7 @@ from .data_generation import (
     create_realistic_data,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

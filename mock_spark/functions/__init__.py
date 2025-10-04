@@ -1,7 +1,36 @@
 """
 Functions module for Mock Spark.
 
-This module provides function-related functionality organized into submodules.
+This module provides comprehensive mock implementations of PySpark functions
+that behave identically to the real PySpark functions for testing and development.
+Includes column functions, aggregate functions, window functions, and utility functions.
+
+Key Features:
+    - Complete PySpark function API compatibility
+    - Column operations (select, filter, transform)
+    - String functions (upper, lower, length, trim, regexp_replace, split)
+    - Math functions (abs, round, ceil, floor, sqrt, exp, log, pow, sin, cos, tan)
+    - Aggregate functions (count, sum, avg, max, min, stddev, variance)
+    - DateTime functions (current_timestamp, current_date, to_date, to_timestamp)
+    - Window functions (row_number, rank, dense_rank, lag, lead)
+    - Conditional functions (when, coalesce, isnull, isnotnull, isnan, nvl, nvl2)
+    - Type-safe operations with proper return types
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select(
+    ...     F.upper(F.col("name")).alias("upper_name"),
+    ...     F.col("age") * 2,
+    ...     F.when(F.col("age") > 25, "senior").otherwise("junior")
+    ... ).show()
+    +--- MockDataFrame: 2 rows ---+
+     upper_name |    (age * 2) |    CASE WHEN
+    ------------------------------------------
+           ALICE |           50 |       junior
+             BOB |           60 |       senior
 """
 
 from .core import (
@@ -86,7 +115,7 @@ desc = F.desc
 __all__ = [
     "MockColumn",
     "MockColumnOperation",
-    "MockLiteral", 
+    "MockLiteral",
     "MockAggregateFunction",
     "MockCaseWhen",
     "MockWindowFunction",
@@ -94,7 +123,7 @@ __all__ = [
     "F",
     "StringFunctions",
     "MathFunctions",
-    "AggregateFunctions", 
+    "AggregateFunctions",
     "DateTimeFunctions",
     # Module-level function aliases
     "col",

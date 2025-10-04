@@ -256,9 +256,7 @@ class TestDataGeneration:
                 MockStructField("name", StringType()),
                 MockStructField("age", IntegerType()),
                 MockStructField("salary", DoubleType()),
-                MockStructField(
-                    "active", StringType()
-                ),  # Will be generated as boolean-like
+                MockStructField("active", StringType()),  # Will be generated as boolean-like
             ]
         )
 

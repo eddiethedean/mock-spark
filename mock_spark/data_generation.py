@@ -28,10 +28,9 @@ Example:
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 from .spark_types import (
     MockStructType,
-    MockStructField,
     StringType,
     IntegerType,
     LongType,
@@ -77,9 +76,7 @@ class MockDataGenerator:
         for _ in range(num_rows):
             row = {}
             for field in schema.fields:
-                row[field.name] = MockDataGenerator._generate_field_value(
-                    field.dataType
-                )
+                row[field.name] = MockDataGenerator._generate_field_value(field.dataType)
             data.append(row)
 
         return data
@@ -110,14 +107,10 @@ class MockDataGenerator:
             for field in schema.fields:
                 if random.random() < corruption_rate:
                     # Generate corrupted value
-                    row[field.name] = MockDataGenerator._generate_corrupted_value(
-                        field.dataType
-                    )
+                    row[field.name] = MockDataGenerator._generate_corrupted_value(field.dataType)
                 else:
                     # Generate normal value
-                    row[field.name] = MockDataGenerator._generate_field_value(
-                        field.dataType
-                    )
+                    row[field.name] = MockDataGenerator._generate_field_value(field.dataType)
             data.append(row)
 
         return data
@@ -174,9 +167,7 @@ class MockDataGenerator:
         elif isinstance(data_type, ArrayType):
             return MockDataGenerator._generate_array(data_type.element_type)
         elif isinstance(data_type, MapType):
-            return MockDataGenerator._generate_map(
-                data_type.key_type, data_type.value_type
-            )
+            return MockDataGenerator._generate_map(data_type.key_type, data_type.value_type)
         else:
             return None
 
@@ -239,9 +230,7 @@ class MockDataGenerator:
         elif isinstance(data_type, ArrayType):
             return MockDataGenerator._generate_array(data_type.element_type)
         elif isinstance(data_type, MapType):
-            return MockDataGenerator._generate_map(
-                data_type.key_type, data_type.value_type
-            )
+            return MockDataGenerator._generate_map(data_type.key_type, data_type.value_type)
         else:
             return None
 
@@ -275,14 +264,10 @@ class MockDataGenerator:
     def _generate_array(element_type: MockDataType) -> List[Any]:
         """Generate a random array."""
         length = random.randint(0, 5)
-        return [
-            MockDataGenerator._generate_field_value(element_type) for _ in range(length)
-        ]
+        return [MockDataGenerator._generate_field_value(element_type) for _ in range(length)]
 
     @staticmethod
-    def _generate_map(
-        key_type: MockDataType, value_type: MockDataType
-    ) -> Dict[str, Any]:
+    def _generate_map(key_type: MockDataType, value_type: MockDataType) -> Dict[str, Any]:
         """Generate a random map."""
         length = random.randint(0, 3)
         result = {}
@@ -470,9 +455,7 @@ def create_corrupted_data(
     Returns:
         List of dictionaries representing the corrupted data.
     """
-    return MockDataGenerator.create_corrupted_data(
-        schema, corruption_rate, num_rows, seed
-    )
+    return MockDataGenerator.create_corrupted_data(schema, corruption_rate, num_rows, seed)
 
 
 def create_realistic_data(

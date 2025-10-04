@@ -55,7 +55,7 @@ def main():
     # 4. Create DataFrame
     print("\n4. Creating DataFrame...")
     df = spark.createDataFrame(data, schema)
-    print(f"✓ Created DataFrame with {df.count()} rows and {len(df.columns())} columns")
+    print(f"✓ Created DataFrame with {df.count()} rows and {len(df.columns)} columns")
 
     # 5. Basic Operations
     print("\n5. Basic DataFrame operations...")
@@ -86,7 +86,7 @@ def main():
 
     # Select specific columns
     names_and_ages = df.select("name", "age")
-    print(f"✓ Selected name and age: {len(names_and_ages.columns())} columns")
+    print(f"✓ Selected name and age: {len(names_and_ages.columns)} columns")
     names_and_ages.show()
 
     # 8. Aggregations
@@ -110,7 +110,7 @@ def main():
     print("✓ Created 'hr' schema")
 
     # Save DataFrame as table
-    df.write().format("parquet").mode("overwrite").saveAsTable("hr.employees")
+    df.write.format("parquet").mode("overwrite").saveAsTable("hr.employees")
     print("✓ Saved DataFrame as 'hr.employees' table")
 
     # Query table

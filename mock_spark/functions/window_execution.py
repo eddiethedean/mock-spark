@@ -4,8 +4,7 @@ Window functions for Mock Spark.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, List, Union, Optional
-from mock_spark.spark_types import MockDataType, StringType
+from typing import Any, List
 from mock_spark.window import MockWindowSpec
 
 
@@ -25,9 +24,9 @@ class MockWindowFunction:
         """
         self.function = function
         self.window_spec = window_spec
-        self.function_name = getattr(function, 'function_name', 'window_function')
-        self.column_name = getattr(function, 'column', None)
-        if self.column_name and hasattr(self.column_name, 'name'):
+        self.function_name = getattr(function, "function_name", "window_function")
+        self.column_name = getattr(function, "column", None)
+        if self.column_name and hasattr(self.column_name, "name"):
             self.column_name = self.column_name.name
         elif self.column_name and isinstance(self.column_name, str):
             self.column_name = self.column_name
@@ -81,44 +80,44 @@ class MockWindowFunction:
         """Evaluate rank() window function."""
         if not data:
             return []
-        
+
         # Get the ordering columns from window spec
-        order_columns = getattr(self.window_spec, '_order_by', [])
+        order_columns = getattr(self.window_spec, "_order_by", [])
         if not order_columns:
             # If no ordering, return row numbers
             return list(range(1, len(data) + 1))
-        
+
         # Extract the first ordering column (for simplicity)
         order_col = order_columns[0]
-        if hasattr(order_col, 'name'):
+        if hasattr(order_col, "name"):
             col_name = order_col.name
         else:
             col_name = str(order_col)
-        
+
         # Get values for ranking
         values = []
         for i, row in enumerate(data):
             value = row.get(col_name)
             values.append((value, i))  # (value, original_index)
-        
+
         # Sort by value (ascending by default)
-        values.sort(key=lambda x: x[0] if x[0] is not None else float('inf'))
-        
+        values.sort(key=lambda x: x[0] if x[0] is not None else float("inf"))
+
         # Assign ranks (PySpark rank behavior: same rank for ties, skip ranks after ties)
         ranks = [0] * len(data)
         current_rank = 1
-        
+
         for i, (value, original_idx) in enumerate(values):
             if i == 0:
                 ranks[original_idx] = current_rank
             else:
-                prev_value = values[i-1][0]
+                prev_value = values[i - 1][0]
                 if value != prev_value:
                     # Different value, assign new rank
                     current_rank = i + 1
                 # Same value gets the same rank (no increment)
                 ranks[original_idx] = current_rank
-        
+
         return ranks
 
     def _evaluate_dense_rank(self, data: List[dict]) -> List[int]:

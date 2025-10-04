@@ -78,7 +78,9 @@ class ColumnNotFoundException(AnalysisException):
         >>> raise ColumnNotFoundException("unknown_column")
     """
 
-    def __init__(self, column_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, column_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Column '{column_name}' does not exist"
         super().__init__(message, stackTrace)
@@ -100,7 +102,9 @@ class TableNotFoundException(AnalysisException):
         >>> raise TableNotFoundException("unknown_table")
     """
 
-    def __init__(self, table_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, table_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Table '{table_name}' does not exist"
         super().__init__(message, stackTrace)
@@ -122,7 +126,9 @@ class DatabaseNotFoundException(AnalysisException):
         >>> raise DatabaseNotFoundException("unknown_database")
     """
 
-    def __init__(self, database_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, database_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Database '{database_name}' does not exist"
         super().__init__(message, stackTrace)
@@ -145,7 +151,13 @@ class TypeMismatchException(AnalysisException):
         >>> raise TypeMismatchException("string", "integer")
     """
 
-    def __init__(self, expected_type: str, actual_type: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        expected_type: str,
+        actual_type: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"Type mismatch: expected {expected_type}, got {actual_type}"
         super().__init__(message, stackTrace)

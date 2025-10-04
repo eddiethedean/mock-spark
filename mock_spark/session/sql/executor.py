@@ -20,10 +20,11 @@ Example:
     >>> result.show()
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 from ...core.interfaces.session import ISession
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.exceptions.execution import QueryExecutionException
+from ...spark_types import MockStructType
 from .parser import MockSQLAST
 
 
@@ -46,50 +47,51 @@ class MockSQLExecutor:
 
     def __init__(self, session: ISession):
         """Initialize MockSQLExecutor.
-        
+
         Args:
             session: Mock Spark session instance.
         """
         self.session = session
         from .parser import MockSQLParser
+
         self.parser = MockSQLParser()
 
     def execute(self, query: str) -> IDataFrame:
         """Execute SQL query.
-        
+
         Args:
             query: SQL query string.
-            
+
         Returns:
             DataFrame with query results.
-            
+
         Raises:
             QueryExecutionException: If query execution fails.
         """
         try:
             # Parse the query
             ast = self.parser.parse(query)
-            
+
             # Execute based on query type
-            if ast.query_type == 'SELECT':
+            if ast.query_type == "SELECT":
                 return self._execute_select(ast)
-            elif ast.query_type == 'CREATE':
+            elif ast.query_type == "CREATE":
                 return self._execute_create(ast)
-            elif ast.query_type == 'DROP':
+            elif ast.query_type == "DROP":
                 return self._execute_drop(ast)
-            elif ast.query_type == 'INSERT':
+            elif ast.query_type == "INSERT":
                 return self._execute_insert(ast)
-            elif ast.query_type == 'UPDATE':
+            elif ast.query_type == "UPDATE":
                 return self._execute_update(ast)
-            elif ast.query_type == 'DELETE':
+            elif ast.query_type == "DELETE":
                 return self._execute_delete(ast)
-            elif ast.query_type == 'SHOW':
+            elif ast.query_type == "SHOW":
                 return self._execute_show(ast)
-            elif ast.query_type == 'DESCRIBE':
+            elif ast.query_type == "DESCRIBE":
                 return self._execute_describe(ast)
             else:
                 raise QueryExecutionException(f"Unsupported query type: {ast.query_type}")
-                
+
         except Exception as e:
             if isinstance(e, QueryExecutionException):
                 raise
@@ -97,26 +99,33 @@ class MockSQLExecutor:
 
     def _execute_select(self, ast: MockSQLAST) -> IDataFrame:
         """Execute SELECT query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             DataFrame with SELECT results.
         """
         components = ast.components
-        
+
         # Get table name - handle queries without FROM clause
-        from_tables = components.get('from_tables', [])
+        from_tables = components.get("from_tables", [])
         if not from_tables:
             # Query without FROM clause (e.g., SELECT 1 as test_col)
             # Create a single row DataFrame with the literal values
             from ...dataframe import MockDataFrame
-            from ...spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType, BooleanType
-            
+            from ...spark_types import (
+                MockStructType,
+                MockStructField,
+                StringType,
+                LongType,
+                DoubleType,
+                BooleanType,
+            )
+
             # For now, create a simple DataFrame with one row
             # This is a basic implementation for literal SELECT queries
-            data = [{}]  # Empty row, we'll populate based on SELECT columns
+            data: List[Dict[str, Any]] = [{}]  # Empty row, we'll populate based on SELECT columns
             schema = MockStructType([])
             df = MockDataFrame(data, schema)
         else:
@@ -124,13 +133,20 @@ class MockSQLExecutor:
             # Try to get table as DataFrame
             try:
                 df = self.session.table(table_name)
+                # Convert IDataFrame to MockDataFrame if needed
+                if not isinstance(df, MockDataFrame):  # type: ignore[unreachable]
+                    from ...dataframe import MockDataFrame
+
+                    df = MockDataFrame(df.collect(), df.schema)
             except Exception:
                 # If table doesn't exist, return empty DataFrame
                 from ...dataframe import MockDataFrame
-                return MockDataFrame([], [])  # type: ignore[return-value]
+                from ...spark_types import MockStructType
+
+                return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
         # Apply WHERE conditions
-        where_conditions = components.get('where_conditions', [])
+        where_conditions = components.get("where_conditions", [])
         if where_conditions:
             # Simple WHERE condition handling
             condition = where_conditions[0]
@@ -138,144 +154,162 @@ class MockSQLExecutor:
             pass
 
         # Apply column selection
-        select_columns = components.get('select_columns', ['*'])
-        if select_columns != ['*']:
+        select_columns = components.get("select_columns", ["*"])
+        if select_columns != ["*"]:
             df = df.select(*select_columns)
 
         # Apply GROUP BY
-        group_by_columns = components.get('group_by_columns', [])
+        group_by_columns = components.get("group_by_columns", [])
         if group_by_columns:
-            df = df.groupBy(*group_by_columns)
+            grouped_df = df.groupBy(*group_by_columns)
+            # For now, convert grouped data back to DataFrame
+            # In a real implementation, this would depend on the aggregation functions
+            df = MockDataFrame([], MockStructType([]))
 
         # Apply ORDER BY
-        order_by_columns = components.get('order_by_columns', [])
+        order_by_columns = components.get("order_by_columns", [])
         if order_by_columns:
             df = df.orderBy(*order_by_columns)
 
         # Apply LIMIT
-        limit_value = components.get('limit_value')
+        limit_value = components.get("limit_value")
         if limit_value:
             df = df.limit(limit_value)
 
-        return df
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, df)
 
     def _execute_create(self, ast: MockSQLAST) -> IDataFrame:
         """Execute CREATE query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             Empty DataFrame indicating success.
         """
         components = ast.components
-        object_type = components.get('object_type', 'TABLE')
-        object_name = components.get('object_name', 'unknown')
+        object_type = components.get("object_type", "TABLE")
+        object_name = components.get("object_name", "unknown")
 
-        if object_type.upper() == 'DATABASE':
+        if object_type.upper() == "DATABASE":
             self.session.catalog.createDatabase(object_name)
-        elif object_type.upper() == 'TABLE':
+        elif object_type.upper() == "TABLE":
             # Mock table creation
             pass
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_drop(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DROP query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             Empty DataFrame indicating success.
         """
         components = ast.components
-        object_type = components.get('object_type', 'TABLE')
-        object_name = components.get('object_name', 'unknown')
+        object_type = components.get("object_type", "TABLE")
+        object_name = components.get("object_name", "unknown")
 
-        if object_type.upper() == 'DATABASE':
+        if object_type.upper() == "DATABASE":
             # Mock database drop
             pass
-        elif object_type.upper() == 'TABLE':
+        elif object_type.upper() == "TABLE":
             # Mock table drop
             pass
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_insert(self, ast: MockSQLAST) -> IDataFrame:
         """Execute INSERT query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             Empty DataFrame indicating success.
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_update(self, ast: MockSQLAST) -> IDataFrame:
         """Execute UPDATE query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             Empty DataFrame indicating success.
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_delete(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DELETE query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             Empty DataFrame indicating success.
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_show(self, ast: MockSQLAST) -> IDataFrame:
         """Execute SHOW query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             DataFrame with SHOW results.
         """
         # Mock implementation - show databases or tables
         from ...dataframe import MockDataFrame
-        
+
         # Simple mock data for SHOW commands
-        if 'databases' in ast.components.get('original_query', '').lower():
+        if "databases" in ast.components.get("original_query", "").lower():
             data = [{"databaseName": "default"}, {"databaseName": "test"}]
-            return MockDataFrame(data, ["databaseName"])  # type: ignore[return-value]
-        elif 'tables' in ast.components.get('original_query', '').lower():
+            from ...spark_types import MockStructType, MockStructField, StringType
+
+            schema = MockStructType([MockStructField("databaseName", StringType())])
+            return MockDataFrame(data, schema)  # type: ignore[return-value]
+        elif "tables" in ast.components.get("original_query", "").lower():
             data = [{"tableName": "users"}, {"tableName": "orders"}]
-            return MockDataFrame(data, ["tableName"])  # type: ignore[return-value]
+            from ...spark_types import MockStructType, MockStructField, StringType
+
+            schema = MockStructType([MockStructField("tableName", StringType())])
+            return MockDataFrame(data, schema)  # type: ignore[return-value]
         else:
-            return MockDataFrame([], [])  # type: ignore[return-value]
+            return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
 
     def _execute_describe(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DESCRIBE query.
-        
+
         Args:
             ast: Parsed SQL AST.
-            
+
         Returns:
             DataFrame with DESCRIBE results.
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])  # type: ignore[return-value]
+
+        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]

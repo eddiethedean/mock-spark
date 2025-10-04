@@ -8,7 +8,6 @@ SQL processing, and catalog operations.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 from ..interfaces.dataframe import IDataFrame, IDataFrameReader
-from ..interfaces.storage import IStorageManager
 
 
 class ISession(ABC):
@@ -51,7 +50,9 @@ class ISession(ABC):
         pass
 
     @abstractmethod
-    def createDataFrame(self, data: Union[List[Dict], List[Any]], schema: Optional[Union[str, Any]] = None) -> IDataFrame:
+    def createDataFrame(
+        self, data: Union[List[Dict], List[Any]], schema: Optional[Union[str, Any]] = None
+    ) -> IDataFrame:
         """Create DataFrame from data."""
         pass
 
@@ -66,7 +67,9 @@ class ISession(ABC):
         pass
 
     @abstractmethod
-    def range(self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None) -> IDataFrame:
+    def range(
+        self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
+    ) -> IDataFrame:
         """Create DataFrame with range of numbers."""
         pass
 
@@ -120,7 +123,9 @@ class ICatalog(ABC):
         pass
 
     @abstractmethod
-    def dropDatabase(self, db_name: str, ignore_if_not_exists: bool = False, cascade: bool = False) -> None:
+    def dropDatabase(
+        self, db_name: str, ignore_if_not_exists: bool = False, cascade: bool = False
+    ) -> None:
         """Drop database."""
         pass
 

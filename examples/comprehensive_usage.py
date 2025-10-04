@@ -208,9 +208,7 @@ def demonstrate_data_generation():
     print(f"Sample row: {realistic_data[0]}")
 
     # Generate corrupted data
-    corrupted_data = create_corrupted_data(
-        schema, corruption_rate=0.2, num_rows=10, seed=42
-    )
+    corrupted_data = create_corrupted_data(schema, corruption_rate=0.2, num_rows=10, seed=42)
     print(f"Generated {len(corrupted_data)} corrupted rows")
     print(f"Sample row: {corrupted_data[0]}")
     print()
@@ -290,9 +288,7 @@ def demonstrate_enhanced_window_functions():
         result.show()
 
         # Test rowsBetween
-        window_with_rows = (
-            MockWindow.partitionBy("department").orderBy("salary").rowsBetween(-1, 1)
-        )
+        window_with_rows = MockWindow.partitionBy("department").orderBy("salary").rowsBetween(-1, 1)
         result_with_rows = df.select(
             F.col("*"),
             F.avg("salary").over(window_with_rows).alias("avg_salary_window"),
@@ -380,10 +376,7 @@ def demonstrate_builder_patterns():
 
     # Error simulation builder
     error_sim = (
-        MockErrorSimulatorBuilder(spark)
-        .table_not_found("nonexistent.*")
-        .data_too_large(5)
-        .build()
+        MockErrorSimulatorBuilder(spark).table_not_found("nonexistent.*").data_too_large(5).build()
     )
 
     # Performance simulation builder
@@ -403,13 +396,7 @@ def demonstrate_builder_patterns():
         ]
     )
 
-    data = (
-        MockDataGeneratorBuilder(schema)
-        .num_rows(20)
-        .realistic()
-        .corruption_rate(0.1)
-        .build()
-    )
+    data = MockDataGeneratorBuilder(schema).num_rows(20).realistic().corruption_rate(0.1).build()
 
     print(f"Generated {len(data)} rows with builder pattern")
     print(f"Sample row: {data[0]}")

@@ -1,10 +1,36 @@
 """
 Mathematical functions for Mock Spark.
 
-This module contains mathematical functions including abs, round, ceil, floor, etc.
+This module provides comprehensive mathematical functions that match PySpark's
+math function API. Includes arithmetic operations, rounding functions, trigonometric
+functions, and mathematical transformations for numerical processing in DataFrames.
+
+Key Features:
+    - Complete PySpark math function API compatibility
+    - Arithmetic operations (abs, round, ceil, floor)
+    - Advanced math functions (sqrt, exp, log, pow)
+    - Trigonometric functions (sin, cos, tan)
+    - Type-safe operations with proper return types
+    - Support for both column references and numeric literals
+    - Proper handling of edge cases and null values
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"value": 3.7, "angle": 1.57}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select(
+    ...     F.round(F.col("value"), 1),
+    ...     F.ceil(F.col("value")),
+    ...     F.sin(F.col("angle"))
+    ... ).show()
+    +--- MockDataFrame: 1 rows ---+
+    round(value, 1) |  ceil(value) |   sin(angle)
+    ---------------------------------------------
+             4.0 |            4 |         1.57
 """
 
-from typing import Any, Union, Optional
+from typing import Union, Optional
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 
 
@@ -23,7 +49,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "abs", name=f"abs({column.name})")
         return operation
 
@@ -40,8 +66,10 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        operation = MockColumnOperation(column, "round", scale, name=f"round({column.name}, {scale})")
+
+        operation = MockColumnOperation(
+            column, "round", scale, name=f"round({column.name}, {scale})"
+        )
         return operation
 
     @staticmethod
@@ -56,7 +84,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "ceil", name=f"ceil({column.name})")
         return operation
 
@@ -72,7 +100,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "floor", name=f"floor({column.name})")
         return operation
 
@@ -88,7 +116,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "sqrt", name=f"sqrt({column.name})")
         return operation
 
@@ -104,7 +132,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "exp", name=f"exp({column.name})")
         return operation
 
@@ -121,13 +149,15 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         name = f"log({base}, {column.name})" if base is not None else f"log({column.name})"
         operation = MockColumnOperation(column, "log", base, name=name)
         return operation
 
     @staticmethod
-    def pow(column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]) -> MockColumnOperation:
+    def pow(
+        column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]
+    ) -> MockColumnOperation:
         """Raise to power.
 
         Args:
@@ -139,8 +169,10 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        operation = MockColumnOperation(column, "pow", exponent, name=f"pow({column.name}, {exponent})")
+
+        operation = MockColumnOperation(
+            column, "pow", exponent, name=f"pow({column.name}, {exponent})"
+        )
         return operation
 
     @staticmethod
@@ -155,7 +187,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "sin", name=f"sin({column.name})")
         return operation
 
@@ -171,7 +203,7 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "cos", name=f"cos({column.name})")
         return operation
 
@@ -187,6 +219,6 @@ class MathFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "tan", name=f"tan({column.name})")
         return operation

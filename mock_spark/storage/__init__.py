@@ -1,7 +1,30 @@
 """
-Storage module.
+Storage module for Mock Spark.
 
-This module provides a unified storage system with multiple backends and serialization options.
+This module provides a comprehensive storage system with multiple backends and
+serialization options for persisting and retrieving DataFrame data. Supports
+in-memory storage, SQLite databases, file-based storage, and various serialization formats.
+
+Key Features:
+    - Multiple storage backends (Memory, SQLite, File)
+    - Flexible serialization (JSON, CSV, Parquet)
+    - Unified storage interface for consistency
+    - Transaction support and data integrity
+    - Schema management and validation
+    - Table and database operations
+    - Storage manager factory for easy backend switching
+
+Example:
+    >>> from mock_spark.storage import MemoryStorageManager
+    >>> from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+    >>> storage = MemoryStorageManager()
+    >>> storage.create_schema("test_db")
+    >>> schema = MockStructType([
+    ...     MockStructField("name", StringType()),
+    ...     MockStructField("age", IntegerType())
+    ... ])
+    >>> storage.create_table("test_db", "users", schema)
+    >>> storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 """
 
 # Import interfaces
@@ -22,7 +45,7 @@ from .manager import StorageManagerFactory, UnifiedStorageManager
 __all__ = [
     # Interfaces
     "IStorageManager",
-    "ITable", 
+    "ITable",
     "ISchema",
     # Memory backend
     "MemoryStorageManager",
@@ -30,7 +53,7 @@ __all__ = [
     "MemorySchema",
     # SQLite backend
     "SQLiteStorageManager",
-    "SQLiteTable", 
+    "SQLiteTable",
     "SQLiteSchema",
     # File backend
     "FileStorageManager",

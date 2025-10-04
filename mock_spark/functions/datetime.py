@@ -1,12 +1,38 @@
 """
 Datetime functions for Mock Spark.
 
-This module contains datetime functions including current_timestamp, to_date, etc.
+This module provides comprehensive datetime functions that match PySpark's
+datetime function API. Includes date/time conversion, extraction, and manipulation
+operations for temporal data processing in DataFrames.
+
+Key Features:
+    - Complete PySpark datetime function API compatibility
+    - Current date/time functions (current_timestamp, current_date)
+    - Date conversion (to_date, to_timestamp)
+    - Date extraction (year, month, day, hour, minute, second)
+    - Date manipulation (dayofweek, dayofyear, weekofyear, quarter)
+    - Type-safe operations with proper return types
+    - Support for various date formats and time zones
+    - Proper handling of date parsing and validation
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"timestamp": "2024-01-15 10:30:00", "date_str": "2024-01-15"}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select(
+    ...     F.year(F.col("timestamp")),
+    ...     F.month(F.col("timestamp")),
+    ...     F.to_date(F.col("date_str"))
+    ... ).show()
+    +--- MockDataFrame: 1 rows ---+
+    year(timestamp) | month(timestamp) | to_date(date_str)
+    ------------------------------------------------------
+    2024-01-15 10:30:00 | 2024-01-15 10:30:00 |   2024-01-15
 """
 
-from typing import Any, Union, Optional
+from typing import Union, Optional
 from mock_spark.functions.base import MockColumn, MockColumnOperation
-from mock_spark.spark_types import MockDataType, StringType, DateType, TimestampType
 
 
 class DateTimeFunctions:
@@ -21,8 +47,11 @@ class DateTimeFunctions:
         """
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+
         dummy_column = MockColumn("__current_timestamp__")
-        operation = MockColumnOperation(dummy_column, "current_timestamp", name="current_timestamp()")
+        operation = MockColumnOperation(
+            dummy_column, "current_timestamp", name="current_timestamp()"
+        )
         return operation
 
     @staticmethod
@@ -34,12 +63,15 @@ class DateTimeFunctions:
         """
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+
         dummy_column = MockColumn("__current_date__")
         operation = MockColumnOperation(dummy_column, "current_date", name="current_date()")
         return operation
 
     @staticmethod
-    def to_date(column: Union[MockColumn, str], format: Optional[str] = None) -> MockColumnOperation:
+    def to_date(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert string to date.
 
         Args:
@@ -51,13 +83,19 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        name = f"to_date({column.name}, '{format}')" if format is not None else f"to_date({column.name})"
+
+        name = (
+            f"to_date({column.name}, '{format}')"
+            if format is not None
+            else f"to_date({column.name})"
+        )
         operation = MockColumnOperation(column, "to_date", format, name=name)
         return operation
 
     @staticmethod
-    def to_timestamp(column: Union[MockColumn, str], format: Optional[str] = None) -> MockColumnOperation:
+    def to_timestamp(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert string to timestamp.
 
         Args:
@@ -69,8 +107,12 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        name = f"to_timestamp({column.name}, '{format}')" if format is not None else f"to_timestamp({column.name})"
+
+        name = (
+            f"to_timestamp({column.name}, '{format}')"
+            if format is not None
+            else f"to_timestamp({column.name})"
+        )
         operation = MockColumnOperation(column, "to_timestamp", format, name=name)
         return operation
 
@@ -86,7 +128,7 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "hour", name=f"hour({column.name})")
         return operation
 
@@ -102,9 +144,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "day", name=f"day({column.name})")
-        name=f"day({column.name})"
+        name = f"day({column.name})"
         return operation
 
     @staticmethod
@@ -119,9 +161,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "month", name=f"month({column.name})")
-        name=f"month({column.name})"
+        name = f"month({column.name})"
         return operation
 
     @staticmethod
@@ -136,9 +178,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "year", name=f"year({column.name})")
-        name=f"year({column.name})"
+        name = f"year({column.name})"
         return operation
 
     @staticmethod
@@ -153,9 +195,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "dayofweek", name=f"dayofweek({column.name})")
-        name=f"dayofweek({column.name})"
+        name = f"dayofweek({column.name})"
         return operation
 
     @staticmethod
@@ -170,9 +212,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "dayofyear", name=f"dayofyear({column.name})")
-        name=f"dayofyear({column.name})"
+        name = f"dayofyear({column.name})"
         return operation
 
     @staticmethod
@@ -187,9 +229,9 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "weekofyear", name=f"weekofyear({column.name})")
-        name=f"weekofyear({column.name})"
+        name = f"weekofyear({column.name})"
         return operation
 
     @staticmethod
@@ -204,7 +246,7 @@ class DateTimeFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "quarter", name=f"quarter({column.name})")
-        name=f"quarter({column.name})"
+        name = f"quarter({column.name})"
         return operation

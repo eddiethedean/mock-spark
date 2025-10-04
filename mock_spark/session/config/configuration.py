@@ -21,7 +21,6 @@ Example:
 """
 
 from typing import Any, Dict, Optional
-from ...core.interfaces.session import IConfiguration
 
 
 class MockConfiguration:
@@ -56,11 +55,11 @@ class MockConfiguration:
 
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """Get configuration value.
-        
+
         Args:
             key: Configuration key.
             default: Default value if key not found.
-            
+
         Returns:
             Configuration value or default.
         """
@@ -68,7 +67,7 @@ class MockConfiguration:
 
     def set(self, key: str, value: Any) -> None:
         """Set configuration value.
-        
+
         Args:
             key: Configuration key.
             value: Configuration value.
@@ -77,7 +76,7 @@ class MockConfiguration:
 
     def setAll(self, pairs: Dict[str, Any]) -> None:
         """Set multiple configuration values.
-        
+
         Args:
             pairs: Dictionary of key-value pairs.
         """
@@ -86,7 +85,7 @@ class MockConfiguration:
 
     def setMaster(self, master: str) -> None:
         """Set master URL.
-        
+
         Args:
             master: Master URL.
         """
@@ -94,7 +93,7 @@ class MockConfiguration:
 
     def setAppName(self, name: str) -> None:
         """Set application name.
-        
+
         Args:
             name: Application name.
         """
@@ -102,7 +101,7 @@ class MockConfiguration:
 
     def getAll(self) -> Dict[str, str]:
         """Get all configuration values.
-        
+
         Returns:
             Dictionary of all configuration values.
         """
@@ -110,7 +109,7 @@ class MockConfiguration:
 
     def unset(self, key: str) -> None:
         """Unset configuration value.
-        
+
         Args:
             key: Configuration key to unset.
         """
@@ -119,10 +118,10 @@ class MockConfiguration:
 
     def contains(self, key: str) -> bool:
         """Check if configuration contains key.
-        
+
         Args:
             key: Configuration key.
-            
+
         Returns:
             True if key exists, False otherwise.
         """
@@ -158,10 +157,10 @@ class MockConfigBuilder:
 
     def appName(self, name: str) -> "MockConfigBuilder":
         """Set application name.
-        
+
         Args:
             name: Application name.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -170,10 +169,10 @@ class MockConfigBuilder:
 
     def master(self, master: str) -> "MockConfigBuilder":
         """Set master URL.
-        
+
         Args:
             master: Master URL.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -182,11 +181,11 @@ class MockConfigBuilder:
 
     def set(self, key: str, value: Any) -> "MockConfigBuilder":
         """Set configuration value.
-        
+
         Args:
             key: Configuration key.
             value: Configuration value.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -195,10 +194,10 @@ class MockConfigBuilder:
 
     def setAll(self, pairs: Dict[str, Any]) -> "MockConfigBuilder":
         """Set multiple configuration values.
-        
+
         Args:
             pairs: Dictionary of key-value pairs.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -207,7 +206,7 @@ class MockConfigBuilder:
 
     def build(self) -> MockConfiguration:
         """Build the configuration.
-        
+
         Returns:
             MockConfiguration instance.
         """

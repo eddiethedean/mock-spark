@@ -1,10 +1,35 @@
 """
 String functions for Mock Spark.
 
-This module contains string manipulation functions including upper, lower, length, etc.
+This module provides comprehensive string manipulation functions that match PySpark's
+string function API. Includes case conversion, trimming, pattern matching, and string
+transformation operations for text processing in DataFrames.
+
+Key Features:
+    - Complete PySpark string function API compatibility
+    - Case conversion (upper, lower)
+    - Length and trimming operations (length, trim, ltrim, rtrim)
+    - Pattern matching and replacement (regexp_replace, split)
+    - String manipulation (substring, concat)
+    - Type-safe operations with proper return types
+    - Support for both column references and string literals
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"name": "  Alice  ", "email": "alice@example.com"}]
+    >>> df = spark.createDataFrame(data)
+    >>> df.select(
+    ...     F.upper(F.trim(F.col("name"))),
+    ...     F.regexp_replace(F.col("email"), "@.*", "@company.com")
+    ... ).show()
+    +--- MockDataFrame: 1 rows ---+
+    upper(trim(name)) | regexp_replace(email, '@.*', '@company.com')
+    ----------------------------------------------------------------
+           ALICE | alice@company.com
 """
 
-from typing import Any, Union, Optional
+from typing import Union, Optional
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 
 
@@ -23,7 +48,7 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "upper", name=f"upper({column.name})")
         return operation
 
@@ -39,7 +64,7 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "lower", name=f"lower({column.name})")
         return operation
 
@@ -55,7 +80,7 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "length", name=f"length({column.name})")
         return operation
 
@@ -71,7 +96,7 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "trim", name=f"trim({column.name})")
         return operation
 
@@ -87,7 +112,7 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "ltrim", name=f"ltrim({column.name})")
         return operation
 
@@ -103,12 +128,14 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
+
         operation = MockColumnOperation(column, "rtrim", name=f"rtrim({column.name})")
         return operation
 
     @staticmethod
-    def regexp_replace(column: Union[MockColumn, str], pattern: str, replacement: str) -> MockColumnOperation:
+    def regexp_replace(
+        column: Union[MockColumn, str], pattern: str, replacement: str
+    ) -> MockColumnOperation:
         """Replace regex pattern in string.
 
         Args:
@@ -121,8 +148,13 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        operation = MockColumnOperation(column, "regexp_replace", (pattern, replacement), name=f"regexp_replace({column.name}, '{pattern}', '{replacement}')")
+
+        operation = MockColumnOperation(
+            column,
+            "regexp_replace",
+            (pattern, replacement),
+            name=f"regexp_replace({column.name}, '{pattern}', '{replacement}')",
+        )
         return operation
 
     @staticmethod
@@ -138,12 +170,16 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        operation = MockColumnOperation(column, "split", delimiter, name=f"split({column.name}, '{delimiter}')")
+
+        operation = MockColumnOperation(
+            column, "split", delimiter, name=f"split({column.name}, '{delimiter}')"
+        )
         return operation
 
     @staticmethod
-    def substring(column: Union[MockColumn, str], start: int, length: Optional[int] = None) -> MockColumnOperation:
+    def substring(
+        column: Union[MockColumn, str], start: int, length: Optional[int] = None
+    ) -> MockColumnOperation:
         """Extract substring from string.
 
         Args:
@@ -156,8 +192,12 @@ class StringFunctions:
         """
         if isinstance(column, str):
             column = MockColumn(column)
-        
-        name = f"substring({column.name}, {start}, {length})" if length is not None else f"substring({column.name}, {start})"
+
+        name = (
+            f"substring({column.name}, {start}, {length})"
+            if length is not None
+            else f"substring({column.name}, {start})"
+        )
         operation = MockColumnOperation(column, "substring", (start, length), name=name)
         return operation
 
@@ -174,8 +214,10 @@ class StringFunctions:
         # Use the first column as the base
         if not columns:
             raise ValueError("At least one column must be provided")
-        
+
         base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, 'name') else str(col) for col in columns]
-        operation = MockColumnOperation(base_column, "concat", columns[1:], name=f"concat({', '.join(column_names)})")
+        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        operation = MockColumnOperation(
+            base_column, "concat", columns[1:], name=f"concat({', '.join(column_names)})"
+        )
         return operation

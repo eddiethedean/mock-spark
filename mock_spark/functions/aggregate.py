@@ -1,12 +1,41 @@
 """
 Aggregate functions for Mock Spark.
 
-This module contains aggregate functions including count, sum, avg, max, min, etc.
+This module provides comprehensive aggregate functions that match PySpark's
+aggregate function API. Includes statistical operations, counting functions,
+and data summarization operations for grouped data processing in DataFrames.
+
+Key Features:
+    - Complete PySpark aggregate function API compatibility
+    - Basic aggregates (count, sum, avg, max, min)
+    - Statistical functions (stddev, variance, skewness, kurtosis)
+    - Collection aggregates (collect_list, collect_set, first, last)
+    - Distinct counting (countDistinct)
+    - Type-safe operations with proper return types
+    - Support for both column references and expressions
+    - Proper handling of null values and edge cases
+
+Example:
+    >>> from mock_spark import MockSparkSession, F
+    >>> spark = MockSparkSession("test")
+    >>> data = [{"dept": "IT", "salary": 50000}, {"dept": "IT", "salary": 60000}]
+    >>> df = spark.createDataFrame(data)
+    >>> grouped = df.groupBy("dept")
+    >>> result = grouped.agg(
+    ...     F.count("*").alias("count"),
+    ...     F.avg("salary").alias("avg_salary"),
+    ...     F.max("salary").alias("max_salary")
+    ... )
+    >>> result.show()
+    +--- MockDataFrame: 1 rows ---+
+            dept |        count |   avg_salary |   max_salary
+    ---------------------------------------------------------
+              IT |            2 |      55000.0 |        60000
 """
 
-from typing import Any, Union, Optional
+from typing import Union
 from mock_spark.functions.base import MockAggregateFunction, MockColumn
-from mock_spark.spark_types import MockDataType, LongType, DoubleType
+from mock_spark.spark_types import LongType, DoubleType
 
 
 class AggregateFunctions:

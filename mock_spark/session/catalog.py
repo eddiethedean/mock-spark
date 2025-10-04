@@ -33,7 +33,7 @@ class MockDatabase:
 
     def __init__(self, name: str):
         """Initialize MockDatabase.
-        
+
         Args:
             name: Database name.
         """
@@ -53,7 +53,7 @@ class MockTable:
 
     def __init__(self, name: str, database: str = "default"):
         """Initialize MockTable.
-        
+
         Args:
             name: Table name.
             database: Database name.
@@ -89,7 +89,7 @@ class MockCatalog:
 
     def __init__(self, storage: IStorageManager):
         """Initialize MockCatalog.
-        
+
         Args:
             storage: Storage manager instance.
         """
@@ -97,7 +97,7 @@ class MockCatalog:
 
     def listDatabases(self) -> List[MockDatabase]:
         """List all databases.
-        
+
         Returns:
             List of MockDatabase objects.
         """
@@ -105,11 +105,11 @@ class MockCatalog:
 
     def createDatabase(self, name: str, ignoreIfExists: bool = True) -> None:
         """Create a database.
-        
+
         Args:
             name: Database name.
             ignoreIfExists: Whether to ignore if database already exists.
-            
+
         Raises:
             IllegalArgumentException: If name is not a string or is empty.
             AnalysisException: If database already exists and ignoreIfExists is False.
@@ -128,20 +128,18 @@ class MockCatalog:
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
-            raise AnalysisException(
-                f"Failed to create database '{name}': {str(e)}"
-            )
+            raise AnalysisException(f"Failed to create database '{name}': {str(e)}")
 
     def tableExists(self, dbName: str, tableName: str) -> bool:
         """Check if table exists.
-        
+
         Args:
             dbName: Database name.
             tableName: Table name.
-            
+
         Returns:
             True if table exists, False otherwise.
-            
+
         Raises:
             IllegalArgumentException: If names are not strings or are empty.
             AnalysisException: If there's an error checking table existence.
@@ -169,13 +167,13 @@ class MockCatalog:
 
     def listTables(self, dbName: str) -> List[str]:
         """List tables in database.
-        
+
         Args:
             dbName: Database name.
-            
+
         Returns:
             List of table names.
-            
+
         Raises:
             IllegalArgumentException: If dbName is not a string or is empty.
             AnalysisException: If database doesn't exist or there's an error.
@@ -194,9 +192,7 @@ class MockCatalog:
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
-            raise AnalysisException(
-                f"Failed to list tables in database '{dbName}': {str(e)}"
-            )
+            raise AnalysisException(f"Failed to list tables in database '{dbName}': {str(e)}")
 
     def createTable(
         self,
@@ -207,7 +203,7 @@ class MockCatalog:
         **options: Any,
     ) -> None:
         """Create table.
-        
+
         Args:
             tableName: Table name.
             path: Path to data.
@@ -220,7 +216,7 @@ class MockCatalog:
 
     def dropTable(self, tableName: str) -> None:
         """Drop table.
-        
+
         Args:
             tableName: Table name.
         """
@@ -229,10 +225,10 @@ class MockCatalog:
 
     def isCached(self, tableName: str) -> bool:
         """Check if table is cached.
-        
+
         Args:
             tableName: Table name.
-            
+
         Returns:
             True if table is cached, False otherwise.
         """
@@ -240,7 +236,7 @@ class MockCatalog:
 
     def cacheTable(self, tableName: str) -> None:
         """Cache table.
-        
+
         Args:
             tableName: Table name.
         """
@@ -249,7 +245,7 @@ class MockCatalog:
 
     def uncacheTable(self, tableName: str) -> None:
         """Uncache table.
-        
+
         Args:
             tableName: Table name.
         """
@@ -258,7 +254,7 @@ class MockCatalog:
 
     def refreshTable(self, tableName: str) -> None:
         """Refresh table.
-        
+
         Args:
             tableName: Table name.
         """
@@ -267,7 +263,7 @@ class MockCatalog:
 
     def refreshByPath(self, path: str) -> None:
         """Refresh by path.
-        
+
         Args:
             path: Path to refresh.
         """
@@ -276,7 +272,7 @@ class MockCatalog:
 
     def recoverPartitions(self, tableName: str) -> None:
         """Recover partitions.
-        
+
         Args:
             tableName: Table name.
         """

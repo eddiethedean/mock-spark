@@ -6,7 +6,7 @@ including struct types, field definitions, and schema management.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .data_types import IDataType
 
@@ -173,7 +173,13 @@ class ISchemaBuilder(ABC):
     """Abstract interface for schema building."""
 
     @abstractmethod
-    def add_field(self, name: str, data_type: "IDataType", nullable: bool = True, metadata: Optional[Dict[str, Any]] = None) -> "ISchemaBuilder":
+    def add_field(
+        self,
+        name: str,
+        data_type: "IDataType",
+        nullable: bool = True,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> "ISchemaBuilder":
         """Add field to schema."""
         pass
 

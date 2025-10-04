@@ -6,7 +6,7 @@ table management, and data persistence.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union, Iterator
+from typing import Any, Dict, List, Optional
 from ..types.schema import ISchema, IStructField
 
 
@@ -34,7 +34,9 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def create_table(self, schema_name: str, table_name: str, fields: List[IStructField]) -> None:
+    def create_table(
+        self, schema_name: str, table_name: str, fields: List[IStructField]
+    ) -> Optional[Any]:
         """Create a new table."""
         pass
 

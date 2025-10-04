@@ -18,9 +18,7 @@ class TestDataFrameCreation:
         """Test simple DataFrame creation."""
         assert_dataframes_equal(mock_dataframe, pyspark_dataframe)
 
-    def test_create_dataframe_complex(
-        self, mock_complex_dataframe, pyspark_complex_dataframe
-    ):
+    def test_create_dataframe_complex(self, mock_complex_dataframe, pyspark_complex_dataframe):
         """Test complex DataFrame creation."""
         # For complex data, we might need to adjust comparison based on what PySpark actually supports
         try:
@@ -29,9 +27,7 @@ class TestDataFrameCreation:
             # If complex data fails, we need to fix the mock to match PySpark behavior
             pytest.fail(f"Complex DataFrame creation mismatch: {e}")
 
-    def test_create_dataframe_empty(
-        self, mock_environment, pyspark_environment, empty_data
-    ):
+    def test_create_dataframe_empty(self, mock_environment, pyspark_environment, empty_data):
         """Test empty DataFrame creation."""
         # Mock_spark can create empty DataFrame with empty schema
         mock_df = mock_environment["session"].createDataFrame(empty_data)
@@ -54,9 +50,7 @@ class TestDataFrameBasicOperations:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test column selection."""
-        mock_result = mock_dataframe.select(
-            mock_functions.col("name"), mock_functions.col("age")
-        )
+        mock_result = mock_dataframe.select(mock_functions.col("name"), mock_functions.col("age"))
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.col("name"), pyspark_functions.col("age")
         )
@@ -83,9 +77,7 @@ class TestDataFrameBasicOperations:
     ):
         """Test filter with null check."""
         mock_result = mock_dataframe.filter(mock_functions.col("name").isNull())
-        pyspark_result = pyspark_dataframe.filter(
-            pyspark_functions.col("name").isNull()
-        )
+        pyspark_result = pyspark_dataframe.filter(pyspark_functions.col("name").isNull())
         assert_dataframes_equal(mock_result, pyspark_result)
 
     def test_filter_is_not_null(
@@ -93,18 +85,14 @@ class TestDataFrameBasicOperations:
     ):
         """Test filter with not null check."""
         mock_result = mock_dataframe.filter(mock_functions.col("name").isNotNull())
-        pyspark_result = pyspark_dataframe.filter(
-            pyspark_functions.col("name").isNotNull()
-        )
+        pyspark_result = pyspark_dataframe.filter(pyspark_functions.col("name").isNotNull())
         assert_dataframes_equal(mock_result, pyspark_result)
 
     def test_with_column(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test adding new column."""
-        mock_result = mock_dataframe.withColumn(
-            "age_plus_one", mock_functions.col("age") + 1
-        )
+        mock_result = mock_dataframe.withColumn("age_plus_one", mock_functions.col("age") + 1)
         pyspark_result = pyspark_dataframe.withColumn(
             "age_plus_one", pyspark_functions.col("age") + 1
         )
@@ -115,9 +103,7 @@ class TestDataFrameBasicOperations:
     ):
         """Test adding column with literal value."""
         mock_result = mock_dataframe.withColumn("constant", mock_functions.lit("test"))
-        pyspark_result = pyspark_dataframe.withColumn(
-            "constant", pyspark_functions.lit("test")
-        )
+        pyspark_result = pyspark_dataframe.withColumn("constant", pyspark_functions.lit("test"))
         assert_dataframes_equal(mock_result, pyspark_result)
 
 
@@ -128,21 +114,15 @@ class TestDataFrameAggregations:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test groupBy with count."""
-        mock_result = mock_dataframe.groupBy("department").agg(
-            mock_functions.count("*")
-        )
-        pyspark_result = pyspark_dataframe.groupBy("department").agg(
-            pyspark_functions.count("*")
-        )
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.count("*"))
+        pyspark_result = pyspark_dataframe.groupBy("department").agg(pyspark_functions.count("*"))
         assert_dataframes_equal(mock_result, pyspark_result)
 
     def test_group_by_sum(
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test groupBy with sum."""
-        mock_result = mock_dataframe.groupBy("department").agg(
-            mock_functions.sum("salary")
-        )
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.sum("salary"))
         pyspark_result = pyspark_dataframe.groupBy("department").agg(
             pyspark_functions.sum("salary")
         )
@@ -152,9 +132,7 @@ class TestDataFrameAggregations:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test groupBy with average."""
-        mock_result = mock_dataframe.groupBy("department").agg(
-            mock_functions.avg("salary")
-        )
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.avg("salary"))
         pyspark_result = pyspark_dataframe.groupBy("department").agg(
             pyspark_functions.avg("salary")
         )
@@ -164,9 +142,7 @@ class TestDataFrameAggregations:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test groupBy with max."""
-        mock_result = mock_dataframe.groupBy("department").agg(
-            mock_functions.max("salary")
-        )
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.max("salary"))
         pyspark_result = pyspark_dataframe.groupBy("department").agg(
             pyspark_functions.max("salary")
         )
@@ -176,9 +152,7 @@ class TestDataFrameAggregations:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test groupBy with min."""
-        mock_result = mock_dataframe.groupBy("department").agg(
-            mock_functions.min("salary")
-        )
+        mock_result = mock_dataframe.groupBy("department").agg(mock_functions.min("salary"))
         pyspark_result = pyspark_dataframe.groupBy("department").agg(
             pyspark_functions.min("salary")
         )
@@ -325,9 +299,7 @@ class TestDataFrameCount:
     ):
         """Test countDistinct operation."""
         mock_result = mock_dataframe.select(mock_functions.countDistinct("department"))
-        pyspark_result = pyspark_dataframe.select(
-            pyspark_functions.countDistinct("department")
-        )
+        pyspark_result = pyspark_dataframe.select(pyspark_functions.countDistinct("department"))
         assert_dataframes_equal(mock_result, pyspark_result)
 
 
@@ -343,9 +315,7 @@ class TestDiscrepancyDetection:
         operations = [
             (
                 "select",
-                lambda df, f: df.select(
-                    f.col("name"), f.col("age"), f.col("department")
-                ),
+                lambda df, f: df.select(f.col("name"), f.col("age"), f.col("department")),
             ),
             ("filter", lambda df, f: df.filter(f.col("age") > 25)),
             ("withColumn", lambda df, f: df.withColumn("age_double", f.col("age") * 2)),
@@ -364,9 +334,7 @@ class TestDiscrepancyDetection:
 
                 comparison = compare_dataframes(mock_result, pyspark_result)
                 if not comparison["equivalent"]:
-                    pytest.fail(
-                        f"Discrepancy found in {op_name} operation: {comparison['errors']}"
-                    )
+                    pytest.fail(f"Discrepancy found in {op_name} operation: {comparison['errors']}")
 
                 # Update DataFrames for next operation
                 mock_df = mock_result

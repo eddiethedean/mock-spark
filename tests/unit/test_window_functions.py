@@ -101,9 +101,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.partitionBy("department").orderBy("salary")
-        result = df.select(
-            F.col("*"), F.row_number().over(window).alias("dept_row_num")
-        )
+        result = df.select(F.col("*"), F.row_number().over(window).alias("dept_row_num"))
 
         assert result.count() == 5
         assert "dept_row_num" in result.columns
@@ -113,9 +111,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.orderBy("salary").rowsBetween(Window.currentRow, 1)
-        result = df.select(
-            F.col("*"), F.avg("salary").over(window).alias("avg_salary_window")
-        )
+        result = df.select(F.col("*"), F.avg("salary").over(window).alias("avg_salary_window"))
 
         assert result.count() == 5
         assert "avg_salary_window" in result.columns
@@ -125,9 +121,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.orderBy("salary").rangeBetween(0, 10000)
-        result = df.select(
-            F.col("*"), F.count("*").over(window).alias("count_in_range")
-        )
+        result = df.select(F.col("*"), F.count("*").over(window).alias("count_in_range"))
 
         assert result.count() == 5
         assert "count_in_range" in result.columns
@@ -137,9 +131,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.orderBy("salary")
-        result = df.select(
-            F.col("*"), F.lag("salary", 1).over(window).alias("prev_salary")
-        )
+        result = df.select(F.col("*"), F.lag("salary", 1).over(window).alias("prev_salary"))
 
         assert result.count() == 5
         assert "prev_salary" in result.columns
@@ -149,9 +141,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.orderBy("salary")
-        result = df.select(
-            F.col("*"), F.lead("salary", 1).over(window).alias("next_salary")
-        )
+        result = df.select(F.col("*"), F.lead("salary", 1).over(window).alias("next_salary"))
 
         assert result.count() == 5
         assert "next_salary" in result.columns
@@ -161,9 +151,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.partitionBy("department")
-        result = df.select(
-            F.col("*"), F.avg("salary").over(window).alias("dept_avg_salary")
-        )
+        result = df.select(F.col("*"), F.avg("salary").over(window).alias("dept_avg_salary"))
 
         assert result.count() == 5
         assert "dept_avg_salary" in result.columns
@@ -173,9 +161,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.partitionBy("department")
-        result = df.select(
-            F.col("*"), F.sum("salary").over(window).alias("dept_total_salary")
-        )
+        result = df.select(F.col("*"), F.sum("salary").over(window).alias("dept_total_salary"))
 
         assert result.count() == 5
         assert "dept_total_salary" in result.columns
@@ -185,9 +171,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.partitionBy("department")
-        result = df.select(
-            F.col("*"), F.max("salary").over(window).alias("dept_max_salary")
-        )
+        result = df.select(F.col("*"), F.max("salary").over(window).alias("dept_max_salary"))
 
         assert result.count() == 5
         assert "dept_max_salary" in result.columns
@@ -197,9 +181,7 @@ class TestWindowFunctions:
         df = spark.createDataFrame(sample_data)
 
         window = Window.partitionBy("department")
-        result = df.select(
-            F.col("*"), F.min("salary").over(window).alias("dept_min_salary")
-        )
+        result = df.select(F.col("*"), F.min("salary").over(window).alias("dept_min_salary"))
 
         assert result.count() == 5
         assert "dept_min_salary" in result.columns
@@ -229,8 +211,7 @@ class TestWindowFunctions:
 
         assert result.count() == 5
         assert all(
-            col in result.columns
-            for col in ["row_num", "rank", "avg_salary", "prev_salary"]
+            col in result.columns for col in ["row_num", "rank", "avg_salary", "prev_salary"]
         )
 
     def test_window_with_empty_dataframe(self, spark):

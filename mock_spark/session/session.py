@@ -20,10 +20,14 @@ Example:
     >>> data = [{"name": "Alice", "age": 25}]
     >>> df = spark.createDataFrame(data)
     >>> df.show()
+    +--- MockDataFrame: 1 rows ---+
+             age |         name
+    ---------------------------
+              25 |        Alice
     >>> spark.sql("CREATE DATABASE test")
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from ..core.interfaces.session import ISession
 from ..core.interfaces.dataframe import IDataFrame, IDataFrameReader
 from ..core.interfaces.storage import IStorageManager
@@ -58,9 +62,9 @@ class MockSparkSession:
         >>> spark.sql("CREATE DATABASE test")
         >>> spark.stop()
     """
-    
+
     # Class attribute for builder pattern
-    builder = None
+    builder: Optional["MockSparkSessionBuilder"] = None
 
     def __init__(self, app_name: str = "MockSparkApp"):
         """Initialize MockSparkSession.
@@ -70,19 +74,24 @@ class MockSparkSession:
         """
         self.app_name = app_name
         self.storage = MemoryStorageManager()
-        self._catalog = MockCatalog(self.storage)
+        from typing import cast
+        from ..core.interfaces.storage import IStorageManager
+
+        self._catalog = MockCatalog(cast(IStorageManager, self.storage))
         self.sparkContext = MockSparkContext(app_name)
         self._conf = MockConfiguration()
         self._version = "3.4.0"  # Mock version
-        self._sql_executor = MockSQLExecutor(self)
-        
+        from ..core.interfaces.session import ISession
+
+        self._sql_executor = MockSQLExecutor(cast(ISession, self))
+
         # Mockable method implementations
         self._createDataFrame_impl = self._real_createDataFrame
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
-        
+
         # Error simulation
-        self._error_rules = {}
+        self._error_rules: Dict[str, Any] = {}
 
     @property
     def appName(self) -> str:
@@ -107,11 +116,11 @@ class MockSparkSession:
     @property
     def read(self) -> MockDataFrameReader:
         """Get DataFrame reader."""
-        return MockDataFrameReader(self)
+        return MockDataFrameReader(cast(ISession, self))
 
     def createDataFrame(
         self,
-        data: List[Union[Dict[str, Any], tuple]],
+        data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
     ) -> IDataFrame:
         """Create a DataFrame from data (mockable version)."""
@@ -119,7 +128,7 @@ class MockSparkSession:
 
     def _real_createDataFrame(
         self,
-        data: List[Union[Dict[str, Any], tuple]],
+        data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
     ) -> IDataFrame:
         """Create a DataFrame from data.
@@ -148,7 +157,7 @@ class MockSparkSession:
 
             fields = [MockStructField(name, StringType()) for name in schema]
             schema = MockStructType(fields)
-            
+
             # Convert tuples to dictionaries using provided column names
             if data and isinstance(data[0], tuple):
                 reordered_data = []
@@ -166,6 +175,7 @@ class MockSparkSession:
             if not data:
                 # For empty dataset, create empty schema
                 from ..spark_types import MockStructType
+
                 schema = MockStructType([])
             else:
                 # Simple schema inference
@@ -188,11 +198,13 @@ class MockSparkSession:
 
                         field_type = self._infer_type(value)
                         from ..spark_types import MockStructField
+
                         fields.append(MockStructField(key, field_type))
 
                 from ..spark_types import MockStructType
+
                 schema = MockStructType(fields)
-                
+
                 # Reorder data rows to match schema (alphabetical key order)
                 if isinstance(sample_row, dict):
                     reordered_data = []
@@ -219,10 +231,10 @@ class MockSparkSession:
 
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
-        
+
         Args:
             value: Value to infer type from.
-            
+
         Returns:
             Inferred data type.
         """
@@ -291,22 +303,29 @@ class MockSparkSession:
             >>> df = spark.table("users")
         """
         # Parse table name
-        schema, table = (
-            table_name.split(".", 1) if "." in table_name else ("default", table_name)
-        )
-        
+        schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
+
         # Check if table exists
         if not self.storage.table_exists(schema, table):
             from mock_spark.errors import AnalysisException
+
             raise AnalysisException(f"Table or view not found: {table_name}")
-        
+
         # Get table data and schema
         table_data = self.storage.get_data(schema, table)
         table_schema = self.storage.get_table_schema(schema, table)
-        
+
+        # Ensure schema is not None
+        if table_schema is None:
+            from ..spark_types import MockStructType
+
+            table_schema = MockStructType([])
+
         return MockDataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
 
-    def range(self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None) -> IDataFrame:
+    def range(
+        self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
+    ) -> IDataFrame:
         """Create DataFrame with range of numbers.
 
         Args:
@@ -349,34 +368,46 @@ class MockSparkSession:
     def mock_createDataFrame(self, side_effect=None, return_value=None):
         """Mock createDataFrame method for testing."""
         if side_effect:
+
             def mock_impl(*args, **kwargs):
                 raise side_effect
+
             self._createDataFrame_impl = mock_impl
         elif return_value:
+
             def mock_impl(*args, **kwargs):
                 return return_value
+
             self._createDataFrame_impl = mock_impl
 
     def mock_table(self, side_effect=None, return_value=None):
         """Mock table method for testing."""
         if side_effect:
+
             def mock_impl(*args, **kwargs):
                 raise side_effect
+
             self._table_impl = mock_impl
         elif return_value:
+
             def mock_impl(*args, **kwargs):
                 return return_value
+
             self._table_impl = mock_impl
 
     def mock_sql(self, side_effect=None, return_value=None):
         """Mock sql method for testing."""
         if side_effect:
+
             def mock_impl(*args, **kwargs):
                 raise side_effect
+
             self._sql_impl = mock_impl
         elif return_value:
+
             def mock_impl(*args, **kwargs):
                 return return_value
+
             self._sql_impl = mock_impl
 
     # Error simulation methods
@@ -438,10 +469,10 @@ class MockSparkSessionBuilder:
 
     def appName(self, name: str) -> "MockSparkSessionBuilder":
         """Set app name.
-        
+
         Args:
             name: Application name.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -450,10 +481,10 @@ class MockSparkSessionBuilder:
 
     def master(self, master: str) -> "MockSparkSessionBuilder":
         """Set master URL.
-        
+
         Args:
             master: Master URL.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -463,11 +494,11 @@ class MockSparkSessionBuilder:
         self, key_or_pairs: Union[str, Dict[str, Any]], value: Any = None
     ) -> "MockSparkSessionBuilder":
         """Set configuration.
-        
+
         Args:
             key_or_pairs: Configuration key or dictionary of key-value pairs.
             value: Configuration value (if key_or_pairs is a string).
-            
+
         Returns:
             Self for method chaining.
         """
@@ -479,7 +510,7 @@ class MockSparkSessionBuilder:
 
     def getOrCreate(self) -> MockSparkSession:
         """Get or create session.
-        
+
         Returns:
             MockSparkSession instance.
         """

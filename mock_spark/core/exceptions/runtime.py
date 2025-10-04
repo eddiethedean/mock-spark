@@ -43,7 +43,13 @@ class PySparkAttributeError(MockSparkException):
         >>> raise PySparkAttributeError("DataFrame", "unknown_method")
     """
 
-    def __init__(self, object_name: str, attribute_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        object_name: str,
+        attribute_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"'{object_name}' object has no attribute '{attribute_name}'"
         super().__init__(message, stackTrace)
@@ -85,7 +91,13 @@ class ConfigurationException(PySparkRuntimeError):
         >>> raise ConfigurationException("spark.memory", "invalid_value")
     """
 
-    def __init__(self, config_key: str, config_value: Any, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        config_key: str,
+        config_value: Any,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"Invalid configuration value '{config_value}' for key '{config_key}'"
         super().__init__(message, stackTrace)
@@ -108,7 +120,9 @@ class InitializationException(PySparkRuntimeError):
         >>> raise InitializationException("SparkSession")
     """
 
-    def __init__(self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Failed to initialize {component}"
         super().__init__(message, stackTrace)
@@ -130,7 +144,9 @@ class ShutdownException(PySparkRuntimeError):
         >>> raise ShutdownException("SparkSession")
     """
 
-    def __init__(self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+    ):
         if message is None:
             message = f"Failed to shutdown {component}"
         super().__init__(message, stackTrace)
@@ -153,7 +169,13 @@ class TimeoutException(PySparkRuntimeError):
         >>> raise TimeoutException("query_execution", 30)
     """
 
-    def __init__(self, operation: str, timeout_seconds: int, message: Optional[str] = None, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        operation: str,
+        timeout_seconds: int,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
         if message is None:
             message = f"Operation '{operation}' timed out after {timeout_seconds} seconds"
         super().__init__(message, stackTrace)

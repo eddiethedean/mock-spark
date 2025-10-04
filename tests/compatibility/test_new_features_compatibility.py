@@ -85,9 +85,7 @@ class TestNewDataTypes:
 class TestWindowConstants:
     """Test Window constants compatibility."""
 
-    def test_window_constants_compatibility(
-        self, mock_environment, pyspark_environment
-    ):
+    def test_window_constants_compatibility(self, mock_environment, pyspark_environment):
         """Test Window constants compatibility."""
         from mock_spark.window import MockWindow as MockWindow
         from pyspark.sql.window import Window as PySparkWindow
@@ -117,9 +115,7 @@ class TestEnhancedDataFrameWriter:
 
         # Test multiple options
         mock_writer = mock_dataframe.write.options(compression="gzip", format="parquet")
-        pyspark_writer = pyspark_dataframe.write.options(
-            compression="gzip", format="parquet"
-        )
+        pyspark_writer = pyspark_dataframe.write.options(compression="gzip", format="parquet")
 
         # Both should return the writer for chaining
         assert hasattr(mock_writer, "options")
@@ -359,9 +355,7 @@ class TestMockOnlyFeatures:
         assert all("name" in row and "age" in row for row in data)
 
         # Test create_corrupted_data
-        corrupted_data = create_corrupted_data(
-            schema, num_rows=10, corruption_rate=0.3, seed=42
-        )
+        corrupted_data = create_corrupted_data(schema, num_rows=10, corruption_rate=0.3, seed=42)
         assert len(corrupted_data) == 10
 
     def test_data_generator_builder(self, mock_environment):

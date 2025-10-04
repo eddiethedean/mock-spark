@@ -85,9 +85,7 @@ class TestPerformanceCharacteristics:
         assert len(mock_result) == 100
         assert len(mock_result[0]) == 51  # 1 id + 50 additional columns
 
-        print(
-            f"Many columns - Mock time: {mock_time:.4f}s, PySpark time: {pyspark_time:.4f}s"
-        )
+        print(f"Many columns - Mock time: {mock_time:.4f}s, PySpark time: {pyspark_time:.4f}s")
 
         pyspark_session.stop()
         mock_session.stop()
@@ -107,12 +105,8 @@ class TestPerformanceCharacteristics:
         mock_result = (
             mock_df.select(
                 mock_functions.col("*"),
-                (mock_functions.col("value1") + mock_functions.col("value2")).alias(
-                    "sum_12"
-                ),
-                (mock_functions.col("value2") * mock_functions.col("value3")).alias(
-                    "product_23"
-                ),
+                (mock_functions.col("value1") + mock_functions.col("value2")).alias("sum_12"),
+                (mock_functions.col("value2") * mock_functions.col("value3")).alias("product_23"),
                 mock_functions.col("value1").alias("alias_1"),
             )
             .filter(mock_functions.col("value1") > 100)
@@ -128,12 +122,10 @@ class TestPerformanceCharacteristics:
         pyspark_result = (
             pyspark_df.select(
                 pyspark_functions.col("*"),
-                (
-                    pyspark_functions.col("value1") + pyspark_functions.col("value2")
-                ).alias("sum_12"),
-                (
-                    pyspark_functions.col("value2") * pyspark_functions.col("value3")
-                ).alias("product_23"),
+                (pyspark_functions.col("value1") + pyspark_functions.col("value2")).alias("sum_12"),
+                (pyspark_functions.col("value2") * pyspark_functions.col("value3")).alias(
+                    "product_23"
+                ),
                 pyspark_functions.col("value1").alias("alias_1"),
             )
             .filter(pyspark_functions.col("value1") > 100)
@@ -351,9 +343,7 @@ class TestConcurrentOperations:
         for session in sessions:
             session.stop()
 
-    def test_concurrent_operations_same_session(
-        self, mock_functions, pyspark_functions
-    ):
+    def test_concurrent_operations_same_session(self, mock_functions, pyspark_functions):
         """Test concurrent operations on same session."""
         session = MockSparkSession()
 

@@ -41,9 +41,7 @@ class TestArithmeticOperations:
     ):
         """Test division operation (col / value)."""
         mock_result = mock_dataframe.select(mock_functions.col("salary") / 1000)
-        pyspark_result = pyspark_dataframe.select(
-            pyspark_functions.col("salary") / 1000
-        )
+        pyspark_result = pyspark_dataframe.select(pyspark_functions.col("salary") / 1000)
         assert_dataframes_equal(mock_result, pyspark_result)
 
     def test_modulo_operation(
@@ -62,9 +60,7 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test upper() function."""
-        mock_result = mock_dataframe.select(
-            mock_functions.upper(mock_functions.col("name"))
-        )
+        mock_result = mock_dataframe.select(mock_functions.upper(mock_functions.col("name")))
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.upper(pyspark_functions.col("name"))
         )
@@ -74,9 +70,7 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test lower() function."""
-        mock_result = mock_dataframe.select(
-            mock_functions.lower(mock_functions.col("name"))
-        )
+        mock_result = mock_dataframe.select(mock_functions.lower(mock_functions.col("name")))
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lower(pyspark_functions.col("name"))
         )
@@ -86,9 +80,7 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test length() function."""
-        mock_result = mock_dataframe.select(
-            mock_functions.length(mock_functions.col("name"))
-        )
+        mock_result = mock_dataframe.select(mock_functions.length(mock_functions.col("name")))
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.length(pyspark_functions.col("name"))
         )
@@ -103,16 +95,12 @@ class TestMathematicalFunctions:
     ):
         """Test abs() function."""
         # Create a DataFrame with negative values
-        mock_data_with_neg = mock_dataframe.withColumn(
-            "age_neg", mock_functions.col("age") * -1
-        )
+        mock_data_with_neg = mock_dataframe.withColumn("age_neg", mock_functions.col("age") * -1)
         pyspark_data_with_neg = pyspark_dataframe.withColumn(
             "age_neg", pyspark_functions.col("age") * -1
         )
 
-        mock_result = mock_data_with_neg.select(
-            mock_functions.abs(mock_functions.col("age_neg"))
-        )
+        mock_result = mock_data_with_neg.select(mock_functions.abs(mock_functions.col("age_neg")))
         pyspark_result = pyspark_data_with_neg.select(
             pyspark_functions.abs(pyspark_functions.col("age_neg"))
         )
@@ -122,9 +110,7 @@ class TestMathematicalFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test round() function."""
-        mock_result = mock_dataframe.select(
-            mock_functions.round(mock_functions.col("salary"), 2)
-        )
+        mock_result = mock_dataframe.select(mock_functions.round(mock_functions.col("salary"), 2))
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.round(pyspark_functions.col("salary"), 2)
         )
@@ -187,9 +173,7 @@ class TestAggregationFunctions:
     ):
         """Test countDistinct() function."""
         mock_result = mock_dataframe.select(mock_functions.countDistinct("department"))
-        pyspark_result = pyspark_dataframe.select(
-            pyspark_functions.countDistinct("department")
-        )
+        pyspark_result = pyspark_dataframe.select(pyspark_functions.countDistinct("department"))
         assert_dataframes_equal(mock_result, pyspark_result)
 
 

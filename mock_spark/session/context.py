@@ -27,7 +27,7 @@ from ..core.interfaces.session import ISparkContext
 
 class MockJVMFunctions:
     """Mock JVM functions for testing without actual JVM."""
-    
+
     def __init__(self):
         """Initialize mock JVM functions."""
         pass
@@ -75,7 +75,7 @@ class MockSparkContext:
 
     def __init__(self, app_name: str = "MockSparkApp"):
         """Initialize MockSparkContext.
-        
+
         Args:
             app_name: Name of the Spark application.
         """
@@ -84,7 +84,7 @@ class MockSparkContext:
 
     def setLogLevel(self, level: str) -> None:
         """Set log level.
-        
+
         Args:
             level: Log level (DEBUG, INFO, WARN, ERROR, FATAL).
         """
@@ -94,7 +94,7 @@ class MockSparkContext:
     @property
     def appName(self) -> str:
         """Get application name.
-        
+
         Returns:
             Application name string.
         """
@@ -103,7 +103,7 @@ class MockSparkContext:
     @property
     def jvm(self) -> MockJVMContext:
         """Get JVM context.
-        
+
         Returns:
             Mock JVM context instance.
         """
@@ -111,7 +111,7 @@ class MockSparkContext:
 
     def stop(self) -> None:
         """Stop the Spark context.
-        
+
         In a real Spark context, this would stop the Spark application.
         This is a mock implementation.
         """

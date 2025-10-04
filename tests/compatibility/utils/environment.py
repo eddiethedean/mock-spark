@@ -112,9 +112,7 @@ def create_test_json(data: list, filename: str = None) -> str:
 def create_test_parquet(data: list, filename: str = None) -> str:
     """Create a temporary Parquet file with the given data."""
     if filename is None:
-        temp_file = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".parquet", delete=False
-        )
+        temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".parquet", delete=False)
         filename = temp_file.name
         temp_file.close()
 
