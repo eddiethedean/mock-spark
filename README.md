@@ -138,37 +138,37 @@ MockDataFrame[2 rows, 4 columns]
 | Engineering | 1 | 80000.0 | 80000 |
 
 # Sorting and limiting
-df.orderBy("age").show()
+```
+print(df.orderBy("age").to_markdown())
 ```
 MockDataFrame[3 rows, 4 columns]
 
-age department  name    salary
-=== ========== ======= ======
-25  Sales       Alice   55000 
-30  Sales       Bob     75000 
-35  Engineering Charlie 80000 
-```
+| age | department | name | salary |
+| --- | --- | --- | --- |
+| 25 | Sales | Alice | 55000 |
+| 30 | Sales | Bob | 75000 |
+| 35 | Engineering | Charlie | 80000 |
 
-df.orderBy(F.desc("salary")).show()
+```
+print(df.orderBy(F.desc("salary")).to_markdown())
 ```
 MockDataFrame[3 rows, 4 columns]
 
-age department  name    salary
-=== ========== ======= ======
-35  Engineering Charlie 80000 
-30  Sales       Bob     75000 
-25  Sales       Alice   55000 
-```
+| age | department | name | salary |
+| --- | --- | --- | --- |
+| 35 | Engineering | Charlie | 80000 |
+| 30 | Sales | Bob | 75000 |
+| 25 | Sales | Alice | 55000 |
 
-df.limit(2).show()
+```
+print(df.limit(2).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
 
-age department name  salary
-=== ========== ===== ======
-25  Sales      Alice 55000 
-30  Sales      Bob   75000 
-```
+| age | department | name | salary |
+| --- | --- | --- | --- |
+| 25 | Sales | Alice | 55000 |
+| 30 | Sales | Bob | 75000 |
 
 ### Advanced Functions
 ```python
@@ -183,51 +183,51 @@ data = [
 df = spark.createDataFrame(data)
 
 # String functions
-df.select(
+```
+print(df.select(
     F.upper(F.col("name")).alias("upper"),
     F.lower(F.col("name")).alias("lower"),
     F.length(F.col("name")).alias("length")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 3 columns]
 
-upper lower length
-===== ===== ======
-ALICE alice 5     
-BOB   bob   3     
-```
+| upper | lower | length |
+| --- | --- | --- |
+| ALICE | alice | 5 |
+| BOB | bob | 3 |
 
 # Null handling
-df.select(
+```
+print(df.select(
     F.coalesce(F.col("name"), F.lit("Unknown")).alias("safe_name"),
     F.isnull(F.col("name")).alias("is_null"),
     F.isnan(F.col("salary")).alias("is_nan")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 3 columns]
 
-safe_name is_null is_nan
-========= ======= ======
-Alice     False   False 
-Bob       False   False 
-```
+| safe_name | is_null | is_nan |
+| --- | --- | --- |
+| Alice | False | False |
+| Bob | False | False |
 
 # Mathematical functions
-df.select(
+```
+print(df.select(
     F.abs(F.col("age") - 30).alias("age_diff"),
     F.round(F.col("salary") / 1000, 1).alias("salary_k"),
     F.ceil(F.col("salary") / 1000).alias("salary_k_ceil"),
     F.floor(F.col("salary") / 1000).alias("salary_k_floor"),
     F.sqrt(F.col("salary")).alias("salary_sqrt")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 5 columns]
 
-age_diff salary_k salary_k_ceil salary_k_floor salary_sqrt      
-======== ======== ============= ============== =================
-5        55.0     55            55             234.5207879911715
-0        75.0     75            75             273.8612787525831
-```
+| age_diff | salary_k | salary_k_ceil | salary_k_floor | salary_sqrt |
+| --- | --- | --- | --- | --- |
+| 5 | 55.0 | 55 | 55 | 234.5207879911715 |
+| 0 | 75.0 | 75 | 75 | 273.8612787525831 |
 
 # String functions
 df.select(
