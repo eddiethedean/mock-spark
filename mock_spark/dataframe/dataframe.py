@@ -98,7 +98,7 @@ class MockDataFrame:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
 
     def show(self, n: int = 20, truncate: bool = True) -> None:
-        """Display DataFrame content in a formatted table.
+        """Display DataFrame content in console format.
 
         Args:
             n: Number of rows to display (default: 20).
@@ -106,14 +106,13 @@ class MockDataFrame:
 
         Example:
             >>> df.show(5)
-            +--- MockDataFrame: 3 rows ---+
-                name | age | salary
-            --------|-----|--------
-              Alice |  25 |  50000
-                Bob |  30 |  60000
-            Charlie |  35 |  70000
+            MockDataFrame[3 rows, 3 columns]
+            name    age  salary
+            Alice    25   50000
+            Bob      30   60000
+            Charlie  35   70000
         """
-        print(f"+--- MockDataFrame: {len(self.data)} rows ---+")
+        print(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
         if not self.data:
             print("(empty)")
             return
@@ -124,15 +123,33 @@ class MockDataFrame:
         # Get column names
         columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
 
-        # Print header
-        header = " | ".join(f"{col:>12}" for col in columns)
-        print(header)
-        print("-" * len(header))
+        # Calculate column widths
+        col_widths = {}
+        for col in columns:
+            # Start with column name width
+            col_widths[col] = len(col)
+            # Check data widths
+            for row in display_data:
+                value = str(row.get(col, 'null'))
+                if truncate and len(value) > 20:
+                    value = value[:17] + "..."
+                col_widths[col] = max(col_widths[col], len(value))
 
-        # Print data
+        # Print header
+        header_parts = []
+        for col in columns:
+            header_parts.append(col.ljust(col_widths[col]))
+        print(" ".join(header_parts))
+
+        # Print data rows
         for row in display_data:
-            row_str = " | ".join(f"{str(row.get(col, 'null')):>12}" for col in columns)
-            print(row_str)
+            row_parts = []
+            for col in columns:
+                value = str(row.get(col, 'null'))
+                if truncate and len(value) > 20:
+                    value = value[:17] + "..."
+                row_parts.append(value.ljust(col_widths[col]))
+            print(" ".join(row_parts))
 
         if len(self.data) > n:
             print(f"... ({len(self.data) - n} more rows)")

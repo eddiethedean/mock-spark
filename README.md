@@ -53,28 +53,25 @@ df = spark.createDataFrame(data)
 # All PySpark operations work
 df.filter(F.col("age") > 25).show()
 ```
-+--- MockDataFrame: 1 rows ---+
-         age |         name
----------------------------
-          30 |          Bob
+MockDataFrame[1 rows, 2 columns]
+age name
+30  Bob
 ```
 
 df.groupBy("age").count().show()
 ```
-+--- MockDataFrame: 2 rows ---+
-         age |        count
----------------------------
-          25 |            1
-          30 |            1
+MockDataFrame[2 rows, 2 columns]
+age count
+25  1
+30  1
 ```
 
 df.select(F.upper(F.col("name")).alias("upper_name")).show()
 ```
-+--- MockDataFrame: 2 rows ---+
-  upper_name
-------------
-       ALICE
-         BOB
+MockDataFrame[2 rows, 1 columns]
+upper_name
+ALICE
+BOB
 ```
 
 ## ✨ What's Included
@@ -95,30 +92,27 @@ df = spark.createDataFrame(data)
 # Selection and filtering
 df.select("name", "age").show()
 ```
-+--- MockDataFrame: 3 rows ---+
-        name |          age
----------------------------
-      Alice |           25
-         Bob |           30
-     Charlie |           35
+MockDataFrame[3 rows, 2 columns]
+name    age
+Alice   25
+Bob     30
+Charlie 35
 ```
 
 df.filter(F.col("age") > 25).show()
 ```
-+--- MockDataFrame: 2 rows ---+
-         age |   department |         name |       salary
----------------------------------------------------------
-          30 |        Sales |          Bob |        75000
-          35 |  Engineering |      Charlie |        80000
+MockDataFrame[2 rows, 4 columns]
+age department   name    salary
+30  Sales        Bob     75000
+35  Engineering  Charlie 80000
 ```
 
 df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).show()
 ```
-+--- MockDataFrame: 2 rows ---+
-         age |   department |         name |       salary
----------------------------------------------------------
-          30 |        Sales |          Bob |        75000
-          35 |  Engineering |      Charlie |        80000
+MockDataFrame[2 rows, 4 columns]
+age department   name    salary
+30  Sales        Bob     75000
+35  Engineering  Charlie 80000
 ```
 
 # Grouping and aggregation  
@@ -128,7 +122,7 @@ df.groupBy("department").agg(
     F.max("salary").alias("max_salary")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
   department |        count |   avg_salary |   max_salary
 ---------------------------------------------------------
        Sales |            2 |      65000.0 |        75000
@@ -138,7 +132,7 @@ df.groupBy("department").agg(
 # Sorting and limiting
 df.orderBy("age").show()
 ```
-+--- MockDataFrame: 3 rows ---+
+MockDataFrame[ 3 rows,  columns]
          age |   department |         name |       salary
 ---------------------------------------------------------
           25 |        Sales |        Alice |        55000
@@ -148,7 +142,7 @@ df.orderBy("age").show()
 
 df.orderBy(F.desc("salary")).show()
 ```
-+--- MockDataFrame: 3 rows ---+
+MockDataFrame[ 3 rows,  columns]
          age |   department |         name |       salary
 ---------------------------------------------------------
           35 |  Engineering |      Charlie |        80000
@@ -158,7 +152,7 @@ df.orderBy(F.desc("salary")).show()
 
 df.limit(2).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
          age |   department |         name |       salary
 ---------------------------------------------------------
           25 |        Sales |        Alice |        55000
@@ -184,7 +178,7 @@ df.select(
     F.length(F.col("name")).alias("length")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
        upper |        lower |       length
 ------------------------------------------
        ALICE |        alice |            5
@@ -198,7 +192,7 @@ df.select(
     F.isnan(F.col("salary")).alias("is_nan")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
    safe_name |      is_null |       is_nan
 ------------------------------------------
        Alice |        False |        False
@@ -214,7 +208,7 @@ df.select(
     F.sqrt(F.col("salary")).alias("salary_sqrt")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
     age_diff |     salary_k | salary_k_ceil | salary_k_floor |  salary_sqrt
 ---------------------------------------------------------------------------
            5 |         55.0 |           55 |           55 | 234.5207879911715
@@ -227,7 +221,7 @@ df.select(
     F.split(F.col("name"), "l").alias("name_chars")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
 name_replaced |   name_chars
 ----------------------------
        AlicX | ['A', 'ice']
@@ -240,7 +234,7 @@ df.select(
     F.current_date().alias("today")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
          now |        today
 ---------------------------
 2025-10-04 14:49:59.928233 |   2025-10-04
@@ -255,7 +249,7 @@ df.select(
      .otherwise(F.lit("Entry")).alias("level")
 ).show()
 ```
-+--- MockDataFrame: 2 rows ---+
+MockDataFrame[ 2 rows,  columns]
          age |   department |         name |       salary |        level
 ------------------------------------------------------------------------
           25 |        Sales |        Alice |        55000 |       Junior
@@ -288,7 +282,7 @@ df.select(
     F.lead(F.col("salary"), 1).over(window_spec).alias("next_salary")
 ).show()
 ```
-+--- MockDataFrame: 3 rows ---+
+MockDataFrame[ 3 rows,  columns]
          age |   department |         name |       salary |      row_num |         rank |   dense_rank |  prev_salary |  next_salary
 ------------------------------------------------------------------------------------------------------------------------------------
           25 |        Sales |        Alice |        55000 |            2 |            2 |            2 |        75000 |         None
@@ -316,7 +310,7 @@ df.write.format("parquet").mode("overwrite").saveAsTable("hr.employees")
 loaded_df = spark.table("hr.employees")
 spark.sql("SELECT * FROM hr.employees WHERE age > 25").show()
 ```
-+--- MockDataFrame: 0 rows ---+
+MockDataFrame[ 0 rows,  columns]
 (empty)
 ```
 
