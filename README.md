@@ -56,7 +56,6 @@ df.filter(F.col("age") > 25).show()
 MockDataFrame[1 rows, 2 columns]
 
 age name
-=== ====
 30  Bob  
 ```
 
@@ -65,7 +64,6 @@ df.groupBy("age").count().show()
 MockDataFrame[2 rows, 2 columns]
 
 age count
-=== =====
 25   1   
 30   1   
 ```
