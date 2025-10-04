@@ -135,7 +135,8 @@ class MockDataFrame:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
 
-        # Print header (no extra padding)
+        # Print header (no extra padding) - add blank line for separation
+        print()  # Add blank line between metadata and headers
         header_parts = []
         for col in columns:
             header_parts.append(col.ljust(col_widths[col]))
