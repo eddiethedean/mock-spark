@@ -57,7 +57,7 @@ from .spark_types import (
     MockStructType,
     MockStructField,
 )
-from .storage import MockStorageManager, MockTable
+from mock_spark.storage import MemoryStorageManager
 from .errors import (
     MockException,
     AnalysisException,
@@ -130,8 +130,7 @@ __all__ = [
     "MockStructType",
     "MockStructField",
     # Storage
-    "MockStorageManager",
-    "MockTable",
+    "MemoryStorageManager",
     # Exceptions
     "MockException",
     "AnalysisException",

@@ -106,16 +106,28 @@ class MockSQLExecutor:
         """
         components = ast.components
         
-        # Get table name
-        table_name = components.get('from_tables', ['unknown'])[0]
-        
-        # Try to get table as DataFrame
-        try:
-            df = self.session.table(table_name)
-        except Exception:
-            # If table doesn't exist, return empty DataFrame
+        # Get table name - handle queries without FROM clause
+        from_tables = components.get('from_tables', [])
+        if not from_tables:
+            # Query without FROM clause (e.g., SELECT 1 as test_col)
+            # Create a single row DataFrame with the literal values
             from ...dataframe import MockDataFrame
-            return MockDataFrame([], [])
+            from ...spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType, BooleanType
+            
+            # For now, create a simple DataFrame with one row
+            # This is a basic implementation for literal SELECT queries
+            data = [{}]  # Empty row, we'll populate based on SELECT columns
+            schema = MockStructType([])
+            df = MockDataFrame(data, schema)
+        else:
+            table_name = from_tables[0]
+            # Try to get table as DataFrame
+            try:
+                df = self.session.table(table_name)
+            except Exception:
+                # If table doesn't exist, return empty DataFrame
+                from ...dataframe import MockDataFrame
+                return MockDataFrame([], [])
 
         # Apply WHERE conditions
         where_conditions = components.get('where_conditions', [])

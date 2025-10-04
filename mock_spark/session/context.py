@@ -25,12 +25,21 @@ from typing import Any, Optional
 from ..core.interfaces.session import ISparkContext
 
 
+class MockJVMFunctions:
+    """Mock JVM functions for testing without actual JVM."""
+    
+    def __init__(self):
+        """Initialize mock JVM functions."""
+        pass
+
+
 class MockJVMContext:
     """Mock JVM context for testing without actual JVM."""
 
     def __init__(self):
         """Initialize mock JVM context."""
         self._jvm_available = True
+        self.functions = MockJVMFunctions()
 
     @property
     def available(self) -> bool:

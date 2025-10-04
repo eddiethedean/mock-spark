@@ -32,8 +32,8 @@ from .context import MockSparkContext
 from .catalog import MockCatalog
 from .config import MockConfiguration
 from .sql.executor import MockSQLExecutor
-from ..storage import MockStorageManager
-from ..dataframe import MockDataFrame
+from mock_spark.storage import MemoryStorageManager
+from mock_spark.dataframe import MockDataFrame
 from ..spark_types import MockStructType
 
 
@@ -176,7 +176,7 @@ class MockSparkSession:
         sparkContext: MockSparkContext instance for session context.
         catalog: MockCatalog instance for database and table operations.
         conf: Configuration object for session settings.
-        storage: MockStorageManager for data persistence.
+        storage: MemoryStorageManager for data persistence.
 
     Example:
         >>> spark = MockSparkSession("MyApp")
@@ -196,7 +196,7 @@ class MockSparkSession:
             app_name: Application name for the Spark session.
         """
         self.app_name = app_name
-        self.storage = MockStorageManager()
+        self.storage = MemoryStorageManager()
         self._catalog = MockCatalog(self.storage)
         self.sparkContext = MockSparkContext(app_name)
         self._conf = MockConfiguration()
@@ -291,7 +291,8 @@ class MockSparkSession:
                 fields = []
                 if isinstance(sample_row, dict):
                     # Dictionary format - sort keys alphabetically to match PySpark behavior
-                    for key in sorted(sample_row.keys()):
+                    sorted_keys = sorted(sample_row.keys())
+                    for key in sorted_keys:
                         value = sample_row[key]
                         from ..spark_types import (
                             StringType,
@@ -306,8 +307,19 @@ class MockSparkSession:
 
                 from ..spark_types import MockStructType
                 schema = MockStructType(fields)
+                
+                # Reorder data rows to match schema (alphabetical key order)
+                if isinstance(sample_row, dict):
+                    reordered_data = []
+                    for row in data:
+                        if isinstance(row, dict):
+                            reordered_row = {key: row[key] for key in sorted_keys}
+                            reordered_data.append(reordered_row)
+                        else:
+                            reordered_data.append(row)
+                    data = reordered_data
 
-        return MockDataFrame(data, schema)
+        return MockDataFrame(data, schema, self.storage)
 
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
@@ -382,8 +394,21 @@ class MockSparkSession:
         Example:
             >>> df = spark.table("users")
         """
-        # Mock implementation - return empty DataFrame
-        return MockDataFrame([], [])
+        # Parse table name
+        schema, table = (
+            table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        )
+        
+        # Check if table exists
+        if not self.storage.table_exists(schema, table):
+            from mock_spark.errors import AnalysisException
+            raise AnalysisException(f"Table or view not found: {table_name}")
+        
+        # Get table data and schema
+        table_data = self.storage.get_data(schema, table)
+        table_schema = self.storage.get_table_schema(schema, table)
+        
+        return MockDataFrame(table_data, table_schema, self.storage)
 
     def range(self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None) -> IDataFrame:
         """Create DataFrame with range of numbers.
