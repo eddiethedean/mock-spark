@@ -142,10 +142,10 @@ class MockDataFrame:
             header_parts.append(col.ljust(col_widths[col]))
         print(" ".join(header_parts))
 
-        # Print separator line
+        # Print separator line (use = to avoid markdown horizontal rule interpretation)
         separator_parts = []
         for col in columns:
-            separator_parts.append("-" * col_widths[col])
+            separator_parts.append("=" * col_widths[col])
         print(" ".join(separator_parts))
 
         # Print data rows (with padding for alignment)
