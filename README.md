@@ -52,21 +52,14 @@ df = spark.createDataFrame(data)
 
 # All PySpark operations work
 df.filter(F.col("age") > 25).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 1 rows ---+
          age |         name
 ---------------------------
           30 |          Bob
 ```
-</details>
 
 df.groupBy("age").count().show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          age |        count
@@ -74,12 +67,8 @@ df.groupBy("age").count().show()
           25 |            1
           30 |            1
 ```
-</details>
 
 df.select(F.upper(F.col("name")).alias("upper_name")).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
   upper_name
@@ -87,7 +76,6 @@ df.select(F.upper(F.col("name")).alias("upper_name")).show()
        ALICE
          BOB
 ```
-</details>
 
 ## ✨ What's Included
 
@@ -106,23 +94,16 @@ df = spark.createDataFrame(data)
 
 # Selection and filtering
 df.select("name", "age").show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 3 rows ---+
         name |          age
 ---------------------------
-       Alice |           25
+      Alice |           25
          Bob |           30
      Charlie |           35
 ```
-</details>
 
 df.filter(F.col("age") > 25).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          age |   department |         name |       salary
@@ -130,12 +111,8 @@ df.filter(F.col("age") > 25).show()
           30 |        Sales |          Bob |        75000
           35 |  Engineering |      Charlie |        80000
 ```
-</details>
 
 df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          age |   department |         name |       salary
@@ -143,7 +120,6 @@ df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).show()
           30 |        Sales |          Bob |        75000
           35 |  Engineering |      Charlie |        80000
 ```
-</details>
 
 # Grouping and aggregation  
 df.groupBy("department").agg(
@@ -151,9 +127,6 @@ df.groupBy("department").agg(
     F.avg("salary").alias("avg_salary"),
     F.max("salary").alias("max_salary")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
   department |        count |   avg_salary |   max_salary
@@ -161,13 +134,9 @@ df.groupBy("department").agg(
        Sales |            2 |      65000.0 |        75000
  Engineering |            1 |      80000.0 |        80000
 ```
-</details>
 
 # Sorting and limiting
 df.orderBy("age").show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 3 rows ---+
          age |   department |         name |       salary
@@ -176,12 +145,8 @@ df.orderBy("age").show()
           30 |        Sales |          Bob |        75000
           35 |  Engineering |      Charlie |        80000
 ```
-</details>
 
 df.orderBy(F.desc("salary")).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 3 rows ---+
          age |   department |         name |       salary
@@ -190,12 +155,8 @@ df.orderBy(F.desc("salary")).show()
           30 |        Sales |          Bob |        75000
           25 |        Sales |        Alice |        55000
 ```
-</details>
 
 df.limit(2).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          age |   department |         name |       salary
@@ -203,7 +164,6 @@ df.limit(2).show()
           25 |        Sales |        Alice |        55000
           30 |        Sales |          Bob |        75000
 ```
-</details>
 
 ### Advanced Functions
 ```python
@@ -223,9 +183,6 @@ df.select(
     F.lower(F.col("name")).alias("lower"),
     F.length(F.col("name")).alias("length")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
        upper |        lower |       length
@@ -233,7 +190,6 @@ df.select(
        ALICE |        alice |            5
          BOB |          bob |            3
 ```
-</details>
 
 # Null handling
 df.select(
@@ -241,9 +197,6 @@ df.select(
     F.isnull(F.col("name")).alias("is_null"),
     F.isnan(F.col("salary")).alias("is_nan")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
    safe_name |      is_null |       is_nan
@@ -251,7 +204,6 @@ df.select(
        Alice |        False |        False
          Bob |        False |        False
 ```
-</details>
 
 # Mathematical functions
 df.select(
@@ -261,9 +213,6 @@ df.select(
     F.floor(F.col("salary") / 1000).alias("salary_k_floor"),
     F.sqrt(F.col("salary")).alias("salary_sqrt")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
     age_diff |     salary_k | salary_k_ceil | salary_k_floor |  salary_sqrt
@@ -271,16 +220,12 @@ df.select(
            5 |         55.0 |           55 |           55 | 234.5207879911715
            0 |         75.0 |           75 |           75 | 273.8612787525831
 ```
-</details>
 
 # String functions
 df.select(
     F.regexp_replace(F.col("name"), "e", "X").alias("name_replaced"),
     F.split(F.col("name"), "l").alias("name_chars")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
 name_replaced |   name_chars
@@ -288,16 +233,12 @@ name_replaced |   name_chars
        AlicX | ['A', 'ice']
          Bob |      ['Bob']
 ```
-</details>
 
 # Date/time functions
 df.select(
     F.current_timestamp().alias("now"),
     F.current_date().alias("today")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          now |        today
@@ -305,7 +246,6 @@ df.select(
 2025-10-04 14:49:59.928233 |   2025-10-04
 2025-10-04 14:49:59.928242 |   2025-10-04
 ```
-</details>
 
 # CASE WHEN expressions
 df.select(
@@ -314,9 +254,6 @@ df.select(
      .when(F.col("age") > 20, F.lit("Junior"))
      .otherwise(F.lit("Entry")).alias("level")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 2 rows ---+
          age |   department |         name |       salary |        level
@@ -324,7 +261,6 @@ df.select(
           25 |        Sales |        Alice |        55000 |       Junior
           30 |        Sales |          Bob |        75000 |       Junior
 ```
-</details>
 
 ### Advanced Window Functions
 ```python
@@ -351,9 +287,6 @@ df.select(
     F.lag(F.col("salary"), 1).over(window_spec).alias("prev_salary"),
     F.lead(F.col("salary"), 1).over(window_spec).alias("next_salary")
 ).show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 3 rows ---+
          age |   department |         name |       salary |      row_num |         rank |   dense_rank |  prev_salary |  next_salary
@@ -362,7 +295,6 @@ df.select(
           30 |        Sales |          Bob |        75000 |            1 |            1 |            1 |         None |        55000
           35 |  Engineering |      Charlie |        80000 |            1 |            1 |            1 |         None |         None
 ```
-</details>
 
 ### Storage & SQL
 ```python
@@ -383,26 +315,18 @@ df.write.format("parquet").mode("overwrite").saveAsTable("hr.employees")
 # Query data
 loaded_df = spark.table("hr.employees")
 spark.sql("SELECT * FROM hr.employees WHERE age > 25").show()
-<details>
-<summary>Click to see output</summary>
-
 ```
 +--- MockDataFrame: 0 rows ---+
 (empty)
 ```
-</details>
 
 # Catalog operations
 print("Databases:", spark.catalog.listDatabases())
 print("Tables in hr:", spark.catalog.listTables("hr"))
-<details>
-<summary>Click to see output</summary>
-
 ```
 Databases: [MockDatabase(name='default'), MockDatabase(name='hr')]
 Tables in hr: ['employees']
 ```
-</details>
 
 ## 🚀 Advanced Features
 
@@ -423,13 +347,9 @@ try:
     spark.table("nonexistent.table")
 except AnalysisException as e:
     print(f"Caught expected error: {e}")
-<details>
-<summary>Click to see output</summary>
-
 ```
 Caught expected error: Table not found
 ```
-</details>
 
 ### Performance Simulation
 ```python
