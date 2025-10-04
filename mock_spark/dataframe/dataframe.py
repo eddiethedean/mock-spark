@@ -157,6 +157,55 @@ class MockDataFrame:
         if len(self.data) > n:
             print(f"\n... ({len(self.data) - n} more rows)")
 
+    def to_markdown(self, n: int = 20, truncate: bool = True) -> str:
+        """
+        Return DataFrame as a markdown table string.
+        
+        Args:
+            n: Number of rows to show
+            truncate: Whether to truncate long strings
+            
+        Returns:
+            String representation of DataFrame as markdown table
+        """
+        if not self.data:
+            return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]\n\n(empty)"
+
+        # Show first n rows
+        display_data = self.data[:n]
+
+        # Get column names
+        columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
+
+        # Build markdown table
+        lines = []
+        lines.append(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
+        lines.append("")  # Blank line
+        
+        # Header row
+        header_row = "| " + " | ".join(columns) + " |"
+        lines.append(header_row)
+        
+        # Separator row
+        separator_row = "| " + " | ".join(["---" for _ in columns]) + " |"
+        lines.append(separator_row)
+        
+        # Data rows
+        for row in display_data:
+            row_values = []
+            for col in columns:
+                value = str(row.get(col, 'null'))
+                if truncate and len(value) > 20:
+                    value = value[:17] + "..."
+                row_values.append(value)
+            data_row = "| " + " | ".join(row_values) + " |"
+            lines.append(data_row)
+        
+        if len(self.data) > n:
+            lines.append(f"\n... ({len(self.data) - n} more rows)")
+            
+        return "\n".join(lines)
+
     def collect(self) -> List[MockRow]:
         """Collect all data as list of Row objects."""
         return [MockRow(row) for row in self.data]

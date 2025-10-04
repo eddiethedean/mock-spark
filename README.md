@@ -51,31 +51,33 @@ data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
 df = spark.createDataFrame(data)
 
 # All PySpark operations work
-df.filter(F.col("age") > 25).show()
+print(df.filter(F.col("age") > 25).to_markdown())
 ```
 MockDataFrame[1 rows, 2 columns]
 
-age name
-30  Bob  
+| age | name |
+| --- | --- |
+| 30 | Bob |
 ```
 
-df.groupBy("age").count().show()
+print(df.groupBy("age").count().to_markdown())
 ```
 MockDataFrame[2 rows, 2 columns]
 
-age count
-25   1   
-30   1   
+| age | count |
+| --- | --- |
+| 25 | 1 |
+| 30 | 1 |
 ```
 
-df.select(F.upper(F.col("name")).alias("upper_name")).show()
+print(df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown())
 ```
 MockDataFrame[2 rows, 1 columns]
 
-upper_name
-==========
-ALICE     
-BOB       
+| upper_name |
+| --- |
+| ALICE |
+| BOB |
 ```
 
 ## ✨ What's Included
