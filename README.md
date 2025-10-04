@@ -88,7 +88,6 @@ df.select(F.upper(F.col("name")).alias("upper_name")).show()
          BOB
 ```
 </details>
-```
 
 ## ✨ What's Included
 
@@ -205,7 +204,6 @@ df.limit(2).show()
           30 |        Sales |          Bob |        75000
 ```
 </details>
-```
 
 ### Advanced Functions
 ```python
@@ -327,7 +325,6 @@ df.select(
           30 |        Sales |          Bob |        75000 |       Junior
 ```
 </details>
-```
 
 ### Advanced Window Functions
 ```python
@@ -366,7 +363,6 @@ df.select(
           35 |  Engineering |      Charlie |        80000 |            1 |            1 |            1 |         None |         None
 ```
 </details>
-```
 
 ### Storage & SQL
 ```python
@@ -407,7 +403,6 @@ Databases: [MockDatabase(name='default'), MockDatabase(name='hr')]
 Tables in hr: ['employees']
 ```
 </details>
-```
 
 ## 🚀 Advanced Features
 
@@ -435,7 +430,6 @@ except AnalysisException as e:
 Caught expected error: Table not found
 ```
 </details>
-```
 
 ### Performance Simulation
 ```python
