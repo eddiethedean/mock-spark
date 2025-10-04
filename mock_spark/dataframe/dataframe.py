@@ -39,7 +39,7 @@ from ..spark_types import (
 )
 from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
 from ..storage import MemoryStorageManager
-from .grouped_data import MockGroupedData
+from .grouped_data import MockGroupedData, MockRollupGroupedData, MockCubeGroupedData, MockPivotGroupedData
 from .rdd import MockRDD
 from ..core.exceptions import (
     AnalysisException,
@@ -1290,6 +1290,52 @@ class MockDataFrame:
 
         return MockGroupedData(self, col_names)
 
+    def rollup(self, *columns: Union[str, MockColumn]) -> "MockRollupGroupedData":
+        """Create rollup grouped data for hierarchical grouping.
+
+        Args:
+            *columns: Columns to rollup.
+
+        Returns:
+            MockRollupGroupedData for hierarchical grouping.
+        """
+        col_names = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                col_names.append(col.name)
+            else:
+                col_names.append(col)
+
+        # Validate that all columns exist
+        for col_name in col_names:
+            if col_name not in [field.name for field in self.schema.fields]:
+                raise ColumnNotFoundException(col_name)
+
+        return MockRollupGroupedData(self, col_names)
+
+    def cube(self, *columns: Union[str, MockColumn]) -> "MockCubeGroupedData":
+        """Create cube grouped data for multi-dimensional grouping.
+
+        Args:
+            *columns: Columns to cube.
+
+        Returns:
+            MockCubeGroupedData for multi-dimensional grouping.
+        """
+        col_names = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                col_names.append(col.name)
+            else:
+                col_names.append(col)
+
+        # Validate that all columns exist
+        for col_name in col_names:
+            if col_name not in [field.name for field in self.schema.fields]:
+                raise ColumnNotFoundException(col_name)
+
+        return MockCubeGroupedData(self, col_names)
+
     def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation]) -> "MockDataFrame":
         """Aggregate DataFrame without grouping."""
         # Create a single group with all data
@@ -1355,6 +1401,212 @@ class MockDataFrame:
         """Union with another DataFrame."""
         combined_data = self.data + other.data
         return MockDataFrame(combined_data, self.schema, self.storage)
+
+    def unionByName(self, other: "MockDataFrame", allowMissingColumns: bool = False) -> "MockDataFrame":
+        """Union with another DataFrame by column names.
+
+        Args:
+            other: Another DataFrame to union with.
+            allowMissingColumns: If True, allows missing columns (fills with null).
+
+        Returns:
+            New MockDataFrame with combined data.
+        """
+        # Get column names from both DataFrames
+        self_cols = set(field.name for field in self.schema.fields)
+        other_cols = set(field.name for field in other.schema.fields)
+        
+        # Check for missing columns
+        missing_in_other = self_cols - other_cols
+        missing_in_self = other_cols - self_cols
+        
+        if not allowMissingColumns and (missing_in_other or missing_in_self):
+            raise AnalysisException(f"Union by name failed: missing columns in one of the DataFrames. "
+                                  f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}")
+        
+        # Get all unique column names in order
+        all_cols = list(self_cols.union(other_cols))
+        
+        # Create combined data with all columns
+        combined_data = []
+        
+        # Add rows from self DataFrame
+        for row in self.data:
+            new_row = {}
+            for col in all_cols:
+                if col in row:
+                    new_row[col] = row[col]
+                else:
+                    new_row[col] = None  # Missing column filled with null
+            combined_data.append(new_row)
+        
+        # Add rows from other DataFrame
+        for row in other.data:
+            new_row = {}
+            for col in all_cols:
+                if col in row:
+                    new_row[col] = row[col]
+                else:
+                    new_row[col] = None  # Missing column filled with null
+            combined_data.append(new_row)
+        
+        # Create new schema with all columns
+        from ..spark_types import MockStructType, MockStructField, StringType
+        new_fields = []
+        for col in all_cols:
+            # Try to get the data type from the original schema, default to StringType
+            field_type = StringType()
+            for field in self.schema.fields:
+                if field.name == col:
+                    field_type = field.dataType
+                    break
+            if field_type == StringType():  # Not found in self schema
+                for field in other.schema.fields:
+                    if field.name == col:
+                        field_type = field.dataType
+                        break
+            new_fields.append(MockStructField(col, field_type))
+        
+        new_schema = MockStructType(new_fields)
+        return MockDataFrame(combined_data, new_schema, self.storage)
+
+    def intersect(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Intersect with another DataFrame.
+
+        Args:
+            other: Another DataFrame to intersect with.
+
+        Returns:
+            New MockDataFrame with common rows.
+        """
+        # Convert rows to tuples for comparison
+        self_rows = [tuple(row.get(field.name) for field in self.schema.fields) for row in self.data]
+        other_rows = [tuple(row.get(field.name) for field in other.schema.fields) for row in other.data]
+        
+        # Find common rows
+        self_row_set = set(self_rows)
+        other_row_set = set(other_rows)
+        common_rows = self_row_set.intersection(other_row_set)
+        
+        # Convert back to dictionaries
+        result_data = []
+        for row_tuple in common_rows:
+            row_dict = {}
+            for i, field in enumerate(self.schema.fields):
+                row_dict[field.name] = row_tuple[i]
+            result_data.append(row_dict)
+        
+        return MockDataFrame(result_data, self.schema, self.storage)
+
+    def exceptAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Except all with another DataFrame (set difference with duplicates).
+
+        Args:
+            other: Another DataFrame to except from this one.
+
+        Returns:
+            New MockDataFrame with rows from self not in other, preserving duplicates.
+        """
+        # Convert rows to tuples for comparison
+        self_rows = [tuple(row.get(field.name) for field in self.schema.fields) for row in self.data]
+        other_rows = [tuple(row.get(field.name) for field in other.schema.fields) for row in other.data]
+        
+        # Count occurrences in other DataFrame
+        other_row_counts = {}
+        for row_tuple in other_rows:
+            other_row_counts[row_tuple] = other_row_counts.get(row_tuple, 0) + 1
+        
+        # Count occurrences in self DataFrame
+        self_row_counts = {}
+        for row_tuple in self_rows:
+            self_row_counts[row_tuple] = self_row_counts.get(row_tuple, 0) + 1
+        
+        # Calculate the difference preserving duplicates
+        result_rows = []
+        for row_tuple in self_rows:
+            # Count how many times this row appears in other
+            other_count = other_row_counts.get(row_tuple, 0)
+            # Count how many times this row appears in self so far
+            self_count_so_far = sum(1 for r in result_rows if r == row_tuple)
+            # If we haven't exceeded the difference, include this row
+            if self_count_so_far < (self_row_counts[row_tuple] - other_count):
+                result_rows.append(row_tuple)
+        
+        # Convert back to dictionaries
+        result_data = []
+        for row_tuple in result_rows:
+            row_dict = {}
+            for i, field in enumerate(self.schema.fields):
+                row_dict[field.name] = row_tuple[i]
+            result_data.append(row_dict)
+        
+        return MockDataFrame(result_data, self.schema, self.storage)
+
+    def crossJoin(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Cross join (Cartesian product) with another DataFrame.
+
+        Args:
+            other: Another DataFrame to cross join with.
+
+        Returns:
+            New MockDataFrame with Cartesian product of rows.
+        """
+        # Create new schema combining both DataFrames
+        from ..spark_types import MockStructType, MockStructField
+        
+        # Combine field names, handling duplicates
+        new_fields = []
+        field_names = set()
+        
+        # Add fields from self DataFrame
+        for field in self.schema.fields:
+            new_fields.append(field)
+            field_names.add(field.name)
+        
+        # Add fields from other DataFrame, handling name conflicts
+        for field in other.schema.fields:
+            if field.name in field_names:
+                # Create a unique name for the conflict
+                new_name = f"{field.name}_right"
+                counter = 1
+                while new_name in field_names:
+                    new_name = f"{field.name}_right_{counter}"
+                    counter += 1
+                new_fields.append(MockStructField(new_name, field.dataType))
+                field_names.add(new_name)
+            else:
+                new_fields.append(field)
+                field_names.add(field.name)
+        
+        new_schema = MockStructType(new_fields)
+        
+        # Create Cartesian product
+        result_data = []
+        for left_row in self.data:
+            for right_row in other.data:
+                new_row = {}
+                
+                # Add fields from left DataFrame
+                for field in self.schema.fields:
+                    new_row[field.name] = left_row.get(field.name)
+                
+                # Add fields from right DataFrame, handling name conflicts
+                for field in other.schema.fields:
+                    if field.name in [f.name for f in self.schema.fields]:
+                        # Find the renamed field
+                        new_name = None
+                        for new_field in new_fields:
+                            if new_field.name.endswith("_right") and new_field.name.startswith(field.name):
+                                new_name = new_field.name
+                                break
+                        if new_name:
+                            new_row[new_name] = right_row.get(field.name)
+                    else:
+                        new_row[field.name] = right_row.get(field.name)
+                
+                result_data.append(new_row)
+        
+        return MockDataFrame(result_data, new_schema, self.storage)
 
     def join(
         self, other: "MockDataFrame", on: Union[str, List[str]], how: str = "inner"
@@ -2589,7 +2841,256 @@ class MockDataFrame:
         # Store the DataFrame as a temporary view in the storage manager
         self.storage.create_temp_view(name, self)
 
-    @property
+    def sample(self, fraction: float, seed: Optional[int] = None, withReplacement: bool = False) -> "MockDataFrame":
+        """Sample rows from DataFrame.
+
+        Args:
+            fraction: Fraction of rows to sample (0.0 to 1.0).
+            seed: Random seed for reproducible sampling.
+            withReplacement: Whether to sample with replacement.
+
+        Returns:
+            New MockDataFrame with sampled rows.
+        """
+        import random
+        
+        if not withReplacement and not (0.0 <= fraction <= 1.0):
+            raise IllegalArgumentException(f"Fraction must be between 0.0 and 1.0 when without replacement, got {fraction}")
+        if withReplacement and fraction < 0.0:
+            raise IllegalArgumentException(f"Fraction must be non-negative when with replacement, got {fraction}")
+        
+        if seed is not None:
+            random.seed(seed)
+        
+        if fraction == 0.0:
+            return MockDataFrame([], self.schema, self.storage)
+        elif fraction == 1.0:
+            return MockDataFrame(self.data.copy(), self.schema, self.storage)
+        
+        # Calculate number of rows to sample
+        total_rows = len(self.data)
+        num_rows = int(total_rows * fraction)
+        
+        if withReplacement:
+            # Sample with replacement
+            sampled_indices = [random.randint(0, total_rows - 1) for _ in range(num_rows)]
+            sampled_data = [self.data[i] for i in sampled_indices]
+        else:
+            # Sample without replacement
+            if num_rows > total_rows:
+                num_rows = total_rows
+            sampled_indices = random.sample(range(total_rows), num_rows)
+            sampled_data = [self.data[i] for i in sampled_indices]
+        
+        return MockDataFrame(sampled_data, self.schema, self.storage)
+
+    def randomSplit(self, weights: List[float], seed: Optional[int] = None) -> List["MockDataFrame"]:
+        """Randomly split DataFrame into multiple DataFrames.
+
+        Args:
+            weights: List of weights for each split (must sum to 1.0).
+            seed: Random seed for reproducible splitting.
+
+        Returns:
+            List of MockDataFrames split according to weights.
+        """
+        import random
+        
+        if not weights or len(weights) < 2:
+            raise IllegalArgumentException("Weights must have at least 2 elements")
+        
+        if abs(sum(weights) - 1.0) > 1e-6:
+            raise IllegalArgumentException(f"Weights must sum to 1.0, got {sum(weights)}")
+        
+        if any(w < 0 for w in weights):
+            raise IllegalArgumentException("All weights must be non-negative")
+        
+        if seed is not None:
+            random.seed(seed)
+        
+        # Create a list of (index, random_value) pairs
+        indexed_data = [(i, random.random()) for i in range(len(self.data))]
+        
+        # Sort by random value to ensure random distribution
+        indexed_data.sort(key=lambda x: x[1])
+        
+        # Calculate split points
+        cumulative_weight = 0
+        split_points = []
+        for weight in weights:
+            cumulative_weight += weight
+            split_points.append(int(len(self.data) * cumulative_weight))
+        
+        # Create splits
+        splits = []
+        start_idx = 0
+        
+        for end_idx in split_points:
+            split_indices = [idx for idx, _ in indexed_data[start_idx:end_idx]]
+            split_data = [self.data[idx] for idx in split_indices]
+            splits.append(MockDataFrame(split_data, self.schema, self.storage))
+            start_idx = end_idx
+        
+        return splits
+
+    def describe(self, *cols: str) -> "MockDataFrame":
+        """Compute basic statistics for numeric columns.
+
+        Args:
+            *cols: Column names to describe. If empty, describes all numeric columns.
+
+        Returns:
+            MockDataFrame with statistics (count, mean, stddev, min, max).
+        """
+        import statistics
+        
+        # Determine which columns to describe
+        if not cols:
+            # Describe all numeric columns
+            numeric_cols = []
+            for field in self.schema.fields:
+                field_type = field.dataType.typeName()
+                if field_type in ["long", "int", "integer", "bigint", "double", "float"]:
+                    numeric_cols.append(field.name)
+        else:
+            numeric_cols = list(cols)
+            # Validate that columns exist
+            available_cols = [field.name for field in self.schema.fields]
+            for col in numeric_cols:
+                if col not in available_cols:
+                    raise ColumnNotFoundException(col)
+        
+        if not numeric_cols:
+            # No numeric columns found
+            return MockDataFrame([], self.schema, self.storage)
+        
+        # Calculate statistics for each column
+        result_data = []
+        
+        for col in numeric_cols:
+            # Extract values for this column
+            values = []
+            for row in self.data:
+                value = row.get(col)
+                if value is not None and isinstance(value, (int, float)):
+                    values.append(value)
+            
+            if not values:
+                # No valid numeric values
+                stats_row = {
+                    "summary": col,
+                    "count": "0",
+                    "mean": "NaN",
+                    "stddev": "NaN", 
+                    "min": "NaN",
+                    "max": "NaN"
+                }
+            else:
+                stats_row = {
+                    "summary": col,
+                    "count": str(len(values)),
+                    "mean": str(round(statistics.mean(values), 4)),
+                    "stddev": str(round(statistics.stdev(values) if len(values) > 1 else 0.0, 4)),
+                    "min": str(min(values)),
+                    "max": str(max(values))
+                }
+            
+            result_data.append(stats_row)
+        
+        # Create result schema
+        from ..spark_types import MockStructType, MockStructField, StringType
+        result_schema = MockStructType([
+            MockStructField("summary", StringType()),
+            MockStructField("count", StringType()),
+            MockStructField("mean", StringType()),
+            MockStructField("stddev", StringType()),
+            MockStructField("min", StringType()),
+            MockStructField("max", StringType())
+        ])
+        
+        return MockDataFrame(result_data, result_schema, self.storage)
+
+    def summary(self, *stats: str) -> "MockDataFrame":
+        """Compute extended statistics for numeric columns.
+
+        Args:
+            *stats: Statistics to compute. Default: ["count", "mean", "stddev", "min", "25%", "50%", "75%", "max"].
+
+        Returns:
+            MockDataFrame with extended statistics.
+        """
+        import statistics
+        
+        # Default statistics if none provided
+        if not stats:
+            stats = ["count", "mean", "stddev", "min", "25%", "50%", "75%", "max"]
+        
+        # Find numeric columns
+        numeric_cols = []
+        for field in self.schema.fields:
+            field_type = field.dataType.typeName()
+            if field_type in ["long", "int", "integer", "bigint", "double", "float"]:
+                numeric_cols.append(field.name)
+        
+        if not numeric_cols:
+            # No numeric columns found
+            return MockDataFrame([], self.schema, self.storage)
+        
+        # Calculate statistics for each column
+        result_data = []
+        
+        for col in numeric_cols:
+            # Extract values for this column
+            values = []
+            for row in self.data:
+                value = row.get(col)
+                if value is not None and isinstance(value, (int, float)):
+                    values.append(value)
+            
+            if not values:
+                # No valid numeric values
+                stats_row = {"summary": col}
+                for stat in stats:
+                    stats_row[stat] = "NaN"
+            else:
+                stats_row = {"summary": col}
+                values_sorted = sorted(values)
+                n = len(values)
+                
+                for stat in stats:
+                    if stat == "count":
+                        stats_row[stat] = str(n)
+                    elif stat == "mean":
+                        stats_row[stat] = str(round(statistics.mean(values), 4))
+                    elif stat == "stddev":
+                        stats_row[stat] = str(round(statistics.stdev(values) if n > 1 else 0.0, 4))
+                    elif stat == "min":
+                        stats_row[stat] = str(values_sorted[0])
+                    elif stat == "max":
+                        stats_row[stat] = str(values_sorted[-1])
+                    elif stat == "25%":
+                        q1_idx = int(0.25 * (n - 1))
+                        stats_row[stat] = str(values_sorted[q1_idx])
+                    elif stat == "50%":
+                        q2_idx = int(0.5 * (n - 1))
+                        stats_row[stat] = str(values_sorted[q2_idx])
+                    elif stat == "75%":
+                        q3_idx = int(0.75 * (n - 1))
+                        stats_row[stat] = str(values_sorted[q3_idx])
+                    else:
+                        stats_row[stat] = "NaN"
+            
+            result_data.append(stats_row)
+        
+        # Create result schema
+        from ..spark_types import MockStructType, MockStructField, StringType
+        result_fields = [MockStructField("summary", StringType())]
+        for stat in stats:
+            result_fields.append(MockStructField(stat, StringType()))
+        
+        result_schema = MockStructType(result_fields)
+        return MockDataFrame(result_data, result_schema, self.storage)
+
     def write(self) -> MockDataFrameWriter:
         """Get DataFrame writer."""
         return MockDataFrameWriter(self, self.storage)
