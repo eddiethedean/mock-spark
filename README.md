@@ -230,48 +230,48 @@ MockDataFrame[2 rows, 5 columns]
 | 0 | 75.0 | 75 | 75 | 273.8612787525831 |
 
 # String functions
-df.select(
+```
+print(df.select(
     F.regexp_replace(F.col("name"), "e", "X").alias("name_replaced"),
     F.split(F.col("name"), "l").alias("name_chars")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 2 columns]
 
-name_replaced name_chars  
-============= ============
-AlicX         ['A', 'ice']
-Bob           ['Bob']     
-```
+| name_replaced | name_chars |
+| --- | --- |
+| AlicX | ['A', 'ice'] |
+| Bob | ['Bob'] |
 
 # Date/time functions
-df.select(
+```
+print(df.select(
     F.current_timestamp().alias("now"),
     F.current_date().alias("today")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 2 columns]
 
-now                        today     
-========================== ==========
-2025-10-04 14:49:59.928233 2025-10-04
-2025-10-04 14:49:59.928242 2025-10-04
-```
+| now | today |
+| --- | --- |
+| 2025-10-04 14:49:59.928233 | 2025-10-04 |
+| 2025-10-04 14:49:59.928242 | 2025-10-04 |
 
 # CASE WHEN expressions
-df.select(
+```
+print(df.select(
     F.col("*"),
     F.when(F.col("age") > 30, F.lit("Senior"))
      .when(F.col("age") > 20, F.lit("Junior"))
      .otherwise(F.lit("Entry")).alias("level")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 5 columns]
 
-age department name  salary level 
-=== ========== ===== ====== ======
-25  Sales      Alice 55000  Junior
-30  Sales      Bob   75000  Junior
-```
+| age | department | name | salary | level |
+| --- | --- | --- | --- | --- |
+| 25 | Sales | Alice | 55000 | Junior |
+| 30 | Sales | Bob | 75000 | Junior |
 
 ### Advanced Window Functions
 ```python
@@ -290,23 +290,22 @@ df = spark.createDataFrame(data)
 # Complete window function support
 window_spec = MockWindow.partitionBy("department").orderBy(F.desc("salary"))
 
-df.select(
+print(df.select(
     F.col("*"),
     F.row_number().over(window_spec).alias("row_num"),
     F.rank().over(window_spec).alias("rank"),
     F.dense_rank().over(window_spec).alias("dense_rank"),
     F.lag(F.col("salary"), 1).over(window_spec).alias("prev_salary"),
     F.lead(F.col("salary"), 1).over(window_spec).alias("next_salary")
-).show()
+).to_markdown())
 ```
 MockDataFrame[3 rows, 9 columns]
 
-age department  name    salary row_num rank dense_rank prev_salary next_salary
-=== ========== ======= ====== ======= ==== ========== =========== ===========
-25  Sales       Alice   55000  2       2    2          75000       None       
-30  Sales       Bob     75000  1       1    1          None        55000      
-35  Engineering Charlie 80000  1       1    1          None        None       
-```
+| age | department | name | salary | row_num | rank | dense_rank | prev_salary | next_salary |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 25 | Sales | Alice | 55000 | 2 | 2 | 2 | 75000 | None |
+| 30 | Sales | Bob | 75000 | 1 | 1 | 1 | None | 55000 |
+| 35 | Engineering | Charlie | 80000 | 1 | 1 | 1 | None | None |
 
 ### Storage & SQL
 ```python
