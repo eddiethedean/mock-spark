@@ -106,17 +106,19 @@ Charlie 35
 df.filter(F.col("age") > 25).show()
 ```
 MockDataFrame[2 rows, 4 columns]
-age department   name    salary
-30  Sales        Bob     75000
-35  Engineering  Charlie 80000
+age department  name    salary
+--- ----------- ------- ------
+30  Sales       Bob     75000 
+35  Engineering Charlie 80000 
 ```
 
 df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).show()
 ```
 MockDataFrame[2 rows, 4 columns]
-age department   name    salary
-30  Sales        Bob     75000
-35  Engineering  Charlie 80000
+age department  name    salary
+--- ----------- ------- ------
+30  Sales       Bob     75000 
+35  Engineering Charlie 80000 
 ```
 
 # Grouping and aggregation  
@@ -126,41 +128,41 @@ df.groupBy("department").agg(
     F.max("salary").alias("max_salary")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-  department |        count |   avg_salary |   max_salary
----------------------------------------------------------
-       Sales |            2 |      65000.0 |        75000
- Engineering |            1 |      80000.0 |        80000
+MockDataFrame[2 rows, 4 columns]
+department count avg_salary max_salary
+---------- ----- ---------- ----------
+Sales      2     65000.0    75000     
+Engineering 1    80000.0    80000     
 ```
 
 # Sorting and limiting
 df.orderBy("age").show()
 ```
-MockDataFrame[ 3 rows,  columns]
-         age |   department |         name |       salary
----------------------------------------------------------
-          25 |        Sales |        Alice |        55000
-          30 |        Sales |          Bob |        75000
-          35 |  Engineering |      Charlie |        80000
+MockDataFrame[3 rows, 4 columns]
+age department  name    salary
+--- ----------- ------- ------
+25  Sales       Alice   55000 
+30  Sales       Bob     75000 
+35  Engineering Charlie 80000 
 ```
 
 df.orderBy(F.desc("salary")).show()
 ```
-MockDataFrame[ 3 rows,  columns]
-         age |   department |         name |       salary
----------------------------------------------------------
-          35 |  Engineering |      Charlie |        80000
-          30 |        Sales |          Bob |        75000
-          25 |        Sales |        Alice |        55000
+MockDataFrame[3 rows, 4 columns]
+age department  name    salary
+--- ----------- ------- ------
+35  Engineering Charlie 80000 
+30  Sales       Bob     75000 
+25  Sales       Alice   55000 
 ```
 
 df.limit(2).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-         age |   department |         name |       salary
----------------------------------------------------------
-          25 |        Sales |        Alice |        55000
-          30 |        Sales |          Bob |        75000
+MockDataFrame[2 rows, 4 columns]
+age department name  salary
+--- ---------- ----- ------
+25  Sales      Alice 55000 
+30  Sales      Bob   75000 
 ```
 
 ### Advanced Functions
@@ -182,11 +184,11 @@ df.select(
     F.length(F.col("name")).alias("length")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-       upper |        lower |       length
-------------------------------------------
-       ALICE |        alice |            5
-         BOB |          bob |            3
+MockDataFrame[2 rows, 3 columns]
+upper lower length
+----- ----- ------
+ALICE alice 5     
+BOB   bob   3     
 ```
 
 # Null handling
@@ -196,11 +198,11 @@ df.select(
     F.isnan(F.col("salary")).alias("is_nan")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-   safe_name |      is_null |       is_nan
-------------------------------------------
-       Alice |        False |        False
-         Bob |        False |        False
+MockDataFrame[2 rows, 3 columns]
+safe_name is_null is_nan
+--------- ------- ------
+Alice     False   False 
+Bob       False   False 
 ```
 
 # Mathematical functions
@@ -212,11 +214,11 @@ df.select(
     F.sqrt(F.col("salary")).alias("salary_sqrt")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-    age_diff |     salary_k | salary_k_ceil | salary_k_floor |  salary_sqrt
----------------------------------------------------------------------------
-           5 |         55.0 |           55 |           55 | 234.5207879911715
-           0 |         75.0 |           75 |           75 | 273.8612787525831
+MockDataFrame[2 rows, 5 columns]
+age_diff salary_k salary_k_ceil salary_k_floor salary_sqrt      
+-------- -------- ------------- -------------- -----------------
+5        55.0     55            55             234.5207879911715
+0        75.0     75            75             273.8612787525831
 ```
 
 # String functions
@@ -225,11 +227,11 @@ df.select(
     F.split(F.col("name"), "l").alias("name_chars")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-name_replaced |   name_chars
-----------------------------
-       AlicX | ['A', 'ice']
-         Bob |      ['Bob']
+MockDataFrame[2 rows, 2 columns]
+name_replaced name_chars  
+------------- ------------
+AlicX         ['A', 'ice']
+Bob           ['Bob']     
 ```
 
 # Date/time functions
@@ -238,11 +240,11 @@ df.select(
     F.current_date().alias("today")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-         now |        today
----------------------------
-2025-10-04 14:49:59.928233 |   2025-10-04
-2025-10-04 14:49:59.928242 |   2025-10-04
+MockDataFrame[2 rows, 2 columns]
+now                        today     
+-------------------------- ----------
+2025-10-04 14:49:59.928233 2025-10-04
+2025-10-04 14:49:59.928242 2025-10-04
 ```
 
 # CASE WHEN expressions
@@ -253,11 +255,11 @@ df.select(
      .otherwise(F.lit("Entry")).alias("level")
 ).show()
 ```
-MockDataFrame[ 2 rows,  columns]
-         age |   department |         name |       salary |        level
-------------------------------------------------------------------------
-          25 |        Sales |        Alice |        55000 |       Junior
-          30 |        Sales |          Bob |        75000 |       Junior
+MockDataFrame[2 rows, 5 columns]
+age department name  salary level 
+--- ---------- ----- ------ ------
+25  Sales      Alice 55000  Junior
+30  Sales      Bob   75000  Junior
 ```
 
 ### Advanced Window Functions
@@ -286,12 +288,12 @@ df.select(
     F.lead(F.col("salary"), 1).over(window_spec).alias("next_salary")
 ).show()
 ```
-MockDataFrame[ 3 rows,  columns]
-         age |   department |         name |       salary |      row_num |         rank |   dense_rank |  prev_salary |  next_salary
-------------------------------------------------------------------------------------------------------------------------------------
-          25 |        Sales |        Alice |        55000 |            2 |            2 |            2 |        75000 |         None
-          30 |        Sales |          Bob |        75000 |            1 |            1 |            1 |         None |        55000
-          35 |  Engineering |      Charlie |        80000 |            1 |            1 |            1 |         None |         None
+MockDataFrame[3 rows, 9 columns]
+age department  name    salary row_num rank dense_rank prev_salary next_salary
+--- ----------- ------- ------ ------- ---- ---------- ----------- -----------
+25  Sales       Alice   55000  2       2    2          75000       None       
+30  Sales       Bob     75000  1       1    1          None        55000      
+35  Engineering Charlie 80000  1       1    1          None        None       
 ```
 
 ### Storage & SQL
