@@ -101,7 +101,7 @@ df.select("name", "age").show()
 MockDataFrame[3 rows, 2 columns]
 
 name    age
-------- ---
+======= ===
 Alice   25 
 Bob     30 
 Charlie 35 
