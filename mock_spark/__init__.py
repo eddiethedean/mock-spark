@@ -33,7 +33,7 @@ Example:
            ALICE
              BOB
     
-Version: 0.2.1
+Version: 0.2.2
 Author: Odos Matthews
 """
 
@@ -94,7 +94,7 @@ from .data_generation import (
     create_realistic_data,
 )
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
