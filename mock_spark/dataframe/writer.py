@@ -5,8 +5,11 @@ This module provides DataFrame writing functionality, maintaining compatibility
 with PySpark's DataFrameWriter interface.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from ..storage import MemoryStorageManager
+
+if TYPE_CHECKING:
+    from .dataframe import MockDataFrame
 
 
 class MockDataFrameWriter:

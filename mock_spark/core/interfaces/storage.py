@@ -121,67 +121,7 @@ class ITable(ABC):
         pass
 
 
-class ISchema(ABC):
-    """Abstract interface for schema operations."""
-
-    @property
-    @abstractmethod
-    def fields(self) -> List[IStructField]:
-        """Get schema fields."""
-        pass
-
-    @abstractmethod
-    def add_field(self, field: IStructField) -> None:
-        """Add field to schema."""
-        pass
-
-    @abstractmethod
-    def remove_field(self, field_name: str) -> None:
-        """Remove field from schema."""
-        pass
-
-    @abstractmethod
-    def get_field(self, field_name: str) -> Optional[IStructField]:
-        """Get field by name."""
-        pass
-
-    @abstractmethod
-    def field_names(self) -> List[str]:
-        """Get field names."""
-        pass
-
-    @abstractmethod
-    def field_types(self) -> Dict[str, Any]:
-        """Get field types."""
-        pass
-
-
-class IStructField(ABC):
-    """Abstract interface for struct field operations."""
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Get field name."""
-        pass
-
-    @property
-    @abstractmethod
-    def data_type(self) -> Any:
-        """Get field data type."""
-        pass
-
-    @property
-    @abstractmethod
-    def nullable(self) -> bool:
-        """Check if field is nullable."""
-        pass
-
-    @property
-    @abstractmethod
-    def metadata(self) -> Dict[str, Any]:
-        """Get field metadata."""
-        pass
+# ISchema and IStructField are imported from ..types.schema
 
 
 class ITableMetadata(ABC):

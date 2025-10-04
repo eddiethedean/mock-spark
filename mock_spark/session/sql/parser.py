@@ -220,7 +220,7 @@ class MockSQLParser:
             Dictionary of SELECT components.
         """
         # Mock implementation - in real parser this would be much more sophisticated
-        components = {
+        components: Dict[str, Union[List[str], None]] = {
             'select_columns': [],
             'from_tables': [],
             'where_conditions': [],

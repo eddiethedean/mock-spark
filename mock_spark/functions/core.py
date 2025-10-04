@@ -5,7 +5,7 @@ This module provides the main F namespace and re-exports all function classes
 for backward compatibility with the original functions.py structure.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Union, List
 from .base import MockColumn, MockColumnOperation, MockLiteral, MockAggregateFunction
 from .conditional import MockCaseWhen, ConditionalFunctions
 from .window_execution import MockWindowFunction
@@ -34,176 +34,181 @@ class MockFunctions:
 
     # String functions
     @staticmethod
-    def upper(column) -> MockColumnOperation:
+    def upper(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Convert string to uppercase."""
         return StringFunctions.upper(column)
 
     @staticmethod
-    def lower(column) -> MockColumnOperation:
+    def lower(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Convert string to lowercase."""
         return StringFunctions.lower(column)
 
     @staticmethod
-    def length(column) -> MockColumnOperation:
+    def length(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Get string length."""
         return StringFunctions.length(column)
 
     @staticmethod
-    def trim(column) -> MockColumnOperation:
+    def trim(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Trim whitespace."""
         return StringFunctions.trim(column)
 
     @staticmethod
-    def ltrim(column) -> MockColumnOperation:
+    def ltrim(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Trim left whitespace."""
         return StringFunctions.ltrim(column)
 
     @staticmethod
-    def rtrim(column) -> MockColumnOperation:
+    def rtrim(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Trim right whitespace."""
         return StringFunctions.rtrim(column)
 
     @staticmethod
-    def regexp_replace(column, pattern: str, replacement: str) -> MockColumnOperation:
+    def regexp_replace(column: Union[MockColumn, str], pattern: str, replacement: str) -> MockColumnOperation:
         """Replace regex pattern."""
         return StringFunctions.regexp_replace(column, pattern, replacement)
 
     @staticmethod
-    def split(column, delimiter: str) -> MockColumnOperation:
+    def split(column: Union[MockColumn, str], delimiter: str) -> MockColumnOperation:
         """Split string by delimiter."""
         return StringFunctions.split(column, delimiter)
 
     @staticmethod
-    def substring(column, start: int, length: Optional[int] = None) -> MockColumnOperation:
+    def substring(column: Union[MockColumn, str], start: int, length: Optional[int] = None) -> MockColumnOperation:
         """Extract substring."""
         return StringFunctions.substring(column, start, length)
 
     @staticmethod
-    def concat(*columns) -> MockColumnOperation:
+    def concat(*columns: Union[MockColumn, str]) -> MockColumnOperation:
         """Concatenate strings."""
         return StringFunctions.concat(*columns)
 
     # Math functions
     @staticmethod
-    def abs(column) -> MockColumnOperation:
+    def abs(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Get absolute value."""
         return MathFunctions.abs(column)
 
     @staticmethod
-    def round(column, scale: int = 0) -> MockColumnOperation:
+    def round(column: Union[MockColumn, str], scale: int = 0) -> MockColumnOperation:
         """Round to decimal places."""
         return MathFunctions.round(column, scale)
 
     @staticmethod
-    def ceil(column) -> MockColumnOperation:
+    def ceil(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Round up."""
         return MathFunctions.ceil(column)
 
     @staticmethod
-    def floor(column) -> MockColumnOperation:
+    def floor(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Round down."""
         return MathFunctions.floor(column)
 
     @staticmethod
-    def sqrt(column) -> MockColumnOperation:
+    def sqrt(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Square root."""
         return MathFunctions.sqrt(column)
 
     @staticmethod
-    def exp(column) -> MockColumnOperation:
+    def exp(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Exponential."""
         return MathFunctions.exp(column)
 
     @staticmethod
-    def log(column, base: Optional[float] = None) -> MockColumnOperation:
+    def log(column: Union[MockColumn, str], base: Optional[float] = None) -> MockColumnOperation:
         """Logarithm."""
         return MathFunctions.log(column, base)
 
     @staticmethod
-    def pow(column, exponent) -> MockColumnOperation:
+    def pow(column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]) -> MockColumnOperation:
         """Power."""
         return MathFunctions.pow(column, exponent)
 
     @staticmethod
-    def sin(column) -> MockColumnOperation:
+    def sin(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sine."""
         return MathFunctions.sin(column)
 
     @staticmethod
-    def cos(column) -> MockColumnOperation:
+    def cos(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Cosine."""
         return MathFunctions.cos(column)
 
     @staticmethod
-    def tan(column) -> MockColumnOperation:
+    def tan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Tangent."""
         return MathFunctions.tan(column)
 
     # Aggregate functions
     @staticmethod
-    def count(column=None) -> MockAggregateFunction:
+    def count(column: Union[MockColumn, str, None] = None) -> MockAggregateFunction:
         """Count values."""
         return AggregateFunctions.count(column)
 
     @staticmethod
-    def sum(column) -> MockAggregateFunction:
+    def sum(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Sum values."""
         return AggregateFunctions.sum(column)
 
     @staticmethod
-    def avg(column) -> MockAggregateFunction:
+    def avg(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Average values."""
         return AggregateFunctions.avg(column)
 
     @staticmethod
-    def max(column) -> MockAggregateFunction:
+    def max(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Maximum value."""
         return AggregateFunctions.max(column)
 
     @staticmethod
-    def min(column) -> MockAggregateFunction:
+    def min(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Minimum value."""
         return AggregateFunctions.min(column)
 
     @staticmethod
-    def first(column) -> MockAggregateFunction:
+    def first(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """First value."""
         return AggregateFunctions.first(column)
 
     @staticmethod
-    def last(column) -> MockAggregateFunction:
+    def last(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Last value."""
         return AggregateFunctions.last(column)
 
     @staticmethod
-    def collect_list(column) -> MockAggregateFunction:
+    def collect_list(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Collect values into list."""
         return AggregateFunctions.collect_list(column)
 
     @staticmethod
-    def collect_set(column) -> MockAggregateFunction:
+    def collect_set(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Collect unique values into set."""
         return AggregateFunctions.collect_set(column)
 
     @staticmethod
-    def stddev(column) -> MockAggregateFunction:
+    def stddev(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Standard deviation."""
         return AggregateFunctions.stddev(column)
 
     @staticmethod
-    def variance(column) -> MockAggregateFunction:
+    def variance(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Variance."""
         return AggregateFunctions.variance(column)
 
     @staticmethod
-    def skewness(column) -> MockAggregateFunction:
+    def skewness(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Skewness."""
         return AggregateFunctions.skewness(column)
 
     @staticmethod
-    def kurtosis(column) -> MockAggregateFunction:
+    def kurtosis(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Kurtosis."""
         return AggregateFunctions.kurtosis(column)
+
+    @staticmethod
+    def countDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Count distinct values."""
+        return AggregateFunctions.countDistinct(column)
 
     # Datetime functions
     @staticmethod
@@ -258,13 +263,20 @@ class MockFunctions:
         return ConditionalFunctions.isnull(column)
 
     @staticmethod
+    def isnotnull(column) -> MockColumnOperation:
+        """Check if column is not null."""
+        return ConditionalFunctions.isnotnull(column)
+
+    @staticmethod
     def isnan(column) -> MockColumnOperation:
         """Check if column is NaN."""
         return ConditionalFunctions.isnan(column)
 
     @staticmethod
-    def when(condition) -> MockCaseWhen:
+    def when(condition, value=None) -> MockCaseWhen:
         """Start CASE WHEN expression."""
+        if value is not None:
+            return ConditionalFunctions.when(condition, value)
         return ConditionalFunctions.when(condition)
 
     @staticmethod
@@ -287,48 +299,6 @@ class MockFunctions:
         """Extract quarter."""
         return DateTimeFunctions.quarter(column)
 
-    # Conditional functions
-    @staticmethod
-    def when(condition, value) -> MockCaseWhen:
-        """Start CASE WHEN expression."""
-        return MockCaseWhen().when(condition, value)
-
-    @staticmethod
-    def coalesce(*columns) -> MockColumnOperation:
-        """Return first non-null value."""
-        if not columns:
-            raise ValueError("At least one column must be provided")
-        
-        # Use the first column as base and chain coalesce operations
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        operation = MockColumnOperation(base_column, "coalesce", list(columns[1:]))
-        column_names = [col.name if hasattr(col, 'name') else str(col) for col in columns]
-        operation.name = f"coalesce({', '.join(column_names)})"
-        return operation
-
-    @staticmethod
-    def isnull(column) -> MockColumnOperation:
-        """Check if null."""
-        if isinstance(column, str):
-            column = MockColumn(column)
-        return column.isnull()
-
-    @staticmethod
-    def isnotnull(column) -> MockColumnOperation:
-        """Check if not null."""
-        if isinstance(column, str):
-            column = MockColumn(column)
-        return column.isnotnull()
-
-    @staticmethod
-    def isnan(column) -> MockColumnOperation:
-        """Check if NaN."""
-        if isinstance(column, str):
-            column = MockColumn(column)
-        
-        operation = MockColumnOperation(column, "isnan")
-        operation.name = f"isnan({column.name})"
-        return operation
 
     @staticmethod
     def nvl(column, default_value) -> MockColumnOperation:
@@ -404,6 +374,16 @@ class MockFunctions:
         operation = MockColumnOperation(column, "lead", (offset, default_value))
         operation.name = f"lead({column.name}, {offset})"
         operation.function_name = "lead"
+        return operation
+
+    @staticmethod
+    def desc(column) -> MockColumnOperation:
+        """Create descending order column."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+        
+        operation = MockColumnOperation(column, "desc", None, name=f"{column.name} DESC")
+        operation.function_name = "desc"
         return operation
 
 

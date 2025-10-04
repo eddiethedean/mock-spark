@@ -189,12 +189,58 @@ class MockCaseWhen:
         Returns:
             The evaluated value.
         """
-        if hasattr(value, 'name'):
+        if hasattr(value, 'operation') and hasattr(value, 'column'):
+            # Handle MockColumnOperation (e.g., unary minus, arithmetic operations)
+            from mock_spark.functions.base import MockColumnOperation
+            if isinstance(value, MockColumnOperation):
+                return self._evaluate_column_operation_value(row, value)
+        elif hasattr(value, 'name'):
             return row.get(value.name)
         elif hasattr(value, 'value'):
             return value.value
         else:
             return value
+
+    def _evaluate_column_operation_value(self, row: dict, operation) -> Any:
+        """Evaluate a column operation for a value.
+
+        Args:
+            row: The data row.
+            operation: The column operation to evaluate.
+
+        Returns:
+            The evaluated result.
+        """
+        if operation.operation == "-" and operation.value is None:
+            # Unary minus operation
+            left_value = self._get_column_value(row, operation.column)
+            if left_value is None:
+                return None
+            return -left_value
+        elif operation.operation == "+" and operation.value is None:
+            # Unary plus operation (just return the value)
+            return self._get_column_value(row, operation.column)
+        elif operation.operation in ["+", "-", "*", "/", "%"]:
+            # Binary arithmetic operations
+            left_value = self._get_column_value(row, operation.column)
+            right_value = self._get_column_value(row, operation.value)
+            
+            if left_value is None or right_value is None:
+                return None
+                
+            if operation.operation == "+":
+                return left_value + right_value
+            elif operation.operation == "-":
+                return left_value - right_value
+            elif operation.operation == "*":
+                return left_value * right_value
+            elif operation.operation == "/":
+                return left_value / right_value if right_value != 0 else None
+            elif operation.operation == "%":
+                return left_value % right_value if right_value != 0 else None
+        else:
+            # For other operations, try to get the column value
+            return self._get_column_value(row, operation.column)
 
 
 class ConditionalFunctions:
@@ -241,6 +287,23 @@ class ConditionalFunctions:
         return operation
 
     @staticmethod
+    def isnotnull(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Check if a column is not null.
+        
+        Args:
+            column: The column to check.
+            
+        Returns:
+            MockColumnOperation representing the isnotnull function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+        
+        operation = MockColumnOperation(column, "isnotnull")
+        operation.name = f"isnotnull({column.name})"
+        return operation
+
+    @staticmethod
     def isnan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if a column is NaN (Not a Number).
         
@@ -258,13 +321,16 @@ class ConditionalFunctions:
         return operation
 
     @staticmethod
-    def when(condition: Any) -> MockCaseWhen:
+    def when(condition: Any, value: Any = None) -> MockCaseWhen:
         """Start a CASE WHEN expression.
         
         Args:
             condition: The initial condition.
+            value: Optional value for the condition.
             
         Returns:
             MockCaseWhen object for chaining.
         """
+        if value is not None:
+            return MockCaseWhen(condition=condition, value=value)
         return MockCaseWhen(condition=condition)

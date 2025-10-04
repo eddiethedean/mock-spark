@@ -24,8 +24,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "abs")
-        operation.name = f"abs({column.name})"
+        operation = MockColumnOperation(column, "abs", name=f"abs({column.name})")
         return operation
 
     @staticmethod
@@ -42,8 +41,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "round", scale)
-        operation.name = f"round({column.name}, {scale})"
+        operation = MockColumnOperation(column, "round", scale, name=f"round({column.name}, {scale})")
         return operation
 
     @staticmethod
@@ -59,8 +57,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "ceil")
-        operation.name = f"ceil({column.name})"
+        operation = MockColumnOperation(column, "ceil", name=f"ceil({column.name})")
         return operation
 
     @staticmethod
@@ -76,8 +73,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "floor")
-        operation.name = f"floor({column.name})"
+        operation = MockColumnOperation(column, "floor", name=f"floor({column.name})")
         return operation
 
     @staticmethod
@@ -93,8 +89,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "sqrt")
-        operation.name = f"sqrt({column.name})"
+        operation = MockColumnOperation(column, "sqrt", name=f"sqrt({column.name})")
         return operation
 
     @staticmethod
@@ -110,8 +105,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "exp")
-        operation.name = f"exp({column.name})"
+        operation = MockColumnOperation(column, "exp", name=f"exp({column.name})")
         return operation
 
     @staticmethod
@@ -128,11 +122,8 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "log", base)
-        if base is not None:
-            operation.name = f"log({base}, {column.name})"
-        else:
-            operation.name = f"log({column.name})"
+        name = f"log({base}, {column.name})" if base is not None else f"log({column.name})"
+        operation = MockColumnOperation(column, "log", base, name=name)
         return operation
 
     @staticmethod
@@ -149,8 +140,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "pow", exponent)
-        operation.name = f"pow({column.name}, {exponent})"
+        operation = MockColumnOperation(column, "pow", exponent, name=f"pow({column.name}, {exponent})")
         return operation
 
     @staticmethod
@@ -166,8 +156,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "sin")
-        operation.name = f"sin({column.name})"
+        operation = MockColumnOperation(column, "sin", name=f"sin({column.name})")
         return operation
 
     @staticmethod
@@ -183,8 +172,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "cos")
-        operation.name = f"cos({column.name})"
+        operation = MockColumnOperation(column, "cos", name=f"cos({column.name})")
         return operation
 
     @staticmethod
@@ -200,6 +188,5 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "tan")
-        operation.name = f"tan({column.name})"
+        operation = MockColumnOperation(column, "tan", name=f"tan({column.name})")
         return operation

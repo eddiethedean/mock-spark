@@ -5,7 +5,7 @@ Tests for proper error handling, edge cases, and exception compatibility.
 """
 
 import pytest
-from mock_spark.errors import (
+from mock_spark.core.exceptions import (
     AnalysisException,
     IllegalArgumentException,
     PySparkValueError,

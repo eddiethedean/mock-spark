@@ -5,9 +5,12 @@ This module provides grouped data functionality for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple
+from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
 import statistics
 from ..functions import MockColumn, MockColumnOperation, MockAggregateFunction
+
+if TYPE_CHECKING:
+    from .dataframe import MockDataFrame
 
 
 class MockGroupedData:
@@ -65,9 +68,27 @@ class MockGroupedData:
 
             result_data.append(result_row)
 
-        # Create result DataFrame
+        # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
-        return MockDataFrame(result_data)
+        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
+        
+        # Create schema based on the first result row
+        if result_data:
+            fields = []
+            for key, value in result_data[0].items():
+                if key in self.group_columns:
+                    fields.append(MockStructField(key, StringType()))
+                elif isinstance(value, int):
+                    fields.append(MockStructField(key, LongType()))
+                elif isinstance(value, float):
+                    fields.append(MockStructField(key, DoubleType()))
+                else:
+                    fields.append(MockStructField(key, StringType()))
+            schema = MockStructType(fields)
+            return MockDataFrame(result_data, schema)
+        else:
+            # Empty result
+            return MockDataFrame(result_data)
 
     def _evaluate_string_expression(self, expr: str, group_rows: List[Dict[str, Any]]) -> Tuple[str, Any]:
         """Evaluate string aggregation expression.
@@ -112,7 +133,11 @@ class MockGroupedData:
         """
         func_name = expr.function_name
         col_name = getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
-        alias_name = getattr(expr, "_alias", None)
+        
+        # Check if the function has an alias set
+        has_alias = expr.name != expr._generate_name()
+        alias_name = expr.name if has_alias else None
+        
 
         if func_name == "sum":
             values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
@@ -123,8 +148,9 @@ class MockGroupedData:
             result_key = alias_name if alias_name else f"avg({col_name})"
             return result_key, sum(values) / len(values) if values else 0
         elif func_name == "count":
-            if col_name == "*":
-                result_key = alias_name if alias_name else "count(1)"
+            if col_name == "*" or col_name == "":
+                # For count(*), use alias if available, otherwise use the function's generated name
+                result_key = alias_name if alias_name else expr._generate_name()
                 return result_key, len(group_rows)
             else:
                 result_key = alias_name if alias_name else f"count({col_name})"
@@ -273,7 +299,9 @@ class MockGroupedData:
             MockDataFrame with count aggregations.
         """
         if not columns:
-            return self.agg("count(1)")
+            # Use MockAggregateFunction for count(*) to get proper naming
+            from ..functions.aggregate import AggregateFunctions
+            return self.agg(AggregateFunctions.count())
 
         exprs = [f"count({col})" if isinstance(col, str) else f"count({col.name})" for col in columns]
         return self.agg(*exprs)

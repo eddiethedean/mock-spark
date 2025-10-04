@@ -290,12 +290,12 @@ class IColumn(ABC):
         pass
 
     @abstractmethod
-    def __eq__(self, other: Any) -> "IColumn":
+    def __eq__(self, other: Any) -> "IColumn":  # type: ignore[override]
         """Equality operation."""
         pass
 
     @abstractmethod
-    def __ne__(self, other: Any) -> "IColumn":
+    def __ne__(self, other: Any) -> "IColumn":  # type: ignore[override]
         """Inequality operation."""
         pass
 

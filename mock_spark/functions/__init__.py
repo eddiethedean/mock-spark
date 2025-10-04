@@ -51,6 +51,7 @@ sin = F.sin
 cos = F.cos
 tan = F.tan
 count = F.count
+countDistinct = F.countDistinct
 sum = F.sum
 avg = F.avg
 max = F.max
@@ -80,6 +81,7 @@ rank = F.rank
 dense_rank = F.dense_rank
 lag = F.lag
 lead = F.lead
+desc = F.desc
 
 __all__ = [
     "MockColumn",
@@ -126,6 +128,7 @@ __all__ = [
     "cos",
     "tan",
     "count",
+    "countDistinct",
     "sum",
     "avg",
     "max",
@@ -155,4 +158,5 @@ __all__ = [
     "dense_rank",
     "lag",
     "lead",
+    "desc",
 ]

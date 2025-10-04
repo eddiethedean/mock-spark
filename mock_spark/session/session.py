@@ -33,135 +33,8 @@ from .catalog import MockCatalog
 from .config import MockConfiguration
 from .sql.executor import MockSQLExecutor
 from mock_spark.storage import MemoryStorageManager
-from mock_spark.dataframe import MockDataFrame
+from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
 from ..spark_types import MockStructType
-
-
-class MockDataFrameReader(IDataFrameReader):
-    """Mock DataFrameReader for reading data from various sources."""
-
-    def __init__(self, session: ISession):
-        """Initialize MockDataFrameReader.
-        
-        Args:
-            session: Mock Spark session instance.
-        """
-        self.session = session
-        self._format = "parquet"
-        self._options = {}
-
-    def format(self, source: str) -> "MockDataFrameReader":
-        """Set input format.
-        
-        Args:
-            source: Data source format.
-            
-        Returns:
-            Self for method chaining.
-        """
-        self._format = source
-        return self
-
-    def option(self, key: str, value: Any) -> "MockDataFrameReader":
-        """Set option.
-        
-        Args:
-            key: Option key.
-            value: Option value.
-            
-        Returns:
-            Self for method chaining.
-        """
-        self._options[key] = value
-        return self
-
-    def options(self, **options: Any) -> "MockDataFrameReader":
-        """Set multiple options.
-        
-        Args:
-            **options: Option key-value pairs.
-            
-        Returns:
-            Self for method chaining.
-        """
-        self._options.update(options)
-        return self
-
-    def schema(self, schema: Union[MockStructType, str]) -> "MockDataFrameReader":
-        """Set schema.
-        
-        Args:
-            schema: Schema definition.
-            
-        Returns:
-            Self for method chaining.
-        """
-        # Mock implementation
-        return self
-
-    def load(self, path: Optional[str] = None, format: Optional[str] = None, **options: Any) -> IDataFrame:
-        """Load data.
-        
-        Args:
-            path: Path to data.
-            format: Data format.
-            **options: Additional options.
-            
-        Returns:
-            DataFrame with loaded data.
-        """
-        # Mock implementation - return empty DataFrame
-        return MockDataFrame([], [])
-
-    def table(self, table_name: str) -> IDataFrame:
-        """Load table.
-        
-        Args:
-            table_name: Table name.
-            
-        Returns:
-            DataFrame with table data.
-        """
-        return self.session.table(table_name)
-
-    def json(self, path: str, **options: Any) -> IDataFrame:
-        """Load JSON data.
-        
-        Args:
-            path: Path to JSON file.
-            **options: Additional options.
-            
-        Returns:
-            DataFrame with JSON data.
-        """
-        # Mock implementation
-        return MockDataFrame([], [])
-
-    def csv(self, path: str, **options: Any) -> IDataFrame:
-        """Load CSV data.
-        
-        Args:
-            path: Path to CSV file.
-            **options: Additional options.
-            
-        Returns:
-            DataFrame with CSV data.
-        """
-        # Mock implementation
-        return MockDataFrame([], [])
-
-    def parquet(self, path: str, **options: Any) -> IDataFrame:
-        """Load Parquet data.
-        
-        Args:
-            path: Path to Parquet file.
-            **options: Additional options.
-            
-        Returns:
-            DataFrame with Parquet data.
-        """
-        # Mock implementation
-        return MockDataFrame([], [])
 
 
 class MockSparkSession:
@@ -275,6 +148,18 @@ class MockSparkSession:
 
             fields = [MockStructField(name, StringType()) for name in schema]
             schema = MockStructType(fields)
+            
+            # Convert tuples to dictionaries using provided column names
+            if data and isinstance(data[0], tuple):
+                reordered_data = []
+                column_names = [field.name for field in schema.fields]
+                for row in data:
+                    if isinstance(row, tuple):
+                        row_dict = {column_names[i]: row[i] for i in range(len(row))}
+                        reordered_data.append(row_dict)
+                    else:
+                        reordered_data.append(row)
+                data = reordered_data
 
         if schema is None:
             # Infer schema from data
@@ -318,8 +203,19 @@ class MockSparkSession:
                         else:
                             reordered_data.append(row)
                     data = reordered_data
+                elif isinstance(sample_row, tuple):
+                    # Convert tuples to dictionaries using schema field names
+                    reordered_data = []
+                    field_names = [field.name for field in schema.fields]
+                    for row in data:
+                        if isinstance(row, tuple):
+                            row_dict = {field_names[i]: row[i] for i in range(len(row))}
+                            reordered_data.append(row_dict)
+                        else:
+                            reordered_data.append(row)
+                    data = reordered_data
 
-        return MockDataFrame(data, schema, self.storage)
+        return MockDataFrame(data, schema, self.storage)  # type: ignore[return-value]
 
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
@@ -408,7 +304,7 @@ class MockSparkSession:
         table_data = self.storage.get_data(schema, table)
         table_schema = self.storage.get_table_schema(schema, table)
         
-        return MockDataFrame(table_data, table_schema, self.storage)
+        return MockDataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
 
     def range(self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None) -> IDataFrame:
         """Create DataFrame with range of numbers.

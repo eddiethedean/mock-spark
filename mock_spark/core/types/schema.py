@@ -8,6 +8,8 @@ including struct types, field definitions, and schema management.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+from .data_types import IDataType
+
 
 class IStructField(ABC):
     """Abstract interface for struct field operations."""

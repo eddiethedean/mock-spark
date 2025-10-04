@@ -6,7 +6,10 @@ ensuring type safety and consistency across the system.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .schema import IStructField
 
 
 class IDataType(ABC):

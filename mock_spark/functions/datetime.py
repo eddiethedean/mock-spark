@@ -22,8 +22,7 @@ class DateTimeFunctions:
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
         dummy_column = MockColumn("__current_timestamp__")
-        operation = MockColumnOperation(dummy_column, "current_timestamp")
-        operation.name = "current_timestamp()"
+        operation = MockColumnOperation(dummy_column, "current_timestamp", name="current_timestamp()")
         return operation
 
     @staticmethod
@@ -36,8 +35,7 @@ class DateTimeFunctions:
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
         dummy_column = MockColumn("__current_date__")
-        operation = MockColumnOperation(dummy_column, "current_date")
-        operation.name = "current_date()"
+        operation = MockColumnOperation(dummy_column, "current_date", name="current_date()")
         return operation
 
     @staticmethod
@@ -54,11 +52,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "to_date", format)
-        if format is not None:
-            operation.name = f"to_date({column.name}, '{format}')"
-        else:
-            operation.name = f"to_date({column.name})"
+        name = f"to_date({column.name}, '{format}')" if format is not None else f"to_date({column.name})"
+        operation = MockColumnOperation(column, "to_date", format, name=name)
         return operation
 
     @staticmethod
@@ -75,11 +70,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "to_timestamp", format)
-        if format is not None:
-            operation.name = f"to_timestamp({column.name}, '{format}')"
-        else:
-            operation.name = f"to_timestamp({column.name})"
+        name = f"to_timestamp({column.name}, '{format}')" if format is not None else f"to_timestamp({column.name})"
+        operation = MockColumnOperation(column, "to_timestamp", format, name=name)
         return operation
 
     @staticmethod
@@ -95,8 +87,7 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "hour")
-        operation.name = f"hour({column.name})"
+        operation = MockColumnOperation(column, "hour", name=f"hour({column.name})")
         return operation
 
     @staticmethod
@@ -112,8 +103,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "day")
-        operation.name = f"day({column.name})"
+        operation = MockColumnOperation(column, "day", name=f"day({column.name})")
+        name=f"day({column.name})"
         return operation
 
     @staticmethod
@@ -129,8 +120,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "month")
-        operation.name = f"month({column.name})"
+        operation = MockColumnOperation(column, "month", name=f"month({column.name})")
+        name=f"month({column.name})"
         return operation
 
     @staticmethod
@@ -146,8 +137,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "year")
-        operation.name = f"year({column.name})"
+        operation = MockColumnOperation(column, "year", name=f"year({column.name})")
+        name=f"year({column.name})"
         return operation
 
     @staticmethod
@@ -163,8 +154,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "dayofweek")
-        operation.name = f"dayofweek({column.name})"
+        operation = MockColumnOperation(column, "dayofweek", name=f"dayofweek({column.name})")
+        name=f"dayofweek({column.name})"
         return operation
 
     @staticmethod
@@ -180,8 +171,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "dayofyear")
-        operation.name = f"dayofyear({column.name})"
+        operation = MockColumnOperation(column, "dayofyear", name=f"dayofyear({column.name})")
+        name=f"dayofyear({column.name})"
         return operation
 
     @staticmethod
@@ -197,8 +188,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "weekofyear")
-        operation.name = f"weekofyear({column.name})"
+        operation = MockColumnOperation(column, "weekofyear", name=f"weekofyear({column.name})")
+        name=f"weekofyear({column.name})"
         return operation
 
     @staticmethod
@@ -214,6 +205,6 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "quarter")
-        operation.name = f"quarter({column.name})"
+        operation = MockColumnOperation(column, "quarter", name=f"quarter({column.name})")
+        name=f"quarter({column.name})"
         return operation

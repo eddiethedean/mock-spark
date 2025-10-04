@@ -118,7 +118,7 @@ class MockSQLValidator:
         Returns:
             List of semantic error messages.
         """
-        errors = []
+        errors: List[str] = []
         
         # Check for reserved keyword usage
         tokens = self._tokenize(query)
@@ -244,7 +244,7 @@ class MockSQLValidator:
         Returns:
             Tuple of (is_valid, error_messages).
         """
-        errors = []
+        errors: List[str] = []
         
         # Mock implementation - in real validator this would check
         # table names, column names, data types, etc. against schema

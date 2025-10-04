@@ -24,8 +24,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "upper")
-        operation.name = f"upper({column.name})"
+        operation = MockColumnOperation(column, "upper", name=f"upper({column.name})")
         return operation
 
     @staticmethod
@@ -41,8 +40,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "lower")
-        operation.name = f"lower({column.name})"
+        operation = MockColumnOperation(column, "lower", name=f"lower({column.name})")
         return operation
 
     @staticmethod
@@ -58,8 +56,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "length")
-        operation.name = f"length({column.name})"
+        operation = MockColumnOperation(column, "length", name=f"length({column.name})")
         return operation
 
     @staticmethod
@@ -75,8 +72,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "trim")
-        operation.name = f"trim({column.name})"
+        operation = MockColumnOperation(column, "trim", name=f"trim({column.name})")
         return operation
 
     @staticmethod
@@ -92,8 +88,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "ltrim")
-        operation.name = f"ltrim({column.name})"
+        operation = MockColumnOperation(column, "ltrim", name=f"ltrim({column.name})")
         return operation
 
     @staticmethod
@@ -109,8 +104,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "rtrim")
-        operation.name = f"rtrim({column.name})"
+        operation = MockColumnOperation(column, "rtrim", name=f"rtrim({column.name})")
         return operation
 
     @staticmethod
@@ -128,8 +122,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "regexp_replace", (pattern, replacement))
-        operation.name = f"regexp_replace({column.name}, '{pattern}', '{replacement}')"
+        operation = MockColumnOperation(column, "regexp_replace", (pattern, replacement), name=f"regexp_replace({column.name}, '{pattern}', '{replacement}')")
         return operation
 
     @staticmethod
@@ -146,8 +139,7 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "split", delimiter)
-        operation.name = f"split({column.name}, '{delimiter}')"
+        operation = MockColumnOperation(column, "split", delimiter, name=f"split({column.name}, '{delimiter}')")
         return operation
 
     @staticmethod
@@ -165,11 +157,8 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
         
-        operation = MockColumnOperation(column, "substring", (start, length))
-        if length is not None:
-            operation.name = f"substring({column.name}, {start}, {length})"
-        else:
-            operation.name = f"substring({column.name}, {start})"
+        name = f"substring({column.name}, {start}, {length})" if length is not None else f"substring({column.name}, {start})"
+        operation = MockColumnOperation(column, "substring", (start, length), name=name)
         return operation
 
     @staticmethod
@@ -187,7 +176,6 @@ class StringFunctions:
             raise ValueError("At least one column must be provided")
         
         base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        operation = MockColumnOperation(base_column, "concat", columns[1:])
         column_names = [col.name if hasattr(col, 'name') else str(col) for col in columns]
-        operation.name = f"concat({', '.join(column_names)})"
+        operation = MockColumnOperation(base_column, "concat", columns[1:], name=f"concat({', '.join(column_names)})")
         return operation

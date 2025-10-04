@@ -116,7 +116,7 @@ class MockDataFrameReader:
         """
         # Mock implementation - return empty DataFrame
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]  # type: ignore[return-value]
 
     def table(self, table_name: str) -> IDataFrame:
         """Load table.
@@ -147,7 +147,7 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def csv(self, path: str, **options: Any) -> IDataFrame:
         """Load CSV data.
@@ -164,7 +164,7 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def parquet(self, path: str, **options: Any) -> IDataFrame:
         """Load Parquet data.
@@ -181,7 +181,7 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def orc(self, path: str, **options: Any) -> IDataFrame:
         """Load ORC data.
@@ -198,7 +198,7 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def text(self, path: str, **options: Any) -> IDataFrame:
         """Load text data.
@@ -215,7 +215,7 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def jdbc(self, url: str, table: str, **options: Any) -> IDataFrame:
         """Load data from JDBC source.
@@ -233,5 +233,5 @@ class MockDataFrameReader:
         """
         # Mock implementation
         from .dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 

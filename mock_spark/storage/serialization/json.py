@@ -51,7 +51,7 @@ class JSONSerializer:
             "fields": [
                 {
                     "name": field.name,
-                    "data_type": type(field.data_type).__name__,
+                    "data_type": type(field.dataType).__name__,
                     "nullable": field.nullable
                 }
                 for field in schema.fields

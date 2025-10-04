@@ -21,8 +21,10 @@ Example:
 """
 
 import sys
-from typing import List, Optional, Union, Tuple
-from .functions import MockColumn
+from typing import List, Optional, Union, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .functions import MockColumn
 
 
 class MockWindowSpec:
@@ -44,16 +46,16 @@ class MockWindowSpec:
     """
 
     def __init__(self) -> None:
-        self._partition_by: List[Union[str, MockColumn]] = []
-        self._order_by: List[Union[str, MockColumn]] = []
+        self._partition_by: List[Union[str, "MockColumn"]] = []
+        self._order_by: List[Union[str, "MockColumn"]] = []
         self._rows_between: Optional[Tuple[int, int]] = None
         self._range_between: Optional[Tuple[int, int]] = None
 
-    def partitionBy(self, *cols: Union[str, MockColumn]) -> "MockWindowSpec":
+    def partitionBy(self, *cols: Union[str, "MockColumn"]) -> "MockWindowSpec":
         """Add partition by columns.
 
         Args:
-            *cols: Column names or MockColumn objects to partition by.
+            *cols: Column names or "MockColumn" objects to partition by.
 
         Returns:
             Self for method chaining.
@@ -65,7 +67,13 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for partitionBy")
 
         for col in cols:
-            if not isinstance(col, (str, MockColumn)) and not hasattr(col, "column"):
+            try:
+                from .functions import MockColumn
+                valid_types = (str, MockColumn)
+            except ImportError:
+                valid_types = (str,)
+            
+            if not isinstance(col, valid_types) and not hasattr(col, "column"):
                 raise ValueError(
                     f"Invalid column type: {type(col)}. Must be str or MockColumn"
                 )
@@ -73,11 +81,11 @@ class MockWindowSpec:
         self._partition_by = list(cols)
         return self
 
-    def orderBy(self, *cols: Union[str, MockColumn]) -> "MockWindowSpec":
+    def orderBy(self, *cols: Union[str, "MockColumn"]) -> "MockWindowSpec":
         """Add order by columns.
 
         Args:
-            *cols: Column names or MockColumn objects to order by.
+            *cols: Column names or "MockColumn" objects to order by.
 
         Returns:
             Self for method chaining.
@@ -89,7 +97,13 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for orderBy")
 
         for col in cols:
-            if not isinstance(col, (str, MockColumn)) and not hasattr(col, "column"):
+            try:
+                from .functions import MockColumn
+                valid_types = (str, MockColumn)
+            except ImportError:
+                valid_types = (str,)
+            
+            if not isinstance(col, valid_types) and not hasattr(col, "column"):
                 raise ValueError(
                     f"Invalid column type: {type(col)}. Must be str or MockColumn"
                 )
@@ -173,12 +187,12 @@ class MockWindow:
     unboundedFollowing = sys.maxsize
 
     @staticmethod
-    def partitionBy(*cols: Union[str, MockColumn]) -> MockWindowSpec:
+    def partitionBy(*cols: Union[str, "MockColumn"]) -> MockWindowSpec:
         """Create a window spec with partition by columns."""
         return MockWindowSpec().partitionBy(*cols)
 
     @staticmethod
-    def orderBy(*cols: Union[str, MockColumn]) -> MockWindowSpec:
+    def orderBy(*cols: Union[str, "MockColumn"]) -> MockWindowSpec:
         """Create a window spec with order by columns."""
         return MockWindowSpec().orderBy(*cols)
 

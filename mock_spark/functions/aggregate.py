@@ -167,3 +167,15 @@ class AggregateFunctions:
             MockAggregateFunction representing the kurtosis function.
         """
         return MockAggregateFunction(column, "kurtosis", DoubleType())
+
+    @staticmethod
+    def countDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Count distinct values.
+
+        Args:
+            column: The column to count distinct values of.
+
+        Returns:
+            MockAggregateFunction representing the countDistinct function.
+        """
+        return MockAggregateFunction(column, "countDistinct", LongType())

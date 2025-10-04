@@ -127,7 +127,7 @@ class MockSQLExecutor:
             except Exception:
                 # If table doesn't exist, return empty DataFrame
                 from ...dataframe import MockDataFrame
-                return MockDataFrame([], [])
+                return MockDataFrame([], [])  # type: ignore[return-value]
 
         # Apply WHERE conditions
         where_conditions = components.get('where_conditions', [])
@@ -180,7 +180,7 @@ class MockSQLExecutor:
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_drop(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DROP query.
@@ -204,7 +204,7 @@ class MockSQLExecutor:
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_insert(self, ast: MockSQLAST) -> IDataFrame:
         """Execute INSERT query.
@@ -217,7 +217,7 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_update(self, ast: MockSQLAST) -> IDataFrame:
         """Execute UPDATE query.
@@ -230,7 +230,7 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_delete(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DELETE query.
@@ -243,7 +243,7 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_show(self, ast: MockSQLAST) -> IDataFrame:
         """Execute SHOW query.
@@ -260,12 +260,12 @@ class MockSQLExecutor:
         # Simple mock data for SHOW commands
         if 'databases' in ast.components.get('original_query', '').lower():
             data = [{"databaseName": "default"}, {"databaseName": "test"}]
-            return MockDataFrame(data, ["databaseName"])
+            return MockDataFrame(data, ["databaseName"])  # type: ignore[return-value]
         elif 'tables' in ast.components.get('original_query', '').lower():
             data = [{"tableName": "users"}, {"tableName": "orders"}]
-            return MockDataFrame(data, ["tableName"])
+            return MockDataFrame(data, ["tableName"])  # type: ignore[return-value]
         else:
-            return MockDataFrame([], [])
+            return MockDataFrame([], [])  # type: ignore[return-value]
 
     def _execute_describe(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DESCRIBE query.
@@ -278,4 +278,4 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
-        return MockDataFrame([], [])
+        return MockDataFrame([], [])  # type: ignore[return-value]

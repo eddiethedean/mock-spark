@@ -6,6 +6,7 @@ This module contains window function implementations including row_number, rank,
 
 from typing import Any, List, Union, Optional
 from mock_spark.spark_types import MockDataType, StringType
+from mock_spark.window import MockWindowSpec
 
 
 class MockWindowFunction:
@@ -25,6 +26,13 @@ class MockWindowFunction:
         self.function = function
         self.window_spec = window_spec
         self.function_name = getattr(function, 'function_name', 'window_function')
+        self.column_name = getattr(function, 'column', None)
+        if self.column_name and hasattr(self.column_name, 'name'):
+            self.column_name = self.column_name.name
+        elif self.column_name and isinstance(self.column_name, str):
+            self.column_name = self.column_name
+        else:
+            self.column_name = None
         self.name = self._generate_name()
 
     def _generate_name(self) -> str:
@@ -120,14 +128,14 @@ class MockWindowFunction:
 
     def _evaluate_lag(self, data: List[dict]) -> List[Any]:
         """Evaluate lag() window function."""
-        results = [None]  # First row has no previous value
+        results: List[Any] = [None]  # First row has no previous value
         for i in range(1, len(data)):
             results.append(data[i - 1])
         return results
 
     def _evaluate_lead(self, data: List[dict]) -> List[Any]:
         """Evaluate lead() window function."""
-        results = []
+        results: List[Any] = []
         for i in range(len(data) - 1):
             results.append(data[i + 1])
         results.append(None)  # Last row has no next value

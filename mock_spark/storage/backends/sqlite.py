@@ -53,7 +53,13 @@ class SQLiteTable(ITable):
         # Insert data
         cursor = self.connection.cursor()
         placeholders = ", ".join(["?" for _ in columns])
-        query = f"INSERT INTO {self.name} ({', '.join(columns)}) VALUES ({placeholders})"
+        
+        if mode == "ignore":
+            # Use INSERT OR IGNORE to skip duplicates
+            query = f"INSERT OR IGNORE INTO {self.name} ({', '.join(columns)}) VALUES ({placeholders})"
+        else:
+            # Use regular INSERT for append and overwrite modes
+            query = f"INSERT INTO {self.name} ({', '.join(columns)}) VALUES ({placeholders})"
         
         for row in data:
             values = [row.get(col) for col in columns]
@@ -125,12 +131,15 @@ class SQLiteSchema(ISchema):
         self, 
         table: str, 
         columns: Union[List[MockStructField], MockStructType]
-    ) -> None:
+    ) -> "SQLiteTable":
         """Create a new table in this schema.
         
         Args:
             table: Name of the table.
             columns: Table columns definition.
+            
+        Returns:
+            Created SQLiteTable instance.
         """
         if isinstance(columns, list):
             schema = MockStructType(columns)
@@ -141,14 +150,16 @@ class SQLiteSchema(ISchema):
         cursor = self.connection.cursor()
         column_defs = []
         for field in schema.fields:
-            sqlite_type = self._get_sqlite_type(field.data_type)
+            sqlite_type = self._get_sqlite_type(field.dataType)
             column_defs.append(f"{field.name} {sqlite_type}")
         
         create_query = f"CREATE TABLE IF NOT EXISTS {table} ({', '.join(column_defs)})"
         cursor.execute(create_query)
         self.connection.commit()
         
-        self.tables[table] = SQLiteTable(table, schema, self.connection)
+        sqlite_table = SQLiteTable(table, schema, self.connection)
+        self.tables[table] = sqlite_table
+        return sqlite_table
     
     def _get_sqlite_type(self, data_type) -> str:
         """Convert MockSpark data type to SQLite type.
@@ -267,8 +278,8 @@ class SQLiteStorageManager(IStorageManager):
         """Check if table exists.
         
         Args:
-            schema: Name of the schema.
             table: Name of the table.
+            schema: Name of the schema (default: "default").
         
         Returns:
             True if table exists, False otherwise.
@@ -281,26 +292,29 @@ class SQLiteStorageManager(IStorageManager):
         self, 
         schema: str, 
         table: str, 
-        columns: Union[List[MockStructField], MockStructType]
-    ) -> None:
+        fields: Union[List[MockStructField], MockStructType]
+    ) -> "SQLiteTable":
         """Create a new table.
         
         Args:
-            schema: Name of the schema.
             table: Name of the table.
             columns: Table columns definition.
+            schema: Name of the schema (default: "default").
+        
+        Returns:
+            Created SQLiteTable instance.
         """
         if schema not in self.schemas:
             self.create_schema(schema)
         
-        self.schemas[schema].create_table(table, columns)
+        return self.schemas[schema].create_table(table, fields)
     
     def drop_table(self, schema: str, table: str) -> None:
         """Drop a table.
         
         Args:
-            schema: Name of the schema.
             table: Name of the table.
+            schema: Name of the schema (default: "default").
         """
         if schema in self.schemas:
             self.schemas[schema].drop_table(table)
@@ -390,11 +404,25 @@ class SQLiteStorageManager(IStorageManager):
         # Insert the data
         self.insert_data(schema, name, data, mode="overwrite")
     
-    def list_tables(self, schema: str) -> List[str]:
-        """List tables in schema.
+    def get_table(self, schema: str, table: str) -> Optional[SQLiteTable]:
+        """Get an existing table.
         
         Args:
             schema: Name of the schema.
+            table: Name of the table.
+        
+        Returns:
+            SQLiteTable instance or None if table doesn't exist.
+        """
+        if schema not in self.schemas:
+            return None
+        return self.schemas[schema].tables.get(table)
+    
+    def list_tables(self, schema: str = "default") -> List[str]:
+        """List tables in schema.
+        
+        Args:
+            schema: Name of the schema (default: "default").
         
         Returns:
             List of table names.
@@ -403,7 +431,35 @@ class SQLiteStorageManager(IStorageManager):
             return []
         return self.schemas[schema].list_tables()
     
+    def get_database_info(self) -> Dict[str, Any]:
+        """Get database information.
+        
+        Returns:
+            Dictionary containing database metadata.
+        """
+        tables = {}
+        total_tables = 0
+        
+        for schema_name, schema in self.schemas.items():
+            schema_tables = schema.list_tables()
+            tables.update({f"{schema_name}.{table}": table for table in schema_tables})
+            total_tables += len(schema_tables)
+        
+        return {
+            "tables": tables,
+            "total_tables": total_tables,
+            "schemas": list(self.schemas.keys())
+        }
+    
     def close(self):
         """Close the database connection."""
         if self.connection:
             self.connection.close()
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()

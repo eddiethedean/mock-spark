@@ -8,9 +8,12 @@ including column expressions, built-in functions, and aggregate functions.
 from typing import Any, List, Union, Optional, Callable, TYPE_CHECKING
 from dataclasses import dataclass
 from mock_spark.spark_types import MockDataType, StringType
+from ..core.interfaces.functions import IColumn
 
 if TYPE_CHECKING:
     from mock_spark.window import MockWindowSpec
+    from .conditional import MockCaseWhen
+    from .window_execution import MockWindowFunction
 
 
 class MockColumn:
@@ -133,6 +136,10 @@ class MockColumn:
         """Logical NOT operation."""
         return MockColumnOperation(self, "!", None)
 
+    def __neg__(self) -> "MockColumnOperation":
+        """Unary minus operation (-column)."""
+        return MockColumnOperation(self, "-", None)
+
     def isnull(self) -> "MockColumnOperation":
         """Check if column value is null."""
         return MockColumnOperation(self, "isnull", None)
@@ -140,6 +147,14 @@ class MockColumn:
     def isnotnull(self) -> "MockColumnOperation":
         """Check if column value is not null."""
         return MockColumnOperation(self, "isnotnull", None)
+
+    def isNull(self) -> "MockColumnOperation":
+        """Check if column value is null (PySpark compatibility)."""
+        return self.isnull()
+
+    def isNotNull(self) -> "MockColumnOperation":
+        """Check if column value is not null (PySpark compatibility)."""
+        return self.isnotnull()
 
     def isin(self, values: List[Any]) -> "MockColumnOperation":
         """Check if column value is in list of values."""
@@ -192,25 +207,37 @@ class MockColumn:
         return MockWindowFunction(self, window_spec)
 
 
-class MockColumnOperation:
+class MockColumnOperation(IColumn):
     """Represents a column operation (comparison, arithmetic, etc.).
 
     This class encapsulates column operations and their operands for evaluation
     during DataFrame operations.
     """
 
-    def __init__(self, column: MockColumn, operation: str, value: Any = None):
+    def __init__(self, column: MockColumn, operation: str, value: Any = None, name: Optional[str] = None):
         """Initialize MockColumnOperation.
 
         Args:
             column: The column being operated on.
             operation: The operation being performed.
             value: The value or operand for the operation.
+            name: Optional custom name for the operation.
         """
         self.column = column
         self.operation = operation
         self.value = value
-        self.name = self._generate_name()
+        self._name = name or self._generate_name()
+        self.function_name = operation
+
+    @property
+    def name(self) -> str:
+        """Get column name."""
+        return self._name
+    
+    @name.setter
+    def name(self, value: str) -> None:
+        """Set column name."""
+        self._name = value
 
     def _generate_name(self) -> str:
         """Generate a name for this operation."""
@@ -227,19 +254,25 @@ class MockColumnOperation:
         elif self.operation == "<=":
             return f"{self.column.name} <= {self.value}"
         elif self.operation == "+":
-            return f"{self.column.name} + {self.value}"
+            return f"({self.column.name} + {self.value})"
         elif self.operation == "-":
-            return f"{self.column.name} - {self.value}"
+            return f"({self.column.name} - {self.value})"
         elif self.operation == "*":
-            return f"{self.column.name} * {self.value}"
+            return f"({self.column.name} * {self.value})"
         elif self.operation == "/":
-            return f"{self.column.name} / {self.value}"
+            return f"({self.column.name} / {self.value})"
         elif self.operation == "%":
-            return f"{self.column.name} % {self.value}"
+            return f"({self.column.name} % {self.value})"
         elif self.operation == "&":
-            return f"{self.column.name} & {self.value}"
+            if hasattr(self.value, 'name'):
+                return f"({self.column.name} & {self.value.name})"
+            else:
+                return f"({self.column.name} & {self.value})"
         elif self.operation == "|":
-            return f"{self.column.name} | {self.value}"
+            if hasattr(self.value, 'name'):
+                return f"({self.column.name} | {self.value.name})"
+            else:
+                return f"({self.column.name} | {self.value})"
         elif self.operation == "!":
             return f"!{self.column.name}"
         elif self.operation == "isnull":
@@ -261,14 +294,70 @@ class MockColumnOperation:
         elif self.operation == "cast":
             return f"CAST({self.column.name} AS {self.value})"
         else:
-            return f"{self.column.name} {self.operation} {self.value}"
+            return f"({self.column.name} {self.operation} {self.value})"
 
-    def over(self, window_spec) -> "MockColumnOperation":
+    def __and__(self, other: "MockColumnOperation") -> "IColumn":
+        """Logical AND operation between column operations."""
+        return MockColumnOperation(self, "&", other)
+
+    def __or__(self, other: "MockColumnOperation") -> "IColumn":
+        """Logical OR operation between column operations."""
+        return MockColumnOperation(self, "|", other)
+
+    def __invert__(self) -> "IColumn":
+        """Logical NOT operation (unary ~)."""
+        return MockColumnOperation(self, "!", None)
+
+    def __add__(self, other: Any) -> "IColumn":
+        """Addition operation."""
+        return MockColumnOperation(self.column, "+", other)
+
+    def __sub__(self, other: Any) -> "IColumn":
+        """Subtraction operation."""
+        return MockColumnOperation(self.column, "-", other)
+
+    def __mul__(self, other: Any) -> "IColumn":
+        """Multiplication operation."""
+        return MockColumnOperation(self.column, "*", other)
+
+    def __truediv__(self, other: Any) -> "IColumn":
+        """Division operation."""
+        return MockColumnOperation(self.column, "/", other)
+
+    def __mod__(self, other: Any) -> "IColumn":
+        """Modulo operation."""
+        return MockColumnOperation(self.column, "%", other)
+
+    def __eq__(self, other: Any) -> "IColumn":  # type: ignore[override]
+        """Equality operation."""
+        return MockColumnOperation(self.column, "==", other)
+
+    def __ne__(self, other: Any) -> "IColumn":  # type: ignore[override]
+        """Inequality operation."""
+        return MockColumnOperation(self.column, "!=", other)
+
+    def __lt__(self, other: Any) -> "IColumn":
+        """Less than operation."""
+        return MockColumnOperation(self.column, "<", other)
+
+    def __le__(self, other: Any) -> "IColumn":
+        """Less than or equal operation."""
+        return MockColumnOperation(self.column, "<=", other)
+
+    def __gt__(self, other: Any) -> "IColumn":
+        """Greater than operation."""
+        return MockColumnOperation(self.column, ">", other)
+
+    def __ge__(self, other: Any) -> "IColumn":
+        """Greater than or equal operation."""
+        return MockColumnOperation(self.column, ">=", other)
+
+    def over(self, window_spec) -> "MockWindowFunction":
         """Apply window function over window specification."""
         from .window_execution import MockWindowFunction
         return MockWindowFunction(self, window_spec)
 
-    def alias(self, name: str) -> "MockColumnOperation":
+    def alias(self, name: str) -> "IColumn":
         """Create an alias for this operation.
 
         Args:
@@ -296,7 +385,12 @@ class MockLiteral:
         """
         self.value = value
         self.data_type = data_type or self._infer_type(value)
-        self.name = f"lit({value})"
+        # Use the value itself as the name for PySpark compatibility
+        # Convert boolean values to lowercase to match PySpark behavior
+        if isinstance(value, bool):
+            self.name = str(value).lower()
+        else:
+            self.name = str(value)
 
     @property
     def column_type(self) -> MockDataType:
@@ -321,51 +415,63 @@ class MockLiteral:
         else:
             return StringType()
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":
+    def __eq__(self, other: Any) -> "IColumn":  # type: ignore[override]
         """Equality comparison."""
-        return MockColumnOperation(self, "==", other)
+        # Create a temporary MockColumn for the literal value
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "==", self)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":
+    def __ne__(self, other: Any) -> "IColumn":  # type: ignore[override]
         """Inequality comparison."""
-        return MockColumnOperation(self, "!=", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "!=", self)
 
-    def __lt__(self, other: Any) -> "MockColumnOperation":
+    def __lt__(self, other: Any) -> "IColumn":
         """Less than comparison."""
-        return MockColumnOperation(self, "<", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "<", self)
 
-    def __le__(self, other: Any) -> "MockColumnOperation":
+    def __le__(self, other: Any) -> "IColumn":
         """Less than or equal comparison."""
-        return MockColumnOperation(self, "<=", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "<=", self)
 
-    def __gt__(self, other: Any) -> "MockColumnOperation":
+    def __gt__(self, other: Any) -> "IColumn":
         """Greater than comparison."""
-        return MockColumnOperation(self, ">", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, ">", self)
 
-    def __ge__(self, other: Any) -> "MockColumnOperation":
+    def __ge__(self, other: Any) -> "IColumn":
         """Greater than or equal comparison."""
-        return MockColumnOperation(self, ">=", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, ">=", self)
 
-    def __add__(self, other: Any) -> "MockColumnOperation":
+    def __add__(self, other: Any) -> "IColumn":
         """Addition operation."""
-        return MockColumnOperation(self, "+", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "+", other)
 
-    def __sub__(self, other: Any) -> "MockColumnOperation":
+    def __sub__(self, other: Any) -> "IColumn":
         """Subtraction operation."""
-        return MockColumnOperation(self, "-", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "-", other)
 
-    def __mul__(self, other: Any) -> "MockColumnOperation":
+    def __mul__(self, other: Any) -> "IColumn":
         """Multiplication operation."""
-        return MockColumnOperation(self, "*", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "*", other)
 
-    def __truediv__(self, other: Any) -> "MockColumnOperation":
+    def __truediv__(self, other: Any) -> "IColumn":
         """Division operation."""
-        return MockColumnOperation(self, "/", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "/", other)
 
-    def __mod__(self, other: Any) -> "MockColumnOperation":
+    def __mod__(self, other: Any) -> "IColumn":
         """Modulo operation."""
-        return MockColumnOperation(self, "%", other)
+        temp_column = MockColumn(f"lit_{id(self)}")
+        return MockColumnOperation(temp_column, "%", other)
 
-    def alias(self, name: str) -> "MockLiteral":
+    def alias(self, name: str) -> "IColumn":
         """Create an alias for this literal.
 
         Args:
@@ -375,7 +481,7 @@ class MockLiteral:
             Self for method chaining.
         """
         self.name = name
-        return self
+        return self  # type: ignore[return-value]
 
 
 class MockAggregateFunction:
@@ -411,9 +517,17 @@ class MockAggregateFunction:
     def _generate_name(self) -> str:
         """Generate a name for this aggregate function."""
         if self.column is None:
-            return f"{self.function_name}(*)"
+            # For count(*), PySpark generates just "count", not "count(*)"
+            if self.function_name == "count":
+                return "count"
+            else:
+                return f"{self.function_name}(*)"
         elif isinstance(self.column, str):
-            return f"{self.function_name}({self.column})"
+            # For count("*"), PySpark generates "count(1)", not "count(*)"
+            if self.function_name == "count" and self.column == "*":
+                return "count(1)"
+            else:
+                return f"{self.function_name}({self.column})"
         else:
             return f"{self.function_name}({self.column.name})"
 
@@ -480,7 +594,7 @@ class MockAggregateFunction:
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [row.get(column_name) for row in data if row.get(column_name) is not None]
         if values:
-            return max(values)
+            return max(values)  # type: ignore[type-var]
         else:
             return None
 
@@ -492,7 +606,7 @@ class MockAggregateFunction:
         column_name = self.column if isinstance(self.column, str) else self.column.name
         values = [row.get(column_name) for row in data if row.get(column_name) is not None]
         if values:
-            return min(values)
+            return min(values)  # type: ignore[type-var]
         else:
             return None
 

@@ -61,7 +61,7 @@ class CSVSerializer:
             for field in schema.fields:
                 writer.writerow([
                     field.name,
-                    type(field.data_type).__name__,
+                    type(field.dataType).__name__,
                     field.nullable
                 ])
     
