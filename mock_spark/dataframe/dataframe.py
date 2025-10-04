@@ -98,7 +98,7 @@ class MockDataFrame:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
 
     def show(self, n: int = 20, truncate: bool = True) -> None:
-        """Display DataFrame content in console format.
+        """Display DataFrame content in a clean table format.
 
         Args:
             n: Number of rows to display (default: 20).
@@ -108,9 +108,9 @@ class MockDataFrame:
             >>> df.show(5)
             MockDataFrame[3 rows, 3 columns]
             name    age  salary
-            Alice    25   50000
-            Bob      30   60000
-            Charlie  35   70000
+            Alice   25   50000
+            Bob     30   60000
+            Charlie 35   70000
         """
         print(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
         if not self.data:
@@ -135,11 +135,21 @@ class MockDataFrame:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
 
+        # Add some padding for better readability
+        for col in columns:
+            col_widths[col] += 2
+
         # Print header
         header_parts = []
         for col in columns:
             header_parts.append(col.ljust(col_widths[col]))
-        print(" ".join(header_parts))
+        print("".join(header_parts))
+
+        # Print separator line
+        separator_parts = []
+        for col in columns:
+            separator_parts.append("-" * col_widths[col])
+        print("".join(separator_parts))
 
         # Print data rows
         for row in display_data:
@@ -149,10 +159,10 @@ class MockDataFrame:
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 row_parts.append(value.ljust(col_widths[col]))
-            print(" ".join(row_parts))
+            print("".join(row_parts))
 
         if len(self.data) > n:
-            print(f"... ({len(self.data) - n} more rows)")
+            print(f"\n... ({len(self.data) - n} more rows)")
 
     def collect(self) -> List[MockRow]:
         """Collect all data as list of Row objects."""

@@ -54,24 +54,27 @@ df = spark.createDataFrame(data)
 df.filter(F.col("age") > 25).show()
 ```
 MockDataFrame[1 rows, 2 columns]
-age name
-30  Bob
+age  name  
+----------
+30   Bob   
 ```
 
 df.groupBy("age").count().show()
 ```
 MockDataFrame[2 rows, 2 columns]
-age count
-25  1
-30  1
+age  count 
+-----------
+25   1     
+30   1     
 ```
 
 df.select(F.upper(F.col("name")).alias("upper_name")).show()
 ```
 MockDataFrame[2 rows, 1 columns]
-upper_name
-ALICE
-BOB
+upper_name  
+------------
+ALICE       
+BOB         
 ```
 
 ## ✨ What's Included
@@ -93,10 +96,11 @@ df = spark.createDataFrame(data)
 df.select("name", "age").show()
 ```
 MockDataFrame[3 rows, 2 columns]
-name    age
-Alice   25
-Bob     30
-Charlie 35
+name     age  
+--------------
+Alice    25   
+Bob      30   
+Charlie  35   
 ```
 
 df.filter(F.col("age") > 25).show()
