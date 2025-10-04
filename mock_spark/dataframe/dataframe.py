@@ -135,31 +135,29 @@ class MockDataFrame:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
 
-        # Add some padding for better readability
-        for col in columns:
-            col_widths[col] += 2
-
-        # Print header
+        # Print header (no extra padding)
         header_parts = []
         for col in columns:
             header_parts.append(col.ljust(col_widths[col]))
-        print("".join(header_parts))
+        print(" ".join(header_parts))
 
         # Print separator line
         separator_parts = []
         for col in columns:
             separator_parts.append("-" * col_widths[col])
-        print("".join(separator_parts))
+        print(" ".join(separator_parts))
 
-        # Print data rows
+        # Print data rows (with padding for alignment)
         for row in display_data:
             row_parts = []
             for col in columns:
                 value = str(row.get(col, 'null'))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
-                row_parts.append(value.ljust(col_widths[col]))
-            print("".join(row_parts))
+                # Add padding to data but not headers
+                padded_width = col_widths[col] + 2
+                row_parts.append(value.ljust(padded_width))
+            print(" ".join(row_parts))
 
         if len(self.data) > n:
             print(f"\n... ({len(self.data) - n} more rows)")
