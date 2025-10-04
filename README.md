@@ -58,7 +58,6 @@ MockDataFrame[1 rows, 2 columns]
 | age | name |
 | --- | --- |
 | 30 | Bob |
-```
 
 print(df.groupBy("age").count().to_markdown())
 ```
@@ -68,7 +67,6 @@ MockDataFrame[2 rows, 2 columns]
 | --- | --- |
 | 25 | 1 |
 | 30 | 1 |
-```
 
 print(df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown())
 ```
@@ -78,7 +76,6 @@ MockDataFrame[2 rows, 1 columns]
 | --- |
 | ALICE |
 | BOB |
-```
 
 ## ✨ What's Included
 
@@ -96,51 +93,49 @@ data = [
 df = spark.createDataFrame(data)
 
 # Selection and filtering
-df.select("name", "age").show()
+print(df.select("name", "age").to_markdown())
 ```
 MockDataFrame[3 rows, 2 columns]
 
-name    age
-======= ===
-Alice   25 
-Bob     30 
-Charlie 35 
-```
+| name | age |
+| --- | --- |
+| Alice | 25 |
+| Bob | 30 |
+| Charlie | 35 |
 
-df.filter(F.col("age") > 25).show()
+print(df.filter(F.col("age") > 25).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
 
-age department  name    salary
-=== ========== ======= ======
-30  Sales       Bob     75000 
-35  Engineering Charlie 80000 
-```
+| age | department | name | salary |
+| --- | --- | --- | --- |
+| 30 | Sales | Bob | 75000 |
+| 35 | Engineering | Charlie | 80000 |
 
-df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).show()
+```
+print(df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
 
-age department  name    salary
-=== ========== ======= ======
-30  Sales       Bob     75000 
-35  Engineering Charlie 80000 
-```
+| age | department | name | salary |
+| --- | --- | --- | --- |
+| 30 | Sales | Bob | 75000 |
+| 35 | Engineering | Charlie | 80000 |
 
 # Grouping and aggregation  
-df.groupBy("department").agg(
+```
+print(df.groupBy("department").agg(
     F.count("*").alias("count"),
     F.avg("salary").alias("avg_salary"),
     F.max("salary").alias("max_salary")
-).show()
+).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
 
-department count avg_salary max_salary
-========== ===== ========== ==========
-Sales      2     65000.0    75000     
-Engineering 1    80000.0    80000     
-```
+| department | count | avg_salary | max_salary |
+| --- | --- | --- | --- |
+| Sales | 2 | 65000.0 | 75000 |
+| Engineering | 1 | 80000.0 | 80000 |
 
 # Sorting and limiting
 df.orderBy("age").show()
