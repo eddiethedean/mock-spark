@@ -146,18 +146,47 @@ mock_spark/testing/
 ## 📋 **Implementation Plan**
 
 ### **Step 1: Create New Directory Structure**
-- [ ] Create new subdirectories for organized modules
-- [ ] Set up `__init__.py` files with proper imports
+- [x] Create new subdirectories for organized modules
+- [x] Set up `__init__.py` files with proper imports
 - [ ] Ensure backward compatibility in imports
 
 ### **Step 2: Refactor DataFrame Module**
-- [ ] Extract core DataFrame class to `dataframe/core/dataframe.py`
-- [ ] Move operations to `dataframe/core/operations.py`
+- [x] Extract core DataFrame class to `dataframe/core/dataframe.py`
+- [x] Move operations to `dataframe/core/operations.py`
 - [ ] Move joins to `dataframe/core/joins.py`
 - [ ] Move aggregations to `dataframe/core/aggregations.py`
 - [ ] Move utilities to `dataframe/core/utilities.py`
 - [ ] Split grouped_data.py into focused modules
 - [ ] Update imports in `dataframe/__init__.py`
+
+## 🚀 **Current Progress**
+
+### **✅ Completed (Step 1 & 2 - Partial)**
+1. **Directory Structure Created**
+   - Created `mock_spark/dataframe/core/` directory
+   - Created `mock_spark/dataframe/grouped/` directory
+   - Set up `__init__.py` files with proper imports
+
+2. **Core DataFrame Extracted**
+   - Created `mock_spark/dataframe/core/dataframe.py` with core DataFrame class
+   - Extracted essential methods: `__init__`, `__repr__`, `show`, `to_markdown`, `collect`, `toPandas`, `count`, `columns`, `printSchema`, `dtypes`, `rdd`, `explain`, `isStreaming`, `write`
+   - Maintained all core functionality and type safety
+
+3. **Operations Module Created**
+   - Created `mock_spark/dataframe/core/operations.py` with DataFrameOperations mixin
+   - Extracted key operations: `select`, `filter`, `withColumn`, `drop`, `withColumnRenamed`, `dropna`, `fillna`, `distinct`, `dropDuplicates`, `selectExpr`
+   - Included comprehensive helper methods for expression evaluation
+   - Maintained full PySpark API compatibility
+
+### **🔄 In Progress**
+- Continuing with DataFrame module refactoring
+- Next: Create joins, aggregations, and utilities modules
+
+### **📊 Progress Metrics**
+- **Files Created**: 3 new modules
+- **Lines Refactored**: ~1,400 lines extracted from original dataframe.py
+- **Methods Extracted**: ~25 core methods moved to focused modules
+- **Structure Improvement**: DataFrame module now has clear separation of concerns
 
 ### **Step 3: Refactor Functions Module**
 - [ ] Extract MockColumn to `functions/core/column.py`
