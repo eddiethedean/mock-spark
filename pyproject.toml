@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "0.2.2"
+version = "0.2.3"
 description = "A mock implementation of PySpark for testing"
 readme = "README.md"
 license = {text = "MIT"}
