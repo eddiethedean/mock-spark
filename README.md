@@ -55,8 +55,8 @@ df.filter(F.col("age") > 25).to_markdown()
 ```
 MockDataFrame[1 rows, 2 columns]
 
-|**age**|**name**|
-| --- | --- |
+|age|name|
+| === | ==== |
 | 30 | Bob |
 
 ```python
@@ -64,8 +64,8 @@ df.groupBy("age").count().to_markdown()
 ```
 MockDataFrame[2 rows, 2 columns]
 
-|**age**|**count**|
-| --- | --- |
+|age|count|
+| === | ===== |
 | 25 | 1 |
 | 30 | 1 |
 
@@ -74,8 +74,8 @@ df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown()
 ```
 MockDataFrame[2 rows, 1 columns]
 
-|**upper_name**|
-| --- |
+|upper_name|
+| ========== |
 | ALICE |
 | BOB |
 
@@ -99,8 +99,8 @@ df.select("name", "age").to_markdown()
 ```
 MockDataFrame[3 rows, 2 columns]
 
-|**name**|**age**|
-| --- | --- |
+|name|age|
+| ==== | === |
 | Alice | 25 |
 | Bob | 30 |
 | Charlie | 35 |
@@ -110,8 +110,8 @@ df.filter(F.col("age") > 25).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
-|**age**|**department**|**name**|**salary**|
-| --- | --- | --- | --- |
+|age|department|name|salary|
+| === | ========== | ==== | ====== |
 | 30 | Sales | Bob | 75000 |
 | 35 | Engineering | Charlie | 80000 |
 
@@ -120,8 +120,8 @@ df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
-|**age**|**department**|**name**|**salary**|
-| --- | --- | --- | --- |
+|age|department|name|salary|
+| === | ========== | ==== | ====== |
 | 30 | Sales | Bob | 75000 |
 | 35 | Engineering | Charlie | 80000 |
 
@@ -135,8 +135,8 @@ df.groupBy("department").agg(
 ```
 MockDataFrame[2 rows, 4 columns]
 
-|**department**|**count**|**avg_salary**|**max_salary**|
-| --- | --- | --- | --- |
+|department|count|avg_salary|max_salary|
+| ========== | ===== | ========== | ========== |
 | Sales | 2 | 65000.0 | 75000 |
 | Engineering | 1 | 80000.0 | 80000 |
 
@@ -146,8 +146,8 @@ df.orderBy("age").to_markdown()
 ```
 MockDataFrame[3 rows, 4 columns]
 
-|**age**|**department**|**name**|**salary**|
-| --- | --- | --- | --- |
+|age|department|name|salary|
+| === | ========== | ==== | ====== |
 | 25 | Sales | Alice | 55000 |
 | 30 | Sales | Bob | 75000 |
 | 35 | Engineering | Charlie | 80000 |
@@ -157,8 +157,8 @@ df.orderBy(F.desc("salary")).to_markdown()
 ```
 MockDataFrame[3 rows, 4 columns]
 
-|**age**|**department**|**name**|**salary**|
-| --- | --- | --- | --- |
+|age|department|name|salary|
+| === | ========== | ==== | ====== |
 | 35 | Engineering | Charlie | 80000 |
 | 30 | Sales | Bob | 75000 |
 | 25 | Sales | Alice | 55000 |
@@ -168,8 +168,8 @@ df.limit(2).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
-|**age**|**department**|**name**|**salary**|
-| --- | --- | --- | --- |
+|age|department|name|salary|
+| === | ========== | ==== | ====== |
 | 25 | Sales | Alice | 55000 |
 | 30 | Sales | Bob | 75000 |
 
@@ -195,8 +195,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 3 columns]
 
-|**upper**|**lower**|**length**|
-| --- | --- | --- |
+|upper|lower|length|
+| ===== | ===== | ====== |
 | ALICE | alice | 5 |
 | BOB | bob | 3 |
 
@@ -210,8 +210,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 3 columns]
 
-|**safe_name**|**is_null**|**is_nan**|
-| --- | --- | --- |
+|safe_name|is_null|is_nan|
+| ========= | ======= | ====== |
 | Alice | False | False |
 | Bob | False | False |
 
@@ -227,8 +227,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 5 columns]
 
-|**age_diff**|**salary_k**|**salary_k_ceil**|**salary_k_floor**|**salary_sqrt**|
-| --- | --- | --- | --- | --- |
+|age_diff|salary_k|salary_k_ceil|salary_k_floor|salary_sqrt|
+| ======== | ======== | ============= | ============== | =========== |
 | 5 | 55.0 | 55 | 55 | 234.5207879911715 |
 | 0 | 75.0 | 75 | 75 | 273.8612787525831 |
 
@@ -241,8 +241,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 2 columns]
 
-|**name_replaced**|**name_chars**|
-| --- | --- |
+|name_replaced|name_chars|
+| ============= | ========== |
 | AlicX | ['A', 'ice'] |
 | Bob | ['Bob'] |
 
@@ -255,8 +255,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 2 columns]
 
-|**now**|**today**|
-| --- | --- |
+|now|today|
+| === | ===== |
 | 2025-10-04 14:49:59.928233 | 2025-10-04 |
 | 2025-10-04 14:49:59.928242 | 2025-10-04 |
 
@@ -271,8 +271,8 @@ df.select(
 ```
 MockDataFrame[2 rows, 5 columns]
 
-|**age**|**department**|**name**|**salary**|**level**|
-| --- | --- | --- | --- | --- |
+|age|department|name|salary|level|
+| === | ========== | ==== | ====== | ===== |
 | 25 | Sales | Alice | 55000 | Junior |
 | 30 | Sales | Bob | 75000 | Junior |
 
@@ -304,8 +304,8 @@ df.select(
 ```
 MockDataFrame[3 rows, 9 columns]
 
-|**age**|**department**|**name**|**salary**|**row_num**|**rank**|**dense_rank**|**prev_salary**|**next_salary**|
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|age|department|name|salary|row_num|rank|dense_rank|prev_salary|next_salary|
+| === | ========== | ==== | ====== | ======= | ==== | ========== | =========== | =========== |
 | 25 | Sales | Alice | 55000 | 2 | 2 | 2 | 75000 | None |
 | 30 | Sales | Bob | 75000 | 1 | 1 | 1 | None | 55000 |
 | 35 | Engineering | Charlie | 80000 | 1 | 1 | 1 | None | None |
