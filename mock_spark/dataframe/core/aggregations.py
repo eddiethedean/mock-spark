@@ -17,15 +17,15 @@ class DataFrameAggregations:
 
     def groupBy(self, *columns: Union[str, MockColumn]) -> "MockGroupedData":
         """Group by columns.
-        
+
         Args:
             *columns: Column names or MockColumn objects to group by.
-            
+
         Returns:
             MockGroupedData for performing aggregations.
         """
         from ..grouped_data import MockGroupedData
-        
+
         col_names = []
         for col in columns:
             if isinstance(col, MockColumn):
@@ -50,7 +50,7 @@ class DataFrameAggregations:
             MockRollupGroupedData for hierarchical grouping.
         """
         from ..grouped_data import MockRollupGroupedData
-        
+
         col_names = []
         for col in columns:
             if isinstance(col, MockColumn):
@@ -75,7 +75,7 @@ class DataFrameAggregations:
             MockCubeGroupedData for multi-dimensional grouping.
         """
         from ..grouped_data import MockCubeGroupedData
-        
+
         col_names = []
         for col in columns:
             if isinstance(col, MockColumn):
@@ -92,15 +92,15 @@ class DataFrameAggregations:
 
     def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation]) -> "MockDataFrame":
         """Aggregate DataFrame without grouping.
-        
+
         Args:
             *exprs: Aggregation expressions.
-            
+
         Returns:
             New MockDataFrame with aggregated results.
         """
         from ..grouped_data import MockGroupedData
-        
+
         # Create a single group with all data
         grouped_data = MockGroupedData(self, [])
         return grouped_data.agg(*exprs)
@@ -116,7 +116,7 @@ class DataFrameAggregations:
             MockPivotGroupedData for pivoting operations.
         """
         from ..grouped_data import MockPivotGroupedData
-        
+
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.schema.fields]:
             raise ColumnNotFoundException(pivot_col)
@@ -125,19 +125,19 @@ class DataFrameAggregations:
 
     def _handle_aggregation_select(self, columns: List[Any]) -> "MockDataFrame":
         """Handle aggregation operations in select.
-        
+
         Args:
             columns: List of aggregation columns.
-            
+
         Returns:
             New MockDataFrame with aggregated results.
         """
         from ...functions import MockAggregateFunction
         from ...spark_types import MockStructType, MockStructField, LongType, DoubleType, StringType
-        
+
         # Create aggregated data
         aggregated_data = {}
-        
+
         for col in columns:
             if isinstance(col, MockAggregateFunction):
                 # Handle aggregate functions
@@ -146,50 +146,99 @@ class DataFrameAggregations:
                         aggregated_data[col.name] = len(self.data)
                     else:
                         # Count non-null values in the column
-                        non_null_count = sum(1 for row in self.data if row.get(col.column_name) is not None)
+                        non_null_count = sum(
+                            1 for row in self.data if row.get(col.column_name) is not None
+                        )
                         aggregated_data[col.name] = non_null_count
                 elif col.function_name == "sum":
-                    values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
+                    values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
                     aggregated_data[col.name] = sum(values) if values else None
                 elif col.function_name == "avg":
-                    values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
+                    values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
                     aggregated_data[col.name] = sum(values) / len(values) if values else None
                 elif col.function_name == "max":
-                    values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
+                    values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
                     aggregated_data[col.name] = max(values) if values else None
                 elif col.function_name == "min":
-                    values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
+                    values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
                     aggregated_data[col.name] = min(values) if values else None
                 elif col.function_name == "percentile_approx":
-                    values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
+                    values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
                     if values:
                         sorted_values = sorted(values)
-                        percentile = col.percentile if hasattr(col, 'percentile') else 0.5
+                        percentile = col.percentile if hasattr(col, "percentile") else 0.5
                         index = int(len(sorted_values) * percentile)
-                        aggregated_data[col.name] = sorted_values[min(index, len(sorted_values) - 1)]
+                        aggregated_data[col.name] = sorted_values[
+                            min(index, len(sorted_values) - 1)
+                        ]
                     else:
                         aggregated_data[col.name] = None
                 elif col.function_name == "corr":
                     # Simple correlation calculation
-                    col1_values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
-                    col2_values = [row.get(col.column2_name) for row in self.data if row.get(col.column2_name) is not None]
+                    col1_values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
+                    col2_values = [
+                        row.get(col.column2_name)
+                        for row in self.data
+                        if row.get(col.column2_name) is not None
+                    ]
                     if len(col1_values) == len(col2_values) and len(col1_values) > 1:
                         # Calculate correlation coefficient
                         mean1 = sum(col1_values) / len(col1_values)
                         mean2 = sum(col2_values) / len(col2_values)
-                        numerator = sum((x - mean1) * (y - mean2) for x, y in zip(col1_values, col2_values))
-                        denominator = (sum((x - mean1) ** 2 for x in col1_values) * sum((y - mean2) ** 2 for y in col2_values)) ** 0.5
-                        aggregated_data[col.name] = numerator / denominator if denominator != 0 else 0
+                        numerator = sum(
+                            (x - mean1) * (y - mean2) for x, y in zip(col1_values, col2_values)
+                        )
+                        denominator = (
+                            sum((x - mean1) ** 2 for x in col1_values)
+                            * sum((y - mean2) ** 2 for y in col2_values)
+                        ) ** 0.5
+                        aggregated_data[col.name] = (
+                            numerator / denominator if denominator != 0 else 0
+                        )
                     else:
                         aggregated_data[col.name] = None
                 elif col.function_name == "covar_samp":
                     # Sample covariance calculation
-                    col1_values = [row.get(col.column_name) for row in self.data if row.get(col.column_name) is not None]
-                    col2_values = [row.get(col.column2_name) for row in self.data if row.get(col.column2_name) is not None]
+                    col1_values = [
+                        row.get(col.column_name)
+                        for row in self.data
+                        if row.get(col.column_name) is not None
+                    ]
+                    col2_values = [
+                        row.get(col.column2_name)
+                        for row in self.data
+                        if row.get(col.column2_name) is not None
+                    ]
                     if len(col1_values) == len(col2_values) and len(col1_values) > 1:
                         mean1 = sum(col1_values) / len(col1_values)
                         mean2 = sum(col2_values) / len(col2_values)
-                        covariance = sum((x - mean1) * (y - mean2) for x, y in zip(col1_values, col2_values)) / (len(col1_values) - 1)
+                        covariance = sum(
+                            (x - mean1) * (y - mean2) for x, y in zip(col1_values, col2_values)
+                        ) / (len(col1_values) - 1)
                         aggregated_data[col.name] = covariance
                     else:
                         aggregated_data[col.name] = None
@@ -204,23 +253,33 @@ class DataFrameAggregations:
                     else:
                         # Extract column name from count(column)
                         col_name = col.name[6:-1]  # Remove "count(" and ")"
-                        non_null_count = sum(1 for row in self.data if row.get(col_name) is not None)
+                        non_null_count = sum(
+                            1 for row in self.data if row.get(col_name) is not None
+                        )
                         aggregated_data[col.name] = non_null_count
                 elif col.name.startswith("sum("):
                     col_name = col.name[4:-1]  # Remove "sum(" and ")"
-                    values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
+                    values = [
+                        row.get(col_name) for row in self.data if row.get(col_name) is not None
+                    ]
                     aggregated_data[col.name] = sum(values) if values else None
                 elif col.name.startswith("avg("):
                     col_name = col.name[4:-1]  # Remove "avg(" and ")"
-                    values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
+                    values = [
+                        row.get(col_name) for row in self.data if row.get(col_name) is not None
+                    ]
                     aggregated_data[col.name] = sum(values) / len(values) if values else None
                 elif col.name.startswith("max("):
                     col_name = col.name[4:-1]  # Remove "max(" and ")"
-                    values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
+                    values = [
+                        row.get(col_name) for row in self.data if row.get(col_name) is not None
+                    ]
                     aggregated_data[col.name] = max(values) if values else None
                 elif col.name.startswith("min("):
                     col_name = col.name[4:-1]  # Remove "min(" and ")"
-                    values = [row.get(col_name) for row in self.data if row.get(col_name) is not None]
+                    values = [
+                        row.get(col_name) for row in self.data if row.get(col_name) is not None
+                    ]
                     aggregated_data[col.name] = min(values) if values else None
                 else:
                     # Default to count for unknown expressions
@@ -236,7 +295,15 @@ class DataFrameAggregations:
                 # Determine field type based on function
                 if col.function_name in ["count"]:
                     new_fields.append(MockStructField(col.name, LongType()))
-                elif col.function_name in ["sum", "avg", "max", "min", "percentile_approx", "corr", "covar_samp"]:
+                elif col.function_name in [
+                    "sum",
+                    "avg",
+                    "max",
+                    "min",
+                    "percentile_approx",
+                    "corr",
+                    "covar_samp",
+                ]:
                     new_fields.append(MockStructField(col.name, DoubleType()))
                 else:
                     new_fields.append(MockStructField(col.name, LongType()))

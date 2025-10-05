@@ -223,14 +223,15 @@ class MockDataFrame:
     def rdd(self) -> "MockRDD":
         """Convert to MockRDD."""
         from ..rdd import MockRDD
+
         return MockRDD(self.data)
 
     def explain(self) -> None:
         """Print the logical plan of the DataFrame."""
         print("MockDataFrame Logical Plan:")
-        print("  MockDataFrame[{} rows, {} columns]".format(
-            len(self.data), len(self.schema.fields)
-        ))
+        print(
+            "  MockDataFrame[{} rows, {} columns]".format(len(self.data), len(self.schema.fields))
+        )
 
     def isStreaming(self) -> bool:
         """Check if DataFrame is streaming (always False for mock)."""

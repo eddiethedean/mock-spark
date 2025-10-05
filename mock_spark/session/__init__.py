@@ -13,8 +13,7 @@ Components:
     - SQL processing pipeline
 """
 
-from .session import MockSparkSession, MockSparkSessionBuilder
-from .context import MockSparkContext, MockJVMContext
+from .core import MockSparkSession, MockSparkSessionBuilder, MockSparkContext, MockJVMContext
 from .catalog import MockCatalog, MockDatabase, MockTable
 from .config import MockConfiguration
 

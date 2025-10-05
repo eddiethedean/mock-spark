@@ -7,7 +7,12 @@ This module provides DataFrame functionality organized into submodules.
 from .dataframe import MockDataFrame
 from .writer import MockDataFrameWriter
 from .reader import MockDataFrameReader
-from .grouped_data import MockGroupedData
+from .grouped import (
+    MockGroupedData,
+    MockRollupGroupedData,
+    MockCubeGroupedData,
+    MockPivotGroupedData,
+)
 from .rdd import MockRDD
 
 __all__ = [
@@ -15,5 +20,8 @@ __all__ = [
     "MockDataFrameWriter",
     "MockDataFrameReader",
     "MockGroupedData",
+    "MockRollupGroupedData",
+    "MockCubeGroupedData",
+    "MockPivotGroupedData",
     "MockRDD",
 ]

@@ -23,10 +23,10 @@ class DataFrameJoins:
 
     def union(self, other: "MockDataFrame") -> "MockDataFrame":
         """Union with another DataFrame.
-        
+
         Args:
             other: Another DataFrame to union with.
-            
+
         Returns:
             New MockDataFrame with combined data.
         """
@@ -254,12 +254,12 @@ class DataFrameJoins:
         self, other: "MockDataFrame", on: Union[str, List[str]], how: str = "inner"
     ) -> "MockDataFrame":
         """Join with another DataFrame.
-        
+
         Args:
             other: Another DataFrame to join with.
             on: Column name(s) to join on.
             how: Join type ('inner', 'left', 'right', 'outer').
-            
+
         Returns:
             New MockDataFrame with joined data.
         """

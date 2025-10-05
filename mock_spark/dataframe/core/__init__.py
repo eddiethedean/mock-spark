@@ -13,9 +13,9 @@ from .aggregations import DataFrameAggregations
 from .utilities import DataFrameUtilities
 
 __all__ = [
-    'MockDataFrame',
-    'DataFrameOperations', 
-    'DataFrameJoins',
-    'DataFrameAggregations',
-    'DataFrameUtilities'
+    "MockDataFrame",
+    "DataFrameOperations",
+    "DataFrameJoins",
+    "DataFrameAggregations",
+    "DataFrameUtilities",
 ]

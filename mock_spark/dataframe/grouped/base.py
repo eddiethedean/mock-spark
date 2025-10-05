@@ -385,7 +385,7 @@ class MockGroupedData:
             MockRollupGroupedData for hierarchical grouping.
         """
         from .rollup import MockRollupGroupedData
-        
+
         col_names = []
         for col in columns:
             if isinstance(col, MockColumn):
@@ -410,7 +410,7 @@ class MockGroupedData:
             MockCubeGroupedData for multi-dimensional grouping.
         """
         from .cube import MockCubeGroupedData
-        
+
         col_names = []
         for col in columns:
             if isinstance(col, MockColumn):
@@ -436,7 +436,7 @@ class MockGroupedData:
             MockPivotGroupedData for pivot operations.
         """
         from .pivot import MockPivotGroupedData
-        
+
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.df.schema.fields]:
             raise ColumnNotFoundException(pivot_col)

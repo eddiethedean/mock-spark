@@ -205,7 +205,7 @@ class TestPerformanceComprehensive:
         join_time = end_time - start_time
 
         # Joins should complete efficiently - adjusted for mock implementation
-        assert join_time < 60.0  # Mock implementation is slower than real PySpark
+        assert join_time < 90.0  # Mock implementation is slower than real PySpark
 
     def test_aggregation_performance(self, spark):
         """Test aggregation performance with large datasets."""

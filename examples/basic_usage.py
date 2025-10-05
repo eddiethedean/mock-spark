@@ -134,47 +134,45 @@ def main():
 
     # 11. New 0.3.0 Features
     print("\n11. New 0.3.0 features demonstration...")
-    
+
     # String functions
     print("✓ String functions:")
     string_ops = df.select(
         F.col("name"),
         F.upper(F.col("name")).alias("upper_name"),
-        F.length(F.col("name")).alias("name_length")
+        F.length(F.col("name")).alias("name_length"),
     )
     string_ops.show()
-    
+
     # Mathematical functions
     print("✓ Mathematical functions:")
     math_ops = df.select(
         F.col("name"),
         F.col("salary"),
         F.round(F.col("salary") / 1000, 1).alias("salary_k"),
-        F.sqrt(F.col("salary")).alias("salary_sqrt")
+        F.sqrt(F.col("salary")).alias("salary_sqrt"),
     )
     math_ops.show()
-    
+
     # Window functions
     print("✓ Window functions:")
     from mock_spark.window import MockWindow as Window
+
     window_spec = Window.partitionBy("age").orderBy(F.desc("salary"))
     window_ops = df.select(
-        F.col("name"),
-        F.col("age"),
-        F.col("salary"),
-        F.row_number().over(window_spec).alias("rank")
+        F.col("name"), F.col("age"), F.col("salary"), F.row_number().over(window_spec).alias("rank")
     )
     window_ops.show()
-    
+
     # DataFrame enhancements
     print("✓ DataFrame enhancements:")
     print(f"  - isStreaming: {df.isStreaming}")
     print(f"  - Schema fields: {len(df.schema.fields)}")
-    
+
     # Session enhancements
     print("✓ Session enhancements:")
     print(f"  - getOrCreate available: {hasattr(spark.builder, 'getOrCreate')}")
-    
+
     # 12. Cleanup
     print("\n12. Cleanup...")
     spark.stop()

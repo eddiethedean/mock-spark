@@ -402,6 +402,7 @@ def demonstrate_builder_patterns():
 
     # Use the existing data generation approach
     from mock_spark.data_generation import create_test_data
+
     data = create_test_data(schema, num_rows=20, seed=42)
 
     print(f"Generated {len(data)} rows with builder pattern")

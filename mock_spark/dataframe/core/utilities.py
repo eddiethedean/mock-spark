@@ -10,7 +10,14 @@ import random
 import json
 
 from ...functions import MockColumn, MockColumnOperation
-from ...spark_types import MockRow, MockStructType, MockStructField, StringType, LongType, DoubleType
+from ...spark_types import (
+    MockRow,
+    MockStructType,
+    MockStructField,
+    StringType,
+    LongType,
+    DoubleType,
+)
 from .dataframe import MockDataFrame
 
 
@@ -19,10 +26,10 @@ class DataFrameUtilities:
 
     def orderBy(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
         """Order by columns.
-        
+
         Args:
             *columns: Column names or MockColumn objects to order by.
-            
+
         Returns:
             New MockDataFrame with ordered data.
         """
@@ -67,10 +74,10 @@ class DataFrameUtilities:
 
     def limit(self, n: int) -> "MockDataFrame":
         """Limit number of rows.
-        
+
         Args:
             n: Maximum number of rows to return.
-            
+
         Returns:
             New MockDataFrame with limited rows.
         """
@@ -79,10 +86,10 @@ class DataFrameUtilities:
 
     def take(self, n: int) -> List[MockRow]:
         """Take first n rows as list of Row objects.
-        
+
         Args:
             n: Number of rows to take.
-            
+
         Returns:
             List of MockRow objects.
         """
@@ -90,10 +97,10 @@ class DataFrameUtilities:
 
     def head(self, n: int = 1) -> List[MockRow]:
         """Get first n rows as list of Row objects.
-        
+
         Args:
             n: Number of rows to return (default: 1).
-            
+
         Returns:
             List of MockRow objects.
         """
@@ -101,10 +108,10 @@ class DataFrameUtilities:
 
     def tail(self, n: int = 1) -> List[MockRow]:
         """Get last n rows as list of Row objects.
-        
+
         Args:
             n: Number of rows to return (default: 1).
-            
+
         Returns:
             List of MockRow objects.
         """
@@ -112,7 +119,7 @@ class DataFrameUtilities:
 
     def toJSON(self) -> "MockDataFrame":
         """Convert DataFrame to JSON format.
-        
+
         Returns:
             New MockDataFrame with JSON string column.
         """
@@ -126,11 +133,11 @@ class DataFrameUtilities:
 
     def repartition(self, numPartitions: int, *cols) -> "MockDataFrame":
         """Repartition DataFrame (no-op in mock).
-        
+
         Args:
             numPartitions: Number of partitions (ignored in mock).
             *cols: Columns to partition by (ignored in mock).
-            
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -138,10 +145,10 @@ class DataFrameUtilities:
 
     def coalesce(self, numPartitions: int) -> "MockDataFrame":
         """Coalesce partitions (no-op in mock).
-        
+
         Args:
             numPartitions: Number of partitions (ignored in mock).
-            
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -149,10 +156,10 @@ class DataFrameUtilities:
 
     def checkpoint(self, eager: bool = False) -> "MockDataFrame":
         """Checkpoint DataFrame (no-op in mock).
-        
+
         Args:
             eager: Whether to checkpoint eagerly (ignored in mock).
-            
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -160,7 +167,7 @@ class DataFrameUtilities:
 
     def cache(self) -> "MockDataFrame":
         """Cache DataFrame (no-op in mock).
-        
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -168,7 +175,7 @@ class DataFrameUtilities:
 
     def persist(self) -> "MockDataFrame":
         """Persist DataFrame (no-op in mock).
-        
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -176,7 +183,7 @@ class DataFrameUtilities:
 
     def unpersist(self) -> "MockDataFrame":
         """Unpersist DataFrame (no-op in mock).
-        
+
         Returns:
             Same DataFrame (no-op).
         """
@@ -189,12 +196,12 @@ class DataFrameUtilities:
         seed: Optional[int] = None,
     ) -> "MockDataFrame":
         """Sample rows from DataFrame.
-        
+
         Args:
             withReplacement: Whether to sample with replacement.
             fraction: Fraction of rows to sample (0.0 to 1.0).
             seed: Random seed for reproducibility.
-            
+
         Returns:
             New MockDataFrame with sampled rows.
         """
@@ -216,11 +223,11 @@ class DataFrameUtilities:
         self, weights: List[float], seed: Optional[int] = None
     ) -> List["MockDataFrame"]:
         """Randomly split DataFrame into multiple DataFrames.
-        
+
         Args:
             weights: List of weights for each split.
             seed: Random seed for reproducibility.
-            
+
         Returns:
             List of MockDataFrames.
         """
@@ -254,10 +261,10 @@ class DataFrameUtilities:
 
     def describe(self, *cols: str) -> "MockDataFrame":
         """Describe statistical summary of columns.
-        
+
         Args:
             *cols: Column names to describe (if empty, describes all numeric columns).
-            
+
         Returns:
             New MockDataFrame with statistical summary.
         """
@@ -277,54 +284,62 @@ class DataFrameUtilities:
         for col in cols:
             values = [row.get(col) for row in self.data if row.get(col) is not None]
             if not values:
-                summary_data.append({
-                    "summary": col,
-                    "count": 0,
-                    "mean": None,
-                    "stddev": None,
-                    "min": None,
-                    "max": None
-                })
-            else:
-                try:
-                    numeric_values = [float(v) for v in values]
-                    summary_data.append({
+                summary_data.append(
+                    {
                         "summary": col,
-                        "count": len(numeric_values),
-                        "mean": sum(numeric_values) / len(numeric_values),
-                        "stddev": self._calculate_stddev(numeric_values),
-                        "min": min(numeric_values),
-                        "max": max(numeric_values)
-                    })
-                except (ValueError, TypeError):
-                    # Non-numeric column
-                    summary_data.append({
-                        "summary": col,
-                        "count": len(values),
+                        "count": 0,
                         "mean": None,
                         "stddev": None,
                         "min": None,
-                        "max": None
-                    })
+                        "max": None,
+                    }
+                )
+            else:
+                try:
+                    numeric_values = [float(v) for v in values]
+                    summary_data.append(
+                        {
+                            "summary": col,
+                            "count": len(numeric_values),
+                            "mean": sum(numeric_values) / len(numeric_values),
+                            "stddev": self._calculate_stddev(numeric_values),
+                            "min": min(numeric_values),
+                            "max": max(numeric_values),
+                        }
+                    )
+                except (ValueError, TypeError):
+                    # Non-numeric column
+                    summary_data.append(
+                        {
+                            "summary": col,
+                            "count": len(values),
+                            "mean": None,
+                            "stddev": None,
+                            "min": None,
+                            "max": None,
+                        }
+                    )
 
         # Create schema for summary
-        summary_schema = MockStructType([
-            MockStructField("summary", StringType()),
-            MockStructField("count", LongType()),
-            MockStructField("mean", DoubleType()),
-            MockStructField("stddev", DoubleType()),
-            MockStructField("min", DoubleType()),
-            MockStructField("max", DoubleType())
-        ])
+        summary_schema = MockStructType(
+            [
+                MockStructField("summary", StringType()),
+                MockStructField("count", LongType()),
+                MockStructField("mean", DoubleType()),
+                MockStructField("stddev", DoubleType()),
+                MockStructField("min", DoubleType()),
+                MockStructField("max", DoubleType()),
+            ]
+        )
 
         return MockDataFrame(summary_data, summary_schema, self.storage)
 
     def summary(self, *stats: str) -> "MockDataFrame":
         """Generate summary statistics.
-        
+
         Args:
             *stats: Statistics to calculate (default: count, mean, stddev, min, max).
-            
+
         Returns:
             New MockDataFrame with summary statistics.
         """
@@ -350,7 +365,7 @@ class DataFrameUtilities:
             try:
                 numeric_values = [float(v) for v in values]
                 col_stats = {"summary": col}
-                
+
                 for stat in stats:
                     if stat == "count":
                         col_stats[stat] = len(numeric_values)
@@ -384,7 +399,7 @@ class DataFrameUtilities:
         """Calculate standard deviation."""
         if len(values) <= 1:
             return 0.0
-        
+
         mean = sum(values) / len(values)
         variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
-        return variance ** 0.5
+        return variance**0.5

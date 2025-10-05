@@ -33,20 +33,17 @@ Example:
              BOB |           60 |       senior
 """
 
-from .core import (
-    MockColumn,
-    MockColumnOperation,
-    MockLiteral,
-    MockAggregateFunction,
-    MockCaseWhen,
-    MockWindowFunction,
-    MockFunctions,
-    F,
-    StringFunctions,
-    MathFunctions,
-    AggregateFunctions,
-    DateTimeFunctions,
-)
+from .core.column import MockColumn, MockColumnOperation
+from .core.literals import MockLiteral
+from .core.expressions import ExpressionFunctions
+from .base import MockAggregateFunction
+from .conditional import MockCaseWhen
+from .window_execution import MockWindowFunction
+from .functions import MockFunctions, F
+from .string import StringFunctions
+from .math import MathFunctions
+from .aggregate import AggregateFunctions
+from .datetime import DateTimeFunctions
 
 # Create module-level aliases for backward compatibility
 col = F.col

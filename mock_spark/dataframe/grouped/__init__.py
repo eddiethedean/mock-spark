@@ -12,7 +12,7 @@ from .pivot import MockPivotGroupedData
 
 __all__ = [
     "MockGroupedData",
-    "MockRollupGroupedData", 
+    "MockRollupGroupedData",
     "MockCubeGroupedData",
-    "MockPivotGroupedData"
+    "MockPivotGroupedData",
 ]

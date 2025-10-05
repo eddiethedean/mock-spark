@@ -446,6 +446,7 @@ class DataFrameOperations:
                 alias = alias.strip()
                 # Create a MockColumn with alias
                 from ...functions import F
+
                 columns.append(F.col(col_name).alias(alias))
             else:
                 # Simple column reference
