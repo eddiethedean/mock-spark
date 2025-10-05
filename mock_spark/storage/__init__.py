@@ -48,8 +48,10 @@ from .backends.file import FileStorageManager, FileTable, FileSchema
 from .serialization.json import JSONSerializer
 from .serialization.csv import CSVSerializer
 
-# Import manager
+# Import managers
 from .manager import StorageManagerFactory, UnifiedStorageManager
+from .hybrid_manager import HybridStorageManager, create_hybrid_manager
+from .migration_utils import StorageMigrationTool, migrate_sqlite_to_duckdb
 
 __all__ = [
     # Interfaces
@@ -82,7 +84,12 @@ __all__ = [
     # Serialization
     "JSONSerializer",
     "CSVSerializer",
-    # Manager
+    # Storage managers
     "StorageManagerFactory",
     "UnifiedStorageManager",
+    "HybridStorageManager",
+    "create_hybrid_manager",
+    # Migration utilities
+    "StorageMigrationTool",
+    "migrate_sqlite_to_duckdb",
 ]
