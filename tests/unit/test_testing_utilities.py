@@ -66,7 +66,12 @@ class TestMockDataFrameFactory:
 
     def test_create_dataframe_with_schema(self):
         """Test creating a DataFrame with custom schema."""
-        from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            IntegerType,
+        )
 
         session = MockSparkSession("test")
         schema = MockStructType(

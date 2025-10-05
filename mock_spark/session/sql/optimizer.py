@@ -203,13 +203,15 @@ class MockQueryOptimizer:
         # Add child plans for different operations
         if components.get("where_conditions"):
             filter_plan = MockQueryPlan(
-                "FILTER", properties={"conditions": components.get("where_conditions", [])}
+                "FILTER",
+                properties={"conditions": components.get("where_conditions", [])},
             )
             plan.children.append(filter_plan)
 
         if components.get("group_by_columns"):
             group_plan = MockQueryPlan(
-                "GROUP_BY", properties={"columns": components.get("group_by_columns", [])}
+                "GROUP_BY",
+                properties={"columns": components.get("group_by_columns", [])},
             )
             plan.children.append(group_plan)
 

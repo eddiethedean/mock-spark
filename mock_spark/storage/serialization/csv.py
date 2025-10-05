@@ -79,7 +79,9 @@ class CSVSerializer:
                 for row in reader:
                     data_type = CSVSerializer._create_data_type(row["data_type"])
                     field = MockStructField(
-                        row["name"], data_type, row.get("nullable", "True").lower() == "true"
+                        row["name"],
+                        data_type,
+                        row.get("nullable", "True").lower() == "true",
                     )
                     fields.append(field)
 
@@ -97,7 +99,13 @@ class CSVSerializer:
         Returns:
             Data type instance.
         """
-        from ...spark_types import StringType, IntegerType, LongType, DoubleType, BooleanType
+        from ...spark_types import (
+            StringType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            BooleanType,
+        )
 
         type_mapping = {
             "StringType": StringType(),

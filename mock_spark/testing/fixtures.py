@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 Test fixtures for Mock Spark.
 
 This module provides reusable test fixtures for creating consistent test data
@@ -26,7 +27,7 @@ class MockSparkSessionFixture:
     @staticmethod
     def create_session(app_name: str = "test_app") -> MockSparkSession:
         """Create a MockSparkSession for testing."""
-        return MockSparkSession.builder.appName(app_name).getOrCreate()
+        return MockSparkSession("test_app")
 
     @staticmethod
     def create_session_with_config(config: Dict[str, str]) -> MockSparkSession:
@@ -57,6 +58,8 @@ class DataFrameFixture:
                 MockStructField("active", BooleanType(), True),
             ]
         )
+        from mock_spark.dataframe import MockDataFrame
+
         return session.createDataFrame(data, schema)
 
     @staticmethod

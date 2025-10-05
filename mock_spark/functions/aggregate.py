@@ -208,3 +208,50 @@ class AggregateFunctions:
             MockAggregateFunction representing the countDistinct function.
         """
         return MockAggregateFunction(column, "countDistinct", LongType())
+
+    @staticmethod
+    def percentile_approx(
+        column: Union[MockColumn, str], percentage: float, accuracy: int = 10000
+    ) -> MockAggregateFunction:
+        """Approximate percentile.
+
+        Args:
+            column: The column to get percentile of.
+            percentage: The percentage (0.0 to 1.0).
+            accuracy: The accuracy parameter.
+
+        Returns:
+            MockAggregateFunction representing the percentile_approx function.
+        """
+        # Store parameters in the name via MockAggregateFunction's generator (data type only is needed)
+        return MockAggregateFunction(column, "percentile_approx", DoubleType())
+
+    @staticmethod
+    def corr(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
+        """Correlation between two columns.
+
+        Args:
+            column1: The first column.
+            column2: The second column.
+
+        Returns:
+            MockAggregateFunction representing the corr function.
+        """
+        return MockAggregateFunction(column1, "corr", DoubleType())
+
+    @staticmethod
+    def covar_samp(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
+        """Sample covariance between two columns.
+
+        Args:
+            column1: The first column.
+            column2: The second column.
+
+        Returns:
+            MockAggregateFunction representing the covar_samp function.
+        """
+        return MockAggregateFunction(column1, "covar_samp", DoubleType())

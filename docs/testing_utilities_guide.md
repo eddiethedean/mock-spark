@@ -2,7 +2,7 @@
 
 This guide provides comprehensive documentation for Mock Spark's testing utilities, including factories, fixtures, generators, and simulators.
 
-**Current Status**: 343+ tests passing (100% pass rate) | 62% code coverage | Production Ready
+**Current Status**: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready
 
 ## Overview
 

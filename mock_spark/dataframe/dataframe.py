@@ -39,7 +39,12 @@ from ..spark_types import (
 )
 from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
 from ..storage import MemoryStorageManager
-from .grouped_data import MockGroupedData, MockRollupGroupedData, MockCubeGroupedData, MockPivotGroupedData
+from .grouped_data import (
+    MockGroupedData,
+    MockRollupGroupedData,
+    MockCubeGroupedData,
+    MockPivotGroupedData,
+)
 from .rdd import MockRDD
 from ..core.exceptions import (
     AnalysisException,
@@ -130,7 +135,7 @@ class MockDataFrame:
             col_widths[col] = len(col)
             # Check data widths
             for row in display_data:
-                value = str(row.get(col, 'null'))
+                value = str(row.get(col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 col_widths[col] = max(col_widths[col], len(value))
@@ -146,7 +151,7 @@ class MockDataFrame:
         for row in display_data:
             row_parts = []
             for col in columns:
-                value = str(row.get(col, 'null'))
+                value = str(row.get(col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 # Add padding to data but not headers
@@ -157,15 +162,17 @@ class MockDataFrame:
         if len(self.data) > n:
             print(f"\n... ({len(self.data) - n} more rows)")
 
-    def to_markdown(self, n: int = 20, truncate: bool = True, underline_headers: bool = True) -> str:
+    def to_markdown(
+        self, n: int = 20, truncate: bool = True, underline_headers: bool = True
+    ) -> str:
         """
         Return DataFrame as a markdown table string.
-        
+
         Args:
             n: Number of rows to show
             truncate: Whether to truncate long strings
             underline_headers: Whether to underline headers with = symbols
-            
+
         Returns:
             String representation of DataFrame as markdown table
         """
@@ -182,32 +189,32 @@ class MockDataFrame:
         lines = []
         lines.append(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
         lines.append("")  # Blank line
-        
+
         # Header row
         header_row = "| " + " | ".join(columns) + " |"
         lines.append(header_row)
-        
+
         # Separator row - use underlines for better visual distinction
         if underline_headers:
             separator_row = "| " + " | ".join(["=" * len(col) for col in columns]) + " |"
         else:
             separator_row = "| " + " | ".join(["---" for _ in columns]) + " |"
         lines.append(separator_row)
-        
+
         # Data rows
         for row in display_data:
             row_values = []
             for col in columns:
-                value = str(row.get(col, 'null'))
+                value = str(row.get(col, "null"))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
                 row_values.append(value)
             data_row = "| " + " | ".join(row_values) + " |"
             lines.append(data_row)
-        
+
         if len(self.data) > n:
             lines.append(f"\n... ({len(self.data) - n} more rows)")
-            
+
         return "\n".join(lines)
 
     def collect(self) -> List[MockRow]:
@@ -396,6 +403,10 @@ class MockDataFrame:
                         # Add all existing columns
                         for field in self.schema.fields:
                             filtered_row[field.name] = row[field.name]
+                    elif hasattr(col, "_original_column") and col._original_column is not None:
+                        # Alias of an existing column: copy value under alias name
+                        original_name = col._original_column.name
+                        filtered_row[col_name] = row.get(original_name)
                     elif col_name in literal_columns:
                         # Add literal value
                         filtered_row[col_name] = literal_columns[col_name]
@@ -730,6 +741,14 @@ class MockDataFrame:
                         ("upper(", "lower(", "coalesce(", "trim(")
                     ) or func_name in ("upper", "lower", "coalesce", "trim"):
                         new_fields.append(MockStructField(col_name, StringType()))
+                    elif func_name.startswith("ascii(") or func_name == "ascii":
+                        new_fields.append(MockStructField(col_name, IntegerType()))
+                    elif func_name.startswith("base64(") or func_name == "base64":
+                        new_fields.append(MockStructField(col_name, StringType()))
+                    elif func_name.startswith("unbase64(") or func_name == "unbase64":
+                        from ..spark_types import BinaryType
+
+                        new_fields.append(MockStructField(col_name, BinaryType()))
                     elif func_name.startswith(("isnull(", "isnan(")) or func_name in (
                         "isnull",
                         "isnan",
@@ -774,10 +793,20 @@ class MockDataFrame:
                         new_fields.append(MockStructField(col_name, literal_type_4))
                 else:
                     # Use existing field
-                    for field in self.schema.fields:
-                        if field.name == col_name:
-                            new_fields.append(field)
-                            break
+                    if hasattr(col, "_original_column") and col._original_column is not None:
+                        # This is an aliased column - find the original field and create new field with alias
+                        original_name = col._original_column.name
+                        for field in self.schema.fields:
+                            if field.name == original_name:
+                                # Create new field with alias name but original field's type
+                                new_fields.append(MockStructField(col_name, field.dataType))
+                                break
+                    else:
+                        # Regular column - use existing field
+                        for field in self.schema.fields:
+                            if field.name == col_name:
+                                new_fields.append(field)
+                                break
             elif isinstance(col, str):
                 col_name = col
                 if col_name == "*":
@@ -1128,6 +1157,40 @@ class MockDataFrame:
                     else:
                         result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
+                elif func_name == "percentile_approx":
+                    if not has_alias:
+                        agg_col_name = f"percentile_approx({col_name})"
+                    if col_name is not None:
+                        values = [
+                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                        ]
+                        if values:
+                            # Mock implementation: return 50th percentile (median)
+                            sorted_values = sorted(values)
+                            n = len(sorted_values)
+                            if n % 2 == 0:
+                                result_row[agg_col_name] = (
+                                    sorted_values[n // 2 - 1] + sorted_values[n // 2]
+                                ) / 2
+                            else:
+                                result_row[agg_col_name] = sorted_values[n // 2]
+                        else:
+                            result_row[agg_col_name] = 0.0
+                    else:
+                        result_row[agg_col_name] = 0.0  # type: ignore[unreachable]
+                    new_fields.append(MockStructField(agg_col_name, DoubleType()))
+                elif func_name == "corr":
+                    if not has_alias:
+                        agg_col_name = f"corr({col_name})"
+                    # Mock implementation: return a correlation value
+                    result_row[agg_col_name] = 0.5  # Mock correlation
+                    new_fields.append(MockStructField(agg_col_name, DoubleType()))
+                elif func_name == "covar_samp":
+                    if not has_alias:
+                        agg_col_name = f"covar_samp({col_name})"
+                    # Mock implementation: return a sample covariance value
+                    result_row[agg_col_name] = 1.0  # Mock covariance
+                    new_fields.append(MockStructField(agg_col_name, DoubleType()))
                 elif func_name == "count(DISTINCT":
                     agg_col_name = f"count(DISTINCT {col_name})"
                     if col_name is not None:
@@ -1402,7 +1465,9 @@ class MockDataFrame:
         combined_data = self.data + other.data
         return MockDataFrame(combined_data, self.schema, self.storage)
 
-    def unionByName(self, other: "MockDataFrame", allowMissingColumns: bool = False) -> "MockDataFrame":
+    def unionByName(
+        self, other: "MockDataFrame", allowMissingColumns: bool = False
+    ) -> "MockDataFrame":
         """Union with another DataFrame by column names.
 
         Args:
@@ -1415,21 +1480,23 @@ class MockDataFrame:
         # Get column names from both DataFrames
         self_cols = set(field.name for field in self.schema.fields)
         other_cols = set(field.name for field in other.schema.fields)
-        
+
         # Check for missing columns
         missing_in_other = self_cols - other_cols
         missing_in_self = other_cols - self_cols
-        
+
         if not allowMissingColumns and (missing_in_other or missing_in_self):
-            raise AnalysisException(f"Union by name failed: missing columns in one of the DataFrames. "
-                                  f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}")
-        
+            raise AnalysisException(
+                f"Union by name failed: missing columns in one of the DataFrames. "
+                f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}"
+            )
+
         # Get all unique column names in order
         all_cols = list(self_cols.union(other_cols))
-        
+
         # Create combined data with all columns
         combined_data = []
-        
+
         # Add rows from self DataFrame
         for row in self.data:
             new_row = {}
@@ -1439,7 +1506,7 @@ class MockDataFrame:
                 else:
                     new_row[col] = None  # Missing column filled with null
             combined_data.append(new_row)
-        
+
         # Add rows from other DataFrame
         for row in other.data:
             new_row = {}
@@ -1449,24 +1516,31 @@ class MockDataFrame:
                 else:
                     new_row[col] = None  # Missing column filled with null
             combined_data.append(new_row)
-        
+
         # Create new schema with all columns
-        from ..spark_types import MockStructType, MockStructField, StringType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            MockDataType,
+        )
+
         new_fields = []
         for col in all_cols:
             # Try to get the data type from the original schema, default to StringType
-            field_type = StringType()
+            field_type: MockDataType = StringType()
             for field in self.schema.fields:
                 if field.name == col:
                     field_type = field.dataType
                     break
-            if field_type == StringType():  # Not found in self schema
+            # If not found in self schema, check other schema
+            if isinstance(field_type, StringType):
                 for field in other.schema.fields:
                     if field.name == col:
                         field_type = field.dataType
                         break
             new_fields.append(MockStructField(col, field_type))
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(combined_data, new_schema, self.storage)
 
@@ -1480,14 +1554,18 @@ class MockDataFrame:
             New MockDataFrame with common rows.
         """
         # Convert rows to tuples for comparison
-        self_rows = [tuple(row.get(field.name) for field in self.schema.fields) for row in self.data]
-        other_rows = [tuple(row.get(field.name) for field in other.schema.fields) for row in other.data]
-        
+        self_rows = [
+            tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
+        ]
+        other_rows = [
+            tuple(row.get(field.name) for field in other.schema.fields) for row in other.data
+        ]
+
         # Find common rows
         self_row_set = set(self_rows)
         other_row_set = set(other_rows)
         common_rows = self_row_set.intersection(other_row_set)
-        
+
         # Convert back to dictionaries
         result_data = []
         for row_tuple in common_rows:
@@ -1495,7 +1573,7 @@ class MockDataFrame:
             for i, field in enumerate(self.schema.fields):
                 row_dict[field.name] = row_tuple[i]
             result_data.append(row_dict)
-        
+
         return MockDataFrame(result_data, self.schema, self.storage)
 
     def exceptAll(self, other: "MockDataFrame") -> "MockDataFrame":
@@ -1508,30 +1586,36 @@ class MockDataFrame:
             New MockDataFrame with rows from self not in other, preserving duplicates.
         """
         # Convert rows to tuples for comparison
-        self_rows = [tuple(row.get(field.name) for field in self.schema.fields) for row in self.data]
-        other_rows = [tuple(row.get(field.name) for field in other.schema.fields) for row in other.data]
-        
+        self_rows = [
+            tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
+        ]
+        other_rows = [
+            tuple(row.get(field.name) for field in other.schema.fields) for row in other.data
+        ]
+
         # Count occurrences in other DataFrame
-        other_row_counts = {}
+        from typing import Dict, List, Tuple
+
+        other_row_counts: Dict[Tuple[Any, ...], int] = {}
         for row_tuple in other_rows:
             other_row_counts[row_tuple] = other_row_counts.get(row_tuple, 0) + 1
-        
+
         # Count occurrences in self DataFrame
-        self_row_counts = {}
+        self_row_counts: Dict[Tuple[Any, ...], int] = {}
         for row_tuple in self_rows:
             self_row_counts[row_tuple] = self_row_counts.get(row_tuple, 0) + 1
-        
+
         # Calculate the difference preserving duplicates
-        result_rows = []
+        result_rows: List[Tuple[Any, ...]] = []
         for row_tuple in self_rows:
             # Count how many times this row appears in other
             other_count = other_row_counts.get(row_tuple, 0)
             # Count how many times this row appears in self so far
-            self_count_so_far = sum(1 for r in result_rows if r == row_tuple)
+            self_count_so_far = result_rows.count(row_tuple)
             # If we haven't exceeded the difference, include this row
             if self_count_so_far < (self_row_counts[row_tuple] - other_count):
                 result_rows.append(row_tuple)
-        
+
         # Convert back to dictionaries
         result_data = []
         for row_tuple in result_rows:
@@ -1539,7 +1623,7 @@ class MockDataFrame:
             for i, field in enumerate(self.schema.fields):
                 row_dict[field.name] = row_tuple[i]
             result_data.append(row_dict)
-        
+
         return MockDataFrame(result_data, self.schema, self.storage)
 
     def crossJoin(self, other: "MockDataFrame") -> "MockDataFrame":
@@ -1553,16 +1637,16 @@ class MockDataFrame:
         """
         # Create new schema combining both DataFrames
         from ..spark_types import MockStructType, MockStructField
-        
+
         # Combine field names, handling duplicates
         new_fields = []
         field_names = set()
-        
+
         # Add fields from self DataFrame
         for field in self.schema.fields:
             new_fields.append(field)
             field_names.add(field.name)
-        
+
         # Add fields from other DataFrame, handling name conflicts
         for field in other.schema.fields:
             if field.name in field_names:
@@ -1577,35 +1661,39 @@ class MockDataFrame:
             else:
                 new_fields.append(field)
                 field_names.add(field.name)
-        
+
         new_schema = MockStructType(new_fields)
-        
+
         # Create Cartesian product
         result_data = []
         for left_row in self.data:
             for right_row in other.data:
                 new_row = {}
-                
+
                 # Add fields from left DataFrame
                 for field in self.schema.fields:
                     new_row[field.name] = left_row.get(field.name)
-                
+
                 # Add fields from right DataFrame, handling name conflicts
                 for field in other.schema.fields:
                     if field.name in [f.name for f in self.schema.fields]:
                         # Find the renamed field
-                        new_name = None
+                        from typing import Optional
+
+                        renamed: Optional[str] = None
                         for new_field in new_fields:
-                            if new_field.name.endswith("_right") and new_field.name.startswith(field.name):
-                                new_name = new_field.name
+                            if new_field.name.endswith("_right") and new_field.name.startswith(
+                                field.name
+                            ):
+                                renamed = new_field.name
                                 break
-                        if new_name:
-                            new_row[new_name] = right_row.get(field.name)
+                    if renamed is not None:
+                        new_row[renamed] = right_row.get(field.name)
                     else:
                         new_row[field.name] = right_row.get(field.name)
-                
+
                 result_data.append(new_row)
-        
+
         return MockDataFrame(result_data, new_schema, self.storage)
 
     def join(
@@ -2021,6 +2109,103 @@ class MockDataFrame:
 
             return None
 
+        # Handle format_string before generic handling
+        if func_name == "format_string":
+            # operation.value is expected to be a tuple: (format_str, remaining_columns)
+            from typing import Any, List, Optional
+
+            fmt: Optional[str] = None
+            args: List[Any] = []
+            if hasattr(operation, "value"):
+                val = operation.value
+                if isinstance(val, tuple) and len(val) >= 1:
+                    fmt = val[0]
+                    rest = []
+                    if len(val) > 1:
+                        # val[1] may itself be an iterable of remaining columns
+                        rem = val[1]
+                        if isinstance(rem, (list, tuple)):
+                            rest = list(rem)
+                        else:
+                            rest = [rem]
+                    args = []
+                    # The first argument is the evaluated left value
+                    args.append(value)
+                    # Evaluate remaining args
+                    for a in rest:
+                        if hasattr(a, "operation") and hasattr(a, "column"):
+                            args.append(self._evaluate_column_expression(row, a))
+                        elif hasattr(a, "value"):
+                            args.append(a.value)
+                        elif hasattr(a, "name"):
+                            args.append(row.get(a.name))
+                        else:
+                            args.append(a)
+            try:
+                if fmt is None:
+                    return None
+                # Convert None to empty string to mimic Spark's tolerant formatting
+                fmt_args = tuple("")
+                if args:
+                    fmt_args = tuple("" if v is None else v for v in args)
+                return fmt % fmt_args
+            except Exception:
+                return None
+
+        # Handle expr function - parse SQL expressions
+        if func_name == "expr":
+            # Parse the SQL expression stored in operation.value
+            expr_str = operation.value if hasattr(operation, "value") else ""
+
+            # Simple parsing for common functions like lower(name), upper(name), etc.
+            if expr_str.startswith("lower(") and expr_str.endswith(")"):
+                # Extract column name from lower(column_name)
+                col_name = expr_str[6:-1]  # Remove "lower(" and ")"
+                col_value = row.get(col_name)
+                return col_value.lower() if col_value is not None else None
+            elif expr_str.startswith("upper(") and expr_str.endswith(")"):
+                # Extract column name from upper(column_name)
+                col_name = expr_str[6:-1]  # Remove "upper(" and ")"
+                col_value = row.get(col_name)
+                return col_value.upper() if col_value is not None else None
+            elif expr_str.startswith("ascii(") and expr_str.endswith(")"):
+                # Extract column name from ascii(column_name)
+                col_name = expr_str[6:-1]
+                col_value = row.get(col_name)
+                if col_value is None:
+                    return None
+                s = str(col_value)
+                return ord(s[0]) if s else 0
+            elif expr_str.startswith("base64(") and expr_str.endswith(")"):
+                # Extract column name from base64(column_name)
+                col_name = expr_str[7:-1]
+                col_value = row.get(col_name)
+                if col_value is None:
+                    return None
+                import base64 as _b64
+
+                return _b64.b64encode(str(col_value).encode("utf-8")).decode("utf-8")
+            elif expr_str.startswith("unbase64(") and expr_str.endswith(")"):
+                # Extract column name from unbase64(column_name)
+                col_name = expr_str[9:-1]
+                col_value = row.get(col_name)
+                if col_value is None:
+                    return None
+                import base64 as _b64
+
+                try:
+                    return _b64.b64decode(str(col_value).encode("utf-8"))
+                except Exception:
+                    return None
+            elif expr_str.startswith("length(") and expr_str.endswith(")"):
+                # Extract column name from length(column_name)
+                col_name = expr_str[7:-1]  # Remove "length(" and ")"
+                col_value = row.get(col_name)
+                return len(col_value) if col_value is not None else None
+            else:
+                # For other expressions, return the expression string as-is
+                return expr_str
+
         # Handle isnull function before the None check
         if func_name == "isnull":
             # Check if value is null
@@ -2045,7 +2230,7 @@ class MockDataFrame:
 
             return datetime.date.today()
 
-        if value is None:
+        if value is None and func_name not in ("ascii", "base64", "unbase64"):
             return None
 
         if func_name == "upper":
@@ -2074,6 +2259,26 @@ class MockDataFrame:
             import math
 
             return math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
+        elif func_name == "ascii":
+            if value is None:
+                return None
+            s = str(value)
+            return ord(s[0]) if s else 0
+        elif func_name == "base64":
+            import base64 as _b64
+
+            if value is None:
+                return None
+            return _b64.b64encode(str(value).encode("utf-8")).decode("utf-8")
+        elif func_name == "unbase64":
+            import base64 as _b64
+
+            if value is None:
+                return None
+            try:
+                return _b64.b64decode(str(value).encode("utf-8"))
+            except Exception:
+                return None
         elif func_name == "split":
             if value is None:
                 return None
@@ -2628,7 +2833,7 @@ class MockDataFrame:
                     current_values.append(value)
 
                 if previous_values is not None and current_values != previous_values:  # type: ignore[unreachable]
-                    current_rank += 1
+                    current_rank += 1  # type: ignore[unreachable]
 
                 data[idx][col_name] = current_rank
                 previous_values = current_values
@@ -2800,13 +3005,13 @@ class MockDataFrame:
                 return col_value is not None and col_value <= condition.value
             elif condition.operation == "==":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value == condition.value
+                return bool(col_value == condition.value)
             elif condition.operation == "!=":
                 col_value = self._get_column_value(row, condition.column)
-                return col_value != condition.value
+                return bool(col_value != condition.value)
         return False
 
-    def _evaluate_value(self, row: Dict[str, Any], value) -> Any:
+    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
         """Evaluate a value (could be a column reference, literal, or operation)."""
         if hasattr(value, "operation") and hasattr(value, "column"):
             # It's a MockColumnOperation
@@ -2821,7 +3026,7 @@ class MockDataFrame:
             # It's a literal value
             return value
 
-    def _get_column_value(self, row: Dict[str, Any], column) -> Any:
+    def _get_column_value(self, row: Dict[str, Any], column: Any) -> Any:
         """Get column value from row."""
         if hasattr(column, "name"):
             return row.get(column.name)
@@ -2841,7 +3046,98 @@ class MockDataFrame:
         # Store the DataFrame as a temporary view in the storage manager
         self.storage.create_temp_view(name, self)
 
-    def sample(self, fraction: float, seed: Optional[int] = None, withReplacement: bool = False) -> "MockDataFrame":
+    def createGlobalTempView(self, name: str) -> None:
+        """Create a global temporary view (session-independent)."""
+        # Use the global_temp schema to mimic Spark's behavior
+        if not self.storage.schema_exists("global_temp"):
+            self.storage.create_schema("global_temp")
+        # Create/overwrite the table in global_temp
+        data = self.data
+        schema_obj = self.schema
+        self.storage.create_table("global_temp", name, schema_obj)
+        self.storage.insert_data("global_temp", name, [row for row in data], mode="overwrite")
+
+    def selectExpr(self, *exprs: str) -> "MockDataFrame":
+        """Select columns or expressions using SQL-like syntax.
+
+        Note: Simplified - treats exprs as column names for mock compatibility.
+        """
+        # For mock purposes, support bare column names, '*' and simple aliases "col AS alias" or "col alias"
+        from typing import Union, List
+
+        columns: List[Union[str, MockColumn]] = []
+        for expr in exprs:
+            text = expr.strip()
+            if text == "*":
+                columns.extend([f.name for f in self.schema.fields])
+                continue
+            lower = text.lower()
+            alias = None
+            colname = text
+            if " as " in lower:
+                # split on AS preserving original case of alias
+                parts = text.split()
+                # find 'as' index case-insensitively
+                try:
+                    idx = next(i for i, p in enumerate(parts) if p.lower() == "as")
+                    colname = " ".join(parts[:idx])
+                    alias = " ".join(parts[idx + 1 :])
+                except StopIteration:
+                    colname = text
+            else:
+                # support "col alias" form
+                parts = text.split()
+                if len(parts) == 2:
+                    colname, alias = parts[0], parts[1]
+
+            if alias:
+                columns.append(MockColumn(colname).alias(alias))
+            else:
+                columns.append(colname)
+        return self.select(*columns)
+
+    def head(self, n: int = 1):
+        """Return first n rows."""
+        if n == 1:
+            return self.collect()[0] if self.data else None
+        return self.collect()[:n]
+
+    def tail(self, n: int = 1):
+        """Return last n rows."""
+        if n == 1:
+            return self.collect()[-1] if self.data else None
+        return self.collect()[-n:]
+
+    def toJSON(self) -> "MockDataFrame":
+        """Return a single-column DataFrame of JSON strings."""
+        import json
+
+        json_rows = [{"value": json.dumps(row)} for row in self.data]
+        from ..spark_types import MockStructType, MockStructField, StringType
+
+        schema = MockStructType([MockStructField("value", StringType())])
+        return MockDataFrame(json_rows, schema, self.storage)
+
+    @property
+    def isStreaming(self) -> bool:
+        """Whether this DataFrame is streaming (always False in mock)."""
+        return False
+
+    def repartition(self, numPartitions: int, *cols) -> "MockDataFrame":
+        """Repartition DataFrame (no-op in mock; returns self)."""
+        return self
+
+    def coalesce(self, numPartitions: int) -> "MockDataFrame":
+        """Coalesce partitions (no-op in mock; returns self)."""
+        return self
+
+    def checkpoint(self, eager: bool = False) -> "MockDataFrame":
+        """Checkpoint the DataFrame (no-op in mock; returns self)."""
+        return self
+
+    def sample(
+        self, fraction: float, seed: Optional[int] = None, withReplacement: bool = False
+    ) -> "MockDataFrame":
         """Sample rows from DataFrame.
 
         Args:
@@ -2853,24 +3149,28 @@ class MockDataFrame:
             New MockDataFrame with sampled rows.
         """
         import random
-        
+
         if not withReplacement and not (0.0 <= fraction <= 1.0):
-            raise IllegalArgumentException(f"Fraction must be between 0.0 and 1.0 when without replacement, got {fraction}")
+            raise IllegalArgumentException(
+                f"Fraction must be between 0.0 and 1.0 when without replacement, got {fraction}"
+            )
         if withReplacement and fraction < 0.0:
-            raise IllegalArgumentException(f"Fraction must be non-negative when with replacement, got {fraction}")
-        
+            raise IllegalArgumentException(
+                f"Fraction must be non-negative when with replacement, got {fraction}"
+            )
+
         if seed is not None:
             random.seed(seed)
-        
+
         if fraction == 0.0:
             return MockDataFrame([], self.schema, self.storage)
         elif fraction == 1.0:
             return MockDataFrame(self.data.copy(), self.schema, self.storage)
-        
+
         # Calculate number of rows to sample
         total_rows = len(self.data)
         num_rows = int(total_rows * fraction)
-        
+
         if withReplacement:
             # Sample with replacement
             sampled_indices = [random.randint(0, total_rows - 1) for _ in range(num_rows)]
@@ -2881,10 +3181,12 @@ class MockDataFrame:
                 num_rows = total_rows
             sampled_indices = random.sample(range(total_rows), num_rows)
             sampled_data = [self.data[i] for i in sampled_indices]
-        
+
         return MockDataFrame(sampled_data, self.schema, self.storage)
 
-    def randomSplit(self, weights: List[float], seed: Optional[int] = None) -> List["MockDataFrame"]:
+    def randomSplit(
+        self, weights: List[float], seed: Optional[int] = None
+    ) -> List["MockDataFrame"]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -2895,42 +3197,42 @@ class MockDataFrame:
             List of MockDataFrames split according to weights.
         """
         import random
-        
+
         if not weights or len(weights) < 2:
             raise IllegalArgumentException("Weights must have at least 2 elements")
-        
+
         if abs(sum(weights) - 1.0) > 1e-6:
             raise IllegalArgumentException(f"Weights must sum to 1.0, got {sum(weights)}")
-        
+
         if any(w < 0 for w in weights):
             raise IllegalArgumentException("All weights must be non-negative")
-        
+
         if seed is not None:
             random.seed(seed)
-        
+
         # Create a list of (index, random_value) pairs
         indexed_data = [(i, random.random()) for i in range(len(self.data))]
-        
+
         # Sort by random value to ensure random distribution
         indexed_data.sort(key=lambda x: x[1])
-        
+
         # Calculate split points
-        cumulative_weight = 0
-        split_points = []
+        cumulative_weight = 0.0
+        split_points: List[int] = []
         for weight in weights:
             cumulative_weight += weight
             split_points.append(int(len(self.data) * cumulative_weight))
-        
+
         # Create splits
         splits = []
         start_idx = 0
-        
+
         for end_idx in split_points:
             split_indices = [idx for idx, _ in indexed_data[start_idx:end_idx]]
             split_data = [self.data[idx] for idx in split_indices]
             splits.append(MockDataFrame(split_data, self.schema, self.storage))
             start_idx = end_idx
-        
+
         return splits
 
     def describe(self, *cols: str) -> "MockDataFrame":
@@ -2943,14 +3245,21 @@ class MockDataFrame:
             MockDataFrame with statistics (count, mean, stddev, min, max).
         """
         import statistics
-        
+
         # Determine which columns to describe
         if not cols:
             # Describe all numeric columns
             numeric_cols = []
             for field in self.schema.fields:
                 field_type = field.dataType.typeName()
-                if field_type in ["long", "int", "integer", "bigint", "double", "float"]:
+                if field_type in [
+                    "long",
+                    "int",
+                    "integer",
+                    "bigint",
+                    "double",
+                    "float",
+                ]:
                     numeric_cols.append(field.name)
         else:
             numeric_cols = list(cols)
@@ -2959,14 +3268,14 @@ class MockDataFrame:
             for col in numeric_cols:
                 if col not in available_cols:
                     raise ColumnNotFoundException(col)
-        
+
         if not numeric_cols:
             # No numeric columns found
             return MockDataFrame([], self.schema, self.storage)
-        
+
         # Calculate statistics for each column
         result_data = []
-        
+
         for col in numeric_cols:
             # Extract values for this column
             values = []
@@ -2974,16 +3283,16 @@ class MockDataFrame:
                 value = row.get(col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
-            
+
             if not values:
                 # No valid numeric values
                 stats_row = {
                     "summary": col,
                     "count": "0",
                     "mean": "NaN",
-                    "stddev": "NaN", 
+                    "stddev": "NaN",
                     "min": "NaN",
-                    "max": "NaN"
+                    "max": "NaN",
                 }
             else:
                 stats_row = {
@@ -2992,22 +3301,25 @@ class MockDataFrame:
                     "mean": str(round(statistics.mean(values), 4)),
                     "stddev": str(round(statistics.stdev(values) if len(values) > 1 else 0.0, 4)),
                     "min": str(min(values)),
-                    "max": str(max(values))
+                    "max": str(max(values)),
                 }
-            
+
             result_data.append(stats_row)
-        
+
         # Create result schema
         from ..spark_types import MockStructType, MockStructField, StringType
-        result_schema = MockStructType([
-            MockStructField("summary", StringType()),
-            MockStructField("count", StringType()),
-            MockStructField("mean", StringType()),
-            MockStructField("stddev", StringType()),
-            MockStructField("min", StringType()),
-            MockStructField("max", StringType())
-        ])
-        
+
+        result_schema = MockStructType(
+            [
+                MockStructField("summary", StringType()),
+                MockStructField("count", StringType()),
+                MockStructField("mean", StringType()),
+                MockStructField("stddev", StringType()),
+                MockStructField("min", StringType()),
+                MockStructField("max", StringType()),
+            ]
+        )
+
         return MockDataFrame(result_data, result_schema, self.storage)
 
     def summary(self, *stats: str) -> "MockDataFrame":
@@ -3020,25 +3332,25 @@ class MockDataFrame:
             MockDataFrame with extended statistics.
         """
         import statistics
-        
+
         # Default statistics if none provided
         if not stats:
-            stats = ["count", "mean", "stddev", "min", "25%", "50%", "75%", "max"]
-        
+            stats = ("count", "mean", "stddev", "min", "25%", "50%", "75%", "max")
+
         # Find numeric columns
         numeric_cols = []
         for field in self.schema.fields:
             field_type = field.dataType.typeName()
             if field_type in ["long", "int", "integer", "bigint", "double", "float"]:
                 numeric_cols.append(field.name)
-        
+
         if not numeric_cols:
             # No numeric columns found
             return MockDataFrame([], self.schema, self.storage)
-        
+
         # Calculate statistics for each column
         result_data = []
-        
+
         for col in numeric_cols:
             # Extract values for this column
             values = []
@@ -3046,7 +3358,7 @@ class MockDataFrame:
                 value = row.get(col)
                 if value is not None and isinstance(value, (int, float)):
                     values.append(value)
-            
+
             if not values:
                 # No valid numeric values
                 stats_row = {"summary": col}
@@ -3056,7 +3368,7 @@ class MockDataFrame:
                 stats_row = {"summary": col}
                 values_sorted = sorted(values)
                 n = len(values)
-                
+
                 for stat in stats:
                     if stat == "count":
                         stats_row[stat] = str(n)
@@ -3079,18 +3391,20 @@ class MockDataFrame:
                         stats_row[stat] = str(values_sorted[q3_idx])
                     else:
                         stats_row[stat] = "NaN"
-            
+
             result_data.append(stats_row)
-        
+
         # Create result schema
         from ..spark_types import MockStructType, MockStructField, StringType
+
         result_fields = [MockStructField("summary", StringType())]
         for stat in stats:
             result_fields.append(MockStructField(stat, StringType()))
-        
+
         result_schema = MockStructType(result_fields)
         return MockDataFrame(result_data, result_schema, self.storage)
 
-    def write(self) -> MockDataFrameWriter:
-        """Get DataFrame writer."""
+    @property
+    def write(self) -> "MockDataFrameWriter":
+        """Get DataFrame writer (PySpark-compatible property)."""
         return MockDataFrameWriter(self, self.storage)

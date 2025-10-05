@@ -250,3 +250,121 @@ class DateTimeFunctions:
         operation = MockColumnOperation(column, "quarter", name=f"quarter({column.name})")
         name = f"quarter({column.name})"
         return operation
+
+    @staticmethod
+    def minute(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract minute from timestamp.
+
+        Args:
+            column: The column to extract minute from.
+
+        Returns:
+            MockColumnOperation representing the minute function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "minute", name=f"minute({column.name})")
+        return operation
+
+    @staticmethod
+    def second(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract second from timestamp.
+
+        Args:
+            column: The column to extract second from.
+
+        Returns:
+            MockColumnOperation representing the second function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "second", name=f"second({column.name})")
+        return operation
+
+    @staticmethod
+    def add_months(column: Union[MockColumn, str], num_months: int) -> MockColumnOperation:
+        """Add months to date/timestamp.
+
+        Args:
+            column: The column to add months to.
+            num_months: Number of months to add.
+
+        Returns:
+            MockColumnOperation representing the add_months function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column,
+            "add_months",
+            num_months,
+            name=f"add_months({column.name}, {num_months})",
+        )
+        return operation
+
+    @staticmethod
+    def months_between(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Calculate months between two dates.
+
+        Args:
+            column1: The first date column.
+            column2: The second date column.
+
+        Returns:
+            MockColumnOperation representing the months_between function.
+        """
+        if isinstance(column1, str):
+            column1 = MockColumn(column1)
+        if isinstance(column2, str):
+            column2 = MockColumn(column2)
+
+        operation = MockColumnOperation(
+            column1,
+            "months_between",
+            column2,
+            name=f"months_between({column1.name}, {column2.name})",
+        )
+        return operation
+
+    @staticmethod
+    def date_add(column: Union[MockColumn, str], days: int) -> MockColumnOperation:
+        """Add days to date.
+
+        Args:
+            column: The column to add days to.
+            days: Number of days to add.
+
+        Returns:
+            MockColumnOperation representing the date_add function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column, "date_add", days, name=f"date_add({column.name}, {days})"
+        )
+        return operation
+
+    @staticmethod
+    def date_sub(column: Union[MockColumn, str], days: int) -> MockColumnOperation:
+        """Subtract days from date.
+
+        Args:
+            column: The column to subtract days from.
+            days: Number of days to subtract.
+
+        Returns:
+            MockColumnOperation representing the date_sub function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column, "date_sub", days, name=f"date_sub({column.name}, {days})"
+        )
+        return operation

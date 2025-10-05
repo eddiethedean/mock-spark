@@ -122,7 +122,8 @@ class TestFunctionsComprehensive:
 
         # Test coalesce
         result2 = df.select(
-            F.col("name"), F.coalesce(F.col("department"), F.lit("Unknown")).alias("dept")
+            F.col("name"),
+            F.coalesce(F.col("department"), F.lit("Unknown")).alias("dept"),
         )
 
         assert result2.count() == 5

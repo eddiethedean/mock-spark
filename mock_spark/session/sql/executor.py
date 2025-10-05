@@ -132,12 +132,22 @@ class MockSQLExecutor:
             table_name = from_tables[0]
             # Try to get table as DataFrame
             try:
-                df = self.session.table(table_name)
+                df_any = self.session.table(table_name)
                 # Convert IDataFrame to MockDataFrame if needed
-                if not isinstance(df, MockDataFrame):  # type: ignore[unreachable]
-                    from ...dataframe import MockDataFrame
+                from ...dataframe import MockDataFrame
 
-                    df = MockDataFrame(df.collect(), df.schema)
+                if isinstance(df_any, MockDataFrame):  # type: ignore[unreachable]
+                    df = df_any  # type: ignore[unreachable]
+                else:
+                    # df_any may be an IDataFrame; construct MockDataFrame from its public API
+                    from ...spark_types import MockStructType
+
+                    # Convert ISchema to MockStructType if needed
+                    if hasattr(df_any.schema, "fields"):
+                        schema = MockStructType(df_any.schema.fields)  # type: ignore[arg-type]
+                    else:
+                        schema = MockStructType([])
+                    df = MockDataFrame(df_any.collect(), schema)
             except Exception:
                 # If table doesn't exist, return empty DataFrame
                 from ...dataframe import MockDataFrame
@@ -202,8 +212,12 @@ class MockSQLExecutor:
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
+        from ...spark_types import MockStructType
 
-        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
 
     def _execute_drop(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DROP query.
@@ -227,8 +241,12 @@ class MockSQLExecutor:
 
         # Return empty DataFrame to indicate success
         from ...dataframe import MockDataFrame
+        from ...spark_types import MockStructType
 
-        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
 
     def _execute_insert(self, ast: MockSQLAST) -> IDataFrame:
         """Execute INSERT query.
@@ -241,8 +259,12 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
+        from ...spark_types import MockStructType
 
-        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
 
     def _execute_update(self, ast: MockSQLAST) -> IDataFrame:
         """Execute UPDATE query.
@@ -255,8 +277,12 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
+        from ...spark_types import MockStructType
 
-        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
 
     def _execute_delete(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DELETE query.
@@ -290,15 +316,25 @@ class MockSQLExecutor:
             from ...spark_types import MockStructType, MockStructField, StringType
 
             schema = MockStructType([MockStructField("databaseName", StringType())])
-            return MockDataFrame(data, schema)  # type: ignore[return-value]
+            from typing import cast
+            from ...core.interfaces.dataframe import IDataFrame
+
+            return cast(IDataFrame, MockDataFrame(data, schema))
         elif "tables" in ast.components.get("original_query", "").lower():
             data = [{"tableName": "users"}, {"tableName": "orders"}]
             from ...spark_types import MockStructType, MockStructField, StringType
 
             schema = MockStructType([MockStructField("tableName", StringType())])
-            return MockDataFrame(data, schema)  # type: ignore[return-value]
+            from typing import cast
+            from ...core.interfaces.dataframe import IDataFrame
+
+            return cast(IDataFrame, MockDataFrame(data, schema))
         else:
-            return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+            from ...spark_types import MockStructType
+            from typing import cast
+            from ...core.interfaces.dataframe import IDataFrame
+
+            return cast(IDataFrame, MockDataFrame([], MockStructType([])))
 
     def _execute_describe(self, ast: MockSQLAST) -> IDataFrame:
         """Execute DESCRIBE query.
@@ -311,5 +347,9 @@ class MockSQLExecutor:
         """
         # Mock implementation
         from ...dataframe import MockDataFrame
+        from ...spark_types import MockStructType
 
-        return MockDataFrame([], MockStructType([]))  # type: ignore[return-value]
+        from typing import cast
+        from ...core.interfaces.dataframe import IDataFrame
+
+        return cast(IDataFrame, MockDataFrame([], MockStructType([])))

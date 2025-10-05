@@ -79,7 +79,10 @@ class TempTableAlreadyExistsException(QueryExecutionException):
     """
 
     def __init__(
-        self, table_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        table_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Temporary table '{table_name}' already exists"
@@ -103,7 +106,10 @@ class UnsupportedOperationException(QueryExecutionException):
     """
 
     def __init__(
-        self, operation: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        operation: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Operation '{operation}' is not supported"

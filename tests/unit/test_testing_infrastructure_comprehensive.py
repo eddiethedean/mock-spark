@@ -108,7 +108,10 @@ class TestTestingInfrastructureComprehensive:
 
         # Test storage operations
         schema = MockStructType(
-            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("name", StringType()),
+            ]
         )
         memory_storage.create_table("default", "test_table", schema)
         assert memory_storage.table_exists("default", "test_table")

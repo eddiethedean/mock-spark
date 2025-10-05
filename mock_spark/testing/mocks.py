@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 Mock utilities and factories for Mock Spark testing.
 
 This module provides factory patterns and mock utilities for creating
@@ -113,7 +114,7 @@ class MockSessionFactory:
         """Create a default MockSparkSession."""
         if MockSparkSession.builder is None:
             return MockSparkSession("test_app")
-        return MockSparkSession.builder.appName("test_app").getOrCreate()
+        return MockSparkSession("test_app")
 
     @staticmethod
     def create_session_with_config(config: Dict[str, str]) -> MockSparkSession:
@@ -131,7 +132,7 @@ class MockSessionFactory:
         if MockSparkSession.builder is None:
             session = MockSparkSession("test_app")
         else:
-            session = MockSparkSession.builder.appName("test_app").getOrCreate()
+            session = MockSparkSession("test_app")
         if storage_manager:
             session.storage = storage_manager
         return session
@@ -139,7 +140,7 @@ class MockSessionFactory:
     @staticmethod
     def create_session_with_data(dataframes: Dict[str, IDataFrame]) -> MockSparkSession:
         """Create a session with pre-populated DataFrames as tables."""
-        session = MockSparkSession.builder.appName("test_app").getOrCreate()
+        session = MockSparkSession("test_app")
 
         for table_name, df in dataframes.items():
             # IDataFrame interface doesn't have createOrReplaceTempView

@@ -2,7 +2,7 @@
 """
 Example usage of Mock Spark package.
 
-Current Status: 343+ tests passing (100% pass rate) | 62% code coverage | Production Ready
+Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
 """
 
 from mock_spark import MockSparkSession, F
@@ -53,6 +53,48 @@ def main():
     sorted_df = df.orderBy("age")
     print("\n📊 Sorted by Age:")
     sorted_df.show()
+
+    # New 0.3.0 features
+    print("\n🆕 New 0.3.0 Features:")
+    
+    # String functions
+    print("\n🔤 String Functions:")
+    string_ops = df.select(
+        F.col("name"),
+        F.upper(F.col("name")).alias("upper_name"),
+        F.length(F.col("name")).alias("name_length")
+    )
+    string_ops.show()
+    
+    # Mathematical functions
+    print("\n🔢 Mathematical Functions:")
+    math_ops = df.select(
+        F.col("name"),
+        F.col("age"),
+        F.round(F.col("age") / 10.0, 1).alias("age_decade"),
+        F.sqrt(F.col("age")).alias("age_sqrt")
+    )
+    math_ops.show()
+    
+    # Window functions
+    print("\n🪟 Window Functions:")
+    from mock_spark.window import MockWindow as Window
+    window_spec = Window.orderBy(F.desc("age"))
+    window_ops = df.select(
+        F.col("name"),
+        F.col("age"),
+        F.row_number().over(window_spec).alias("rank")
+    )
+    window_ops.show()
+    
+    # DataFrame enhancements
+    print("\n📊 DataFrame Enhancements:")
+    print(f"  - isStreaming: {df.isStreaming}")
+    print(f"  - Schema fields: {len(df.schema.fields)}")
+    
+    # Session enhancements
+    print("\n🔧 Session Enhancements:")
+    print(f"  - getOrCreate available: {hasattr(spark.builder, 'getOrCreate')}")
 
     print("\n✅ All examples completed successfully!")
 

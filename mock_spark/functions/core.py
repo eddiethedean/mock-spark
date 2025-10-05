@@ -108,6 +108,33 @@ class MockFunctions:
         """Concatenate strings."""
         return StringFunctions.concat(*columns)
 
+    @staticmethod
+    def format_string(format_str: str, *columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Format string using printf-style placeholders."""
+        return StringFunctions.format_string(format_str, *columns)
+
+    @staticmethod
+    def translate(
+        column: Union[MockColumn, str], matching_string: str, replace_string: str
+    ) -> MockColumnOperation:
+        """Translate characters in a string using a character mapping."""
+        return StringFunctions.translate(column, matching_string, replace_string)
+
+    @staticmethod
+    def ascii(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return ASCII value of the first character."""
+        return StringFunctions.ascii(column)
+
+    @staticmethod
+    def base64(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Encode the string to base64."""
+        return StringFunctions.base64(column)
+
+    @staticmethod
+    def unbase64(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Decode a base64-encoded string."""
+        return StringFunctions.unbase64(column)
+
     # Math functions
     @staticmethod
     def abs(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -165,6 +192,21 @@ class MockFunctions:
     def tan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Tangent."""
         return MathFunctions.tan(column)
+
+    @staticmethod
+    def sign(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sign of number (matches PySpark signum)."""
+        return MathFunctions.sign(column)
+
+    @staticmethod
+    def greatest(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Greatest value among columns."""
+        return MathFunctions.greatest(*columns)
+
+    @staticmethod
+    def least(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Least value among columns."""
+        return MathFunctions.least(*columns)
 
     # Aggregate functions
     @staticmethod
@@ -236,6 +278,27 @@ class MockFunctions:
     def countDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Count distinct values."""
         return AggregateFunctions.countDistinct(column)
+
+    @staticmethod
+    def percentile_approx(
+        column: Union[MockColumn, str], percentage: float, accuracy: int = 10000
+    ) -> MockAggregateFunction:
+        """Approximate percentile."""
+        return AggregateFunctions.percentile_approx(column, percentage, accuracy)
+
+    @staticmethod
+    def corr(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
+        """Correlation between two columns."""
+        return AggregateFunctions.corr(column1, column2)
+
+    @staticmethod
+    def covar_samp(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
+        """Sample covariance between two columns."""
+        return AggregateFunctions.covar_samp(column1, column2)
 
     # Datetime functions
     @staticmethod
@@ -326,6 +389,48 @@ class MockFunctions:
         """Extract quarter."""
         return DateTimeFunctions.quarter(column)
 
+    # SQL expression function
+    @staticmethod
+    def expr(expression: str) -> MockColumnOperation:
+        """Parse SQL expression into a column (simplified mock)."""
+        # Represent as a column operation on a dummy column
+        from mock_spark.functions.base import MockColumn
+
+        dummy = MockColumn("__expr__")
+        operation = MockColumnOperation(dummy, "expr", expression, name=expression)
+        operation.function_name = "expr"
+        return operation
+
+    @staticmethod
+    def minute(column) -> MockColumnOperation:
+        """Extract minute."""
+        return DateTimeFunctions.minute(column)
+
+    @staticmethod
+    def second(column) -> MockColumnOperation:
+        """Extract second."""
+        return DateTimeFunctions.second(column)
+
+    @staticmethod
+    def add_months(column, num_months: int) -> MockColumnOperation:
+        """Add months to date."""
+        return DateTimeFunctions.add_months(column, num_months)
+
+    @staticmethod
+    def months_between(column1, column2) -> MockColumnOperation:
+        """Calculate months between two dates."""
+        return DateTimeFunctions.months_between(column1, column2)
+
+    @staticmethod
+    def date_add(column, days: int) -> MockColumnOperation:
+        """Add days to date."""
+        return DateTimeFunctions.date_add(column, days)
+
+    @staticmethod
+    def date_sub(column, days: int) -> MockColumnOperation:
+        """Subtract days from date."""
+        return DateTimeFunctions.date_sub(column, days)
+
     @staticmethod
     def nvl(column, default_value) -> MockColumnOperation:
         """Return default if null."""
@@ -403,6 +508,50 @@ class MockFunctions:
         operation = MockColumnOperation(column, "lead", (offset, default_value))
         operation.name = f"lead({column.name}, {offset})"
         operation.function_name = "lead"
+        return operation
+
+    @staticmethod
+    def nth_value(column, n: int) -> MockColumnOperation:
+        """Nth value window function."""
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "nth_value", n)
+        operation.name = f"nth_value({column.name}, {n})"
+        operation.function_name = "nth_value"
+        return operation
+
+    @staticmethod
+    def ntile(n: int) -> MockColumnOperation:
+        """NTILE window function."""
+        from mock_spark.functions.base import MockColumn
+
+        dummy_column = MockColumn("__ntile__")
+        operation = MockColumnOperation(dummy_column, "ntile", n)
+        operation.name = f"ntile({n})"
+        operation.function_name = "ntile"
+        return operation
+
+    @staticmethod
+    def cume_dist() -> MockColumnOperation:
+        """Cumulative distribution window function."""
+        from mock_spark.functions.base import MockColumn
+
+        dummy_column = MockColumn("__cume_dist__")
+        operation = MockColumnOperation(dummy_column, "cume_dist")
+        operation.name = "cume_dist()"
+        operation.function_name = "cume_dist"
+        return operation
+
+    @staticmethod
+    def percent_rank() -> MockColumnOperation:
+        """Percent rank window function."""
+        from mock_spark.functions.base import MockColumn
+
+        dummy_column = MockColumn("__percent_rank__")
+        operation = MockColumnOperation(dummy_column, "percent_rank")
+        operation.name = "percent_rank()"
+        operation.function_name = "percent_rank"
         return operation
 
     @staticmethod

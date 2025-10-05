@@ -69,6 +69,14 @@ class MockWindowFunction:
             return self._evaluate_lag(data)
         elif self.function_name == "lead":
             return self._evaluate_lead(data)
+        elif self.function_name == "nth_value":
+            return self._evaluate_nth_value(data)
+        elif self.function_name == "ntile":
+            return self._evaluate_ntile(data)
+        elif self.function_name == "cume_dist":
+            return self._evaluate_cume_dist(data)
+        elif self.function_name == "percent_rank":
+            return self._evaluate_percent_rank(data)
         else:
             return [None] * len(data)
 
@@ -139,3 +147,32 @@ class MockWindowFunction:
             results.append(data[i + 1])
         results.append(None)  # Last row has no next value
         return results
+
+    def _evaluate_nth_value(self, data: List[dict]) -> List[Any]:
+        """Evaluate nth_value() window function."""
+        # For simplicity, return the first value for all rows
+        if not data:
+            return []
+        return [data[0]] * len(data)
+
+    def _evaluate_ntile(self, data: List[dict]) -> List[int]:
+        """Evaluate ntile() window function."""
+        if not data:
+            return []
+        # For simplicity, return equal distribution
+        n = len(data)
+        return list(range(1, n + 1))
+
+    def _evaluate_cume_dist(self, data: List[dict]) -> List[float]:
+        """Evaluate cume_dist() window function."""
+        if not data:
+            return []
+        n = len(data)
+        return [i / n for i in range(1, n + 1)]
+
+    def _evaluate_percent_rank(self, data: List[dict]) -> List[float]:
+        """Evaluate percent_rank() window function."""
+        if not data:
+            return []
+        n = len(data)
+        return [i / (n - 1) if n > 1 else 0.0 for i in range(n)]

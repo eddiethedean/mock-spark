@@ -222,3 +222,63 @@ class MathFunctions:
 
         operation = MockColumnOperation(column, "tan", name=f"tan({column.name})")
         return operation
+
+    @staticmethod
+    def sign(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get sign of number (-1, 0, or 1).
+
+        Args:
+            column: The column to get sign of.
+
+        Returns:
+            MockColumnOperation representing the sign function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # PySpark 3.2 uses signum, not sign, as the function name
+        operation = MockColumnOperation(column, "signum", name=f"signum({column.name})")
+        return operation
+
+    @staticmethod
+    def greatest(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get the greatest value among columns.
+
+        Args:
+            *columns: Columns to compare.
+
+        Returns:
+            MockColumnOperation representing the greatest function.
+        """
+        if not columns:
+            raise ValueError("At least one column must be provided")
+
+        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        operation = MockColumnOperation(
+            base_column,
+            "greatest",
+            columns[1:],
+            name=f"greatest({', '.join(column_names)})",
+        )
+        return operation
+
+    @staticmethod
+    def least(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get the least value among columns.
+
+        Args:
+            *columns: Columns to compare.
+
+        Returns:
+            MockColumnOperation representing the least function.
+        """
+        if not columns:
+            raise ValueError("At least one column must be provided")
+
+        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        operation = MockColumnOperation(
+            base_column, "least", columns[1:], name=f"least({', '.join(column_names)})"
+        )
+        return operation

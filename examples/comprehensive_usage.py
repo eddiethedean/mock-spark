@@ -5,7 +5,7 @@ This file demonstrates all the new features and improvements made to Mock Spark
 based on real-world usage feedback. Includes examples of data types, error
 simulation, performance testing, data generation, and more.
 
-Current Status: 343+ tests passing (100% pass rate) | 62% code coverage | Production Ready
+Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
 
 Run this file to see Mock Spark in action with all its enhanced capabilities.
 """
@@ -352,8 +352,12 @@ def demonstrate_mockable_methods():
     except PySparkValueError as e:
         print(f"Caught mocked error: {e}")
 
+    # Reset mocks before testing table mocking
+    spark.reset_mocks()
+
     # Test mocking table method
-    spark.mock_table(return_value=spark.createDataFrame([{"id": 1, "name": "mocked"}]))
+    mock_df = MockSparkSession("Temp").createDataFrame([{"id": 1, "name": "mocked"}])
+    spark.mock_table(return_value=mock_df)
 
     # This should return the mocked DataFrame
     result = spark.table("any_table")
@@ -396,7 +400,9 @@ def demonstrate_builder_patterns():
         ]
     )
 
-    data = MockDataGeneratorBuilder(schema).num_rows(20).realistic().corruption_rate(0.1).build()
+    # Use the existing data generation approach
+    from mock_spark.data_generation import create_test_data
+    data = create_test_data(schema, num_rows=20, seed=42)
 
     print(f"Generated {len(data)} rows with builder pattern")
     print(f"Sample row: {data[0]}")

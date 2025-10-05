@@ -79,7 +79,10 @@ class ColumnNotFoundException(AnalysisException):
     """
 
     def __init__(
-        self, column_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        column_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Column '{column_name}' does not exist"
@@ -103,7 +106,10 @@ class TableNotFoundException(AnalysisException):
     """
 
     def __init__(
-        self, table_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        table_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Table '{table_name}' does not exist"
@@ -127,7 +133,10 @@ class DatabaseNotFoundException(AnalysisException):
     """
 
     def __init__(
-        self, database_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        database_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Database '{database_name}' does not exist"

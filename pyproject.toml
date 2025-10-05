@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "0.2.3"
+version = "0.3.0"
 description = "A mock implementation of PySpark for testing"
 readme = "README.md"
 license = {text = "MIT"}
@@ -114,8 +114,21 @@ show_error_codes = true
 module = [
     "pandas.*",
     "psutil.*",
+
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mock_spark.testing.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mock_spark.dataframe.grouped_data",
+]
+warn_unreachable = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

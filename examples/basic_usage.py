@@ -5,7 +5,7 @@ Basic usage example for Mock Spark.
 This example demonstrates how to use the Mock Spark implementation
 for testing SparkForge without a real Spark session.
 
-Current Status: 343+ tests passing (100% pass rate) | 62% code coverage | Production Ready
+Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
 """
 
 from mock_spark import MockSparkSession
@@ -132,8 +132,51 @@ def main():
     except Exception as e:
         print(f"✓ Caught expected error: {type(e).__name__}: {e}")
 
-    # 11. Cleanup
-    print("\n11. Cleanup...")
+    # 11. New 0.3.0 Features
+    print("\n11. New 0.3.0 features demonstration...")
+    
+    # String functions
+    print("✓ String functions:")
+    string_ops = df.select(
+        F.col("name"),
+        F.upper(F.col("name")).alias("upper_name"),
+        F.length(F.col("name")).alias("name_length")
+    )
+    string_ops.show()
+    
+    # Mathematical functions
+    print("✓ Mathematical functions:")
+    math_ops = df.select(
+        F.col("name"),
+        F.col("salary"),
+        F.round(F.col("salary") / 1000, 1).alias("salary_k"),
+        F.sqrt(F.col("salary")).alias("salary_sqrt")
+    )
+    math_ops.show()
+    
+    # Window functions
+    print("✓ Window functions:")
+    from mock_spark.window import MockWindow as Window
+    window_spec = Window.partitionBy("age").orderBy(F.desc("salary"))
+    window_ops = df.select(
+        F.col("name"),
+        F.col("age"),
+        F.col("salary"),
+        F.row_number().over(window_spec).alias("rank")
+    )
+    window_ops.show()
+    
+    # DataFrame enhancements
+    print("✓ DataFrame enhancements:")
+    print(f"  - isStreaming: {df.isStreaming}")
+    print(f"  - Schema fields: {len(df.schema.fields)}")
+    
+    # Session enhancements
+    print("✓ Session enhancements:")
+    print(f"  - getOrCreate available: {hasattr(spark.builder, 'getOrCreate')}")
+    
+    # 12. Cleanup
+    print("\n12. Cleanup...")
     spark.stop()
     print("✓ Stopped Mock Spark session")
 

@@ -163,7 +163,10 @@ class RequiredFieldException(ValidationException):
     """
 
     def __init__(
-        self, field_name: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        field_name: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Required field '{field_name}' is missing"

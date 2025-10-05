@@ -7,7 +7,7 @@ without requiring a Java Virtual Machine (JVM) or actual Spark installation.
 Key Features:
     - Complete PySpark API compatibility
     - No JVM required - pure Python implementation
-    - Comprehensive test suite with 387+ tests (100% pass rate)
+    - Comprehensive test suite with 396 tests (100% pass rate)
     - Highly type safe with 59% reduction in mypy errors (214 → 24 in package source)
     - Black-formatted code for production readiness
     - Advanced functions (coalesce, isnull, upper, lower, length, abs, round)
@@ -33,7 +33,7 @@ Example:
            ALICE
              BOB
     
-Version: 0.2.2
+Version: 0.3.0
 Author: Odos Matthews
 """
 
@@ -94,7 +94,7 @@ from .data_generation import (
     create_realistic_data,
 )
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

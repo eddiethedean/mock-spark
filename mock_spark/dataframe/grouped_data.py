@@ -1,4 +1,5 @@
 """
+# mypy: warn-unreachable=False
 Mock GroupedData implementation for DataFrame aggregation operations.
 
 This module provides grouped data functionality for DataFrame aggregation
@@ -101,7 +102,13 @@ class MockGroupedData:
 
         # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
-        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+        )
 
         # Create schema based on the first result row
         if result_data:
@@ -232,7 +239,7 @@ class MockGroupedData:
             ]
             result_key = alias_name if alias_name else f"variance({col_name})"
             if values:
-                return result_key, statistics.variance(values) if len(values) > 1 else 0.0
+                return result_key, (statistics.variance(values) if len(values) > 1 else 0.0)
             else:
                 return result_key, None
         elif func_name == "skewness":
@@ -276,7 +283,9 @@ class MockGroupedData:
             return result_key, None
 
     def _evaluate_column_expression(
-        self, expr: Union[MockColumn, MockColumnOperation], group_rows: List[Dict[str, Any]]
+        self,
+        expr: Union[MockColumn, MockColumnOperation],
+        group_rows: List[Dict[str, Any]],
     ) -> Tuple[str, Any]:
         """Evaluate MockColumn or MockColumnOperation.
 
@@ -451,7 +460,9 @@ class MockGroupedData:
 
         # If values not provided, get unique values from pivot column
         if values is None:
-            values = list(set(row.get(pivot_col) for row in self.df.data if row.get(pivot_col) is not None))
+            values = list(
+                set(row.get(pivot_col) for row in self.df.data if row.get(pivot_col) is not None)
+            )
             values.sort()  # Sort for consistent ordering
 
         return MockPivotGroupedData(self.df, self.group_columns, pivot_col, values)
@@ -485,14 +496,16 @@ class MockRollupGroupedData(MockGroupedData):
             New MockDataFrame with rollup aggregated results.
         """
         import itertools
-        
+
         # Get all unique values for each rollup column
         unique_values = {}
         for col in self.rollup_columns:
-            unique_values[col] = list(set(row.get(col) for row in self.df.data if row.get(col) is not None))
-        
+            unique_values[col] = list(
+                set(row.get(col) for row in self.df.data if row.get(col) is not None)
+            )
+
         result_data = []
-        
+
         # Generate rollup combinations: for each level i, group by first i columns
         for i in range(len(self.rollup_columns) + 1):
             if i == 0:
@@ -503,15 +516,15 @@ class MockRollupGroupedData(MockGroupedData):
                 # Group by first i columns
                 active_columns = self.rollup_columns[:i]
                 inactive_columns = self.rollup_columns[i:]
-                
+
                 # Create groups based on active columns
-                groups = {}
+                groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
                 for row in self.df.data:
                     group_key = tuple(row.get(col) for col in active_columns)
                     if group_key not in groups:
                         groups[group_key] = []
                     groups[group_key].append(row)
-                
+
                 # Process each group
                 for group_key, group_rows in groups.items():
                     result_row = {}
@@ -521,9 +534,9 @@ class MockRollupGroupedData(MockGroupedData):
                     # Set inactive column values to None
                     for col in inactive_columns:
                         result_row[col] = None
-                    
+
                     filtered_rows = group_rows
-            
+
             # Apply aggregations to the filtered rows
             for expr in exprs:
                 if isinstance(expr, str):
@@ -532,6 +545,7 @@ class MockRollupGroupedData(MockGroupedData):
                 elif hasattr(expr, "function_name"):
                     from typing import cast
                     from ..functions import MockAggregateFunction
+
                     result_key, result_value = self._evaluate_aggregate_function(
                         cast(MockAggregateFunction, expr), filtered_rows
                     )
@@ -539,7 +553,7 @@ class MockRollupGroupedData(MockGroupedData):
                 elif hasattr(expr, "name"):
                     result_key, result_value = self._evaluate_column_expression(expr, filtered_rows)
                     result_row[result_key] = result_value
-            
+
             if i == 0:
                 result_data.append(result_row)
             else:
@@ -552,44 +566,56 @@ class MockRollupGroupedData(MockGroupedData):
                     # Set inactive column values to None
                     for col in inactive_columns:
                         result_row[col] = None
-                    
+
                     # Apply aggregations to this group
                     for expr in exprs:
                         if isinstance(expr, str):
-                            result_key, result_value = self._evaluate_string_expression(expr, group_rows)
+                            result_key, result_value = self._evaluate_string_expression(
+                                expr, group_rows
+                            )
                             result_row[result_key] = result_value
                         elif hasattr(expr, "function_name"):
                             from typing import cast
                             from ..functions import MockAggregateFunction
+
                             result_key, result_value = self._evaluate_aggregate_function(
                                 cast(MockAggregateFunction, expr), group_rows
                             )
                             result_row[result_key] = result_value
                         elif hasattr(expr, "name"):
-                            result_key, result_value = self._evaluate_column_expression(expr, group_rows)
+                            result_key, result_value = self._evaluate_column_expression(
+                                expr, group_rows
+                            )
                             result_row[result_key] = result_value
-                    
+
                     result_data.append(result_row)
 
         # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
-        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+        )
 
-        if result_data:
-            fields = []
-            for key, value in result_data[0].items():
-                if key in self.rollup_columns:
-                    fields.append(MockStructField(key, StringType()))
-                elif isinstance(value, int):
-                    fields.append(MockStructField(key, LongType()))
-                elif isinstance(value, float):
-                    fields.append(MockStructField(key, DoubleType()))
-                else:
-                    fields.append(MockStructField(key, StringType()))
-            schema = MockStructType(fields)
-            return MockDataFrame(result_data, schema)
-        else:
+        if not result_data:
             return MockDataFrame(result_data, MockStructType([]))
+
+        fields = []
+        for key, value in result_data[0].items():
+            if key in self.rollup_columns:
+                fields.append(MockStructField(key, StringType()))
+            elif isinstance(value, int):
+                fields.append(MockStructField(key, LongType()))
+            elif isinstance(value, float):
+                fields.append(MockStructField(key, DoubleType()))
+            else:
+                # Fallback for any other type
+                fields.append(MockStructField(key, StringType()))
+        schema = MockStructType(fields)
+        return MockDataFrame(result_data, schema)
 
 
 class MockCubeGroupedData(MockGroupedData):
@@ -619,46 +645,51 @@ class MockCubeGroupedData(MockGroupedData):
             New MockDataFrame with cube aggregated results.
         """
         import itertools
-        
+
         result_data = []
-        
+
         # Generate all possible combinations of columns (2^n combinations)
         for r in range(len(self.cube_columns) + 1):
             for combo in itertools.combinations(self.cube_columns, r):
                 active_columns = list(combo)
                 inactive_columns = [col for col in self.cube_columns if col not in combo]
-                
+
                 if not active_columns:
                     # Grand total - all nulls
                     filtered_rows = self.df.data
                     result_row = {col: None for col in self.cube_columns}
-                    
+
                     # Apply aggregations
                     for expr in exprs:
                         if isinstance(expr, str):
-                            result_key, result_value = self._evaluate_string_expression(expr, filtered_rows)
+                            result_key, result_value = self._evaluate_string_expression(
+                                expr, filtered_rows
+                            )
                             result_row[result_key] = result_value
                         elif hasattr(expr, "function_name"):
                             from typing import cast
                             from ..functions import MockAggregateFunction
+
                             result_key, result_value = self._evaluate_aggregate_function(
                                 cast(MockAggregateFunction, expr), filtered_rows
                             )
                             result_row[result_key] = result_value
                         elif hasattr(expr, "name"):
-                            result_key, result_value = self._evaluate_column_expression(expr, filtered_rows)
+                            result_key, result_value = self._evaluate_column_expression(
+                                expr, filtered_rows
+                            )
                             result_row[result_key] = result_value
-                    
+
                     result_data.append(result_row)
                 else:
                     # Group by active columns
-                    groups = {}
+                    groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
                     for row in self.df.data:
                         group_key = tuple(row.get(col) for col in active_columns)
                         if group_key not in groups:
                             groups[group_key] = []
                         groups[group_key].append(row)
-                    
+
                     # Process each group
                     for group_key, group_rows in groups.items():
                         result_row = {}
@@ -668,50 +699,68 @@ class MockCubeGroupedData(MockGroupedData):
                         # Set inactive column values to None
                         for col in inactive_columns:
                             result_row[col] = None
-                        
+
                         # Apply aggregations to this group
                         for expr in exprs:
                             if isinstance(expr, str):
-                                result_key, result_value = self._evaluate_string_expression(expr, group_rows)
+                                result_key, result_value = self._evaluate_string_expression(
+                                    expr, group_rows
+                                )
                                 result_row[result_key] = result_value
                             elif hasattr(expr, "function_name"):
                                 from typing import cast
                                 from ..functions import MockAggregateFunction
+
                                 result_key, result_value = self._evaluate_aggregate_function(
                                     cast(MockAggregateFunction, expr), group_rows
                                 )
                                 result_row[result_key] = result_value
                             elif hasattr(expr, "name"):
-                                result_key, result_value = self._evaluate_column_expression(expr, group_rows)
+                                result_key, result_value = self._evaluate_column_expression(
+                                    expr, group_rows
+                                )
                                 result_row[result_key] = result_value
-                        
+
                         result_data.append(result_row)
 
         # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
-        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+        )
 
-        if result_data:
-            fields = []
-            for key, value in result_data[0].items():
-                if key in self.cube_columns:
-                    fields.append(MockStructField(key, StringType()))
-                elif isinstance(value, int):
-                    fields.append(MockStructField(key, LongType()))
-                elif isinstance(value, float):
-                    fields.append(MockStructField(key, DoubleType()))
-                else:
-                    fields.append(MockStructField(key, StringType()))
-            schema = MockStructType(fields)
-            return MockDataFrame(result_data, schema)
-        else:
+        if not result_data:
             return MockDataFrame(result_data, MockStructType([]))
+
+        fields = []
+        for key, value in result_data[0].items():
+            if key in self.cube_columns:
+                fields.append(MockStructField(key, StringType()))
+            elif isinstance(value, int):
+                fields.append(MockStructField(key, LongType()))
+            elif isinstance(value, float):
+                fields.append(MockStructField(key, DoubleType()))
+            else:
+                # Fallback for any other type
+                fields.append(MockStructField(key, StringType()))
+        schema = MockStructType(fields)
+        return MockDataFrame(result_data, schema)
 
 
 class MockPivotGroupedData:
     """Mock pivot grouped data for pivot table operations."""
 
-    def __init__(self, df: "MockDataFrame", group_columns: List[str], pivot_col: str, pivot_values: List[Any]):
+    def __init__(
+        self,
+        df: "MockDataFrame",
+        group_columns: List[str],
+        pivot_col: str,
+        pivot_values: List[Any],
+    ):
         """Initialize MockPivotGroupedData.
 
         Args:
@@ -747,23 +796,26 @@ class MockPivotGroupedData:
             groups[group_key].append(row)
 
         result_data = []
-        
+
         for group_key, group_rows in groups.items():
             result_row = dict(zip(self.group_columns, group_key))
-            
+
             # For each pivot value, filter rows and apply aggregation
             for pivot_value in self.pivot_values:
                 pivot_rows = [row for row in group_rows if row.get(self.pivot_col) == pivot_value]
-                
+
                 for expr in exprs:
                     if isinstance(expr, str):
-                        result_key, result_value = self._evaluate_string_expression(expr, pivot_rows)
+                        result_key, result_value = self._evaluate_string_expression(
+                            expr, pivot_rows
+                        )
                         # Create pivot column name
                         pivot_col_name = f"{result_key}_{pivot_value}"
                         result_row[pivot_col_name] = result_value
                     elif hasattr(expr, "function_name"):
                         from typing import cast
                         from ..functions import MockAggregateFunction
+
                         result_key, result_value = self._evaluate_aggregate_function(
                             cast(MockAggregateFunction, expr), pivot_rows
                         )
@@ -771,7 +823,9 @@ class MockPivotGroupedData:
                         pivot_col_name = f"{result_key}_{pivot_value}"
                         result_row[pivot_col_name] = result_value
                     elif hasattr(expr, "name"):
-                        result_key, result_value = self._evaluate_column_expression(expr, pivot_rows)
+                        result_key, result_value = self._evaluate_column_expression(
+                            expr, pivot_rows
+                        )
                         # Create pivot column name
                         pivot_col_name = f"{result_key}_{pivot_value}"
                         result_row[pivot_col_name] = result_value
@@ -780,7 +834,13 @@ class MockPivotGroupedData:
 
         # Create result DataFrame with proper schema
         from .dataframe import MockDataFrame
-        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+        )
 
         if result_data:
             fields = []
@@ -862,7 +922,9 @@ class MockPivotGroupedData:
             return result_key, None
 
     def _evaluate_column_expression(
-        self, expr: Union[MockColumn, MockColumnOperation], group_rows: List[Dict[str, Any]]
+        self,
+        expr: Union[MockColumn, MockColumnOperation],
+        group_rows: List[Dict[str, Any]],
     ) -> Tuple[str, Any]:
         """Evaluate MockColumn or MockColumnOperation (reused from MockGroupedData)."""
         expr_name = expr.name

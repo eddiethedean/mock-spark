@@ -326,9 +326,21 @@ class EdgeCaseDataGenerator:
         """Generate data with special characters."""
         return [
             {"id": 1, "name": "test@email.com", "description": "Email format"},
-            {"id": 2, "name": "file/path/with/slashes", "description": "Path separators"},
-            {"id": 3, "name": "quotes\"and'apostrophes", "description": "Quote characters"},
-            {"id": 4, "name": "tabs\tand\nnewlines", "description": "Whitespace characters"},
+            {
+                "id": 2,
+                "name": "file/path/with/slashes",
+                "description": "Path separators",
+            },
+            {
+                "id": 3,
+                "name": "quotes\"and'apostrophes",
+                "description": "Quote characters",
+            },
+            {
+                "id": 4,
+                "name": "tabs\tand\nnewlines",
+                "description": "Whitespace characters",
+            },
         ]
 
 

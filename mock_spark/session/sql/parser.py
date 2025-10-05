@@ -396,7 +396,9 @@ class MockSQLParser:
 
         # Extract WHERE conditions
         where_match = re.search(
-            r"WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+ORDER\s+BY|\s+LIMIT|$)", query, re.IGNORECASE
+            r"WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+ORDER\s+BY|\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
         )
         if where_match:
             components["where_conditions"] = [where_match.group(1).strip()]
@@ -429,7 +431,10 @@ class MockSQLParser:
             Dictionary of DROP components.
         """
         # Mock implementation
-        return {"object_type": "TABLE", "object_name": "unknown"}  # or DATABASE, SCHEMA, etc.
+        return {
+            "object_type": "TABLE",
+            "object_name": "unknown",
+        }  # or DATABASE, SCHEMA, etc.
 
     def _parse_insert_query(self, query: str) -> Dict[str, Any]:
         """Parse INSERT query components.

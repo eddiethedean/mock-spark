@@ -24,7 +24,11 @@ class ErrorSimulator:
         if message is None:
             message = f"Simulated error: {condition}"
 
-        self.error_rules[condition] = {"exception": exception_class, "message": message, "count": 0}
+        self.error_rules[condition] = {
+            "exception": exception_class,
+            "message": message,
+            "count": 0,
+        }
 
     def remove_error_rule(self, condition: str):
         """Remove an error rule."""
@@ -90,7 +94,10 @@ class PerformanceSimulator:
 
     def add_memory_limit(self, limit_mb: int):
         """Add a memory limit for testing memory constraints."""
-        self.performance_rules["memory"] = {"type": "memory_limit", "limit_mb": limit_mb}
+        self.performance_rules["memory"] = {
+            "type": "memory_limit",
+            "limit_mb": limit_mb,
+        }
 
     def simulate_operation(self, operation: str, func: Callable, *args, **kwargs):
         """Simulate an operation with performance modifications."""
@@ -168,7 +175,11 @@ class MemorySimulator:
         """Record current memory usage."""
         current_memory = self.get_current_memory_mb()
         self.memory_usage.append(
-            {"operation": operation, "memory_mb": current_memory, "timestamp": time.time()}
+            {
+                "operation": operation,
+                "memory_mb": current_memory,
+                "timestamp": time.time(),
+            }
         )
         self.peak_memory = max(self.peak_memory, current_memory)
 

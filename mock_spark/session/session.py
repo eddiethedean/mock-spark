@@ -65,6 +65,7 @@ class MockSparkSession:
 
     # Class attribute for builder pattern
     builder: Optional["MockSparkSessionBuilder"] = None
+    _singleton_session: Optional["MockSparkSession"] = None
 
     def __init__(self, app_name: str = "MockSparkApp"):
         """Initialize MockSparkSession.
@@ -304,6 +305,9 @@ class MockSparkSession:
         """
         # Parse table name
         schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        # Handle global temp views using Spark's convention 'global_temp'
+        if schema == "global_temp":
+            schema = "global_temp"
 
         # Check if table exists
         if not self.storage.table_exists(schema, table):
@@ -514,10 +518,13 @@ class MockSparkSessionBuilder:
         Returns:
             MockSparkSession instance.
         """
-        session = MockSparkSession(self._app_name)
-        for key, value in self._config.items():
-            session.conf.set(key, value)
-        return session
+        # Return existing singleton if present; otherwise create and cache
+        if MockSparkSession._singleton_session is None:
+            session = MockSparkSession(self._app_name)
+            for key, value in self._config.items():
+                session.conf.set(key, value)
+            MockSparkSession._singleton_session = session
+        return MockSparkSession._singleton_session
 
 
 # Set the builder attribute on MockSparkSession

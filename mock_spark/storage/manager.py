@@ -108,7 +108,10 @@ class UnifiedStorageManager(IStorageManager):
         return self.backend.table_exists(schema, table)
 
     def create_table(
-        self, schema: str, table: str, columns: Union[List[MockStructField], MockStructType]
+        self,
+        schema: str,
+        table: str,
+        columns: Union[List[MockStructField], MockStructType],
     ) -> None:
         """Create a new table.
 

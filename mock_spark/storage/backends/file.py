@@ -269,7 +269,10 @@ class FileStorageManager(IStorageManager):
         return self.schemas[schema].table_exists(table)
 
     def create_table(
-        self, schema: str, table: str, columns: Union[List[MockStructField], MockStructType]
+        self,
+        schema: str,
+        table: str,
+        columns: Union[List[MockStructField], MockStructType],
     ) -> None:
         """Create a new table.
 

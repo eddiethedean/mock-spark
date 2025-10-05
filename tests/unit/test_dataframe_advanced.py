@@ -56,7 +56,13 @@ class TestDataFrameAdvancedOperations:
                 "salary": 85000.0,
                 "bonus": 6000.0,
             },
-            {"id": 5, "name": "Eve", "department": "Marketing", "salary": 72000.0, "bonus": 3500.0},
+            {
+                "id": 5,
+                "name": "Eve",
+                "department": "Marketing",
+                "salary": 72000.0,
+                "bonus": 3500.0,
+            },
         ]
 
     @pytest.fixture
@@ -346,7 +352,9 @@ class TestDataFrameAdvancedOperations:
 
         # Test operations with explicit schema
         result = df.select(
-            F.col("id"), F.col("name"), (F.col("salary") + F.col("bonus")).alias("total")
+            F.col("id"),
+            F.col("name"),
+            (F.col("salary") + F.col("bonus")).alias("total"),
         )
 
         assert result.count() == 2

@@ -51,7 +51,9 @@ class ISession(ABC):
 
     @abstractmethod
     def createDataFrame(
-        self, data: Union[List[Dict], List[Any]], schema: Optional[Union[str, Any]] = None
+        self,
+        data: Union[List[Dict], List[Any]],
+        schema: Optional[Union[str, Any]] = None,
     ) -> IDataFrame:
         """Create DataFrame from data."""
         pass

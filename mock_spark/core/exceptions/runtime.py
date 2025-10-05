@@ -121,7 +121,10 @@ class InitializationException(PySparkRuntimeError):
     """
 
     def __init__(
-        self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        component: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Failed to initialize {component}"
@@ -145,7 +148,10 @@ class ShutdownException(PySparkRuntimeError):
     """
 
     def __init__(
-        self, component: str, message: Optional[str] = None, stackTrace: Optional[Any] = None
+        self,
+        component: str,
+        message: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Failed to shutdown {component}"

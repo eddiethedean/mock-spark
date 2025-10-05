@@ -218,6 +218,106 @@ class StringFunctions:
         base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
         column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
         operation = MockColumnOperation(
-            base_column, "concat", columns[1:], name=f"concat({', '.join(column_names)})"
+            base_column,
+            "concat",
+            columns[1:],
+            name=f"concat({', '.join(column_names)})",
         )
+        return operation
+
+    @staticmethod
+    def format_string(format_str: str, *columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Format string using printf-style format string.
+
+        Args:
+            format_str: The format string (e.g., "Hello %s, you are %d years old").
+            *columns: Columns to use as format arguments.
+
+        Returns:
+            MockColumnOperation representing the format_string function.
+        """
+        if not columns:
+            raise ValueError("At least one column must be provided for format_string")
+
+        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        operation = MockColumnOperation(
+            base_column,
+            "format_string",
+            (format_str, columns[1:]),
+            name=f"format_string('{format_str}', {', '.join(column_names)})",
+        )
+        return operation
+
+    @staticmethod
+    def translate(
+        column: Union[MockColumn, str], matching_string: str, replace_string: str
+    ) -> MockColumnOperation:
+        """Translate characters in string using character mapping.
+
+        Args:
+            column: The column to translate.
+            matching_string: Characters to match.
+            replace_string: Characters to replace with (must be same length as matching_string).
+
+        Returns:
+            MockColumnOperation representing the translate function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column,
+            "translate",
+            (matching_string, replace_string),
+            name=f"translate({column.name}, '{matching_string}', '{replace_string}')",
+        )
+        return operation
+
+    @staticmethod
+    def ascii(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get ASCII value of first character in string.
+
+        Args:
+            column: The column to get ASCII value of.
+
+        Returns:
+            MockColumnOperation representing the ascii function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "ascii", name=f"ascii({column.name})")
+        return operation
+
+    @staticmethod
+    def base64(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Encode string to base64.
+
+        Args:
+            column: The column to encode.
+
+        Returns:
+            MockColumnOperation representing the base64 function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "base64", name=f"base64({column.name})")
+        return operation
+
+    @staticmethod
+    def unbase64(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Decode base64 string.
+
+        Args:
+            column: The column to decode.
+
+        Returns:
+            MockColumnOperation representing the unbase64 function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "unbase64", name=f"unbase64({column.name})")
         return operation

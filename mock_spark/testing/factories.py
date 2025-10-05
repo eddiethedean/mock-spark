@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 Test factories for Mock Spark.
 
 This module provides factory patterns for creating complex test scenarios
@@ -50,7 +51,13 @@ class DataFrameTestFactory:
             {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0, "active": True},
             {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0, "active": False},
             # Edge cases
-            {"id": 0, "name": "", "age": 0, "salary": 0.0, "active": False},  # Zero values
+            {
+                "id": 0,
+                "name": "",
+                "age": 0,
+                "salary": 0.0,
+                "active": False,
+            },  # Zero values
             {
                 "id": -1,
                 "name": "Negative",
@@ -60,10 +67,22 @@ class DataFrameTestFactory:
             },  # Negative values
             # Null values
             {"id": 3, "name": None, "age": 35, "salary": 70000.0, "active": True},
-            {"id": 4, "name": "Charlie", "age": None, "salary": 80000.0, "active": False},
+            {
+                "id": 4,
+                "name": "Charlie",
+                "age": None,
+                "salary": 80000.0,
+                "active": False,
+            },
             {"id": 5, "name": "David", "age": 40, "salary": None, "active": None},
             # Large values
-            {"id": 999999, "name": "x" * 1000, "age": 999, "salary": 999999.99, "active": True},
+            {
+                "id": 999999,
+                "name": "x" * 1000,
+                "age": 999,
+                "salary": 999999.99,
+                "active": True,
+            },
             # Unicode data
             {"id": 6, "name": "测试", "age": 28, "salary": 55000.0, "active": True},
             {"id": 7, "name": "café", "age": 32, "salary": 65000.0, "active": False},
@@ -104,7 +123,11 @@ class DataFrameTestFactory:
         right_data = [
             {"dept_id": 10, "dept_name": "Engineering", "budget": 1000000.0},
             {"dept_id": 20, "dept_name": "Marketing", "budget": 500000.0},
-            {"dept_id": 40, "dept_name": "Sales", "budget": 750000.0},  # No matching employee
+            {
+                "dept_id": 40,
+                "dept_name": "Sales",
+                "budget": 750000.0,
+            },  # No matching employee
         ]
 
         right_schema = MockStructType(
@@ -211,7 +234,7 @@ class SessionTestFactory:
 
             if schema:
                 df = session.createDataFrame(data, schema)
-                df.createOrReplaceTempView(table_name)
+                df.createGlobalTempView(table_name)
 
         return session
 
@@ -322,7 +345,7 @@ class IntegrationTestFactory:
         )
 
         source_df = session.createDataFrame(source_data, source_schema)
-        source_df.createOrReplaceTempView("employees")
+        source_df.createGlobalTempView("employees")
 
         # Expected transformations
         transformations = [
@@ -356,7 +379,10 @@ class IntegrationTestFactory:
         return {
             "test_dataframe": large_df,
             "operations": operations,
-            "expected_performance": {"max_duration_seconds": 5.0, "max_memory_mb": 100.0},
+            "expected_performance": {
+                "max_duration_seconds": 5.0,
+                "max_memory_mb": 100.0,
+            },
         }
 
     @staticmethod
@@ -405,7 +431,10 @@ def create_comprehensive_test_session() -> MockSparkSession:
             ],
             "schema": None,
         },
-        "stress_test": {"data": EdgeCaseDataGenerator.generate_boundary_values(), "schema": None},
+        "stress_test": {
+            "data": EdgeCaseDataGenerator.generate_boundary_values(),
+            "schema": None,
+        },
     }
 
     return SessionTestFactory.create_session_with_tables(session, table_configs)

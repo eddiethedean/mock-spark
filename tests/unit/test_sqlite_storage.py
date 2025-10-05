@@ -8,7 +8,12 @@ import pytest
 import tempfile
 import os
 from mock_spark.storage.backends.sqlite import SQLiteStorageManager, SQLiteTable
-from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+from mock_spark.spark_types import (
+    MockStructType,
+    MockStructField,
+    StringType,
+    IntegerType,
+)
 
 
 class TestSQLiteTable:

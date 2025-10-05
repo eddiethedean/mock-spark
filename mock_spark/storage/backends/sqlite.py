@@ -285,7 +285,10 @@ class SQLiteStorageManager(IStorageManager):
         return self.schemas[schema].table_exists(table)
 
     def create_table(
-        self, schema: str, table: str, fields: Union[List[MockStructField], MockStructType]
+        self,
+        schema: str,
+        table: str,
+        fields: Union[List[MockStructField], MockStructType],
     ) -> Optional["SQLiteTable"]:
         """Create a new table.
 
