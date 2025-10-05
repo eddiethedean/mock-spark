@@ -178,49 +178,31 @@ class MockDataFrame:
         # Get column names
         columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
 
-        # Build markdown table with proper alignment
+        # Build markdown table
         lines = []
         lines.append(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
         lines.append("")  # Blank line
         
-        # Calculate column widths for alignment
-        col_widths = {}
-        for col in columns:
-            # Start with header width
-            col_widths[col] = len(col)
-            # Check data widths
-            for row in display_data:
-                value = str(row.get(col, 'null'))
-                if truncate and len(value) > 20:
-                    value = value[:17] + "..."
-                col_widths[col] = max(col_widths[col], len(value))
-        
-        # Header row with proper alignment
-        header_parts = []
-        for col in columns:
-            header_parts.append(f" {col:<{col_widths[col]}} ")
-        header_row = "|" + "|".join(header_parts) + "|"
+        # Header row
+        header_row = "| " + " | ".join(columns) + " |"
         lines.append(header_row)
         
-        # Separator row with proper alignment
-        separator_parts = []
-        for col in columns:
-            if underline_headers:
-                separator_parts.append("=" * (col_widths[col] + 2))  # +2 for spaces
-            else:
-                separator_parts.append("-" * (col_widths[col] + 2))
-        separator_row = "|" + "|".join(separator_parts) + "|"
+        # Separator row - use underlines for better visual distinction
+        if underline_headers:
+            separator_row = "| " + " | ".join(["=" * len(col) for col in columns]) + " |"
+        else:
+            separator_row = "| " + " | ".join(["---" for _ in columns]) + " |"
         lines.append(separator_row)
         
-        # Data rows with proper alignment
+        # Data rows
         for row in display_data:
-            row_parts = []
+            row_values = []
             for col in columns:
                 value = str(row.get(col, 'null'))
                 if truncate and len(value) > 20:
                     value = value[:17] + "..."
-                row_parts.append(f" {value:<{col_widths[col]}} ")
-            data_row = "|" + "|".join(row_parts) + "|"
+                row_values.append(value)
+            data_row = "| " + " | ".join(row_values) + " |"
             lines.append(data_row)
         
         if len(self.data) > n:
