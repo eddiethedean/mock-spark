@@ -59,6 +59,7 @@ MockDataFrame[1 rows, 2 columns]
 | --- | --- |
 | 30 | Bob |
 
+```python
 print(df.groupBy("age").count().to_markdown())
 ```
 MockDataFrame[2 rows, 2 columns]
@@ -68,6 +69,7 @@ MockDataFrame[2 rows, 2 columns]
 | 25 | 1 |
 | 30 | 1 |
 
+```python
 print(df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown())
 ```
 MockDataFrame[2 rows, 1 columns]
@@ -103,6 +105,7 @@ MockDataFrame[3 rows, 2 columns]
 | Bob | 30 |
 | Charlie | 35 |
 
+```python
 print(df.filter(F.col("age") > 25).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
@@ -112,7 +115,7 @@ MockDataFrame[2 rows, 4 columns]
 | 30 | Sales | Bob | 75000 |
 | 35 | Engineering | Charlie | 80000 |
 
-```
+```python
 print(df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
@@ -123,7 +126,7 @@ MockDataFrame[2 rows, 4 columns]
 | 35 | Engineering | Charlie | 80000 |
 
 # Grouping and aggregation  
-```
+```python
 print(df.groupBy("department").agg(
     F.count("*").alias("count"),
     F.avg("salary").alias("avg_salary"),
@@ -138,7 +141,7 @@ MockDataFrame[2 rows, 4 columns]
 | Engineering | 1 | 80000.0 | 80000 |
 
 # Sorting and limiting
-```
+```python
 print(df.orderBy("age").to_markdown())
 ```
 MockDataFrame[3 rows, 4 columns]
@@ -149,7 +152,7 @@ MockDataFrame[3 rows, 4 columns]
 | 30 | Sales | Bob | 75000 |
 | 35 | Engineering | Charlie | 80000 |
 
-```
+```python
 print(df.orderBy(F.desc("salary")).to_markdown())
 ```
 MockDataFrame[3 rows, 4 columns]
@@ -160,7 +163,7 @@ MockDataFrame[3 rows, 4 columns]
 | 30 | Sales | Bob | 75000 |
 | 25 | Sales | Alice | 55000 |
 
-```
+```python
 print(df.limit(2).to_markdown())
 ```
 MockDataFrame[2 rows, 4 columns]
@@ -183,7 +186,7 @@ data = [
 df = spark.createDataFrame(data)
 
 # String functions
-```
+```python
 print(df.select(
     F.upper(F.col("name")).alias("upper"),
     F.lower(F.col("name")).alias("lower"),
@@ -198,7 +201,7 @@ MockDataFrame[2 rows, 3 columns]
 | BOB | bob | 3 |
 
 # Null handling
-```
+```python
 print(df.select(
     F.coalesce(F.col("name"), F.lit("Unknown")).alias("safe_name"),
     F.isnull(F.col("name")).alias("is_null"),
@@ -213,7 +216,7 @@ MockDataFrame[2 rows, 3 columns]
 | Bob | False | False |
 
 # Mathematical functions
-```
+```python
 print(df.select(
     F.abs(F.col("age") - 30).alias("age_diff"),
     F.round(F.col("salary") / 1000, 1).alias("salary_k"),
@@ -230,7 +233,7 @@ MockDataFrame[2 rows, 5 columns]
 | 0 | 75.0 | 75 | 75 | 273.8612787525831 |
 
 # String functions
-```
+```python
 print(df.select(
     F.regexp_replace(F.col("name"), "e", "X").alias("name_replaced"),
     F.split(F.col("name"), "l").alias("name_chars")
@@ -244,7 +247,7 @@ MockDataFrame[2 rows, 2 columns]
 | Bob | ['Bob'] |
 
 # Date/time functions
-```
+```python
 print(df.select(
     F.current_timestamp().alias("now"),
     F.current_date().alias("today")
@@ -258,7 +261,7 @@ MockDataFrame[2 rows, 2 columns]
 | 2025-10-04 14:49:59.928242 | 2025-10-04 |
 
 # CASE WHEN expressions
-```
+```python
 print(df.select(
     F.col("*"),
     F.when(F.col("age") > 30, F.lit("Senior"))
@@ -329,9 +332,9 @@ spark.sql("SELECT * FROM hr.employees WHERE age > 25").show()
 ```
 MockDataFrame[ 0 rows,  columns]
 (empty)
-```
 
 # Catalog operations
+```python
 print("Databases:", spark.catalog.listDatabases())
 print("Tables in hr:", spark.catalog.listTables("hr"))
 ```
