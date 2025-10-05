@@ -51,7 +51,7 @@ data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
 df = spark.createDataFrame(data)
 
 # All PySpark operations work
-print(df.filter(F.col("age") > 25).to_markdown())
+df.filter(F.col("age") > 25).to_markdown()
 ```
 MockDataFrame[1 rows, 2 columns]
 
@@ -60,7 +60,7 @@ MockDataFrame[1 rows, 2 columns]
 | 30 | Bob |
 
 ```python
-print(df.groupBy("age").count().to_markdown())
+df.groupBy("age").count().to_markdown()
 ```
 MockDataFrame[2 rows, 2 columns]
 
@@ -70,7 +70,7 @@ MockDataFrame[2 rows, 2 columns]
 | 30 | 1 |
 
 ```python
-print(df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown())
+df.select(F.upper(F.col("name")).alias("upper_name")).to_markdown()
 ```
 MockDataFrame[2 rows, 1 columns]
 
@@ -95,7 +95,7 @@ data = [
 df = spark.createDataFrame(data)
 
 # Selection and filtering
-print(df.select("name", "age").to_markdown())
+df.select("name", "age").to_markdown()
 ```
 MockDataFrame[3 rows, 2 columns]
 
@@ -106,7 +106,7 @@ MockDataFrame[3 rows, 2 columns]
 | Charlie | 35 |
 
 ```python
-print(df.filter(F.col("age") > 25).to_markdown())
+df.filter(F.col("age") > 25).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
@@ -116,7 +116,7 @@ MockDataFrame[2 rows, 4 columns]
 | 35 | Engineering | Charlie | 80000 |
 
 ```python
-print(df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).to_markdown())
+df.filter((F.col("age") > 25) & (F.col("salary") > 50000)).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
@@ -127,11 +127,11 @@ MockDataFrame[2 rows, 4 columns]
 
 # Grouping and aggregation  
 ```python
-print(df.groupBy("department").agg(
+df.groupBy("department").agg(
     F.count("*").alias("count"),
     F.avg("salary").alias("avg_salary"),
     F.max("salary").alias("max_salary")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
@@ -142,7 +142,7 @@ MockDataFrame[2 rows, 4 columns]
 
 # Sorting and limiting
 ```python
-print(df.orderBy("age").to_markdown())
+df.orderBy("age").to_markdown()
 ```
 MockDataFrame[3 rows, 4 columns]
 
@@ -153,7 +153,7 @@ MockDataFrame[3 rows, 4 columns]
 | 35 | Engineering | Charlie | 80000 |
 
 ```python
-print(df.orderBy(F.desc("salary")).to_markdown())
+df.orderBy(F.desc("salary")).to_markdown()
 ```
 MockDataFrame[3 rows, 4 columns]
 
@@ -164,7 +164,7 @@ MockDataFrame[3 rows, 4 columns]
 | 25 | Sales | Alice | 55000 |
 
 ```python
-print(df.limit(2).to_markdown())
+df.limit(2).to_markdown()
 ```
 MockDataFrame[2 rows, 4 columns]
 
@@ -187,11 +187,11 @@ df = spark.createDataFrame(data)
 
 # String functions
 ```python
-print(df.select(
+df.select(
     F.upper(F.col("name")).alias("upper"),
     F.lower(F.col("name")).alias("lower"),
     F.length(F.col("name")).alias("length")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 3 columns]
 
@@ -202,11 +202,11 @@ MockDataFrame[2 rows, 3 columns]
 
 # Null handling
 ```python
-print(df.select(
+df.select(
     F.coalesce(F.col("name"), F.lit("Unknown")).alias("safe_name"),
     F.isnull(F.col("name")).alias("is_null"),
     F.isnan(F.col("salary")).alias("is_nan")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 3 columns]
 
@@ -217,13 +217,13 @@ MockDataFrame[2 rows, 3 columns]
 
 # Mathematical functions
 ```python
-print(df.select(
+df.select(
     F.abs(F.col("age") - 30).alias("age_diff"),
     F.round(F.col("salary") / 1000, 1).alias("salary_k"),
     F.ceil(F.col("salary") / 1000).alias("salary_k_ceil"),
     F.floor(F.col("salary") / 1000).alias("salary_k_floor"),
     F.sqrt(F.col("salary")).alias("salary_sqrt")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 5 columns]
 
@@ -234,10 +234,10 @@ MockDataFrame[2 rows, 5 columns]
 
 # String functions
 ```python
-print(df.select(
+df.select(
     F.regexp_replace(F.col("name"), "e", "X").alias("name_replaced"),
     F.split(F.col("name"), "l").alias("name_chars")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 2 columns]
 
@@ -248,10 +248,10 @@ MockDataFrame[2 rows, 2 columns]
 
 # Date/time functions
 ```python
-print(df.select(
+df.select(
     F.current_timestamp().alias("now"),
     F.current_date().alias("today")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 2 columns]
 
@@ -262,12 +262,12 @@ MockDataFrame[2 rows, 2 columns]
 
 # CASE WHEN expressions
 ```python
-print(df.select(
+df.select(
     F.col("*"),
     F.when(F.col("age") > 30, F.lit("Senior"))
      .when(F.col("age") > 20, F.lit("Junior"))
      .otherwise(F.lit("Entry")).alias("level")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[2 rows, 5 columns]
 
@@ -293,14 +293,14 @@ df = spark.createDataFrame(data)
 # Complete window function support
 window_spec = MockWindow.partitionBy("department").orderBy(F.desc("salary"))
 
-print(df.select(
+df.select(
     F.col("*"),
     F.row_number().over(window_spec).alias("row_num"),
     F.rank().over(window_spec).alias("rank"),
     F.dense_rank().over(window_spec).alias("dense_rank"),
     F.lag(F.col("salary"), 1).over(window_spec).alias("prev_salary"),
     F.lead(F.col("salary"), 1).over(window_spec).alias("next_salary")
-).to_markdown())
+).to_markdown()
 ```
 MockDataFrame[3 rows, 9 columns]
 
