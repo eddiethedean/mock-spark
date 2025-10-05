@@ -157,13 +157,14 @@ class MockDataFrame:
         if len(self.data) > n:
             print(f"\n... ({len(self.data) - n} more rows)")
 
-    def to_markdown(self, n: int = 20, truncate: bool = True) -> str:
+    def to_markdown(self, n: int = 20, truncate: bool = True, bold_headers: bool = True) -> str:
         """
         Return DataFrame as a markdown table string.
         
         Args:
             n: Number of rows to show
             truncate: Whether to truncate long strings
+            bold_headers: Whether to make headers bold
             
         Returns:
             String representation of DataFrame as markdown table
@@ -183,7 +184,10 @@ class MockDataFrame:
         lines.append("")  # Blank line
         
         # Header row
-        header_row = "| " + " | ".join(columns) + " |"
+        if bold_headers:
+            header_row = "| " + " | ".join([f"**{col}**" for col in columns]) + " |"
+        else:
+            header_row = "| " + " | ".join(columns) + " |"
         lines.append(header_row)
         
         # Separator row
