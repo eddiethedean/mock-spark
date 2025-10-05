@@ -153,11 +153,13 @@ mock_spark/testing/
 ### **Step 2: Refactor DataFrame Module**
 - [x] Extract core DataFrame class to `dataframe/core/dataframe.py`
 - [x] Move operations to `dataframe/core/operations.py`
-- [ ] Move joins to `dataframe/core/joins.py`
-- [ ] Move aggregations to `dataframe/core/aggregations.py`
-- [ ] Move utilities to `dataframe/core/utilities.py`
+- [x] Move joins to `dataframe/core/joins.py`
+- [x] Move aggregations to `dataframe/core/aggregations.py`
+- [x] Move utilities to `dataframe/core/utilities.py`
 - [ ] Split grouped_data.py into focused modules
 - [ ] Update imports in `dataframe/__init__.py`
+- [ ] Delete original `dataframe.py` after refactoring
+- [ ] Run DataFrame tests to ensure functionality
 
 ## 🚀 **Current Progress**
 
@@ -194,17 +196,23 @@ mock_spark/testing/
 - [ ] Move expressions to `functions/core/expressions.py`
 - [ ] Move literals to `functions/core/literals.py`
 - [ ] Update imports in `functions/__init__.py`
+- [ ] Delete original `functions/base.py` after refactoring
+- [ ] Run functions tests to ensure functionality
 
 ### **Step 4: Refactor Session Module**
 - [ ] Extract core session to `session/core/session.py`
 - [ ] Move builder pattern to `session/core/builder.py`
 - [ ] Move context to `session/core/context.py`
 - [ ] Update imports in `session/__init__.py`
+- [ ] Delete original `session/session.py` after refactoring
+- [ ] Run session tests to ensure functionality
 
 ### **Step 5: Refactor Supporting Modules**
 - [ ] Split data_generation.py into focused modules
 - [ ] Split testing/factories.py into focused modules
 - [ ] Update all imports throughout the package
+- [ ] Delete original large files after refactoring
+- [ ] Run comprehensive tests to ensure no regressions
 
 ### **Step 6: Update Documentation**
 - [ ] Update API reference documentation
