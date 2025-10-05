@@ -9,6 +9,7 @@ from .interfaces import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.sqlite import SQLiteStorageManager
 from .backends.file import FileStorageManager
+from .backends.duckdb import DuckDBStorageManager
 from mock_spark.spark_types import MockStructType, MockStructField
 
 
@@ -47,6 +48,18 @@ class StorageManagerFactory:
             File storage manager instance.
         """
         return FileStorageManager(base_path)
+
+    @staticmethod
+    def create_duckdb_manager(db_path: str = "mock_spark.duckdb") -> IStorageManager:
+        """Create a DuckDB storage manager with type safety.
+
+        Args:
+            db_path: Path to DuckDB database file.
+
+        Returns:
+            DuckDB storage manager instance.
+        """
+        return DuckDBStorageManager(db_path)
 
 
 class UnifiedStorageManager(IStorageManager):

@@ -33,6 +33,15 @@ from .interfaces import IStorageManager, ITable, ISchema
 # Import backends
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
 from .backends.sqlite import SQLiteStorageManager, SQLiteTable, SQLiteSchema
+from .backends.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
+from .models import (
+    MockTableMetadata,
+    MockColumnDefinition,
+    StorageMode,
+    DuckDBTableModel,
+    StorageOperationResult,
+    QueryResult
+)
 from .backends.file import FileStorageManager, FileTable, FileSchema
 
 # Import serialization
@@ -55,6 +64,17 @@ __all__ = [
     "SQLiteStorageManager",
     "SQLiteTable",
     "SQLiteSchema",
+    # DuckDB backend
+    "DuckDBStorageManager",
+    "DuckDBTable",
+    "DuckDBSchema",
+    # SQLModel models
+    "MockTableMetadata",
+    "MockColumnDefinition",
+    "StorageMode",
+    "DuckDBTableModel",
+    "StorageOperationResult",
+    "QueryResult",
     # File backend
     "FileStorageManager",
     "FileTable",
