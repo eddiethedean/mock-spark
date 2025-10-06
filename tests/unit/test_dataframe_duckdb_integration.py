@@ -7,7 +7,7 @@ Tests the new toPandas() optional dependency and toDuckDB() analytical features.
 import pytest
 import duckdb
 from unittest.mock import patch, MagicMock
-from mock_spark.dataframe.core.dataframe import MockDataFrame
+from mock_spark.dataframe.dataframe import MockDataFrame
 from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType, DoubleType
 
 
@@ -233,7 +233,7 @@ class TestDataFrameDuckDBIntegration:
         # Test type mapping method directly
         assert df._get_duckdb_type(StringType()) == "VARCHAR"
         assert df._get_duckdb_type(IntegerType()) == "INTEGER"
-        assert df._get_duckdb_type(LongType()) == "INTEGER"
+        assert df._get_duckdb_type(LongType()) == "BIGINT"
         assert df._get_duckdb_type(DoubleType()) == "DOUBLE"
         assert df._get_duckdb_type(FloatType()) == "DOUBLE"
         assert df._get_duckdb_type(BooleanType()) == "BOOLEAN"

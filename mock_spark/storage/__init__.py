@@ -1,12 +1,14 @@
 """
 Storage module for Mock Spark.
 
-This module provides a comprehensive storage system with multiple backends and
-serialization options for persisting and retrieving DataFrame data. Supports
-in-memory storage, SQLite databases, file-based storage, and various serialization formats.
+This module provides a comprehensive storage system with DuckDB as the primary
+persistent storage backend and in-memory storage for testing. Supports
+file-based storage and various serialization formats.
 
 Key Features:
-    - Multiple storage backends (Memory, SQLite, File)
+    - DuckDB as primary persistent storage backend
+    - In-memory storage for testing
+    - File-based storage for data export/import
     - Flexible serialization (JSON, CSV, Parquet)
     - Unified storage interface for consistency
     - Transaction support and data integrity
@@ -15,9 +17,9 @@ Key Features:
     - Storage manager factory for easy backend switching
 
 Example:
-    >>> from mock_spark.storage import MemoryStorageManager
+    >>> from mock_spark.storage import DuckDBStorageManager
     >>> from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
-    >>> storage = MemoryStorageManager()
+    >>> storage = DuckDBStorageManager()
     >>> storage.create_schema("test_db")
     >>> schema = MockStructType([
     ...     MockStructField("name", StringType()),
@@ -32,7 +34,6 @@ from .interfaces import IStorageManager, ITable, ISchema
 
 # Import backends
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
-from .backends.sqlite import SQLiteStorageManager, SQLiteTable, SQLiteSchema
 from .backends.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
 from .models import (
     MockTableMetadata,
@@ -50,8 +51,6 @@ from .serialization.csv import CSVSerializer
 
 # Import managers
 from .manager import StorageManagerFactory, UnifiedStorageManager
-from .hybrid_manager import HybridStorageManager, create_hybrid_manager
-from .migration_utils import StorageMigrationTool, migrate_sqlite_to_duckdb
 
 __all__ = [
     # Interfaces
@@ -62,10 +61,6 @@ __all__ = [
     "MemoryStorageManager",
     "MemoryTable",
     "MemorySchema",
-    # SQLite backend
-    "SQLiteStorageManager",
-    "SQLiteTable",
-    "SQLiteSchema",
     # DuckDB backend
     "DuckDBStorageManager",
     "DuckDBTable",
@@ -87,9 +82,4 @@ __all__ = [
     # Storage managers
     "StorageManagerFactory",
     "UnifiedStorageManager",
-    "HybridStorageManager",
-    "create_hybrid_manager",
-    # Migration utilities
-    "StorageMigrationTool",
-    "migrate_sqlite_to_duckdb",
 ]

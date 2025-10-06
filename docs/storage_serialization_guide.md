@@ -204,10 +204,10 @@ df_read = spark.read.format("json").load("/path/to/json")
 ### Storage Backend Integration
 
 ```python
-from mock_spark.storage.backends.sqlite import SQLiteStorageManager
+from mock_spark.storage.backends.duckdb import DuckDBStorageManager
 
-# Create storage manager
-storage = SQLiteStorageManager()
+# Create storage manager (in-memory by default)
+storage = DuckDBStorageManager()
 
 # Store serialized data
 csv_data = csv_serializer.serialize(df.collect())

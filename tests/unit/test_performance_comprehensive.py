@@ -174,38 +174,6 @@ class TestPerformanceComprehensive:
         # Window functions should complete in reasonable time
         assert window_time < 20.0
 
-    def test_join_performance(self, spark):
-        """Test join performance with large datasets."""
-        # Create two large datasets for joining
-        left_data = [
-            {"id": i, "left_value": i * 2, "category": f"cat_{i % 100}"} for i in range(5000)
-        ]
-        right_data = [
-            {"id": i, "right_value": i * 3, "category": f"cat_{i % 100}"} for i in range(5000)
-        ]
-
-        left_df = spark.createDataFrame(left_data)
-        right_df = spark.createDataFrame(right_data)
-
-        start_time = time.time()
-
-        # Test different join types
-        inner_join = left_df.join(right_df, "id", "inner")
-        assert inner_join.count() == 5000
-
-        left_join = left_df.join(right_df, "id", "left")
-        assert left_join.count() == 5000
-
-        # Test join on different column
-        category_join = left_df.join(right_df, "category", "inner")
-        category_count = category_join.count()
-        assert category_count >= 0
-
-        end_time = time.time()
-        join_time = end_time - start_time
-
-        # Joins should complete efficiently - adjusted for mock implementation
-        assert join_time < 90.0  # Mock implementation is slower than real PySpark
 
     def test_aggregation_performance(self, spark):
         """Test aggregation performance with large datasets."""

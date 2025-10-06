@@ -98,7 +98,7 @@ df.withColumn("row_number", F.row_number().over(Window.partitionBy("age").orderB
 - **Error Simulation** - Rule-based error injection for testing
 - **Performance Simulation** - Configurable slowdown and memory limits  
 - **Data Generation** - Realistic test data with corruption simulation
-- **Storage Backends** - Memory, SQLite, File system support
+- **Storage Backends** - Memory, DuckDB (in-memory by default), File system support
 - **Testing Utilities** - Comprehensive test factories and fixtures
 
 ## 📊 Real-World Example

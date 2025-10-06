@@ -258,13 +258,13 @@ TimestampType()
 
 ## Storage Backends
 
-### SQLite Storage
+### DuckDB Storage (Default)
 
 ```python
-from mock_spark.storage.backends.sqlite import SQLiteStorageManager
+from mock_spark.storage.backends.duckdb import DuckDBStorageManager
 
-# Create storage manager
-storage = SQLiteStorageManager()
+# Create storage manager (in-memory by default)
+storage = DuckDBStorageManager()
 
 # Table operations
 table = storage.create_table("users", schema)
@@ -438,12 +438,11 @@ app_name = spark.conf.get("spark.app.name")
 ### Storage Configuration
 
 ```python
-# SQLite configuration
-storage = SQLiteStorageManager(
-    database_path=":memory:",
-    enable_wal=True,
-    synchronous="NORMAL"
-)
+# DuckDB configuration (in-memory by default)
+storage = DuckDBStorageManager()  # Uses in-memory storage
+
+# For persistent storage:
+storage = DuckDBStorageManager("my_database.duckdb")
 
 # File storage configuration
 storage = FileStorageManager(

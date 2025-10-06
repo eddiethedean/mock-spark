@@ -6,7 +6,7 @@ Provides high-performance analytical operations using DuckDB.
 
 import duckdb
 from typing import List, Dict, Any, Optional, Union
-from mock_spark.dataframe.core.dataframe import MockDataFrame
+from mock_spark.dataframe.dataframe import MockDataFrame
 from mock_spark.spark_types import MockStructType
 
 

@@ -252,12 +252,24 @@ class DuckDBSchema(ISchema):
 
 
 class DuckDBStorageManager(IStorageManager):
-    """Type-safe DuckDB storage manager with simplified connection handling."""
+    """Type-safe DuckDB storage manager with in-memory storage by default."""
     
-    def __init__(self, db_path: str = "mock_spark.duckdb"):
-        """Initialize DuckDB storage manager with type safety."""
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize DuckDB storage manager with in-memory storage by default.
+        
+        Args:
+            db_path: Optional path to database file. If None, uses in-memory storage.
+        """
         self.db_path = db_path
-        self.connection = duckdb.connect(db_path)
+        if db_path is None:
+            # Use in-memory storage
+            self.connection = duckdb.connect(":memory:")
+            self.is_in_memory = True
+        else:
+            # Use persistent storage
+            self.connection = duckdb.connect(db_path)
+            self.is_in_memory = False
+            
         self.schemas: Dict[str, DuckDBSchema] = {}
         
         # Create default schema (simplified without SQLModel for now)

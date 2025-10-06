@@ -24,7 +24,7 @@ class DataFrameAggregations:
         Returns:
             MockGroupedData for performing aggregations.
         """
-        from ..grouped_data import MockGroupedData
+        from ..grouped import MockGroupedData
 
         col_names = []
         for col in columns:
@@ -49,7 +49,7 @@ class DataFrameAggregations:
         Returns:
             MockRollupGroupedData for hierarchical grouping.
         """
-        from ..grouped_data import MockRollupGroupedData
+        from ..grouped import MockRollupGroupedData
 
         col_names = []
         for col in columns:
@@ -74,7 +74,7 @@ class DataFrameAggregations:
         Returns:
             MockCubeGroupedData for multi-dimensional grouping.
         """
-        from ..grouped_data import MockCubeGroupedData
+        from ..grouped import MockCubeGroupedData
 
         col_names = []
         for col in columns:
@@ -99,7 +99,7 @@ class DataFrameAggregations:
         Returns:
             New MockDataFrame with aggregated results.
         """
-        from ..grouped_data import MockGroupedData
+        from ..grouped import MockGroupedData
 
         # Create a single group with all data
         grouped_data = MockGroupedData(self, [])
@@ -115,7 +115,7 @@ class DataFrameAggregations:
         Returns:
             MockPivotGroupedData for pivoting operations.
         """
-        from ..grouped_data import MockPivotGroupedData
+        from ..grouped import MockPivotGroupedData
 
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.schema.fields]:

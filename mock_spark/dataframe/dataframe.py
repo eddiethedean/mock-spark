@@ -30,7 +30,6 @@ Example:
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
-import pandas as pd
 
 from ..spark_types import (
     MockStructType,
@@ -39,7 +38,7 @@ from ..spark_types import (
 )
 from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
 from ..storage import MemoryStorageManager
-from .grouped_data import (
+from .grouped import (
     MockGroupedData,
     MockRollupGroupedData,
     MockCubeGroupedData,
@@ -222,11 +221,94 @@ class MockDataFrame:
         return [MockRow(row) for row in self.data]
 
     def toPandas(self) -> Any:
-        """Convert to pandas DataFrame."""
+        """Convert to pandas DataFrame (requires pandas as optional dependency)."""
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for toPandas() method. "
+                "Install with: pip install mock-spark[pandas] or pip install pandas"
+            )
+        
         if not self.data:
             # Create empty DataFrame with correct column structure
             return pd.DataFrame(columns=[field.name for field in self.schema.fields])
         return pd.DataFrame(self.data)
+
+    def toDuckDB(self, connection=None, table_name: str = None) -> str:
+        """Convert to DuckDB table for analytical operations.
+        
+        Args:
+            connection: DuckDB connection (creates temporary if None)
+            table_name: Name for the table (auto-generated if None)
+            
+        Returns:
+            Table name in DuckDB
+        """
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError(
+                "duckdb is required for toDuckDB() method. "
+                "Install with: pip install duckdb"
+            )
+        
+        if connection is None:
+            connection = duckdb.connect(":memory:")
+        
+        if table_name is None:
+            table_name = f"temp_df_{id(self)}"
+        
+        # Create table from schema
+        self._create_duckdb_table(connection, table_name)
+        
+        # Insert data
+        if self.data:
+            for row in self.data:
+                values = [row.get(field.name) for field in self.schema.fields]
+                placeholders = ", ".join(["?" for _ in values])
+                connection.execute(
+                    f"INSERT INTO {table_name} VALUES ({placeholders})", values
+                )
+        
+        return table_name
+
+    def _create_duckdb_table(self, connection, table_name: str) -> None:
+        """Create DuckDB table from MockSpark schema."""
+        try:
+            import duckdb
+        except ImportError:
+            raise ImportError("duckdb is required")
+        
+        columns = []
+        for field in self.schema.fields:
+            duckdb_type = self._get_duckdb_type(field.dataType)
+            columns.append(f"{field.name} {duckdb_type}")
+        
+        create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
+        connection.execute(create_sql)
+
+    def _get_duckdb_type(self, data_type) -> str:
+        """Map MockSpark data type to DuckDB type."""
+        type_mapping = {
+            "StringType": "VARCHAR",
+            "IntegerType": "INTEGER", 
+            "LongType": "BIGINT",
+            "DoubleType": "DOUBLE",
+            "FloatType": "DOUBLE",
+            "BooleanType": "BOOLEAN",
+            "DateType": "DATE",
+            "TimestampType": "TIMESTAMP",
+            "ArrayType": "BLOB",
+            "MapType": "BLOB", 
+            "StructType": "BLOB",
+            "BinaryType": "BLOB",
+            "DecimalType": "DECIMAL",
+            "ShortType": "SMALLINT",
+            "ByteType": "TINYINT",
+            "NullType": "VARCHAR",
+        }
+        return type_mapping.get(data_type.__class__.__name__, "VARCHAR")
 
     def count(self) -> int:
         """Count number of rows."""
@@ -238,6 +320,16 @@ class MockDataFrame:
     def columns(self) -> List[str]:
         """Get column names."""
         return [field.name for field in self.schema.fields]
+
+    @property
+    def schema(self) -> MockStructType:
+        """Get DataFrame schema."""
+        return self._schema
+
+    @schema.setter
+    def schema(self, value: MockStructType) -> None:
+        """Set DataFrame schema."""
+        self._schema = value
 
     def printSchema(self) -> None:
         """Print DataFrame schema."""

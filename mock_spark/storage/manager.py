@@ -7,7 +7,6 @@ This module provides a unified storage manager that can use different backends.
 from typing import List, Dict, Any, Optional, Union, Type
 from .interfaces import IStorageManager
 from .backends.memory import MemoryStorageManager
-from .backends.sqlite import SQLiteStorageManager
 from .backends.file import FileStorageManager
 from .backends.duckdb import DuckDBStorageManager
 from mock_spark.spark_types import MockStructType, MockStructField
@@ -25,17 +24,6 @@ class StorageManagerFactory:
         """
         return MemoryStorageManager()
 
-    @staticmethod
-    def create_sqlite_manager(db_path: str = "mock_spark.db") -> IStorageManager:
-        """Create a SQLite storage manager.
-
-        Args:
-            db_path: Path to SQLite database file.
-
-        Returns:
-            SQLite storage manager instance.
-        """
-        return SQLiteStorageManager(db_path)
 
     @staticmethod
     def create_file_manager(base_path: str = "mock_spark_storage") -> IStorageManager:
@@ -50,11 +38,11 @@ class StorageManagerFactory:
         return FileStorageManager(base_path)
 
     @staticmethod
-    def create_duckdb_manager(db_path: str = "mock_spark.duckdb") -> IStorageManager:
-        """Create a DuckDB storage manager with type safety.
+    def create_duckdb_manager(db_path: Optional[str] = None) -> IStorageManager:
+        """Create a DuckDB storage manager with in-memory storage by default.
 
         Args:
-            db_path: Path to DuckDB database file.
+            db_path: Optional path to DuckDB database file. If None, uses in-memory storage.
 
         Returns:
             DuckDB storage manager instance.

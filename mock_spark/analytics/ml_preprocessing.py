@@ -343,21 +343,31 @@ class MLPreprocessing:
         Returns:
             Dict with train and test table names
         """
+        # Create a temporary table with random values
+        temp_query = f"""
+            CREATE TABLE {table_name}_temp AS 
+            SELECT *, RANDOM() as rand_val FROM {table_name}
+        """
+        self.engine.connection.execute(temp_query)
+        
         # Create training set (rows where random >= test_size)
         train_query = f"""
             CREATE TABLE {table_name}_train AS 
-            SELECT * FROM {table_name}
-            WHERE RANDOM() >= {test_size}
+            SELECT * FROM {table_name}_temp
+            WHERE rand_val >= {test_size}
         """
         self.engine.connection.execute(train_query)
         
         # Create testing set (rows where random < test_size)
         test_query = f"""
             CREATE TABLE {table_name}_test AS 
-            SELECT * FROM {table_name}
-            WHERE RANDOM() < {test_size}
+            SELECT * FROM {table_name}_temp
+            WHERE rand_val < {test_size}
         """
         self.engine.connection.execute(test_query)
+        
+        # Clean up temporary table
+        self.engine.connection.execute(f"DROP TABLE {table_name}_temp")
         
         return {
             "train_table": f"{table_name}_train",

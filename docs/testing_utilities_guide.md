@@ -130,9 +130,9 @@ storage_factory = MockStorageFactory()
 memory_storage = storage_factory.create_memory_storage()
 memory_storage.create_table("test_table", [])
 
-# Create SQLite storage
-sqlite_storage = storage_factory.create_sqlite_storage()
-sqlite_storage.create_table("test_table", [])
+# Create DuckDB storage (in-memory by default)
+duckdb_storage = storage_factory.create_duckdb_storage()
+duckdb_storage.create_table("test_table", [])
 ```
 
 ## Fixtures

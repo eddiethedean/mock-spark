@@ -14,7 +14,7 @@ from ..context import MockSparkContext
 from ..catalog import MockCatalog
 from ..config import MockConfiguration
 from ..sql.executor import MockSQLExecutor
-from mock_spark.storage import MemoryStorageManager
+from mock_spark.storage import DuckDBStorageManager
 from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
 from ...spark_types import MockStructType
 
@@ -52,7 +52,7 @@ class MockSparkSession:
             app_name: Application name for the Spark session.
         """
         self.app_name = app_name
-        self.storage = MemoryStorageManager()
+        self.storage = DuckDBStorageManager()
         from typing import cast
         from ...core.interfaces.storage import IStorageManager
 

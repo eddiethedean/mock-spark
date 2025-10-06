@@ -8,7 +8,7 @@ import pytest
 import duckdb
 from datetime import datetime, timedelta
 from mock_spark.analytics import AnalyticsEngine, StatisticalFunctions, TimeSeriesAnalysis, MLPreprocessing
-from mock_spark.dataframe.core.dataframe import MockDataFrame
+from mock_spark.dataframe.dataframe import MockDataFrame
 from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType, DoubleType, TimestampType
 
 
@@ -107,7 +107,7 @@ class TestAnalyticsEngine:
         # Test window functions
         result = engine.window_functions(
             "employees",
-            ["name", "salary"],
+            ["name", "salary", "department"],
             ["department"],
             ["salary"],
             {"salary": "ROW_NUMBER"}
@@ -311,7 +311,7 @@ class TestTimeSeriesAnalysis:
         """)
         
         ts_analysis = TimeSeriesAnalysis(engine)
-        result = ts_analysis.time_series_anomaly_detection("anomaly_test", "date", "value")
+        result = ts_analysis.time_series_anomaly_detection("anomaly_test", "date", "value", threshold=1.0)
         
         assert len(result) == 4
         anomaly_row = next((r for r in result if r['original'] == 100.0), None)
