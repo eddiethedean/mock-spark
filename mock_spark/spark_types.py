@@ -374,15 +374,50 @@ class MockRow:
         {'name': 'Alice', 'age': 25}
     """
 
-    def __init__(self, data: Dict[str, Any]):
-        """Initialize MockRow."""
-        self.data = data
+    def __init__(self, data: Any, schema: Optional["MockStructType"] = None):
+        """Initialize MockRow.
 
-    def __getitem__(self, key: str) -> Any:
-        """Get item by key."""
-        if key not in self.data:
-            raise KeyError(f"Key '{key}' not found in row")
-        return self.data[key]
+        Args:
+            data: Row data. Accepts dict-like (name -> value) or sequence-like (values).
+            schema: Optional schema providing ordered field names for index access.
+        """
+        self._schema = schema
+        # Normalize to dict storage while preserving order based on schema if provided
+        if isinstance(data, dict):
+            if schema is not None and getattr(schema, "fields", None):
+                # Reorder dict according to schema field order
+                ordered_items = [(f.name, data.get(f.name)) for f in schema.fields]
+                self.data = {k: v for k, v in ordered_items}
+            else:
+                self.data = dict(data)
+        else:
+            # sequence-like data paired with schema
+            if schema is None or not getattr(schema, "fields", None):
+                raise ValueError("Sequence row data requires a schema with fields")
+            values = list(data)
+            names = [f.name for f in schema.fields]
+            # If values shorter/longer, pad/truncate to schema length
+            if len(values) < len(names):
+                values = values + [None] * (len(names) - len(values))
+            if len(values) > len(names):
+                values = values[: len(names)]
+            self.data = {name: values[idx] for idx, name in enumerate(names)}
+
+    def __getitem__(self, key: Any) -> Any:
+        """Get item by column name or index (PySpark-compatible)."""
+        if isinstance(key, str):
+            if key not in self.data:
+                raise KeyError(f"Key '{key}' not found in row")
+            return self.data[key]
+        # Support integer index access using schema order
+        if isinstance(key, int):
+            field_names = self._get_field_names_ordered()
+            try:
+                name = field_names[key]
+            except IndexError:
+                raise IndexError("Row index out of range")
+            return self.data.get(name)
+        raise TypeError("Row indices must be integers or strings")
 
     def __contains__(self, key: str) -> bool:
         """Check if key exists."""
@@ -425,6 +460,9 @@ class MockRow:
 
     def asDict(self) -> Dict[str, Any]:
         """Convert to dictionary (PySpark compatibility)."""
+        # Ensure order follows schema if provided
+        if self._schema is not None:
+            return {name: self.data.get(name) for name in self._get_field_names_ordered()}
         return self.data.copy()
 
     def __getattr__(self, name: str) -> Any:
@@ -433,11 +471,22 @@ class MockRow:
             return self.data[name]
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
+    def __iter__(self) -> Iterator[Any]:
+        """Iterate values in schema order if available, else dict order."""
+        for name in self._get_field_names_ordered():
+            yield self.data.get(name)
+
     def __repr__(self) -> str:
         """String representation matching PySpark format."""
-        values_str = ", ".join(f"{k}={v}" for k, v in self.data.items())
+        values_str = ", ".join(f"{k}={self.data.get(k)}" for k in self._get_field_names_ordered())
         return f"Row({values_str})"
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get value by key with default."""
         return self.data.get(key, default)
+
+    def _get_field_names_ordered(self) -> List[str]:
+        if self._schema is not None and getattr(self._schema, "fields", None):
+            return [f.name for f in self._schema.fields]
+        # fallback to dict insertion order
+        return list(self.data.keys())

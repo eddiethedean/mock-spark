@@ -363,3 +363,45 @@ def create_realistic_data(data_type: str = "person", num_rows: int = 100) -> Lis
 def create_edge_case_data() -> List[Dict[str, Any]]:
     """Create edge case test data."""
     return EdgeCaseDataGenerator.generate_boundary_values()
+
+
+def create_dataframe_from_schema_string(session, schema_string: str, row_count: int = 10) -> Any:
+    """Create DataFrame from schema string like 'id:int,name:string'."""
+    fields: List[MockStructField] = []
+    for part in schema_string.split(","):
+        name, typ = [p.strip() for p in part.split(":", 1)]
+        if typ in ("int", "integer", "long"):
+            dtype = LongType()
+        elif typ in ("double", "float"):
+            dtype = DoubleType()
+        elif typ in ("bool", "boolean"):
+            dtype = BooleanType()
+        elif typ in ("date",):
+            dtype = DateType()
+        elif typ in ("timestamp",):
+            dtype = TimestampType()
+        else:
+            dtype = StringType()
+        fields.append(MockStructField(name, dtype))
+
+    schema = MockStructType(fields)
+
+    data: List[Dict[str, Any]] = []
+    for i in range(row_count):
+        row: Dict[str, Any] = {}
+        for f in schema.fields:
+            if isinstance(f.dataType, LongType):
+                row[f.name] = i
+            elif isinstance(f.dataType, DoubleType):
+                row[f.name] = float(i)
+            elif isinstance(f.dataType, BooleanType):
+                row[f.name] = (i % 2 == 0)
+            elif isinstance(f.dataType, DateType):
+                row[f.name] = DataGenerator.generate_date()
+            elif isinstance(f.dataType, TimestampType):
+                row[f.name] = DataGenerator.generate_timestamp()
+            else:
+                row[f.name] = f"val_{i}"
+        data.append(row)
+
+    return session.createDataFrame(data, schema)

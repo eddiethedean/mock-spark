@@ -11,9 +11,10 @@ Components:
     - EnvironmentConfig: Environment-specific settings
 """
 
-from .configuration import MockConfiguration, MockConfigBuilder
+from .configuration import MockConfiguration, MockConfigBuilder, MockSparkConfig
 
 __all__ = [
     "MockConfiguration",
     "MockConfigBuilder",
+    "MockSparkConfig",
 ]

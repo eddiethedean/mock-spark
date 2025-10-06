@@ -1,27 +1,46 @@
 """
 Analytics Engine for Mock Spark 1.0.0
 
-Provides high-performance analytical operations using DuckDB.
+Provides high-performance analytical operations using SQLModel with DuckDB.
 """
 
-import duckdb
+from sqlmodel import SQLModel, create_engine, Session, select, text
 from typing import List, Dict, Any, Optional, Union
 from mock_spark.dataframe.dataframe import MockDataFrame
 from mock_spark.spark_types import MockStructType
 
 
 class AnalyticsEngine:
-    """High-performance analytics engine using DuckDB."""
+    """High-performance analytics engine using SQLModel with DuckDB."""
     
     def __init__(self, db_path: str = ":memory:"):
-        """Initialize analytics engine with DuckDB connection.
-        
+        """Initialize analytics engine with SQLModel and DuckDB.
+
         Args:
             db_path: Path to DuckDB database (default: in-memory)
         """
+        import duckdb
+        import tempfile
+        import os
+
+        # For in-memory databases, create a temporary file to allow connection sharing
+        # This ensures both raw DuckDB connection and SQLAlchemy can access the same database
+        if db_path == ":memory:":
+            # Create a temporary file for the database
+            self._temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".duckdb")
+            db_path = self._temp_file.name
+            self._temp_file.close()  # Close the file
+            os.unlink(db_path)  # Delete the empty file so DuckDB can create a fresh one
+            self._is_temp = True
+        else:
+            self._is_temp = False
+
+        # Create a single DuckDB connection for raw operations
         self.connection = duckdb.connect(db_path)
+        # Create SQLAlchemy engine that uses the file path directly
+        self.engine = create_engine(f"duckdb:///{db_path}", echo=False)
         self._temp_tables = {}
-        
+
         # Enable extensions for enhanced functionality
         try:
             self.connection.execute("INSTALL sqlite")
@@ -42,8 +61,8 @@ class AnalyticsEngine:
         if table_name is None:
             table_name = f"analytics_df_{id(df)}"
         
-        # Use DataFrame's toDuckDB method
-        actual_table_name = df.toDuckDB(self.connection, table_name)
+        # Use DataFrame's toDuckDB method with SQLModel engine
+        actual_table_name = df.toDuckDB(self.engine, table_name)
         self._temp_tables[actual_table_name] = df
         
         return actual_table_name
@@ -58,8 +77,11 @@ class AnalyticsEngine:
             List of result dictionaries
         """
         try:
+            # Use raw DuckDB connection directly to avoid SQLAlchemy compatibility issues
             result = self.connection.execute(query).fetchall()
+            # Get column names from the result description
             columns = [desc[0] for desc in self.connection.description]
+            # Convert to list of dictionaries
             return [dict(zip(columns, row)) for row in result]
         except Exception as e:
             raise ValueError(f"Analytical query failed: {e}") from e
@@ -252,7 +274,9 @@ class AnalyticsEngine:
             view_name: Name of the view
             query: SQL query to create the view
         """
-        self.connection.execute(f"CREATE VIEW {view_name} AS {query}")
+        with Session(self.engine) as session:
+            session.exec(text(f"CREATE VIEW {view_name} AS {query}"))
+            session.commit()
     
     def drop_view(self, view_name: str) -> None:
         """Drop a view.
@@ -260,7 +284,9 @@ class AnalyticsEngine:
         Args:
             view_name: Name of the view to drop
         """
-        self.connection.execute(f"DROP VIEW IF EXISTS {view_name}")
+        with Session(self.engine) as session:
+            session.exec(text(f"DROP VIEW IF EXISTS {view_name}"))
+            session.commit()
     
     def export_to_parquet(self, table_name: str, file_path: str) -> None:
         """Export table to Parquet format.
@@ -270,6 +296,7 @@ class AnalyticsEngine:
             file_path: Path for the Parquet file
         """
         query = f"COPY {table_name} TO '{file_path}' (FORMAT PARQUET)"
+        # Use raw DuckDB connection directly to avoid connection conflicts
         self.connection.execute(query)
     
     def export_to_csv(self, table_name: str, file_path: str) -> None:
@@ -280,13 +307,16 @@ class AnalyticsEngine:
             file_path: Path for the CSV file
         """
         query = f"COPY {table_name} TO '{file_path}' (FORMAT CSV, HEADER)"
+        # Use raw DuckDB connection directly to avoid connection conflicts
         self.connection.execute(query)
     
     def cleanup_temp_tables(self) -> None:
         """Clean up temporary tables."""
         for table_name in list(self._temp_tables.keys()):
             try:
-                self.connection.execute(f"DROP TABLE IF EXISTS {table_name}")
+                with Session(self.engine) as session:
+                    session.exec(text(f"DROP TABLE IF EXISTS {table_name}"))
+                    session.commit()
                 del self._temp_tables[table_name]
             except:
                 pass  # Table might not exist
@@ -294,8 +324,21 @@ class AnalyticsEngine:
     def close(self):
         """Close the analytics engine."""
         self.cleanup_temp_tables()
-        if self.connection:
+        
+        # Close connections
+        if hasattr(self, 'connection'):
             self.connection.close()
+        if self.engine:
+            self.engine.dispose()
+        
+        # Clean up temporary database file
+        if hasattr(self, '_is_temp') and self._is_temp:
+            import os
+            if hasattr(self, '_temp_file'):
+                try:
+                    os.unlink(self._temp_file.name)
+                except:
+                    pass  # File might already be deleted
     
     def __enter__(self):
         """Context manager entry."""

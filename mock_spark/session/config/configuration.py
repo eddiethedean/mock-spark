@@ -21,6 +21,7 @@ Example:
 """
 
 from typing import Any, Dict, Optional
+from dataclasses import dataclass
 
 
 class MockConfiguration:
@@ -134,6 +135,24 @@ class MockConfiguration:
     def __repr__(self) -> str:
         """Representation."""
         return self.__str__()
+
+
+@dataclass
+class MockSparkConfig:
+    """High-level session configuration for validation and behavior flags.
+
+    This complements `MockConfiguration` (SparkConf-like key/value) with
+    strongly-typed knobs used by the mock engine.
+
+    Attributes:
+        validation_mode: strict | relaxed | minimal
+        enable_type_coercion: best-effort coercion during DataFrame creation
+    """
+
+    validation_mode: str = "relaxed"
+    enable_type_coercion: bool = True
+    # Performance settings
+    enable_lazy_evaluation: bool = True  # Changed default to True for lazy-by-default
 
 
 class MockConfigBuilder:

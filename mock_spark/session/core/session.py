@@ -12,11 +12,20 @@ from ...core.interfaces.storage import IStorageManager
 from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
 from ..catalog import MockCatalog
-from ..config import MockConfiguration
+from ..config import MockConfiguration, MockSparkConfig
 from ..sql.executor import MockSQLExecutor
 from mock_spark.storage import DuckDBStorageManager
 from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
-from ...spark_types import MockStructType
+from ...spark_types import (
+    MockStructType,
+    MockStructField,
+    StringType,
+    LongType,
+    DoubleType,
+    BooleanType,
+    ArrayType,
+    MapType,
+)
 
 
 class MockSparkSession:
@@ -45,11 +54,13 @@ class MockSparkSession:
     builder: Optional["MockSparkSessionBuilder"] = None
     _singleton_session: Optional["MockSparkSession"] = None
 
-    def __init__(self, app_name: str = "MockSparkApp"):
+    def __init__(self, app_name: str = "MockSparkApp", validation_mode: str = "relaxed", enable_type_coercion: bool = True, enable_lazy_evaluation: bool = True):
         """Initialize MockSparkSession.
 
         Args:
             app_name: Application name for the Spark session.
+            validation_mode: "strict", "relaxed", or "minimal" validation behavior.
+            enable_type_coercion: Whether to coerce basic types during DataFrame creation.
         """
         self.app_name = app_name
         self.storage = DuckDBStorageManager()
@@ -68,9 +79,23 @@ class MockSparkSession:
         self._createDataFrame_impl = self._real_createDataFrame
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
+        # Plugins (Phase 4)
+        self._plugins: List[Any] = []
 
         # Error simulation
         self._error_rules: Dict[str, Any] = {}
+
+        # Validation settings (Phase 2 plumbing)
+        self._engine_config = MockSparkConfig(
+            validation_mode=validation_mode,
+            enable_type_coercion=enable_type_coercion,
+            enable_lazy_evaluation=enable_lazy_evaluation,
+        )
+
+        # Memory tracking (Phase 3)
+        self._tracked_dataframes: List[MockDataFrame] = []
+        self._approx_memory_usage_bytes: int = 0
+        self._benchmark_results: Dict[str, Dict[str, Any]] = {}
 
     @property
     def appName(self) -> str:
@@ -103,7 +128,29 @@ class MockSparkSession:
         schema: Optional[Union[MockStructType, List[str]]] = None,
     ) -> IDataFrame:
         """Create a DataFrame from data (mockable version)."""
-        return self._createDataFrame_impl(data, schema)
+        # Plugin hook: before_create_dataframe
+        for plugin in getattr(self, "_plugins", []):
+            if hasattr(plugin, "before_create_dataframe"):
+                try:
+                    data, schema = plugin.before_create_dataframe(self, data, schema)
+                except Exception:
+                    pass
+        df = self._createDataFrame_impl(data, schema)
+        # Apply lazy/eager mode based on session config
+        try:
+            if hasattr(df, "withLazy"):
+                lazy_enabled = getattr(self._engine_config, "enable_lazy_evaluation", True)
+                df = df.withLazy(lazy_enabled)
+        except Exception:
+            pass
+        # Plugin hook: after_create_dataframe
+        for plugin in getattr(self, "_plugins", []):
+            if hasattr(plugin, "after_create_dataframe"):
+                try:
+                    df = plugin.after_create_dataframe(self, df)
+                except Exception:
+                    pass
+        return df
 
     def _real_createDataFrame(
         self,
@@ -132,8 +179,6 @@ class MockSparkSession:
 
         # Handle list of column names as schema
         if isinstance(schema, list):
-            from ...spark_types import MockStructType, MockStructField, StringType
-
             fields = [MockStructField(name, StringType()) for name in schema]
             schema = MockStructType(fields)
 
@@ -153,8 +198,6 @@ class MockSparkSession:
             # Infer schema from data
             if not data:
                 # For empty dataset, create empty schema
-                from ...spark_types import MockStructType
-
                 schema = MockStructType([])
             else:
                 # Simple schema inference
@@ -168,19 +211,8 @@ class MockSparkSession:
                     sorted_keys = sorted(sample_row.keys())
                     for key in sorted_keys:
                         value = sample_row[key]
-                        from ...spark_types import (
-                            StringType,
-                            LongType,
-                            DoubleType,
-                            BooleanType,
-                        )
-
                         field_type = self._infer_type(value)
-                        from ...spark_types import MockStructField
-
                         fields.append(MockStructField(key, field_type))
-
-                from ...spark_types import MockStructType
 
                 schema = MockStructType(fields)
 
@@ -206,7 +238,81 @@ class MockSparkSession:
                             reordered_data.append(row)
                     data = reordered_data
 
-        return MockDataFrame(data, schema, self.storage)  # type: ignore[return-value]
+        # Apply validation and optional type coercion per mode
+        if isinstance(schema, MockStructType) and data:
+            if self._engine_config.validation_mode == "strict":
+                self._validate_data_matches_schema(data, schema)
+            # In relaxed/minimal modes, perform optional light coercion
+            if self._engine_config.enable_type_coercion:
+                data = self._coerce_data_to_schema(data, schema)
+
+        df = MockDataFrame(data, schema, self.storage)  # type: ignore[return-value]
+        # Track memory usage for newly created DataFrame
+        try:
+            self._track_dataframe(df)
+        except Exception:
+            pass
+        return df
+
+    def _track_dataframe(self, df: MockDataFrame) -> None:
+        """Track DataFrame for approximate memory accounting."""
+        self._tracked_dataframes.append(df)
+        self._approx_memory_usage_bytes += self._estimate_dataframe_size(df)
+
+    def _estimate_dataframe_size(self, df: MockDataFrame) -> int:
+        """Very rough size estimate based on rows, columns, and value sizes."""
+        num_rows = len(df.data)
+        num_cols = len(df.schema.fields)
+        # assume ~32 bytes per cell average (key+value overhead), adjustable
+        return num_rows * num_cols * 32
+
+    def get_memory_usage(self) -> int:
+        """Return approximate memory usage in bytes for tracked DataFrames."""
+        return self._approx_memory_usage_bytes
+
+    def clear_cache(self) -> None:
+        """Clear tracked DataFrames to free memory accounting."""
+        self._tracked_dataframes.clear()
+        self._approx_memory_usage_bytes = 0
+
+    # ---------------------------
+    # Benchmarking API (Phase 3)
+    # ---------------------------
+    def benchmark_operation(self, operation_name: str, func: Any, *args: Any, **kwargs: Any) -> Any:
+        """Benchmark an operation and record simple telemetry.
+
+        Returns the function result. Records duration (s), memory_used (bytes),
+        and result_size when possible.
+        """
+        import time
+
+        start_mem = self.get_memory_usage()
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        end_mem = self.get_memory_usage()
+
+        size: int = 1
+        try:
+            if hasattr(result, "count"):
+                size = int(result.count())
+            elif hasattr(result, "collect"):
+                size = len(result.collect())
+            elif hasattr(result, "__len__"):
+                size = len(result)
+        except Exception:
+            size = 1
+
+        self._benchmark_results[operation_name] = {
+            "duration_s": max(end_time - start_time, 0.0),
+            "memory_used_bytes": max(end_mem - start_mem, 0),
+            "result_size": size,
+        }
+        return result
+
+    def get_benchmark_results(self) -> Dict[str, Dict[str, Any]]:
+        """Return a copy of the latest benchmark results."""
+        return dict(self._benchmark_results)
 
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
@@ -246,6 +352,82 @@ class MockSparkSession:
         else:
             return StringType()
 
+    # ---------------------------
+    # Validation and Coercion
+    # ---------------------------
+    def _validate_data_matches_schema(self, data: List[Dict[str, Any]], schema: MockStructType) -> None:
+        """Validate that data rows conform to the provided schema.
+
+        Raises IllegalArgumentException on mismatches in strict mode.
+        """
+        field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}
+        for row in data:
+            if not isinstance(row, dict):
+                raise IllegalArgumentException("Strict mode requires dict rows after normalization")
+            # Ensure all schema fields present
+            for name in field_types.keys():
+                if name not in row:
+                    raise IllegalArgumentException(f"Missing required field '{name}' in row")
+            # Type check best-effort
+            for name, value in row.items():
+                if name not in field_types:
+                    raise IllegalArgumentException(f"Unexpected field '{name}' in row")
+                expected = field_types[name]
+                if value is None:
+                    continue
+                actual_py = type(value).__name__
+                # Accept numeric widenings (int->LongType, float->DoubleType)
+                if expected in ("LongType", "IntegerType") and isinstance(value, int):
+                    continue
+                if expected in ("DoubleType", "FloatType") and isinstance(value, (int, float)):
+                    continue
+                if expected == "StringType" and isinstance(value, str):
+                    continue
+                if expected == "BooleanType" and isinstance(value, bool):
+                    continue
+                # For complex types, skip deep validation for now
+                # Otherwise raise
+                raise IllegalArgumentException(
+                    f"Type mismatch for field '{name}': expected {expected}, got {actual_py}"
+                )
+
+    def _coerce_data_to_schema(self, data: List[Dict[str, Any]], schema: MockStructType) -> List[Dict[str, Any]]:
+        """Coerce data types to match schema when possible (best-effort)."""
+        coerced: List[Dict[str, Any]] = []
+        field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}
+        for row in data:
+            if not isinstance(row, dict):
+                coerced.append(row)  # leave as-is if not normalized
+                continue
+            new_row: Dict[str, Any] = {}
+            for name in field_types.keys():
+                value = row.get(name)
+                expected = field_types[name]
+                new_row[name] = self._coerce_value(value, expected)
+            coerced.append(new_row)
+        return coerced
+
+    def _coerce_value(self, value: Any, expected_type_name: str) -> Any:
+        if value is None:
+            return None
+        try:
+            if expected_type_name in ("LongType", "IntegerType"):
+                return int(value)
+            if expected_type_name in ("DoubleType", "FloatType"):
+                return float(value)
+            if expected_type_name == "StringType":
+                return str(value)
+            if expected_type_name == "BooleanType":
+                if isinstance(value, bool):
+                    return value
+                if str(value).lower() in ("true", "1"):  # simple coercion
+                    return True
+                if str(value).lower() in ("false", "0"):
+                    return False
+        except Exception:
+            return value
+        return value
+
     def sql(self, query: str) -> IDataFrame:
         """Execute SQL query (mockable version)."""
         return self._sql_impl(query)
@@ -268,6 +450,12 @@ class MockSparkSession:
         """Get table as DataFrame (mockable version)."""
         self._check_error_rules("table", table_name)
         return self._table_impl(table_name)
+
+    # ---------------------------
+    # Plugin registration (Phase 4)
+    # ---------------------------
+    def register_plugin(self, plugin: Any) -> None:
+        self._plugins.append(plugin)
 
     def _real_table(self, table_name: str) -> IDataFrame:
         """Get table as DataFrame.

@@ -546,10 +546,15 @@ class MockAggregateFunction:
             # For count("*"), PySpark generates "count(1)", not "count(*)"
             if self.function_name == "count" and self.column == "*":
                 return "count(1)"
+            elif self.function_name == "countDistinct":
+                return f"count(DISTINCT {self.column})"
             else:
                 return f"{self.function_name}({self.column})"
         else:
-            return f"{self.function_name}({self.column.name})"
+            if self.function_name == "countDistinct":
+                return f"count(DISTINCT {self.column.name})"
+            else:
+                return f"{self.function_name}({self.column.name})"
 
     def evaluate(self, data: List[dict]) -> Any:
         """Evaluate the aggregate function on the given data.

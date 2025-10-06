@@ -9,7 +9,7 @@ from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional
 import statistics
 
 from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
-from ...core.exceptions.analysis import ColumnNotFoundException
+from ...core.exceptions.analysis import ColumnNotFoundException, AnalysisException
 
 if TYPE_CHECKING:
     from ..dataframe import MockDataFrame
@@ -396,7 +396,7 @@ class MockGroupedData:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.df.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         return MockRollupGroupedData(self.df, col_names)
 
@@ -421,7 +421,7 @@ class MockGroupedData:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.df.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         return MockCubeGroupedData(self.df, col_names)
 
@@ -439,7 +439,7 @@ class MockGroupedData:
 
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.df.schema.fields]:
-            raise ColumnNotFoundException(pivot_col)
+            raise AnalysisException(f"Column '{pivot_col}' does not exist")
 
         # If values not provided, get unique values from pivot column
         if values is None:

@@ -24,7 +24,7 @@ from ...core.exceptions import (
     IllegalArgumentException,
     PySparkValueError,
 )
-from ...core.exceptions.analysis import ColumnNotFoundException
+from ...core.exceptions.analysis import ColumnNotFoundException, AnalysisException
 from .dataframe import MockDataFrame
 
 
@@ -136,7 +136,7 @@ class DataFrameOperations:
                 )
                 and not self._is_function_call(col_name)
             ):
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         # Filter data to selected columns and add literal values
         filtered_data = []
@@ -322,7 +322,7 @@ class DataFrameOperations:
         # Validate that all columns exist
         for col in cols:
             if col not in [field.name for field in self.schema.fields]:
-                raise ColumnNotFoundException(col)
+                raise AnalysisException(f"Column '{col}' does not exist")
 
         # Filter out dropped columns
         new_fields = [field for field in self.schema.fields if field.name not in cols]
@@ -339,7 +339,7 @@ class DataFrameOperations:
     def withColumnRenamed(self, existing: str, new: str) -> "MockDataFrame":
         """Rename a column."""
         if existing not in [field.name for field in self.schema.fields]:
-            raise ColumnNotFoundException(existing)
+            raise AnalysisException(f"Column '{existing}' does not exist")
 
         # Create new schema with renamed field
         new_fields = []

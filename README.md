@@ -32,6 +32,37 @@
 - **Minimal dependencies** - DuckDB for analytics, optional pandas (no Java required)
 - **100% compatible** - All PySpark 3.2 APIs supported
 - **Production ready** - 407 tests, type-safe, enterprise-grade quality
+- **Lazy-by-default** - Mirrors PySpark's execution model with queued transformations and action materialization
+
+### 🔄 Lazy Evaluation (PySpark Compatibility)
+
+Mock Spark now defaults to **lazy evaluation**, matching PySpark's execution semantics:
+
+- **Transformations are queued** - Operations like `filter`, `select`, `withColumn`, `join`, `union`, and `orderBy` are deferred
+- **Actions materialize** - Only `collect()`, `count()`, `toPandas()`, and `show()` execute the operation graph
+- **Schema projection** - Column metadata is computed without data materialization
+- **Error deferral** - Validation errors are raised at action time, not during transformation
+
+**Enable/disable lazy evaluation:**
+```python
+# Lazy by default (recommended for PySpark parity)
+spark = MockSparkSession("MyApp", enable_lazy_evaluation=True)  # default
+
+# Eager mode (for legacy tests)
+spark = MockSparkSession("MyApp", enable_lazy_evaluation=False)
+```
+
+**Testing with lazy evaluation:**
+```python
+# Always call an action to materialize results
+df = spark.createDataFrame([{"a": 1}, {"a": 2}])
+result = df.filter(F.col("a") > 1)  # Queued, not executed yet
+
+# Materialize with an action
+rows = result.collect()  # Now executed
+assert len(rows) == 1
+assert rows[0]["a"] == 2
+```
 
 ## 📦 Installation
 
@@ -446,10 +477,18 @@ pip install -e .
 
 ## 📚 Documentation
 
+- **[Getting Started](docs/getting_started.md)** - Install and quickstart
 - **[API Reference](docs/api_reference.md)** - Complete API documentation
 - **[SQL Operations Guide](docs/sql_operations_guide.md)** - SQL query examples
 - **[Storage & Serialization](docs/storage_serialization_guide.md)** - Data persistence
 - **[Testing Utilities](docs/testing_utilities_guide.md)** - Test helpers and fixtures
+- **[Configuration](docs/guides/configuration.md)** - Validation, coercion, modes
+- **[Lazy Evaluation](docs/guides/lazy_evaluation.md)** - Materialization model
+- **[Benchmarking](docs/guides/benchmarking.md)** - Session timing API
+- **[Memory Management](docs/guides/memory_management.md)** - Tracking and clearing
+- **[Plugins](docs/guides/plugins.md)** - Hook system
+- **[Pytest Integration](docs/guides/pytest_integration.md)** - Fixtures and examples
+- **[Migration Guide](docs/guides/migration.md)** - PySpark → Mock-Spark
 
 ## 🤝 Contributing
 

@@ -8,7 +8,7 @@ rollup, cube, and aggregation functions for grouping and summarizing data.
 from typing import Any, Dict, List, Optional, Union, Tuple
 
 from ...functions import MockColumn, MockColumnOperation
-from ...core.exceptions.analysis import ColumnNotFoundException
+from ...core.exceptions.analysis import ColumnNotFoundException, AnalysisException
 from .dataframe import MockDataFrame
 
 
@@ -36,7 +36,7 @@ class DataFrameAggregations:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         return MockGroupedData(self, col_names)
 
@@ -61,7 +61,7 @@ class DataFrameAggregations:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         return MockRollupGroupedData(self, col_names)
 
@@ -86,7 +86,7 @@ class DataFrameAggregations:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                raise AnalysisException(f"Column '{col_name}' does not exist")
 
         return MockCubeGroupedData(self, col_names)
 
@@ -119,7 +119,7 @@ class DataFrameAggregations:
 
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.schema.fields]:
-            raise ColumnNotFoundException(pivot_col)
+            raise AnalysisException(f"Column '{pivot_col}' does not exist")
 
         return MockPivotGroupedData(self, pivot_col, values)
 
