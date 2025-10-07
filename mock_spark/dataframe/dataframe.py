@@ -235,21 +235,9 @@ class MockDataFrame:
 
     def toPandas(self) -> Any:
         """Convert to pandas DataFrame (requires pandas as optional dependency)."""
-        if self.is_lazy and self._operations_queue:
-            materialized = self._materialize_if_lazy()
-            return materialized.toPandas()
-        try:
-            import pandas as pd
-        except ImportError:
-            raise ImportError(
-                "pandas is required for toPandas() method. "
-                "Install with: pip install mock-spark[pandas] or pip install pandas"
-            )
+        from .export import DataFrameExporter
 
-        if not self.data:
-            # Create empty DataFrame with correct column structure
-            return pd.DataFrame(columns=[field.name for field in self.schema.fields])
-        return pd.DataFrame(self.data)
+        return DataFrameExporter.to_pandas(self)
 
     def toDuckDB(self, connection=None, table_name: str = None) -> str:
         """Convert to DuckDB table for analytical operations.
@@ -261,78 +249,19 @@ class MockDataFrame:
         Returns:
             Table name in DuckDB
         """
-        try:
-            import duckdb
-        except ImportError:
-            raise ImportError(
-                "duckdb is required for toDuckDB() method. " "Install with: pip install duckdb"
-            )
+        from .export import DataFrameExporter
 
-        # Handle SQLAlchemy Engine objects
-        if hasattr(connection, "raw_connection"):
-            # It's a SQLAlchemy Engine, get the raw DuckDB connection
-            try:
-                raw_conn = connection.raw_connection()
-                # The raw_conn is already the DuckDB connection, not a wrapper
-                connection = raw_conn
-            except Exception:
-                # If we can't get the raw connection, create a new one
-                connection = duckdb.connect(":memory:")
-        elif connection is None:
-            connection = duckdb.connect(":memory:")
-
-        if table_name is None:
-            table_name = f"temp_df_{id(self)}"
-
-        # Create table from schema
-        self._create_duckdb_table(connection, table_name)
-
-        # Insert data (batch executemany for better performance on large datasets)
-        if self.data:
-            values_list = [
-                tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
-            ]
-            placeholders = ", ".join(["?" for _ in self.schema.fields])
-            connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", values_list)
-
-        return table_name
-
-    def _create_duckdb_table(self, connection, table_name: str) -> None:
-        """Create DuckDB table from MockSpark schema."""
-        try:
-            import duckdb
-        except ImportError:
-            raise ImportError("duckdb is required")
-
-        columns = []
-        for field in self.schema.fields:
-            duckdb_type = self._get_duckdb_type(field.dataType)
-            columns.append(f"{field.name} {duckdb_type}")
-
-        create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
-        connection.execute(create_sql)
+        return DataFrameExporter.to_duckdb(self, connection, table_name)
 
     def _get_duckdb_type(self, data_type) -> str:
-        """Map MockSpark data type to DuckDB type."""
-        type_mapping = {
-            "StringType": "VARCHAR",
-            "IntegerType": "INTEGER",
-            "LongType": "BIGINT",
-            "DoubleType": "DOUBLE",
-            "FloatType": "DOUBLE",
-            "BooleanType": "BOOLEAN",
-            "DateType": "DATE",
-            "TimestampType": "TIMESTAMP",
-            "ArrayType": "BLOB",
-            "MapType": "BLOB",
-            "StructType": "BLOB",
-            "BinaryType": "BLOB",
-            "DecimalType": "DECIMAL",
-            "ShortType": "SMALLINT",
-            "ByteType": "TINYINT",
-            "NullType": "VARCHAR",
-        }
-        return type_mapping.get(data_type.__class__.__name__, "VARCHAR")
+        """Map MockSpark data type to DuckDB type (backwards compatibility).
+
+        This method is kept for backwards compatibility with existing tests.
+        Implementation delegated to DataFrameExporter.
+        """
+        from .export import DataFrameExporter
+
+        return DataFrameExporter._get_duckdb_type(data_type)
 
     def count(self) -> int:
         """Count number of rows."""
