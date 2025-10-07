@@ -1544,270 +1544,35 @@ class MockDataFrame:
 
     def _infer_select_schema(self, columns: Any) -> "MockStructType":
         """Infer schema for select operation."""
-        from ..spark_types import (
-            StringType,
-            LongType,
-            DoubleType,
-            IntegerType,
-            MockStructField,
-            MockStructType,
-        )
+        from .lazy import LazyEvaluationEngine
 
-        # Check if there are pending join operations
-        has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
-
-        new_fields = []
-        for col in columns:
-            if isinstance(col, str):
-                if col == "*":
-                    # Add all existing fields
-                    new_fields.extend(self.schema.fields)
-                else:
-                    # Use existing field, or add as StringType if not found (may come from join)
-                    found = False
-                    for field in self.schema.fields:
-                        if field.name == col:
-                            new_fields.append(field)
-                            found = True
-                            break
-                    if not found:
-                        # Column not in current schema, might come from join - add as StringType
-                        new_fields.append(MockStructField(col, StringType()))
-            elif hasattr(col, "operation") and hasattr(col, "column"):
-                # Handle MockColumnOperation
-                col_name = col.name
-
-                # Check operation type
-                if col.operation == "cast":
-                    # Cast operation - infer type from cast parameter
-                    cast_type = getattr(col, "value", "string")
-                    if isinstance(cast_type, str):
-                        # String type name, convert to actual type
-                        if cast_type.lower() in ["double", "float"]:
-                            new_fields.append(MockStructField(col_name, DoubleType()))
-                        elif cast_type.lower() in ["int", "integer", "long", "bigint"]:
-                            new_fields.append(MockStructField(col_name, LongType()))
-                        elif cast_type.lower() in ["string", "varchar"]:
-                            new_fields.append(MockStructField(col_name, StringType()))
-                        else:
-                            new_fields.append(MockStructField(col_name, StringType()))
-                    else:
-                        # Type object, use directly
-                        new_fields.append(MockStructField(col_name, cast_type))
-                elif col.operation in ["upper", "lower"]:
-                    new_fields.append(MockStructField(col_name, StringType()))
-                elif col.operation == "length":
-                    new_fields.append(MockStructField(col_name, IntegerType()))
-                elif col.operation == "split":
-                    # Split returns ArrayType of strings
-                    from ..spark_types import ArrayType
-
-                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
-                else:
-                    # Default to StringType for unknown operations
-                    new_fields.append(MockStructField(col_name, StringType()))
-            elif hasattr(col, "conditions") and hasattr(col, "default_value"):
-                # Handle MockCaseWhen objects
-                col_name = col.name
-                # CASE WHEN can return various types - infer from the default value or first condition
-                # For simplicity, check the default value type
-                if hasattr(col.default_value, "name"):
-                    # Default is a column reference - try to find its type
-                    found = False
-                    for field in self.schema.fields:
-                        if field.name == col.default_value.name:
-                            new_fields.append(MockStructField(col_name, field.dataType))
-                            found = True
-                            break
-                    if not found:
-                        new_fields.append(MockStructField(col_name, IntegerType()))
-                elif isinstance(col.default_value, int):
-                    new_fields.append(MockStructField(col_name, IntegerType()))
-                elif isinstance(col.default_value, float):
-                    new_fields.append(MockStructField(col_name, DoubleType()))
-                else:
-                    # Default to IntegerType for CASE WHEN (commonly used for numeric calculations)
-                    new_fields.append(MockStructField(col_name, IntegerType()))
-            elif hasattr(col, "name"):
-                # Handle MockColumn
-                col_name = col.name
-                if col_name == "*":
-                    # Add all existing fields
-                    new_fields.extend(self.schema.fields)
-                else:
-                    # Use existing field or add as string (may come from join)
-                    found = False
-                    for field in self.schema.fields:
-                        if field.name == col_name:
-                            new_fields.append(field)
-                            found = True
-                            break
-                    if not found:
-                        # Column not in current schema, might come from join - add as StringType
-                        new_fields.append(MockStructField(col_name, StringType()))
-
-        return MockStructType(new_fields)
+        return LazyEvaluationEngine._infer_select_schema(self, columns)
 
     def _infer_join_schema(self, join_params: Any) -> "MockStructType":
         """Infer schema for join operation."""
-        from ..spark_types import MockStructType
+        from .lazy import LazyEvaluationEngine
 
-        other_df, on, how = join_params
-
-        # Start with all fields from left DataFrame
-        new_fields = self.schema.fields.copy()
-
-        # Add fields from right DataFrame that aren't already present
-        for field in other_df.schema.fields:
-            if not any(f.name == field.name for f in new_fields):
-                new_fields.append(field)
-
-        return MockStructType(new_fields)
+        return LazyEvaluationEngine._infer_join_schema(self, join_params)
 
     def _queue_op(self, op_name: str, payload: Any) -> "MockDataFrame":
         """Queue an operation for lazy evaluation."""
-        # Infer new schema for select and join operations
-        new_schema = self.schema
-        if op_name == "select":
-            new_schema = self._infer_select_schema(payload)
-        elif op_name == "join":
-            new_schema = self._infer_join_schema(payload)
+        from .lazy import LazyEvaluationEngine
 
-        return MockDataFrame(
-            self.data,
-            new_schema,
-            self.storage,
-            is_lazy=True,
-            operations=self._operations_queue + [(op_name, payload)],
-        )
+        return LazyEvaluationEngine.queue_operation(self, op_name, payload)
 
     def _materialize_if_lazy(self) -> "MockDataFrame":
         """Apply queued operations using DuckDB's query optimizer."""
-        if not self._operations_queue:
-            return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
+        from .lazy import LazyEvaluationEngine
 
-        # Use SQLModel with DuckDB for better SQL generation and optimization
-        try:
-            from .sqlmodel_materializer import SQLModelMaterializer
-
-            materializer = SQLModelMaterializer()
-            try:
-                # Let SQLModel optimize and execute the operations
-                rows = materializer.materialize(self.data, self.schema, self._operations_queue)
-
-                # Convert rows back to data format
-                materialized_data = []
-                for row in rows:
-                    row_dict = row.asDict()
-
-                    # Convert values to match their declared schema types
-                    from ..spark_types import ArrayType, IntegerType, LongType, DoubleType
-
-                    for field in self.schema.fields:
-                        if field.name not in row_dict:
-                            continue
-
-                        value = row_dict[field.name]
-
-                        # Handle ArrayType
-                        if isinstance(field.dataType, ArrayType):
-                            # DuckDB may return arrays as strings like "['a', 'b']" or as lists
-                            if isinstance(value, str):
-                                # Try different array formats
-                                if value.startswith("[") and value.endswith("]"):
-                                    # Parse string representation of list: "['a', 'b']"
-                                    import ast
-
-                                    try:
-                                        row_dict[field.name] = ast.literal_eval(value)
-                                    except:
-                                        # If parsing fails, split manually
-                                        row_dict[field.name] = value[1:-1].split(",")
-                                elif value.startswith("{") and value.endswith("}"):
-                                    # PostgreSQL/DuckDB array format: "{a,b}"
-                                    row_dict[field.name] = value[1:-1].split(",")
-
-                        # Handle numeric types that come back as strings
-                        elif isinstance(field.dataType, (IntegerType, LongType)):
-                            if isinstance(value, str):
-                                try:
-                                    row_dict[field.name] = int(value)
-                                except (ValueError, TypeError):
-                                    pass  # Keep as string if conversion fails
-
-                        elif isinstance(field.dataType, DoubleType):
-                            if isinstance(value, str):
-                                try:
-                                    row_dict[field.name] = float(value)
-                                except (ValueError, TypeError):
-                                    pass  # Keep as string if conversion fails
-
-                    materialized_data.append(row_dict)
-
-                # Use the schema we already inferred during operation queuing
-                # This preserves correct types like ArrayType from operations like split()
-                updated_schema = self.schema
-
-                # Create new eager DataFrame with materialized data
-                return MockDataFrame(materialized_data, updated_schema, self.storage, is_lazy=False)
-            finally:
-                materializer.close()
-
-        except ImportError:
-            # Fallback to manual materialization if DuckDB is not available
-            return self._materialize_manual()
-
-    def _materialize_manual(self) -> "MockDataFrame":
-        """Fallback manual materialization when DuckDB is not available."""
-        current = MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
-        for op_name, op_val in self._operations_queue:
-            try:
-                if op_name == "filter":
-                    current = current.filter(op_val)  # eager path
-                elif op_name == "withColumn":
-                    col_name, col = op_val
-                    current = current.withColumn(col_name, col)  # eager path
-                elif op_name == "select":
-                    current = current.select(*op_val)  # eager path
-                elif op_name == "groupBy":
-                    current = current.groupBy(*op_val)  # eager path
-                elif op_name == "join":
-                    other_df, on, how = op_val
-                    current = current.join(other_df, on, how)  # eager path
-                elif op_name == "union":
-                    other_df = op_val
-                    current = current.union(other_df)  # eager path
-                elif op_name == "orderBy":
-                    current = current.orderBy(*op_val)  # eager path
-                else:
-                    # Unknown ops ignored for now
-                    continue
-            except Exception as e:
-                # If an operation fails due to column not found,
-                # it might be because the operation was queued but the column
-                # was removed by a previous operation. Skip this operation.
-                if "Column" in str(e) and "does not exist" in str(e):
-                    # Skip this operation - it's likely a dependency issue
-                    continue
-                else:
-                    # Re-raise other exceptions
-                    raise e
-        return current
+        return LazyEvaluationEngine.materialize(self)
 
     def _filter_depends_on_original_columns(self, filter_condition, original_schema) -> bool:
         """Check if a filter condition depends on original columns that might be removed by select."""
-        # Get the original column names from the provided schema
-        original_columns = {field.name for field in original_schema.fields}
+        from .lazy import LazyEvaluationEngine
 
-        # Check if the filter references any of the original columns
-        if hasattr(filter_condition, "column") and hasattr(filter_condition.column, "name"):
-            column_name = filter_condition.column.name
-            return column_name in original_columns
-        elif hasattr(filter_condition, "name"):
-            column_name = filter_condition.name
-            return column_name in original_columns
-
-        return True  # Default to early filter if we can't determine
+        return LazyEvaluationEngine._filter_depends_on_original_columns(
+            filter_condition, original_schema
+        )
 
     def groupBy(self, *columns: Union[str, MockColumn]) -> "MockGroupedData":
         """Group by columns."""
