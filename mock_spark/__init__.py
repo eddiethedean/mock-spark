@@ -93,15 +93,11 @@ from .performance_simulation import (
     create_memory_limited_simulator,
     create_high_performance_simulator,
 )
-from .data_generation import (
-    MockDataGenerator,
-    MockDataGeneratorBuilder,
-    create_test_data,
-    create_corrupted_data,
-    create_realistic_data,
-)
+# Data generation utilities available via:
+#   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
+# Not exported in main __all__ - use explicit import when needed
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
