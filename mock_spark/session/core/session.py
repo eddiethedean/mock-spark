@@ -101,10 +101,10 @@ class MockSparkSession:
             enable_lazy_evaluation=enable_lazy_evaluation,
         )
 
-        # Memory tracking (Phase 3)
-        self._tracked_dataframes: List[MockDataFrame] = []
-        self._approx_memory_usage_bytes: int = 0
-        self._benchmark_results: Dict[str, Dict[str, Any]] = {}
+        # Performance and memory tracking (delegated to SessionPerformanceTracker)
+        from ..performance_tracker import SessionPerformanceTracker
+
+        self._performance_tracker = SessionPerformanceTracker()
 
     @property
     def appName(self) -> str:
@@ -257,63 +257,27 @@ class MockSparkSession:
 
     def _track_dataframe(self, df: MockDataFrame) -> None:
         """Track DataFrame for approximate memory accounting."""
-        self._tracked_dataframes.append(df)
-        self._approx_memory_usage_bytes += self._estimate_dataframe_size(df)
-
-    def _estimate_dataframe_size(self, df: MockDataFrame) -> int:
-        """Very rough size estimate based on rows, columns, and value sizes."""
-        num_rows = len(df.data)
-        num_cols = len(df.schema.fields)
-        # assume ~32 bytes per cell average (key+value overhead), adjustable
-        return num_rows * num_cols * 32
+        self._performance_tracker.track_dataframe(df)
 
     def get_memory_usage(self) -> int:
         """Return approximate memory usage in bytes for tracked DataFrames."""
-        return self._approx_memory_usage_bytes
+        return self._performance_tracker.get_memory_usage()
 
     def clear_cache(self) -> None:
         """Clear tracked DataFrames to free memory accounting."""
-        self._tracked_dataframes.clear()
-        self._approx_memory_usage_bytes = 0
+        self._performance_tracker.clear_cache()
 
-    # ---------------------------
-    # Benchmarking API (Phase 3)
-    # ---------------------------
     def benchmark_operation(self, operation_name: str, func: Any, *args: Any, **kwargs: Any) -> Any:
         """Benchmark an operation and record simple telemetry.
 
         Returns the function result. Records duration (s), memory_used (bytes),
         and result_size when possible.
         """
-        import time
-
-        start_mem = self.get_memory_usage()
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        end_mem = self.get_memory_usage()
-
-        size: int = 1
-        try:
-            if hasattr(result, "count"):
-                size = int(result.count())
-            elif hasattr(result, "collect"):
-                size = len(result.collect())
-            elif hasattr(result, "__len__"):
-                size = len(result)
-        except Exception:
-            size = 1
-
-        self._benchmark_results[operation_name] = {
-            "duration_s": max(end_time - start_time, 0.0),
-            "memory_used_bytes": max(end_mem - start_mem, 0),
-            "result_size": size,
-        }
-        return result
+        return self._performance_tracker.benchmark_operation(operation_name, func, *args, **kwargs)
 
     def get_benchmark_results(self) -> Dict[str, Dict[str, Any]]:
         """Return a copy of the latest benchmark results."""
-        return dict(self._benchmark_results)
+        return self._performance_tracker.get_benchmark_results()
 
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
