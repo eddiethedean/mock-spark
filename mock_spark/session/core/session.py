@@ -231,11 +231,21 @@ class MockSparkSession:
 
         # Apply validation and optional type coercion per mode
         if isinstance(schema, MockStructType) and data:
+            from ...core.data_validation import DataValidator
+
+            validator = DataValidator(
+                schema,
+                validation_mode=self._engine_config.validation_mode,
+                enable_coercion=self._engine_config.enable_type_coercion,
+            )
+
+            # Validate if in strict mode
             if self._engine_config.validation_mode == "strict":
-                self._validate_data_matches_schema(data, schema)
-            # In relaxed/minimal modes, perform optional light coercion
+                validator.validate(data)
+
+            # Coerce if enabled
             if self._engine_config.enable_type_coercion:
-                data = self._coerce_data_to_schema(data, schema)
+                data = validator.coerce(data)
 
         df = MockDataFrame(data, schema, self.storage)  # type: ignore[return-value]
         # Track memory usage for newly created DataFrame
@@ -323,82 +333,8 @@ class MockSparkSession:
     # ---------------------------
     # Validation and Coercion
     # ---------------------------
-    def _validate_data_matches_schema(
-        self, data: List[Dict[str, Any]], schema: MockStructType
-    ) -> None:
-        """Validate that data rows conform to the provided schema.
-
-        Raises IllegalArgumentException on mismatches in strict mode.
-        """
-        field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}
-        for row in data:
-            if not isinstance(row, dict):
-                raise IllegalArgumentException("Strict mode requires dict rows after normalization")
-            # Ensure all schema fields present
-            for name in field_types.keys():
-                if name not in row:
-                    raise IllegalArgumentException(f"Missing required field '{name}' in row")
-            # Type check best-effort
-            for name, value in row.items():
-                if name not in field_types:
-                    raise IllegalArgumentException(f"Unexpected field '{name}' in row")
-                expected = field_types[name]
-                if value is None:
-                    continue
-                actual_py = type(value).__name__
-                # Accept numeric widenings (int->LongType, float->DoubleType)
-                if expected in ("LongType", "IntegerType") and isinstance(value, int):
-                    continue
-                if expected in ("DoubleType", "FloatType") and isinstance(value, (int, float)):
-                    continue
-                if expected == "StringType" and isinstance(value, str):
-                    continue
-                if expected == "BooleanType" and isinstance(value, bool):
-                    continue
-                # For complex types, skip deep validation for now
-                # Otherwise raise
-                raise IllegalArgumentException(
-                    f"Type mismatch for field '{name}': expected {expected}, got {actual_py}"
-                )
-
-    def _coerce_data_to_schema(
-        self, data: List[Dict[str, Any]], schema: MockStructType
-    ) -> List[Dict[str, Any]]:
-        """Coerce data types to match schema when possible (best-effort)."""
-        coerced: List[Dict[str, Any]] = []
-        field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}
-        for row in data:
-            if not isinstance(row, dict):
-                coerced.append(row)  # leave as-is if not normalized
-                continue
-            new_row: Dict[str, Any] = {}
-            for name in field_types.keys():
-                value = row.get(name)
-                expected = field_types[name]
-                new_row[name] = self._coerce_value(value, expected)
-            coerced.append(new_row)
-        return coerced
-
-    def _coerce_value(self, value: Any, expected_type_name: str) -> Any:
-        if value is None:
-            return None
-        try:
-            if expected_type_name in ("LongType", "IntegerType"):
-                return int(value)
-            if expected_type_name in ("DoubleType", "FloatType"):
-                return float(value)
-            if expected_type_name == "StringType":
-                return str(value)
-            if expected_type_name == "BooleanType":
-                if isinstance(value, bool):
-                    return value
-                if str(value).lower() in ("true", "1"):  # simple coercion
-                    return True
-                if str(value).lower() in ("false", "0"):
-                    return False
-        except Exception:
-            return value
-        return value
+    # NOTE: Validation and coercion logic extracted to DataValidator
+    # See: mock_spark/core/data_validation.py
 
     def sql(self, query: str) -> IDataFrame:
         """Execute SQL query (mockable version)."""
