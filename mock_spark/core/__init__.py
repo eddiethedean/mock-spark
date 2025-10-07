@@ -11,6 +11,7 @@ from .interfaces.session import ISession, ISparkContext, ICatalog
 from .interfaces.storage import IStorageManager, ITable, ISchema
 from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
 from .schema_inference import SchemaInferenceEngine, infer_schema_from_data
+from .data_validation import DataValidator, validate_data, coerce_data
 
 __all__ = [
     # Interfaces
@@ -29,4 +30,8 @@ __all__ = [
     # Schema Inference
     "SchemaInferenceEngine",
     "infer_schema_from_data",
+    # Data Validation
+    "DataValidator",
+    "validate_data",
+    "coerce_data",
 ]
