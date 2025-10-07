@@ -305,29 +305,28 @@ class MockDataFrame:
     # Test Helpers (Phase 4)
     # ---------------------------
     def assert_has_columns(self, expected_columns: List[str]) -> None:
-        actual_columns = self.columns
-        missing = set(expected_columns) - set(actual_columns)
-        if missing:
-            raise AssertionError(f"Missing columns: {sorted(missing)}")
+        """Assert that DataFrame has the expected columns."""
+        from .assertions import DataFrameAssertions
+
+        return DataFrameAssertions.assert_has_columns(self, expected_columns)
 
     def assert_row_count(self, expected_count: int) -> None:
-        actual_count = self.count()
-        if actual_count != expected_count:
-            raise AssertionError(f"Expected {expected_count} rows, got {actual_count}")
+        """Assert that DataFrame has the expected row count."""
+        from .assertions import DataFrameAssertions
+
+        return DataFrameAssertions.assert_row_count(self, expected_count)
 
     def assert_schema_matches(self, expected_schema: "MockStructType") -> None:
-        if len(self.schema.fields) != len(expected_schema.fields):
-            raise AssertionError(
-                f"Schema field count mismatch: {len(self.schema.fields)} != {len(expected_schema.fields)}"
-            )
-        for a, b in zip(self.schema.fields, expected_schema.fields):
-            if a.name != b.name or a.dataType.__class__ != b.dataType.__class__:
-                raise AssertionError(f"Schema mismatch: {a} != {b}")
+        """Assert that DataFrame schema matches the expected schema."""
+        from .assertions import DataFrameAssertions
+
+        return DataFrameAssertions.assert_schema_matches(self, expected_schema)
 
     def assert_data_equals(self, expected_data: List[Dict[str, Any]]) -> None:
-        actual = [r.asDict() for r in self.collect()]
-        if actual != expected_data:
-            raise AssertionError(f"Data mismatch: {actual} != {expected_data}")
+        """Assert that DataFrame data equals the expected data."""
+        from .assertions import DataFrameAssertions
+
+        return DataFrameAssertions.assert_data_equals(self, expected_data)
 
     def _project_schema_with_operations(self) -> MockStructType:
         """Compute schema after applying queued lazy operations."""
