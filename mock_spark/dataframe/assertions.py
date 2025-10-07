@@ -5,7 +5,11 @@ This module provides assertion methods for testing DataFrames.
 Extracted from dataframe.py to improve organization and maintainability.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..dataframe import MockDataFrame
+    from ...spark_types import MockStructType
 
 
 class DataFrameAssertions:

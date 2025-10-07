@@ -6,7 +6,10 @@ Extracted from session.py to improve organization.
 """
 
 import time
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mock_spark.dataframe import MockDataFrame
 
 
 class SessionPerformanceTracker:

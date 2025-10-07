@@ -5,7 +5,11 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mock_spark.dataframe import MockDataFrame
+    from mock_spark.spark_types import MockStructType
 
 
 class LazyEvaluationEngine:

@@ -5,7 +5,10 @@ This module handles exporting MockDataFrame to different formats like Pandas and
 Extracted from dataframe.py to improve organization and maintainability.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mock_spark.dataframe import MockDataFrame
 
 
 class DataFrameExporter:
