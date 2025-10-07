@@ -7,7 +7,7 @@ builder pattern implementation, and context management.
 
 from .session import MockSparkSession
 from .builder import MockSparkSessionBuilder
-from .context import MockSparkContext, MockJVMContext, MockJVMFunctions
+from ..context import MockSparkContext, MockJVMContext, MockJVMFunctions
 
 __all__ = [
     "MockSparkSession",
