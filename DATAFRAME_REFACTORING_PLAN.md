@@ -39,23 +39,23 @@
 
 ---
 
-### Phase 3: Lazy Evaluation 🔄 IN PROGRESS
-**Status**: Currently working on branch `refactor/dataframe-lazy`
+### Phase 3: Lazy Evaluation ✅ COMPLETE
+**Status**: Merged to main
 
-**To Extract**:
-- `dataframe/lazy.py` (~300 lines)
+**Extracted**:
+- `dataframe/lazy.py` (348 lines)
 - Methods:
-  - `_queue_op()` - Queue operations for lazy execution
-  - `_materialize_if_lazy()` - Materialize queued operations
+  - `queue_operation()` - Queue operations for lazy execution
+  - `materialize()` - Materialize queued operations via DuckDB
   - `_materialize_manual()` - Fallback materialization
+  - `_convert_materialized_rows()` - Type conversion helper
   - `_infer_select_schema()` - Infer schema for select ops
   - `_infer_join_schema()` - Infer schema for join ops
   - `_filter_depends_on_original_columns()` - Filter dependency check
-  - `withLazy()` - Toggle lazy evaluation
 
-**Expected Impact**:
-- dataframe.py: 3,902 → ~3,600 lines (-300 lines)
-- Much clearer organization
+**Actual Impact**:
+- dataframe.py: 3,902 → 3,667 lines (-235 lines, -6%)
+- LazyEvaluationEngine now handles all lazy logic
 
 ---
 
