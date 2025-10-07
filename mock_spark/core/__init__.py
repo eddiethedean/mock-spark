@@ -10,8 +10,10 @@ from .interfaces.dataframe import IDataFrame, IDataFrameWriter, IDataFrameReader
 from .interfaces.session import ISession, ISparkContext, ICatalog
 from .interfaces.storage import IStorageManager, ITable, ISchema
 from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
+from .schema_inference import SchemaInferenceEngine, infer_schema_from_data
 
 __all__ = [
+    # Interfaces
     "IDataFrame",
     "IDataFrameWriter",
     "IDataFrameReader",
@@ -24,4 +26,7 @@ __all__ = [
     "IFunction",
     "IColumnFunction",
     "IAggregateFunction",
+    # Schema Inference
+    "SchemaInferenceEngine",
+    "infer_schema_from_data",
 ]

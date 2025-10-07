@@ -206,48 +206,28 @@ class MockSparkSession:
                 data = reordered_data
 
         if schema is None:
-            # Infer schema from data
+            # Infer schema from data using SchemaInferenceEngine
             if not data:
                 # For empty dataset, create empty schema
                 schema = MockStructType([])
             else:
-                # Simple schema inference
+                # Check if data is in expected format
                 sample_row = data[0]
                 if not isinstance(sample_row, (dict, tuple)):
                     raise IllegalArgumentException("Data must be a list of dictionaries or tuples")
 
-                fields = []
                 if isinstance(sample_row, dict):
-                    # Dictionary format - sort keys alphabetically to match PySpark behavior
-                    sorted_keys = sorted(sample_row.keys())
-                    for key in sorted_keys:
-                        value = sample_row[key]
-                        field_type = self._infer_type(value)
-                        fields.append(MockStructField(key, field_type))
+                    # Use SchemaInferenceEngine for dictionary data
+                    from ...core.schema_inference import SchemaInferenceEngine
 
-                schema = MockStructType(fields)
-
-                # Reorder data rows to match schema (alphabetical key order)
-                if isinstance(sample_row, dict):
-                    reordered_data = []
-                    for row in data:
-                        if isinstance(row, dict):
-                            reordered_row = {key: row[key] for key in sorted_keys}
-                            reordered_data.append(reordered_row)
-                        else:
-                            reordered_data.append(row)
-                    data = reordered_data
+                    schema, data = SchemaInferenceEngine.infer_from_data(data)
                 elif isinstance(sample_row, tuple):
-                    # Convert tuples to dictionaries using schema field names
-                    reordered_data = []
-                    field_names = [field.name for field in schema.fields]
-                    for row in data:
-                        if isinstance(row, tuple):
-                            row_dict = {field_names[i]: row[i] for i in range(len(row))}
-                            reordered_data.append(row_dict)
-                        else:
-                            reordered_data.append(row)
-                    data = reordered_data
+                    # For tuples, we need column names - this should have been handled earlier
+                    # If we get here, it's an error
+                    raise IllegalArgumentException(
+                        "Cannot infer schema from tuples without column names. "
+                        "Please provide schema or use list of column names."
+                    )
 
         # Apply validation and optional type coercion per mode
         if isinstance(schema, MockStructType) and data:
@@ -328,40 +308,17 @@ class MockSparkSession:
     def _infer_type(self, value: Any) -> Any:
         """Infer data type from value.
 
+        Delegates to SchemaInferenceEngine for consistency.
+
         Args:
             value: Value to infer type from.
 
         Returns:
             Inferred data type.
         """
-        from ...spark_types import (
-            StringType,
-            LongType,
-            DoubleType,
-            BooleanType,
-            ArrayType,
-            MapType,
-        )
+        from ...core.schema_inference import SchemaInferenceEngine
 
-        if isinstance(value, bool):
-            return BooleanType()
-        elif isinstance(value, int):
-            return LongType()
-        elif isinstance(value, float):
-            return DoubleType()
-        elif isinstance(value, list):
-            # ArrayType - infer element type from first non-null element
-            element_type = StringType()  # Default to StringType
-            for item in value:
-                if item is not None:
-                    element_type = self._infer_type(item)
-                    break
-            return ArrayType(element_type)
-        elif isinstance(value, dict):
-            # MapType - assume string keys and string values for simplicity
-            return MapType(StringType(), StringType())
-        else:
-            return StringType()
+        return SchemaInferenceEngine._infer_type(value)
 
     # ---------------------------
     # Validation and Coercion
