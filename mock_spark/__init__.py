@@ -94,7 +94,7 @@ from .data_generation import (
     create_realistic_data,
 )
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
