@@ -2,9 +2,17 @@ import pytest
 
 
 def test_mockrow_index_and_key_access():
-    from mock_spark.spark_types import MockRow, MockStructType, MockStructField, StringType, LongType
+    from mock_spark.spark_types import (
+        MockRow,
+        MockStructType,
+        MockStructField,
+        StringType,
+        LongType,
+    )
 
-    schema = MockStructType([MockStructField("id", LongType()), MockStructField("name", StringType())])
+    schema = MockStructType(
+        [MockStructField("id", LongType()), MockStructField("name", StringType())]
+    )
     row = MockRow({"id": 1, "name": "Alice"}, schema)
 
     assert row[0] == 1
@@ -21,7 +29,9 @@ def test_create_dataframe_validation_and_coercion_strict_relaxed():
     from mock_spark import MockSparkSession
     from mock_spark.spark_types import MockStructType, MockStructField, LongType, StringType
 
-    schema = MockStructType([MockStructField("id", LongType()), MockStructField("name", StringType())])
+    schema = MockStructType(
+        [MockStructField("id", LongType()), MockStructField("name", StringType())]
+    )
 
     # relaxed: coercion should make it pass
     spark_relaxed = MockSparkSession(validation_mode="relaxed", enable_type_coercion=True)
@@ -39,11 +49,13 @@ def test_lazy_evaluation_filter_and_withcolumn_materialization():
     from mock_spark import MockSparkSession, F
 
     spark = MockSparkSession()
-    df = spark.createDataFrame([
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Carol"},
-    ])
+    df = spark.createDataFrame(
+        [
+            {"id": 1, "name": "Alice"},
+            {"id": 2, "name": "Bob"},
+            {"id": 3, "name": "Carol"},
+        ]
+    )
 
     lazy_df = df.withLazy(True).filter(F.col("id") > 1).withColumn("greeting", F.lit("hi"))
 
@@ -56,5 +68,3 @@ def test_lazy_evaluation_filter_and_withcolumn_materialization():
     assert names == ["Bob", "Carol"]
     greets = [r["greeting"] for r in mat]
     assert greets == ["hi", "hi"]
-
-

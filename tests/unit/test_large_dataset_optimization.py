@@ -8,4 +8,3 @@ def test_toDuckDB_uses_batch_insert_for_large_dataset():
     # Ensure toDuckDB runs without excessive per-row execution (functional smoke test)
     table = df.toDuckDB()
     assert isinstance(table, str) and len(table) > 0
-

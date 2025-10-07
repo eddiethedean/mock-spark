@@ -24,7 +24,6 @@ class StorageManagerFactory:
         """
         return MemoryStorageManager()
 
-
     @staticmethod
     def create_file_manager(base_path: str = "mock_spark_storage") -> IStorageManager:
         """Create a file storage manager.

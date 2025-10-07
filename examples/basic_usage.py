@@ -1,186 +1,131 @@
 #!/usr/bin/env python3
 """
-Basic usage example for Mock Spark.
+Basic Usage Example for Mock Spark
 
-This example demonstrates how to use the Mock Spark implementation
-for testing SparkForge without a real Spark session.
+Demonstrates core Mock Spark functionality with practical examples.
 
-Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
+Status: 388 tests passing (100%) | Production Ready | Version 1.0.0
 """
 
-from mock_spark import MockSparkSession
-from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
-    StringType,
-    IntegerType,
-    DoubleType,
-)
-from mock_spark.functions import F
+from mock_spark import MockSparkSession, F
+from mock_spark.window import MockWindow as Window
 
 
 def main():
     """Demonstrate basic Mock Spark usage."""
-    print("🚀 Mock Spark Basic Usage Example")
-    print("=" * 50)
+    print("🚀 Mock Spark - Basic Usage Example")
+    print("=" * 60)
 
-    # 1. Create Mock Spark Session
-    print("\n1. Creating Mock Spark Session...")
-    spark = MockSparkSession("MockSparkApp")
-    print(f"✓ Created session: {spark.app_name}")
+    # 1. Create Session
+    print("\n1️⃣  Creating Mock Spark Session...")
+    spark = MockSparkSession("BasicExample")
+    print(f"   ✓ Session created: {spark.app_name}")
 
-    # 2. Create Schema
-    print("\n2. Creating schema...")
-    schema = MockStructType(
-        [
-            MockStructField("id", IntegerType()),
-            MockStructField("name", StringType()),
-            MockStructField("age", IntegerType()),
-            MockStructField("salary", DoubleType()),
-        ]
-    )
-    print(f"✓ Created schema with {len(schema)} fields")
-
-    # 3. Create Sample Data
-    print("\n3. Creating sample data...")
+    # 2. Create DataFrame
+    print("\n2️⃣  Creating DataFrame...")
     data = [
-        {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0},
-        {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0},
-        {"id": 3, "name": "Charlie", "age": 35, "salary": 70000.0},
-        {"id": 4, "name": "Diana", "age": 28, "salary": 55000.0},
-        {"id": 5, "name": "Eve", "age": 32, "salary": 65000.0},
+        {"id": 1, "name": "Alice", "dept": "Engineering", "salary": 80000},
+        {"id": 2, "name": "Bob", "dept": "Sales", "salary": 75000},
+        {"id": 3, "name": "Charlie", "dept": "Engineering", "salary": 90000},
+        {"id": 4, "name": "Diana", "dept": "Marketing", "salary": 70000},
+        {"id": 5, "name": "Eve", "dept": "Sales", "salary": 85000},
     ]
-    print(f"✓ Created {len(data)} sample records")
-
-    # 4. Create DataFrame
-    print("\n4. Creating DataFrame...")
-    df = spark.createDataFrame(data, schema)
-    print(f"✓ Created DataFrame with {df.count()} rows and {len(df.columns)} columns")
-
-    # 5. Basic Operations
-    print("\n5. Basic DataFrame operations...")
-
-    # Show schema
-    print("\nSchema:")
+    df = spark.createDataFrame(data)
+    print(f"   ✓ Created DataFrame: {df.count()} rows, {len(df.columns)} columns")
+    
+    print("\n   Schema:")
     df.printSchema()
-
-    # Show data
-    print("\nData:")
+    
+    print("\n   Data:")
     df.show()
 
-    # 6. Filtering
-    print("\n6. Filtering operations...")
-
-    # Filter by age
-    young_employees = df.filter(F.col("age") < 30)
-    print(f"✓ Young employees (< 30): {young_employees.count()} rows")
-    young_employees.show()
-
-    # Filter by salary
-    high_earners = df.filter(F.col("salary") > 60000)
-    print(f"✓ High earners (> 60k): {high_earners.count()} rows")
+    # 3. Filtering
+    print("\n3️⃣  Filtering...")
+    high_earners = df.filter(F.col("salary") > 75000)
+    print(f"   ✓ Employees earning > $75k: {high_earners.count()}")
     high_earners.show()
 
-    # 7. Column Selection
-    print("\n7. Column selection...")
-
-    # Select specific columns
-    names_and_ages = df.select("name", "age")
-    print(f"✓ Selected name and age: {len(names_and_ages.columns)} columns")
-    names_and_ages.show()
-
-    # 8. Aggregations
-    print("\n8. Aggregation operations...")
-
-    # Group by age range and count
-    age_groups = df.groupBy("age").count()
-    print("✓ Age groups:")
-    age_groups.show()
-
-    # Average salary by age group
-    avg_salary = df.groupBy("age").avg("salary")
-    print("✓ Average salary by age:")
-    avg_salary.show()
-
-    # 9. Storage Operations
-    print("\n9. Storage operations...")
-
-    # Create schema
-    spark.storage.create_schema("hr")
-    print("✓ Created 'hr' schema")
-
-    # Save DataFrame as table
-    df.write.format("parquet").mode("overwrite").saveAsTable("hr.employees")
-    print("✓ Saved DataFrame as 'hr.employees' table")
-
-    # Query table
-    table_df = spark.table("hr.employees")
-    print(f"✓ Loaded table with {table_df.count()} rows")
-
-    # 10. Error Handling
-    print("\n10. Error handling demonstration...")
-
-    try:
-        # Try to select nonexistent column
-        df.select("nonexistent_column")
-    except Exception as e:
-        print(f"✓ Caught expected error: {type(e).__name__}: {e}")
-
-    try:
-        # Try to access nonexistent table
-        spark.table("nonexistent.table")
-    except Exception as e:
-        print(f"✓ Caught expected error: {type(e).__name__}: {e}")
-
-    # 11. New 0.3.0 Features
-    print("\n11. New 0.3.0 features demonstration...")
-
-    # String functions
-    print("✓ String functions:")
-    string_ops = df.select(
-        F.col("name"),
-        F.upper(F.col("name")).alias("upper_name"),
-        F.length(F.col("name")).alias("name_length"),
-    )
-    string_ops.show()
-
-    # Mathematical functions
-    print("✓ Mathematical functions:")
-    math_ops = df.select(
-        F.col("name"),
-        F.col("salary"),
+    # 4. Column Operations
+    print("\n4️⃣  Column Operations...")
+    result = df.select(
+        "name",
+        "salary",
         F.round(F.col("salary") / 1000, 1).alias("salary_k"),
-        F.sqrt(F.col("salary")).alias("salary_sqrt"),
+        F.upper(F.col("name")).alias("upper_name")
     )
-    math_ops.show()
+    print("   ✓ Applied transformations:")
+    result.show()
 
-    # Window functions
-    print("✓ Window functions:")
-    from mock_spark.window import MockWindow as Window
+    # 5. Aggregations
+    print("\n5️⃣  Aggregations...")
+    dept_stats = df.groupBy("dept").agg(
+        F.count("*").alias("count"),
+        F.avg("salary").alias("avg_salary"),
+        F.max("salary").alias("max_salary")
+    ).orderBy(F.desc("avg_salary"))
+    print("   ✓ Department statistics:")
+    dept_stats.show()
 
-    window_spec = Window.partitionBy("age").orderBy(F.desc("salary"))
-    window_ops = df.select(
-        F.col("name"), F.col("age"), F.col("salary"), F.row_number().over(window_spec).alias("rank")
+    # 6. Window Functions
+    print("\n6️⃣  Window Functions...")
+    window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
+    ranked = df.select(
+        "name",
+        "dept",
+        "salary",
+        F.row_number().over(window_spec).alias("rank")
     )
-    window_ops.show()
+    print("   ✓ Salary rankings by department:")
+    ranked.show()
 
-    # DataFrame enhancements
-    print("✓ DataFrame enhancements:")
-    print(f"  - isStreaming: {df.isStreaming}")
-    print(f"  - Schema fields: {len(df.schema.fields)}")
+    # 7. Joins
+    print("\n7️⃣  Joins...")
+    dept_data = [
+        {"dept": "Engineering", "location": "San Francisco"},
+        {"dept": "Sales", "location": "New York"},
+        {"dept": "Marketing", "location": "Boston"},
+    ]
+    dept_df = spark.createDataFrame(dept_data)
+    
+    joined = df.join(dept_df, "dept").select("name", "dept", "salary", "location")
+    print("   ✓ Joined with department locations:")
+    joined.show()
 
-    # Session enhancements
-    print("✓ Session enhancements:")
-    print(f"  - getOrCreate available: {hasattr(spark.builder, 'getOrCreate')}")
+    # 8. SQL Queries
+    print("\n8️⃣  SQL Queries...")
+    df.createOrReplaceTempView("employees")
+    # Simple SQL query
+    sql_result = spark.sql("SELECT name, dept, salary FROM employees WHERE salary > 80000")
+    print("   ✓ SQL query result (salary > 80k):")
+    sql_result.show()
 
-    # 12. Cleanup
-    print("\n12. Cleanup...")
+    # 9. Lazy Evaluation Demo
+    print("\n9️⃣  Lazy Evaluation...")
+    # Transformations are queued (not executed)
+    lazy_result = (df
+        .filter(F.col("salary") > 70000)
+        .select("name", "salary")
+        .orderBy(F.desc("salary"))
+    )
+    print("   ✓ Transformations queued (not executed yet)")
+    
+    # Action triggers execution
+    top_earners = lazy_result.collect()
+    print(f"   ✓ Action executed: {len(top_earners)} results")
+    for row in top_earners:
+        print(f"     - {row['name']}: ${row['salary']:,}")
+
+    # 10. Cleanup
+    print("\n🔟 Cleanup...")
     spark.stop()
-    print("✓ Stopped Mock Spark session")
+    print("   ✓ Session stopped")
 
-    print("\n🎉 Mock Spark example completed successfully!")
-    print("\nThis demonstrates that Mock Spark can be used to test")
-    print("SparkForge pipelines without requiring a real Spark cluster.")
+    print("\n✨ Example completed successfully!")
+    print("\n💡 Key Takeaways:")
+    print("   • Mock Spark provides drop-in PySpark replacement")
+    print("   • No JVM required - 10x faster tests")
+    print("   • Full API compatibility with lazy evaluation")
+    print("   • Perfect for unit testing and CI/CD")
 
 
 if __name__ == "__main__":

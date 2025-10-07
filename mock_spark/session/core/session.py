@@ -54,7 +54,13 @@ class MockSparkSession:
     builder: Optional["MockSparkSessionBuilder"] = None
     _singleton_session: Optional["MockSparkSession"] = None
 
-    def __init__(self, app_name: str = "MockSparkApp", validation_mode: str = "relaxed", enable_type_coercion: bool = True, enable_lazy_evaluation: bool = True):
+    def __init__(
+        self,
+        app_name: str = "MockSparkApp",
+        validation_mode: str = "relaxed",
+        enable_type_coercion: bool = True,
+        enable_lazy_evaluation: bool = True,
+    ):
         """Initialize MockSparkSession.
 
         Args:
@@ -77,6 +83,9 @@ class MockSparkSession:
 
         # Mockable method implementations
         self._createDataFrame_impl = self._real_createDataFrame
+        self._original_createDataFrame_impl = (
+            self._real_createDataFrame
+        )  # Store original for mock detection
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
         # Plugins (Phase 4)
@@ -136,9 +145,11 @@ class MockSparkSession:
                 except Exception:
                     pass
         df = self._createDataFrame_impl(data, schema)
-        # Apply lazy/eager mode based on session config
+        # Apply lazy/eager mode based on session config (but not for mocked returns)
+        # Check if this is a mocked return by seeing if _createDataFrame_impl is not the original
+        is_mocked = self._createDataFrame_impl != self._original_createDataFrame_impl
         try:
-            if hasattr(df, "withLazy"):
+            if not is_mocked and hasattr(df, "withLazy"):
                 lazy_enabled = getattr(self._engine_config, "enable_lazy_evaluation", True)
                 df = df.withLazy(lazy_enabled)
         except Exception:
@@ -355,7 +366,9 @@ class MockSparkSession:
     # ---------------------------
     # Validation and Coercion
     # ---------------------------
-    def _validate_data_matches_schema(self, data: List[Dict[str, Any]], schema: MockStructType) -> None:
+    def _validate_data_matches_schema(
+        self, data: List[Dict[str, Any]], schema: MockStructType
+    ) -> None:
         """Validate that data rows conform to the provided schema.
 
         Raises IllegalArgumentException on mismatches in strict mode.
@@ -391,7 +404,9 @@ class MockSparkSession:
                     f"Type mismatch for field '{name}': expected {expected}, got {actual_py}"
                 )
 
-    def _coerce_data_to_schema(self, data: List[Dict[str, Any]], schema: MockStructType) -> List[Dict[str, Any]]:
+    def _coerce_data_to_schema(
+        self, data: List[Dict[str, Any]], schema: MockStructType
+    ) -> List[Dict[str, Any]]:
         """Coerce data types to match schema when possible (best-effort)."""
         coerced: List[Dict[str, Any]] = []
         field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}

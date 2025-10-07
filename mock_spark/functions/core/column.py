@@ -59,6 +59,10 @@ class MockColumn:
             return MockColumnOperation(self, "==", other)
         return MockColumnOperation(self, "==", other)
 
+    def __hash__(self) -> int:
+        """Hash method to make MockColumn hashable."""
+        return hash((self.name, self.column_type))
+
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
         if isinstance(other, MockColumn):
@@ -249,32 +253,39 @@ class MockColumnOperation(IColumn):
 
     def _generate_name(self) -> str:
         """Generate a name for this operation."""
+        # Extract value from MockLiteral if needed
+        if hasattr(self.value, "value") and hasattr(self.value, "data_type"):
+            # This is a MockLiteral
+            value_str = str(self.value.value)
+        else:
+            value_str = str(self.value)
+
         if self.operation == "==":
-            return f"{self.column.name} = {self.value}"
+            return f"{self.column.name} = {value_str}"
         elif self.operation == "!=":
-            return f"{self.column.name} != {self.value}"
+            return f"{self.column.name} != {value_str}"
         elif self.operation == "<":
-            return f"{self.column.name} < {self.value}"
+            return f"{self.column.name} < {value_str}"
         elif self.operation == "<=":
-            return f"{self.column.name} <= {self.value}"
+            return f"{self.column.name} <= {value_str}"
         elif self.operation == ">":
-            return f"{self.column.name} > {self.value}"
+            return f"{self.column.name} > {value_str}"
         elif self.operation == ">=":
-            return f"{self.column.name} >= {self.value}"
+            return f"{self.column.name} >= {value_str}"
         elif self.operation == "+":
-            return f"({self.column.name} + {self.value})"
+            return f"({self.column.name} + {value_str})"
         elif self.operation == "-":
-            return f"({self.column.name} - {self.value})"
+            return f"({self.column.name} - {value_str})"
         elif self.operation == "*":
-            return f"({self.column.name} * {self.value})"
+            return f"({self.column.name} * {value_str})"
         elif self.operation == "/":
-            return f"({self.column.name} / {self.value})"
+            return f"({self.column.name} / {value_str})"
         elif self.operation == "%":
-            return f"({self.column.name} % {self.value})"
+            return f"({self.column.name} % {value_str})"
         elif self.operation == "&":
-            return f"({self.column.name} & {self.value})"
+            return f"({self.column.name} & {value_str})"
         elif self.operation == "|":
-            return f"({self.column.name} | {self.value})"
+            return f"({self.column.name} | {value_str})"
         elif self.operation == "!":
             return f"!{self.column.name}"
         elif self.operation == "isnull":

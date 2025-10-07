@@ -41,7 +41,7 @@ from .models import (
     StorageMode,
     DuckDBTableModel,
     StorageOperationResult,
-    QueryResult
+    QueryResult,
 )
 from .backends.file import FileStorageManager, FileTable, FileSchema
 

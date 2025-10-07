@@ -56,15 +56,10 @@ def test_lazy_materialization_equivalence():
     # PySpark eager pipeline
     spark = SparkSession.builder.appName("compat").getOrCreate()
     py_df = spark.createDataFrame(base_data)
-    py_eager = (
-        py_df.filter(sf.col("id") > 1)
-        .withColumn("greet", sf.lit("hi"))
-    )
+    py_eager = py_df.filter(sf.col("id") > 1).withColumn("greet", sf.lit("hi"))
 
     # Materialize mock and compare
     result = compare_dataframes(mock_lazy, py_eager, check_schema=True, check_data=True)
     assert result["equivalent"], result["errors"]
 
     spark.stop()
-
-

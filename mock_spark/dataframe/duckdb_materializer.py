@@ -13,40 +13,41 @@ from .sql_builder import SQLQueryBuilder
 
 class DuckDBMaterializer:
     """Materializes lazy DataFrames using DuckDB's query optimizer."""
-    
+
     def __init__(self):
         self.connection = duckdb.connect(":memory:")
         self._temp_table_counter = 0
-    
-    def materialize(self, data: List[Dict[str, Any]], schema: MockStructType, 
-                   operations: List[Tuple[str, Any]]) -> List[MockRow]:
+
+    def materialize(
+        self, data: List[Dict[str, Any]], schema: MockStructType, operations: List[Tuple[str, Any]]
+    ) -> List[MockRow]:
         """Materialize a lazy DataFrame using DuckDB optimization."""
         if not operations:
             # No operations to apply, return original data as rows
             return [MockRow(row) for row in data]
-        
+
         # Create a temporary table name
         temp_table = f"temp_table_{self._temp_table_counter}"
         self._temp_table_counter += 1
-        
+
         # Build SQL query from operations - use original schema for table creation
         builder = SQLQueryBuilder(temp_table, schema)
-        
+
         # Create initial temporary table with data
         create_sql = builder.create_temp_table_sql(data)
         if create_sql:
             self.connection.execute(create_sql)
-        
+
         current_table = builder.table_name
         temp_counter = 1
-        
+
         # Apply operations step by step, creating intermediate tables
         for op_name, op_val in operations:
             # Create a new builder for the next step
             next_table = f"temp_table_{self._temp_table_counter}_{temp_counter}"
             temp_counter += 1
             step_builder = SQLQueryBuilder(next_table, builder.schema)
-            
+
             if op_name == "filter":
                 step_builder.add_filter(op_val)
             elif op_name == "select":
@@ -65,28 +66,28 @@ class DuckDBMaterializer:
                 step_builder.add_union("other_table")
             elif op_name == "orderBy":
                 step_builder.add_order_by(op_val)
-            
+
             # Update the FROM clause to use the current table
             # We need to set the table_name to the current table for the FROM clause
             step_builder.table_name = current_table
-            
+
             # Execute this step
             step_sql = step_builder.build_sql()
             if step_sql:
                 # Create the result table for this step
-                create_step_sql = f"CREATE TEMPORARY TABLE \"{next_table}\" AS {step_sql}"
+                create_step_sql = f'CREATE TEMPORARY TABLE "{next_table}" AS {step_sql}'
                 if "PARTITION BY" in step_sql or "ORDER BY" in step_sql:
                     print(f"DEBUG: Window SQL - {create_step_sql}")
                 self.connection.execute(create_step_sql)
                 current_table = next_table
-        
+
         # Final query to get results from the last table
-        final_query = f"SELECT * FROM \"{current_table}\""
+        final_query = f'SELECT * FROM "{current_table}"'
         result = self.connection.execute(final_query).fetchall()
-        
+
         # Get column names
         columns = [desc[0] for desc in self.connection.execute(final_query).description]
-        
+
         # Convert to MockRow objects
         rows = []
         for row_data in result:
@@ -94,12 +95,12 @@ class DuckDBMaterializer:
             for i, value in enumerate(row_data):
                 row_dict[columns[i]] = value
             rows.append(MockRow(row_dict))
-        
+
         # Clean up temporary table
-        self.connection.execute(f"DROP TABLE IF EXISTS \"{temp_table}\"")
-        
+        self.connection.execute(f'DROP TABLE IF EXISTS "{temp_table}"')
+
         return rows
-    
+
     def close(self):
         """Close the DuckDB connection."""
         self.connection.close()

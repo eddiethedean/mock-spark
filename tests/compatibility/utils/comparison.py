@@ -48,10 +48,10 @@ def compare_dataframes(
         # Handle NumPy np.bool deprecation issue in PySpark's toPandas()
         try:
             pyspark_pandas = pyspark_df.toPandas()
-        except AttributeError as e:
-            if "module 'numpy' has no attribute 'bool'" in str(e):
+        except (AttributeError, TypeError) as e:
+            if "module 'numpy' has no attribute 'bool'" in str(e) or "unhashable type" in str(e):
                 # Fallback: convert PySpark DataFrame to pandas manually
-                # This is a workaround for the NumPy deprecation issue
+                # This is a workaround for the NumPy deprecation issue or unhashable types
                 pyspark_pandas = pyspark_df.collect()
                 if pyspark_pandas:
                     pyspark_pandas = pd.DataFrame([row.asDict() for row in pyspark_pandas])
@@ -106,15 +106,19 @@ def compare_dataframes(
             # Sort dataframes by all columns to ensure consistent ordering
             # Skip sorting if there are complex data types (lists, dicts) as they're unhashable
             has_complex_data = False
-            for col in mock_pandas.columns:
-                if len(mock_pandas[col]) > 0:
-                    try:
-                        first_val = mock_pandas[col].iloc[0]
-                        if isinstance(first_val, (list, dict)):
-                            has_complex_data = True
-                            break
-                    except:
-                        pass
+            try:
+                for col in mock_pandas.columns:
+                    if len(mock_pandas[col]) > 0:
+                        try:
+                            first_val = mock_pandas[col].iloc[0]
+                            if isinstance(first_val, (list, dict)):
+                                has_complex_data = True
+                                break
+                        except Exception:
+                            pass
+            except Exception:
+                # If we can't check for complex data, assume it exists to skip sorting
+                has_complex_data = True
 
             if has_complex_data:
                 # Don't sort complex data - use as is
@@ -169,11 +173,33 @@ def compare_dataframes(
                             pass
 
                     if is_complex_data:
-                        # Complex data comparison - convert to string for comparison
+                        # Complex data comparison - element-wise comparison for lists
                         try:
-                            mock_str = mock_non_null.astype(str)
-                            pyspark_str = pyspark_non_null.astype(str)
-                            if not mock_str.equals(pyspark_str):
+                            all_match = True
+                            for idx in range(len(mock_non_null)):
+                                mock_val = mock_non_null.iloc[idx]
+                                pyspark_val = pyspark_non_null.iloc[idx]
+
+                                # Compare lists element by element
+                                if isinstance(mock_val, list) and isinstance(pyspark_val, list):
+                                    if len(mock_val) != len(pyspark_val):
+                                        all_match = False
+                                        break
+                                    if mock_val != pyspark_val:
+                                        all_match = False
+                                        break
+                                # Compare dicts
+                                elif isinstance(mock_val, dict) and isinstance(pyspark_val, dict):
+                                    if mock_val != pyspark_val:
+                                        all_match = False
+                                        break
+                                # Fallback to string comparison
+                                else:
+                                    if str(mock_val) != str(pyspark_val):
+                                        all_match = False
+                                        break
+
+                            if not all_match:
                                 result["equivalent"] = False
                                 result["errors"].append(f"Complex values differ in column '{col}'")
                         except Exception as complex_e:
@@ -373,13 +399,27 @@ def compare_data_types(mock_type: Any, pyspark_type: Any) -> Dict[str, Any]:
         # consider them equivalent for compatibility
         if expected_pyspark_name != pyspark_type_name:
             # Special case: PySpark often treats literals as strings
-            if pyspark_type_name == "StringType" and expected_pyspark_name in ["IntegerType", "LongType", "DoubleType", "BooleanType"]:
+            if pyspark_type_name == "StringType" and expected_pyspark_name in [
+                "IntegerType",
+                "LongType",
+                "DoubleType",
+                "BooleanType",
+            ]:
                 # This is acceptable - PySpark treats literals as strings by default
-                details["type_compatibility_note"] = f"PySpark treats literals as StringType, Mock Spark uses {expected_pyspark_name}"
+                details["type_compatibility_note"] = (
+                    f"PySpark treats literals as StringType, Mock Spark uses {expected_pyspark_name}"
+                )
             # Also handle the reverse case: Mock Spark returns StringType but PySpark has a more specific type
-            elif expected_pyspark_name == "StringType" and pyspark_type_name in ["IntegerType", "LongType", "DoubleType", "BooleanType"]:
+            elif expected_pyspark_name == "StringType" and pyspark_type_name in [
+                "IntegerType",
+                "LongType",
+                "DoubleType",
+                "BooleanType",
+            ]:
                 # This is also acceptable - Mock Spark treats literals as strings by default
-                details["type_compatibility_note"] = f"Mock Spark treats literals as StringType, PySpark uses {pyspark_type_name}"
+                details["type_compatibility_note"] = (
+                    f"Mock Spark treats literals as StringType, PySpark uses {pyspark_type_name}"
+                )
             else:
                 result["equivalent"] = False
                 result["errors"].append(

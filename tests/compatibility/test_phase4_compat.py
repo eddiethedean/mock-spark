@@ -41,4 +41,3 @@ def test_schema_string_generator_compat_columns_and_count():
     assert mock_df.count() == pys_df.count()
 
     spark.stop()
-

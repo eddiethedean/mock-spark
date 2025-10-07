@@ -12,4 +12,3 @@ def test_memory_tracking_and_clear_cache():
 
     spark.clear_cache()
     assert spark.get_memory_usage() == 0
-

@@ -17,4 +17,3 @@ def test_benchmarking_api_runs_and_returns_results():
     pys_df = spark.createDataFrame(base)
     pys_df.filter(sf.col("id") > 1).collect()
     spark.stop()
-

@@ -43,6 +43,10 @@ class MockGroupedData:
         Returns:
             New MockDataFrame with aggregated results.
         """
+        # Materialize the DataFrame if it's lazy
+        if self.df.is_lazy:
+            self.df = self.df._materialize_if_lazy()
+
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in self.df.data:
@@ -158,11 +162,33 @@ class MockGroupedData:
         alias_name = expr.name if has_alias else None
 
         if func_name == "sum":
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            # Extract and convert values to numeric type
+            values = []
+            for row in group_rows:
+                val = row.get(col_name)
+                if val is not None:
+                    # Convert to numeric type if it's a string representation
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue  # Skip non-numeric strings
+                    values.append(val)
             result_key = alias_name if alias_name else f"sum({col_name})"
             return result_key, sum(values) if values else 0
         elif func_name == "avg":
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            # Extract and convert values to numeric type
+            values = []
+            for row in group_rows:
+                val = row.get(col_name)
+                if val is not None:
+                    # Convert to numeric type if it's a string representation
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue  # Skip non-numeric strings
+                    values.append(val)
             result_key = alias_name if alias_name else f"avg({col_name})"
             return result_key, sum(values) / len(values) if values else 0
         elif func_name == "count":

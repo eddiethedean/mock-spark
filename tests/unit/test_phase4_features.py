@@ -3,7 +3,9 @@ def test_dataframe_test_helpers():
     from mock_spark.spark_types import MockStructType, MockStructField, LongType, StringType
 
     spark = MockSparkSession()
-    schema = MockStructType([MockStructField("id", LongType()), MockStructField("name", StringType())])
+    schema = MockStructType(
+        [MockStructField("id", LongType()), MockStructField("name", StringType())]
+    )
     df = spark.createDataFrame([{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], schema)
 
     # Helpers should not raise
@@ -18,7 +20,9 @@ def test_schema_string_generator():
     from mock_spark.testing.generators import create_dataframe_from_schema_string
 
     spark = MockSparkSession()
-    df = create_dataframe_from_schema_string(spark, "id:int,name:string,active:boolean", row_count=5)
+    df = create_dataframe_from_schema_string(
+        spark, "id:int,name:string,active:boolean", row_count=5
+    )
     assert df.count() == 5
     assert set(df.columns) == {"id", "name", "active"}
 
@@ -38,10 +42,13 @@ def test_plugin_hooks_modify_data():
             else:
                 try:
                     from mock_spark.spark_types import MockStructField, LongType, MockStructType
+
                     if isinstance(schema, MockStructType):
                         names = [f.name for f in schema.fields]
                         if "added" not in names:
-                            schema = MockStructType(schema.fields + [MockStructField("added", LongType())])
+                            schema = MockStructType(
+                                schema.fields + [MockStructField("added", LongType())]
+                            )
                 except Exception:
                     pass
             return data, schema
@@ -56,4 +63,3 @@ def test_plugin_hooks_modify_data():
 
     df = spark.createDataFrame([{"x": 1}, {"x": 2}], ["x"])
     df.assert_has_columns(["x", "added"])
-

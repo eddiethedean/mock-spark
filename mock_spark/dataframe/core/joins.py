@@ -288,7 +288,7 @@ class DataFrameJoins:
     def _inner_join(self, other: "MockDataFrame", on: List[str]) -> "MockDataFrame":
         """Perform inner join using DuckDB SQL optimization when available."""
         # Try to use DuckDB SQL optimization if storage manager supports it
-        if hasattr(self.storage, 'connection') and hasattr(self.storage.connection, 'execute'):
+        if hasattr(self.storage, "connection") and hasattr(self.storage.connection, "execute"):
             return self._duckdb_sql_join(other, on, "INNER")
         else:
             # Fallback to optimized Python implementation
@@ -297,7 +297,7 @@ class DataFrameJoins:
     def _left_join(self, other: "MockDataFrame", on: List[str]) -> "MockDataFrame":
         """Perform left join using DuckDB SQL optimization when available."""
         # Try to use DuckDB SQL optimization if storage manager supports it
-        if hasattr(self.storage, 'connection') and hasattr(self.storage.connection, 'execute'):
+        if hasattr(self.storage, "connection") and hasattr(self.storage.connection, "execute"):
             return self._duckdb_sql_join(other, on, "LEFT")
         else:
             # Fallback to optimized Python implementation
@@ -306,7 +306,7 @@ class DataFrameJoins:
     def _right_join(self, other: "MockDataFrame", on: List[str]) -> "MockDataFrame":
         """Perform right join using DuckDB SQL optimization when available."""
         # Try to use DuckDB SQL optimization if storage manager supports it
-        if hasattr(self.storage, 'connection') and hasattr(self.storage.connection, 'execute'):
+        if hasattr(self.storage, "connection") and hasattr(self.storage.connection, "execute"):
             return self._duckdb_sql_join(other, on, "RIGHT")
         else:
             # Fallback to optimized Python implementation
@@ -315,38 +315,41 @@ class DataFrameJoins:
     def _outer_join(self, other: "MockDataFrame", on: List[str]) -> "MockDataFrame":
         """Perform outer join using DuckDB SQL optimization when available."""
         # Try to use DuckDB SQL optimization if storage manager supports it
-        if hasattr(self.storage, 'connection') and hasattr(self.storage.connection, 'execute'):
+        if hasattr(self.storage, "connection") and hasattr(self.storage.connection, "execute"):
             return self._duckdb_sql_join(other, on, "FULL OUTER")
         else:
             # Fallback to optimized Python implementation
             return self._python_optimized_join(other, on, "outer")
-    def _duckdb_sql_join(self, other: "MockDataFrame", on: List[str], join_type: str) -> "MockDataFrame":
+
+    def _duckdb_sql_join(
+        self, other: "MockDataFrame", on: List[str], join_type: str
+    ) -> "MockDataFrame":
         """Perform join using DuckDB SQL for optimal performance."""
         import time
         import uuid
-        
+
         # Generate unique table names to avoid conflicts
         left_table = f"left_{uuid.uuid4().hex[:8]}"
         right_table = f"right_{uuid.uuid4().hex[:8]}"
-        
+
         try:
             # Create temporary tables in DuckDB
             self._create_temp_table(left_table, self.data, self.schema)
             self._create_temp_table(right_table, other.data, other.schema)
-            
+
             # Build join condition
             join_conditions = " AND ".join([f"l.{col} = r.{col}" for col in on])
-            
+
             # Build column selection (avoid duplicates)
             left_cols = [f"l.{field.name} as {field.name}" for field in self.schema.fields]
             right_cols = []
             for field in other.schema.fields:
                 if not any(f.name == field.name for f in self.schema.fields):
                     right_cols.append(f"r.{field.name} as {field.name}")
-            
+
             all_cols = left_cols + right_cols
             select_clause = ", ".join(all_cols)
-            
+
             # Execute SQL join
             sql = f"""
             SELECT {select_clause}
@@ -354,25 +357,27 @@ class DataFrameJoins:
             {join_type} JOIN {right_table} r
             ON {join_conditions}
             """
-            
+
             result = self.storage.connection.execute(sql).fetchall()
-            
+
             # Convert result to list of dictionaries
-            column_names = [field.name for field in self.schema.fields] + \
-                          [field.name for field in other.schema.fields 
-                           if not any(f.name == field.name for f in self.schema.fields)]
-            
+            column_names = [field.name for field in self.schema.fields] + [
+                field.name
+                for field in other.schema.fields
+                if not any(f.name == field.name for f in self.schema.fields)
+            ]
+
             joined_data = [dict(zip(column_names, row)) for row in result]
-            
+
             # Create new schema
             new_fields = self.schema.fields.copy()
             for field in other.schema.fields:
                 if not any(f.name == field.name for f in new_fields):
                     new_fields.append(field)
-            
+
             new_schema = MockStructType(new_fields)
             return MockDataFrame(joined_data, new_schema, self.storage)
-            
+
         finally:
             # Clean up temporary tables
             try:
@@ -381,30 +386,31 @@ class DataFrameJoins:
             except:
                 pass  # Ignore cleanup errors
 
-    def _create_temp_table(self, table_name: str, data: List[Dict[str, Any]], schema: MockStructType) -> None:
+    def _create_temp_table(
+        self, table_name: str, data: List[Dict[str, Any]], schema: MockStructType
+    ) -> None:
         """Create a temporary table in DuckDB with the given data."""
         if not data:
             return
-            
+
         # Create table schema
         columns_sql = ", ".join(
-            f"{field.name} {self._get_duckdb_type(field.dataType)}"
-            for field in schema.fields
+            f"{field.name} {self._get_duckdb_type(field.dataType)}" for field in schema.fields
         )
         create_sql = f"CREATE TEMPORARY TABLE {table_name} ({columns_sql})"
         self.storage.connection.execute(create_sql)
-        
+
         # Insert data
         if data:
             columns = ", ".join(data[0].keys())
             placeholders = ", ".join(["?"] * len(data[0]))
             insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            
+
             rows_to_insert = []
             for row_dict in data:
                 ordered_values = [row_dict[col] for col in data[0].keys()]
                 rows_to_insert.append(tuple(ordered_values))
-            
+
             self.storage.connection.executemany(insert_sql, rows_to_insert)
 
     def _get_duckdb_type(self, spark_type: Any) -> str:
@@ -428,7 +434,9 @@ class DataFrameJoins:
         }
         return type_mapping.get(spark_type.__class__.__name__, "VARCHAR")
 
-    def _python_optimized_join(self, other: "MockDataFrame", on: List[str], join_type: str) -> "MockDataFrame":
+    def _python_optimized_join(
+        self, other: "MockDataFrame", on: List[str], join_type: str
+    ) -> "MockDataFrame":
         """Optimized Python join implementation using hash-based lookup."""
         # Create hash maps for faster lookups
         if join_type == "inner":
@@ -451,7 +459,7 @@ class DataFrameJoins:
             if key not in right_hash:
                 right_hash[key] = []
             right_hash[key].append((i, right_row))
-        
+
         # Perform join
         joined_data = []
         for left_row in self.data:
@@ -461,13 +469,13 @@ class DataFrameJoins:
                     joined_row = left_row.copy()
                     joined_row.update(right_row)
                     joined_data.append(joined_row)
-        
+
         # Create new schema
         new_fields = self.schema.fields.copy()
         for field in other.schema.fields:
             if not any(f.name == field.name for f in new_fields):
                 new_fields.append(field)
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(joined_data, new_schema, self.storage)
 
@@ -480,7 +488,7 @@ class DataFrameJoins:
             if key not in right_hash:
                 right_hash[key] = []
             right_hash[key].append((i, right_row))
-        
+
         # Perform join
         joined_data = []
         for left_row in self.data:
@@ -497,13 +505,13 @@ class DataFrameJoins:
                     if field.name not in joined_row:
                         joined_row[field.name] = None
                 joined_data.append(joined_row)
-        
+
         # Create new schema
         new_fields = self.schema.fields.copy()
         for field in other.schema.fields:
             if not any(f.name == field.name for f in new_fields):
                 new_fields.append(field)
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(joined_data, new_schema, self.storage)
 
@@ -516,7 +524,7 @@ class DataFrameJoins:
             if key not in left_hash:
                 left_hash[key] = []
             left_hash[key].append((i, left_row))
-        
+
         # Perform join
         joined_data = []
         for right_row in other.data:
@@ -533,13 +541,13 @@ class DataFrameJoins:
                     joined_row[field.name] = None
                 joined_row.update(right_row)
                 joined_data.append(joined_row)
-        
+
         # Create new schema
         new_fields = self.schema.fields.copy()
         for field in other.schema.fields:
             if not any(f.name == field.name for f in new_fields):
                 new_fields.append(field)
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(joined_data, new_schema, self.storage)
 
@@ -548,24 +556,24 @@ class DataFrameJoins:
         # Build hash maps for both DataFrames
         left_hash = {}
         right_hash = {}
-        
+
         for i, left_row in enumerate(self.data):
             key = tuple(left_row.get(col) for col in on)
             if key not in left_hash:
                 left_hash[key] = []
             left_hash[key].append((i, left_row))
-        
+
         for i, right_row in enumerate(other.data):
             key = tuple(right_row.get(col) for col in on)
             if key not in right_hash:
                 right_hash[key] = []
             right_hash[key].append((i, right_row))
-        
+
         # Perform join
         joined_data = []
         matched_left_keys = set()
         matched_right_keys = set()
-        
+
         # Find all matches
         for key in left_hash:
             if key in right_hash:
@@ -576,7 +584,7 @@ class DataFrameJoins:
                         joined_row = left_row.copy()
                         joined_row.update(right_row)
                         joined_data.append(joined_row)
-        
+
         # Add unmatched left rows
         for key in left_hash:
             if key not in matched_left_keys:
@@ -586,7 +594,7 @@ class DataFrameJoins:
                         if field.name not in joined_row:
                             joined_row[field.name] = None
                     joined_data.append(joined_row)
-        
+
         # Add unmatched right rows
         for key in right_hash:
             if key not in matched_right_keys:
@@ -596,12 +604,12 @@ class DataFrameJoins:
                         joined_row[field.name] = None
                     joined_row.update(right_row)
                     joined_data.append(joined_row)
-        
+
         # Create new schema
         new_fields = self.schema.fields.copy()
         for field in other.schema.fields:
             if not any(f.name == field.name for f in new_fields):
                 new_fields.append(field)
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(joined_data, new_schema, self.storage)

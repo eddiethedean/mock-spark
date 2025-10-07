@@ -58,6 +58,10 @@ class MockDataType:
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, self.__class__) and self.nullable == other.nullable
 
+    def __hash__(self) -> int:
+        """Hash method to make MockDataType hashable."""
+        return hash((self.__class__.__name__, self.nullable))
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(nullable={self.nullable})"
 

@@ -12,7 +12,7 @@ from mock_spark.spark_types import MockStructType
 
 class AnalyticsEngine:
     """High-performance analytics engine using SQLModel with DuckDB."""
-    
+
     def __init__(self, db_path: str = ":memory:"):
         """Initialize analytics engine with SQLModel and DuckDB.
 
@@ -47,32 +47,32 @@ class AnalyticsEngine:
             self.connection.execute("LOAD sqlite")
         except:
             pass  # Extensions might not be available
-    
+
     def register_dataframe(self, df: MockDataFrame, table_name: str = None) -> str:
         """Register a DataFrame for analytical operations.
-        
+
         Args:
             df: MockDataFrame to register
             table_name: Name for the table (auto-generated if None)
-            
+
         Returns:
             Table name in DuckDB
         """
         if table_name is None:
             table_name = f"analytics_df_{id(df)}"
-        
+
         # Use DataFrame's toDuckDB method with SQLModel engine
         actual_table_name = df.toDuckDB(self.engine, table_name)
         self._temp_tables[actual_table_name] = df
-        
+
         return actual_table_name
-    
+
     def execute_analytical_query(self, query: str) -> List[Dict[str, Any]]:
         """Execute a raw analytical SQL query.
-        
+
         Args:
             query: SQL query to execute
-            
+
         Returns:
             List of result dictionaries
         """
@@ -85,27 +85,24 @@ class AnalyticsEngine:
             return [dict(zip(columns, row)) for row in result]
         except Exception as e:
             raise ValueError(f"Analytical query failed: {e}") from e
-    
+
     def aggregate_by_group(
-        self, 
-        table_name: str, 
-        group_columns: List[str], 
-        aggregations: Dict[str, str]
+        self, table_name: str, group_columns: List[str], aggregations: Dict[str, str]
     ) -> List[Dict[str, Any]]:
         """Perform grouped aggregations.
-        
+
         Args:
             table_name: Name of the registered table
             group_columns: Columns to group by
             aggregations: Dict of column -> aggregation function
-            
+
         Returns:
             Aggregated results
         """
         agg_parts = []
         for column, func in aggregations.items():
             agg_parts.append(f"{func.upper()}({column}) as {column}_{func}")
-        
+
         query = f"""
             SELECT 
                 {', '.join(group_columns)},
@@ -114,60 +111,62 @@ class AnalyticsEngine:
             GROUP BY {', '.join(group_columns)}
             ORDER BY {group_columns[0]}
         """
-        
+
         return self.execute_analytical_query(query)
-    
+
     def window_functions(
         self,
         table_name: str,
         window_columns: List[str],
         partition_by: List[str],
         order_by: List[str],
-        window_functions: Dict[str, str]
+        window_functions: Dict[str, str],
     ) -> List[Dict[str, Any]]:
         """Apply window functions.
-        
+
         Args:
             table_name: Name of the registered table
             window_columns: Columns to include in result
             partition_by: Columns to partition by
             order_by: Columns to order by
             window_functions: Dict of column -> window function
-            
+
         Returns:
             Results with window functions applied
         """
         # Build window function columns
         window_cols = []
         for column, func in window_functions.items():
-            window_cols.append(f"{func}() OVER (PARTITION BY {', '.join(partition_by)} ORDER BY {', '.join(order_by)}) as {column}_{func.lower()}")
-        
+            window_cols.append(
+                f"{func}() OVER (PARTITION BY {', '.join(partition_by)} ORDER BY {', '.join(order_by)}) as {column}_{func.lower()}"
+            )
+
         # Combine all columns
         all_columns = window_columns + window_cols
-        
+
         query = f"""
             SELECT {', '.join(all_columns)}
             FROM {table_name}
             ORDER BY {', '.join(order_by)}
         """
-        
+
         return self.execute_analytical_query(query)
-    
+
     def time_series_analysis(
         self,
         table_name: str,
         time_column: str,
         value_column: str,
-        group_by: Optional[List[str]] = None
+        group_by: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Perform time series analysis.
-        
+
         Args:
             table_name: Name of the registered table
             time_column: Column containing time data
             value_column: Column containing values to analyze
             group_by: Optional columns to group by
-            
+
         Returns:
             Time series analysis results
         """
@@ -176,7 +175,7 @@ class AnalyticsEngine:
         if group_by:
             group_select = f"{', '.join(group_by)}, "
             group_clause = f"GROUP BY {', '.join(group_by)}"
-        
+
         query = f"""
             SELECT 
                 {group_select}
@@ -190,26 +189,22 @@ class AnalyticsEngine:
             {group_clause}
             ORDER BY {', '.join(group_by + [time_column]) if group_by else time_column}
         """
-        
+
         return self.execute_analytical_query(query)
-    
-    def correlation_analysis(
-        self,
-        table_name: str,
-        columns: List[str]
-    ) -> List[Dict[str, Any]]:
+
+    def correlation_analysis(self, table_name: str, columns: List[str]) -> List[Dict[str, Any]]:
         """Perform correlation analysis between columns.
-        
+
         Args:
             table_name: Name of the registered table
             columns: Columns to analyze correlations for
-            
+
         Returns:
             Correlation matrix
         """
         # Create correlation matrix using DuckDB's statistical functions
         correlations = []
-        
+
         for i, col1 in enumerate(columns):
             for j, col2 in enumerate(columns):
                 if i <= j:  # Only compute upper triangle
@@ -221,29 +216,27 @@ class AnalyticsEngine:
                         FROM {table_name}
                         WHERE {col1} IS NOT NULL AND {col2} IS NOT NULL
                     """
-                    
+
                     result = self.execute_analytical_query(query)
-                    if result and result[0]['correlation'] is not None:
+                    if result and result[0]["correlation"] is not None:
                         correlations.append(result[0])
-        
+
         return correlations
-    
+
     def statistical_summary(
-        self,
-        table_name: str,
-        numeric_columns: List[str]
+        self, table_name: str, numeric_columns: List[str]
     ) -> List[Dict[str, Any]]:
         """Generate statistical summary for numeric columns.
-        
+
         Args:
             table_name: Name of the registered table
             numeric_columns: Numeric columns to summarize
-            
+
         Returns:
             Statistical summaries
         """
         summaries = []
-        
+
         for column in numeric_columns:
             query = f"""
                 SELECT 
@@ -260,16 +253,16 @@ class AnalyticsEngine:
                 FROM {table_name}
                 WHERE {column} IS NOT NULL
             """
-            
+
             result = self.execute_analytical_query(query)
             if result:
                 summaries.append(result[0])
-        
+
         return summaries
-    
+
     def create_view(self, view_name: str, query: str) -> None:
         """Create a view for complex queries.
-        
+
         Args:
             view_name: Name of the view
             query: SQL query to create the view
@@ -277,20 +270,20 @@ class AnalyticsEngine:
         with Session(self.engine) as session:
             session.exec(text(f"CREATE VIEW {view_name} AS {query}"))
             session.commit()
-    
+
     def drop_view(self, view_name: str) -> None:
         """Drop a view.
-        
+
         Args:
             view_name: Name of the view to drop
         """
         with Session(self.engine) as session:
             session.exec(text(f"DROP VIEW IF EXISTS {view_name}"))
             session.commit()
-    
+
     def export_to_parquet(self, table_name: str, file_path: str) -> None:
         """Export table to Parquet format.
-        
+
         Args:
             table_name: Name of the table to export
             file_path: Path for the Parquet file
@@ -298,10 +291,10 @@ class AnalyticsEngine:
         query = f"COPY {table_name} TO '{file_path}' (FORMAT PARQUET)"
         # Use raw DuckDB connection directly to avoid connection conflicts
         self.connection.execute(query)
-    
+
     def export_to_csv(self, table_name: str, file_path: str) -> None:
         """Export table to CSV format.
-        
+
         Args:
             table_name: Name of the table to export
             file_path: Path for the CSV file
@@ -309,7 +302,7 @@ class AnalyticsEngine:
         query = f"COPY {table_name} TO '{file_path}' (FORMAT CSV, HEADER)"
         # Use raw DuckDB connection directly to avoid connection conflicts
         self.connection.execute(query)
-    
+
     def cleanup_temp_tables(self) -> None:
         """Clean up temporary tables."""
         for table_name in list(self._temp_tables.keys()):
@@ -320,30 +313,31 @@ class AnalyticsEngine:
                 del self._temp_tables[table_name]
             except:
                 pass  # Table might not exist
-    
+
     def close(self):
         """Close the analytics engine."""
         self.cleanup_temp_tables()
-        
+
         # Close connections
-        if hasattr(self, 'connection'):
+        if hasattr(self, "connection"):
             self.connection.close()
         if self.engine:
             self.engine.dispose()
-        
+
         # Clean up temporary database file
-        if hasattr(self, '_is_temp') and self._is_temp:
+        if hasattr(self, "_is_temp") and self._is_temp:
             import os
-            if hasattr(self, '_temp_file'):
+
+            if hasattr(self, "_temp_file"):
                 try:
                     os.unlink(self._temp_file.name)
                 except:
                     pass  # File might already be deleted
-    
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
@@ -351,10 +345,10 @@ class AnalyticsEngine:
 
 def create_analytics_engine(db_path: str = ":memory:") -> AnalyticsEngine:
     """Factory function to create an analytics engine.
-    
+
     Args:
         db_path: Path to DuckDB database
-        
+
     Returns:
         Configured AnalyticsEngine instance
     """

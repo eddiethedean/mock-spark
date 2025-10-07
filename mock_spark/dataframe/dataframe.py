@@ -245,7 +245,7 @@ class MockDataFrame:
                 "pandas is required for toPandas() method. "
                 "Install with: pip install mock-spark[pandas] or pip install pandas"
             )
-        
+
         if not self.data:
             # Create empty DataFrame with correct column structure
             return pd.DataFrame(columns=[field.name for field in self.schema.fields])
@@ -253,11 +253,11 @@ class MockDataFrame:
 
     def toDuckDB(self, connection=None, table_name: str = None) -> str:
         """Convert to DuckDB table for analytical operations.
-        
+
         Args:
             connection: DuckDB connection or SQLAlchemy Engine (creates temporary if None)
             table_name: Name for the table (auto-generated if None)
-            
+
         Returns:
             Table name in DuckDB
         """
@@ -265,12 +265,11 @@ class MockDataFrame:
             import duckdb
         except ImportError:
             raise ImportError(
-                "duckdb is required for toDuckDB() method. "
-                "Install with: pip install duckdb"
+                "duckdb is required for toDuckDB() method. " "Install with: pip install duckdb"
             )
-        
+
         # Handle SQLAlchemy Engine objects
-        if hasattr(connection, 'raw_connection'):
+        if hasattr(connection, "raw_connection"):
             # It's a SQLAlchemy Engine, get the raw DuckDB connection
             try:
                 raw_conn = connection.raw_connection()
@@ -281,24 +280,21 @@ class MockDataFrame:
                 connection = duckdb.connect(":memory:")
         elif connection is None:
             connection = duckdb.connect(":memory:")
-        
+
         if table_name is None:
             table_name = f"temp_df_{id(self)}"
-        
+
         # Create table from schema
         self._create_duckdb_table(connection, table_name)
-        
+
         # Insert data (batch executemany for better performance on large datasets)
         if self.data:
             values_list = [
-                tuple(row.get(field.name) for field in self.schema.fields)
-                for row in self.data
+                tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
             ]
             placeholders = ", ".join(["?" for _ in self.schema.fields])
-            connection.executemany(
-                f"INSERT INTO {table_name} VALUES ({placeholders})", values_list
-            )
-        
+            connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", values_list)
+
         return table_name
 
     def _create_duckdb_table(self, connection, table_name: str) -> None:
@@ -307,12 +303,12 @@ class MockDataFrame:
             import duckdb
         except ImportError:
             raise ImportError("duckdb is required")
-        
+
         columns = []
         for field in self.schema.fields:
             duckdb_type = self._get_duckdb_type(field.dataType)
             columns.append(f"{field.name} {duckdb_type}")
-        
+
         create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
         connection.execute(create_sql)
 
@@ -320,7 +316,7 @@ class MockDataFrame:
         """Map MockSpark data type to DuckDB type."""
         type_mapping = {
             "StringType": "VARCHAR",
-            "IntegerType": "INTEGER", 
+            "IntegerType": "INTEGER",
             "LongType": "BIGINT",
             "DoubleType": "DOUBLE",
             "FloatType": "DOUBLE",
@@ -328,7 +324,7 @@ class MockDataFrame:
             "DateType": "DATE",
             "TimestampType": "TIMESTAMP",
             "ArrayType": "BLOB",
-            "MapType": "BLOB", 
+            "MapType": "BLOB",
             "StructType": "BLOB",
             "BinaryType": "BLOB",
             "DecimalType": "DECIMAL",
@@ -406,7 +402,14 @@ class MockDataFrame:
 
     def _project_schema_with_operations(self) -> MockStructType:
         """Compute schema after applying queued lazy operations."""
-        from ..spark_types import MockStructType, MockStructField, StringType, LongType, DoubleType, IntegerType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+            IntegerType,
+        )
 
         fields_map = {f.name: f for f in self._schema.fields}
         for op_name, op_val in self._operations_queue:
@@ -489,6 +492,23 @@ class MockDataFrame:
         if not columns:
             return self
 
+        # Validate column names eagerly (even in lazy mode) to match PySpark behavior
+        # But skip validation if there are pending join operations (columns might come from other DF)
+        has_pending_joins = (
+            any(op[0] == "join" for op in self._operations_queue) if self.is_lazy else False
+        )
+
+        if not has_pending_joins:
+            for col in columns:
+                if isinstance(col, str) and col != "*":
+                    # Check if column exists
+                    if col not in self.columns:
+                        from ..core.exceptions import AnalysisException
+
+                        raise AnalysisException(
+                            f"Column '{col}' not found. Available columns: {self.columns}"
+                        )
+
         # Support lazy evaluation
         if self.is_lazy:
             return self._queue_op("select", columns)
@@ -508,7 +528,6 @@ class MockDataFrame:
             )
             for col in columns
         )
-        
 
         if has_aggregation:
             # Handle aggregation - return single row
@@ -1495,15 +1514,15 @@ class MockDataFrame:
         """Filter rows based on condition."""
         if self.is_lazy:
             return self._queue_op("filter", condition)
-        
+
         # Validate columns exist
         if isinstance(condition, MockColumn):
             if condition.name not in [field.name for field in self.schema.fields]:
                 raise ColumnNotFoundException(condition.name)
-        elif hasattr(condition, 'column') and hasattr(condition.column, 'name'):
+        elif hasattr(condition, "column") and hasattr(condition.column, "name"):
             if condition.column.name not in [field.name for field in self.schema.fields]:
                 raise ColumnNotFoundException(condition.column.name)
-        
+
         if isinstance(condition, MockColumn):
             # Simple column reference - return all non-null rows
             filtered_data = [row for row in self.data if row.get(condition.name) is not None]
@@ -1586,14 +1605,149 @@ class MockDataFrame:
         When enabled, supported operations will be queued and evaluated on collect()/toPandas().
         """
         if enabled:
-            return MockDataFrame(self.data, self.schema, self.storage, is_lazy=True, operations=self._operations_queue.copy())
+            return MockDataFrame(
+                self.data,
+                self.schema,
+                self.storage,
+                is_lazy=True,
+                operations=self._operations_queue.copy(),
+            )
         return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False, operations=[])
+
+    def _infer_select_schema(self, columns: Any) -> "MockStructType":
+        """Infer schema for select operation."""
+        from ..spark_types import (
+            StringType,
+            LongType,
+            DoubleType,
+            IntegerType,
+            MockStructField,
+            MockStructType,
+        )
+
+        # Check if there are pending join operations
+        has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
+
+        new_fields = []
+        for col in columns:
+            if isinstance(col, str):
+                if col == "*":
+                    # Add all existing fields
+                    new_fields.extend(self.schema.fields)
+                else:
+                    # Use existing field, or add as StringType if not found (may come from join)
+                    found = False
+                    for field in self.schema.fields:
+                        if field.name == col:
+                            new_fields.append(field)
+                            found = True
+                            break
+                    if not found:
+                        # Column not in current schema, might come from join - add as StringType
+                        new_fields.append(MockStructField(col, StringType()))
+            elif hasattr(col, "operation") and hasattr(col, "column"):
+                # Handle MockColumnOperation
+                col_name = col.name
+
+                # Check operation type
+                if col.operation == "cast":
+                    # Cast operation - infer type from cast parameter
+                    cast_type = getattr(col, "value", "string")
+                    if isinstance(cast_type, str):
+                        # String type name, convert to actual type
+                        if cast_type.lower() in ["double", "float"]:
+                            new_fields.append(MockStructField(col_name, DoubleType()))
+                        elif cast_type.lower() in ["int", "integer", "long", "bigint"]:
+                            new_fields.append(MockStructField(col_name, LongType()))
+                        elif cast_type.lower() in ["string", "varchar"]:
+                            new_fields.append(MockStructField(col_name, StringType()))
+                        else:
+                            new_fields.append(MockStructField(col_name, StringType()))
+                    else:
+                        # Type object, use directly
+                        new_fields.append(MockStructField(col_name, cast_type))
+                elif col.operation in ["upper", "lower"]:
+                    new_fields.append(MockStructField(col_name, StringType()))
+                elif col.operation == "length":
+                    new_fields.append(MockStructField(col_name, IntegerType()))
+                elif col.operation == "split":
+                    # Split returns ArrayType of strings
+                    from ..spark_types import ArrayType
+
+                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
+                else:
+                    # Default to StringType for unknown operations
+                    new_fields.append(MockStructField(col_name, StringType()))
+            elif hasattr(col, "conditions") and hasattr(col, "default_value"):
+                # Handle MockCaseWhen objects
+                col_name = col.name
+                # CASE WHEN can return various types - infer from the default value or first condition
+                # For simplicity, check the default value type
+                if hasattr(col.default_value, "name"):
+                    # Default is a column reference - try to find its type
+                    found = False
+                    for field in self.schema.fields:
+                        if field.name == col.default_value.name:
+                            new_fields.append(MockStructField(col_name, field.dataType))
+                            found = True
+                            break
+                    if not found:
+                        new_fields.append(MockStructField(col_name, IntegerType()))
+                elif isinstance(col.default_value, int):
+                    new_fields.append(MockStructField(col_name, IntegerType()))
+                elif isinstance(col.default_value, float):
+                    new_fields.append(MockStructField(col_name, DoubleType()))
+                else:
+                    # Default to IntegerType for CASE WHEN (commonly used for numeric calculations)
+                    new_fields.append(MockStructField(col_name, IntegerType()))
+            elif hasattr(col, "name"):
+                # Handle MockColumn
+                col_name = col.name
+                if col_name == "*":
+                    # Add all existing fields
+                    new_fields.extend(self.schema.fields)
+                else:
+                    # Use existing field or add as string (may come from join)
+                    found = False
+                    for field in self.schema.fields:
+                        if field.name == col_name:
+                            new_fields.append(field)
+                            found = True
+                            break
+                    if not found:
+                        # Column not in current schema, might come from join - add as StringType
+                        new_fields.append(MockStructField(col_name, StringType()))
+
+        return MockStructType(new_fields)
+
+    def _infer_join_schema(self, join_params: Any) -> "MockStructType":
+        """Infer schema for join operation."""
+        from ..spark_types import MockStructType
+
+        other_df, on, how = join_params
+
+        # Start with all fields from left DataFrame
+        new_fields = self.schema.fields.copy()
+
+        # Add fields from right DataFrame that aren't already present
+        for field in other_df.schema.fields:
+            if not any(f.name == field.name for f in new_fields):
+                new_fields.append(field)
+
+        return MockStructType(new_fields)
 
     def _queue_op(self, op_name: str, payload: Any) -> "MockDataFrame":
         """Queue an operation for lazy evaluation."""
+        # Infer new schema for select and join operations
+        new_schema = self.schema
+        if op_name == "select":
+            new_schema = self._infer_select_schema(payload)
+        elif op_name == "join":
+            new_schema = self._infer_join_schema(payload)
+
         return MockDataFrame(
             self.data,
-            self.schema,
+            new_schema,
             self.storage,
             is_lazy=True,
             operations=self._operations_queue + [(op_name, payload)],
@@ -1603,56 +1757,78 @@ class MockDataFrame:
         """Apply queued operations using DuckDB's query optimizer."""
         if not self._operations_queue:
             return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
-        
+
         # Use SQLModel with DuckDB for better SQL generation and optimization
         try:
             from .sqlmodel_materializer import SQLModelMaterializer
-            
+
             materializer = SQLModelMaterializer()
             try:
                 # Let SQLModel optimize and execute the operations
                 rows = materializer.materialize(self.data, self.schema, self._operations_queue)
-                
+
                 # Convert rows back to data format
                 materialized_data = []
                 for row in rows:
-                    materialized_data.append(row.asDict())
-                
-                # Update schema to match materialized data
-                if materialized_data:
-                    # Infer schema from the first row
-                    first_row = materialized_data[0]
-                    
-                    def _infer_type(value: Any) -> Any:
-                        """Infer data type from value."""
-                        if isinstance(value, str):
-                            return StringType()
-                        elif isinstance(value, int):
-                            return IntegerType()
-                        elif isinstance(value, float):
-                            return DoubleType()
-                        elif isinstance(value, bool):
-                            return BooleanType()
-                        else:
-                            return StringType()
-                    
-                    updated_schema = MockStructType([
-                        MockStructField(key, _infer_type(value), True)
-                        for key, value in first_row.items()
-                    ])
-                else:
-                    # No data, keep original schema
-                    updated_schema = self.schema
-                
+                    row_dict = row.asDict()
+
+                    # Convert values to match their declared schema types
+                    from ..spark_types import ArrayType, IntegerType, LongType, DoubleType
+
+                    for field in self.schema.fields:
+                        if field.name not in row_dict:
+                            continue
+
+                        value = row_dict[field.name]
+
+                        # Handle ArrayType
+                        if isinstance(field.dataType, ArrayType):
+                            # DuckDB may return arrays as strings like "['a', 'b']" or as lists
+                            if isinstance(value, str):
+                                # Try different array formats
+                                if value.startswith("[") and value.endswith("]"):
+                                    # Parse string representation of list: "['a', 'b']"
+                                    import ast
+
+                                    try:
+                                        row_dict[field.name] = ast.literal_eval(value)
+                                    except:
+                                        # If parsing fails, split manually
+                                        row_dict[field.name] = value[1:-1].split(",")
+                                elif value.startswith("{") and value.endswith("}"):
+                                    # PostgreSQL/DuckDB array format: "{a,b}"
+                                    row_dict[field.name] = value[1:-1].split(",")
+
+                        # Handle numeric types that come back as strings
+                        elif isinstance(field.dataType, (IntegerType, LongType)):
+                            if isinstance(value, str):
+                                try:
+                                    row_dict[field.name] = int(value)
+                                except (ValueError, TypeError):
+                                    pass  # Keep as string if conversion fails
+
+                        elif isinstance(field.dataType, DoubleType):
+                            if isinstance(value, str):
+                                try:
+                                    row_dict[field.name] = float(value)
+                                except (ValueError, TypeError):
+                                    pass  # Keep as string if conversion fails
+
+                    materialized_data.append(row_dict)
+
+                # Use the schema we already inferred during operation queuing
+                # This preserves correct types like ArrayType from operations like split()
+                updated_schema = self.schema
+
                 # Create new eager DataFrame with materialized data
                 return MockDataFrame(materialized_data, updated_schema, self.storage, is_lazy=False)
             finally:
                 materializer.close()
-                
+
         except ImportError:
             # Fallback to manual materialization if DuckDB is not available
             return self._materialize_manual()
-    
+
     def _materialize_manual(self) -> "MockDataFrame":
         """Fallback manual materialization when DuckDB is not available."""
         current = MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
@@ -1679,7 +1855,7 @@ class MockDataFrame:
                     # Unknown ops ignored for now
                     continue
             except Exception as e:
-                # If an operation fails due to column not found, 
+                # If an operation fails due to column not found,
                 # it might be because the operation was queued but the column
                 # was removed by a previous operation. Skip this operation.
                 if "Column" in str(e) and "does not exist" in str(e):
@@ -1689,20 +1865,20 @@ class MockDataFrame:
                     # Re-raise other exceptions
                     raise e
         return current
-    
+
     def _filter_depends_on_original_columns(self, filter_condition, original_schema) -> bool:
         """Check if a filter condition depends on original columns that might be removed by select."""
         # Get the original column names from the provided schema
         original_columns = {field.name for field in original_schema.fields}
-        
+
         # Check if the filter references any of the original columns
-        if hasattr(filter_condition, 'column') and hasattr(filter_condition.column, 'name'):
+        if hasattr(filter_condition, "column") and hasattr(filter_condition.column, "name"):
             column_name = filter_condition.column.name
             return column_name in original_columns
-        elif hasattr(filter_condition, 'name'):
+        elif hasattr(filter_condition, "name"):
             column_name = filter_condition.name
             return column_name in original_columns
-        
+
         return True  # Default to early filter if we can't determine
 
     def groupBy(self, *columns: Union[str, MockColumn]) -> "MockGroupedData":
@@ -1827,6 +2003,10 @@ class MockDataFrame:
 
     def limit(self, n: int) -> "MockDataFrame":
         """Limit number of rows."""
+        # Support lazy evaluation
+        if self.is_lazy:
+            return self._queue_op("limit", n)
+
         limited_data = self.data[:n]
         return MockDataFrame(limited_data, self.schema, self.storage)
 
@@ -2718,13 +2898,10 @@ class MockDataFrame:
                 return None
         elif col_name.startswith("isnull("):
             # Parse isnull argument: isnull(col)
-            print(f"DEBUG: String-based isnull evaluation for: {col_name}")
             if "name" in col_name:
                 result = row.get("name") is None
-                print(f"DEBUG: String-based isnull result: {result}")
                 return result
             else:
-                print(f"DEBUG: String-based isnull - no name column, returning None")
                 return None
         elif col_name.startswith("isnan("):
             # Parse isnan argument: isnan(col)

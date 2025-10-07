@@ -9,9 +9,4 @@ from .statistical_functions import StatisticalFunctions
 from .time_series import TimeSeriesAnalysis
 from .ml_preprocessing import MLPreprocessing
 
-__all__ = [
-    "AnalyticsEngine",
-    "StatisticalFunctions", 
-    "TimeSeriesAnalysis",
-    "MLPreprocessing"
-]
+__all__ = ["AnalyticsEngine", "StatisticalFunctions", "TimeSeriesAnalysis", "MLPreprocessing"]

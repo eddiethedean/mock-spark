@@ -395,7 +395,7 @@ def create_dataframe_from_schema_string(session, schema_string: str, row_count: 
             elif isinstance(f.dataType, DoubleType):
                 row[f.name] = float(i)
             elif isinstance(f.dataType, BooleanType):
-                row[f.name] = (i % 2 == 0)
+                row[f.name] = i % 2 == 0
             elif isinstance(f.dataType, DateType):
                 row[f.name] = DataGenerator.generate_date()
             elif isinstance(f.dataType, TimestampType):
