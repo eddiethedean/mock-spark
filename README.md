@@ -161,15 +161,21 @@ spark = MockSparkSession("App", enable_lazy_evaluation=False)
 - **DuckDB** - In-memory SQL analytics
 - **File System** - Persistent storage
 
-### Testing Utilities
-Built-in helpers for test data generation:
+### Testing Utilities (Optional)
+Optional utilities to make testing easier:
 
 ```python
-from mock_spark.testing import create_test_dataframe
+# Error simulation for testing error handling
+from mock_spark.error_simulation import MockErrorSimulator
 
-# Generate test data
-df = create_test_dataframe(spark, rows=1000, columns=['id', 'name', 'value'])
+# Performance simulation for edge cases
+from mock_spark.performance_simulation import MockPerformanceSimulator
+
+# Test data generation
+from mock_spark.data_generation import create_test_data
 ```
+
+**📘 Full guide**: [Testing Utilities Documentation](docs/testing_utilities_guide.md)
 
 ---
 
