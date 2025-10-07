@@ -156,24 +156,6 @@ spark = MockSparkSession("App", enable_lazy_evaluation=False)
 
 ## Advanced Features
 
-### Analytics Engine
-Powered by DuckDB for high-performance analytics:
-
-```python
-from mock_spark.analytics import AnalyticsEngine
-
-analytics = AnalyticsEngine(spark)
-
-# Statistical analysis
-stats = analytics.descriptive_statistics(df, 'salary')
-
-# Time series operations
-anomalies = analytics.anomaly_detection(df, 'value', threshold=2.0)
-
-# ML preprocessing
-train_df, test_df = analytics.train_test_split(df, test_size=0.2)
-```
-
 ### Storage Backends
 - **Memory** (default) - Fast, ephemeral
 - **DuckDB** - In-memory SQL analytics
@@ -262,10 +244,10 @@ While Mock Spark provides comprehensive PySpark compatibility, some advanced fea
 
 We welcome contributions! Areas of interest:
 
-- 🔬 **Analytics** - Additional statistical and ML functions
 - ⚡ **Performance** - Further DuckDB optimizations
 - 📚 **Documentation** - Examples, guides, tutorials
 - 🐛 **Bug Fixes** - Edge cases and compatibility issues
+- 🧪 **PySpark API Coverage** - Additional functions and methods
 - 🧪 **Tests** - Additional test coverage and scenarios
 
 ---
