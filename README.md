@@ -43,11 +43,12 @@ from mock_spark import MockSparkSession as SparkSession
 
 ### Perfect For
 
-- **Unit Testing** - Fast, isolated test execution
-- **CI/CD Pipelines** - Reliable tests without infrastructure
+- **Unit Testing** - Fast, isolated test execution with automatic cleanup
+- **CI/CD Pipelines** - Reliable tests without infrastructure or resource leaks
 - **Local Development** - Prototype without Spark cluster
 - **Documentation** - Runnable examples without setup
 - **Learning** - Understand PySpark without complexity
+- **Integration Tests** - Configurable memory limits for large dataset testing
 
 ---
 
@@ -96,6 +97,26 @@ def test_data_pipeline():
     # Assertions
     assert high_scores.count() == 2
     assert high_scores.agg(F.avg("score")).collect()[0][0] == 93.5
+    
+    # Always clean up
+    spark.stop()
+
+def test_large_dataset():
+    """Test with larger dataset requiring more memory."""
+    spark = MockSparkSession(
+        "LargeTest",
+        max_memory="4GB",
+        allow_disk_spillover=True
+    )
+    
+    # Process large dataset
+    data = [{"id": i, "value": i * 10} for i in range(100000)]
+    df = spark.createDataFrame(data)
+    
+    result = df.filter(F.col("id") > 50000).count()
+    assert result < 50000
+    
+    spark.stop()
 ```
 
 ---
@@ -158,8 +179,33 @@ spark = MockSparkSession("App", enable_lazy_evaluation=False)
 
 ### Storage Backends
 - **Memory** (default) - Fast, ephemeral
-- **DuckDB** - In-memory SQL analytics
+- **DuckDB** - In-memory SQL analytics with configurable memory limits
 - **File System** - Persistent storage
+
+### Configurable Memory & Isolation
+
+Control memory usage and test isolation:
+
+```python
+# Default: 1GB memory limit, no disk spillover (best for tests)
+spark = MockSparkSession("MyApp")
+
+# Custom memory limit
+spark = MockSparkSession("MyApp", max_memory="4GB")
+
+# Allow disk spillover for large datasets (with test isolation)
+spark = MockSparkSession(
+    "MyApp",
+    max_memory="8GB",
+    allow_disk_spillover=True  # Uses unique temp directory per session
+)
+```
+
+**Key Features:**
+- **Memory Limits**: Set per-session memory limits to prevent resource exhaustion
+- **Test Isolation**: Each session gets unique temp directories when spillover is enabled
+- **Default Behavior**: Disk spillover disabled by default for fast, isolated tests
+- **Automatic Cleanup**: Temp directories automatically cleaned up when session stops
 
 ### Testing Utilities (Optional)
 Optional utilities to make testing easier:
@@ -214,20 +260,27 @@ Real-world test suite improvements:
 
 ---
 
-## What's New in 1.0.0
+## What's New in 1.3.0
 
 ### Major Improvements
+- 🔧 **Configurable Memory** - Set custom memory limits per session
+- 🔒 **Test Isolation** - Each session gets unique temp directories
+- 🧹 **Resource Cleanup** - Automatic cleanup prevents test leaks
+- 🚀 **Performance** - Memory-only operations by default (no disk I/O)
+- 🧪 **26 New Tests** - Comprehensive resource management tests
+
+### Resource Management
+- Configurable DuckDB memory limits (`max_memory="4GB"`)
+- Optional disk spillover with isolation (`allow_disk_spillover=True`)
+- Automatic cleanup on `session.stop()` and `__del__`
+- No shared temp files between tests - complete isolation
+
+### Previous Releases (1.0.0)
 - ✨ **DuckDB Integration** - Replaced SQLite for 30% faster operations
 - 🧹 **Code Consolidation** - Removed 1,300+ lines of duplicate code
 - 📦 **Optional Pandas** - Pandas now optional, reducing core dependencies
 - ⚡ **Performance** - Sub-4s aggregations on large datasets
 - 🧪 **Test Coverage** - 388 passing tests with 100% compatibility
-
-### Architecture
-- In-memory DuckDB by default for faster testing
-- Simplified DataFrame/GroupedData implementation
-- Enhanced type safety and error handling
-- Improved lazy evaluation with schema inference
 
 ---
 

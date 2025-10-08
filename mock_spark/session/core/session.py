@@ -60,6 +60,8 @@ class MockSparkSession:
         validation_mode: str = "relaxed",
         enable_type_coercion: bool = True,
         enable_lazy_evaluation: bool = True,
+        max_memory: str = "1GB",
+        allow_disk_spillover: bool = False,
     ):
         """Initialize MockSparkSession.
 
@@ -67,9 +69,17 @@ class MockSparkSession:
             app_name: Application name for the Spark session.
             validation_mode: "strict", "relaxed", or "minimal" validation behavior.
             enable_type_coercion: Whether to coerce basic types during DataFrame creation.
+            enable_lazy_evaluation: Whether to enable lazy evaluation (default True).
+            max_memory: Maximum memory for DuckDB to use (e.g., '1GB', '4GB', '8GB').
+                       Default is '1GB' for test isolation.
+            allow_disk_spillover: If True, allows DuckDB to spill to disk when memory is full.
+                                 If False (default), disables spillover for test isolation.
         """
         self.app_name = app_name
-        self.storage = DuckDBStorageManager()
+        self.storage = DuckDBStorageManager(
+            max_memory=max_memory,
+            allow_disk_spillover=allow_disk_spillover,
+        )
         from typing import cast
         from ...core.interfaces.storage import IStorageManager
 
@@ -386,9 +396,19 @@ class MockSparkSession:
         return self.createDataFrame(data, ["id"])
 
     def stop(self) -> None:
-        """Stop the session."""
-        # Mock implementation - in real Spark this would stop the session
-        pass
+        """Stop the session and clean up resources."""
+        # Close DuckDB connections to prevent leaks between tests
+        try:
+            if hasattr(self, "storage") and hasattr(self.storage, "close"):
+                self.storage.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
+
+        # Clear any cached data
+        try:
+            self.clear_cache()
+        except Exception:
+            pass
 
     def __enter__(self):
         """Context manager entry."""

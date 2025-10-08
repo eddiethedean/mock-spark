@@ -14,9 +14,33 @@ from .sql_builder import SQLQueryBuilder
 class DuckDBMaterializer:
     """Materializes lazy DataFrames using DuckDB's query optimizer."""
 
-    def __init__(self):
+    def __init__(self, max_memory: str = "1GB", allow_disk_spillover: bool = False):
+        """Initialize DuckDB materializer.
+
+        Args:
+            max_memory: Maximum memory for DuckDB to use (e.g., '1GB', '4GB', '8GB').
+            allow_disk_spillover: If True, allows DuckDB to spill to disk when memory is full.
+        """
         self.connection = duckdb.connect(":memory:")
         self._temp_table_counter = 0
+        self._temp_dir = None
+
+        # Configure DuckDB memory and spillover settings
+        try:
+            self.connection.execute(f"SET max_memory='{max_memory}'")
+
+            if allow_disk_spillover:
+                # Create unique temp directory for this materializer
+                import tempfile
+                import uuid
+
+                self._temp_dir = tempfile.mkdtemp(prefix=f"duckdb_mat_{uuid.uuid4().hex[:8]}_")
+                self.connection.execute(f"SET temp_directory='{self._temp_dir}'")
+            else:
+                # Disable disk spillover for test isolation
+                self.connection.execute("SET temp_directory=''")
+        except:
+            pass  # Ignore if settings not supported
 
     def materialize(
         self, data: List[Dict[str, Any]], schema: MockStructType, operations: List[Tuple[str, Any]]
@@ -103,4 +127,28 @@ class DuckDBMaterializer:
 
     def close(self):
         """Close the DuckDB connection."""
-        self.connection.close()
+        if self.connection:
+            try:
+                self.connection.close()
+                self.connection = None
+            except Exception:
+                pass  # Ignore errors during cleanup
+
+        # Clean up unique temp directory if it exists
+        if self._temp_dir:
+            try:
+                import os
+                import shutil
+
+                if os.path.exists(self._temp_dir):
+                    shutil.rmtree(self._temp_dir, ignore_errors=True)
+                self._temp_dir = None
+            except:
+                pass  # Ignore cleanup errors
+
+    def __del__(self):
+        """Cleanup on deletion to prevent resource leaks."""
+        try:
+            self.close()
+        except:
+            pass

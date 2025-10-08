@@ -259,15 +259,27 @@ class DuckDBSchema(ISchema):
 class DuckDBStorageManager(IStorageManager):
     """Type-safe DuckDB storage manager with in-memory storage by default."""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        max_memory: str = "1GB",
+        allow_disk_spillover: bool = False,
+    ):
         """Initialize DuckDB storage manager with in-memory storage by default.
 
         Args:
             db_path: Optional path to database file. If None, uses in-memory storage.
+            max_memory: Maximum memory for DuckDB to use (e.g., '1GB', '4GB', '8GB').
+                       Default is '1GB' for test isolation.
+            allow_disk_spillover: If True, allows DuckDB to spill to disk when memory is full.
+                                 If False (default), disables spillover for test isolation.
+                                 When enabled, uses a unique temp directory per connection.
         """
         self.db_path = db_path
+        self._temp_dir = None
+
         if db_path is None:
-            # Use in-memory storage
+            # Use in-memory storage with temp directory configuration
             self.connection = duckdb.connect(":memory:")
             self.is_in_memory = True
         else:
@@ -276,6 +288,24 @@ class DuckDBStorageManager(IStorageManager):
             self.is_in_memory = False
 
         self.schemas: Dict[str, DuckDBSchema] = {}
+
+        # Configure DuckDB memory and spillover settings
+        try:
+            # Set memory limit
+            self.connection.execute(f"SET max_memory='{max_memory}'")
+
+            if allow_disk_spillover:
+                # Create unique temp directory for this connection to prevent test conflicts
+                import tempfile
+                import uuid
+
+                self._temp_dir = tempfile.mkdtemp(prefix=f"duckdb_test_{uuid.uuid4().hex[:8]}_")
+                self.connection.execute(f"SET temp_directory='{self._temp_dir}'")
+            else:
+                # Disable disk spillover for test isolation
+                self.connection.execute("SET temp_directory=''")
+        except:
+            pass  # Ignore if settings not supported
 
         # Create default schema (simplified without SQLModel for now)
         self.schemas["default"] = DuckDBSchema("default", self.connection, None)
@@ -418,7 +448,39 @@ class DuckDBStorageManager(IStorageManager):
     def close(self):
         """Close connections with proper cleanup."""
         if self.connection:
-            self.connection.close()
+            try:
+                # Clean up all schemas and tables
+                for schema_name in list(self.schemas.keys()):
+                    if schema_name != "default":
+                        try:
+                            self.drop_schema(schema_name)
+                        except:
+                            pass
+
+                # Close the connection
+                self.connection.close()
+                self.connection = None
+            except Exception:
+                pass  # Ignore errors during cleanup
+
+        # Clean up unique temp directory if it exists
+        if self._temp_dir:
+            try:
+                import os
+                import shutil
+
+                if os.path.exists(self._temp_dir):
+                    shutil.rmtree(self._temp_dir, ignore_errors=True)
+                self._temp_dir = None
+            except:
+                pass  # Ignore cleanup errors
+
+    def __del__(self):
+        """Cleanup on deletion to prevent resource leaks."""
+        try:
+            self.close()
+        except:
+            pass
 
     def __enter__(self):
         """Context manager entry."""

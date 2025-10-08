@@ -2216,4 +2216,16 @@ class SQLModelMaterializer:
 
     def close(self):
         """Close the SQLModel engine."""
-        self.engine.dispose()
+        try:
+            if hasattr(self, "engine") and self.engine:
+                self.engine.dispose()
+                self.engine = None
+        except Exception:
+            pass  # Ignore errors during cleanup
+
+    def __del__(self):
+        """Cleanup on deletion to prevent resource leaks."""
+        try:
+            self.close()
+        except:
+            pass
