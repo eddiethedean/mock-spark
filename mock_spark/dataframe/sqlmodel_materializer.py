@@ -22,12 +22,10 @@ from sqlalchemy import (
     Float,
     Double,
     Boolean,
-    text,
     literal,
     select,
     insert,
 )
-from sqlalchemy.sql import text as sql_text
 from sqlalchemy.sql import Select
 from ..spark_types import (
     MockStructType,
