@@ -105,7 +105,15 @@ df = spark.createDataFrame(data)
 
 # All operations work
 result = df.filter(F.col("age") > 25).select("name").collect()
-print(result)  # [Row(name='Bob')]
+print(result)
+# Output: [Row(name='Bob')]
+
+# Show the DataFrame
+df.show()
+# Output:
+# name  age
+# Alice  25
+# Bob    30
 ```
 
 ### Testing Example
