@@ -302,7 +302,7 @@ df = spark.sql("SELECT name, AVG(salary) FROM employees WHERE age > 25 GROUP BY 
 - `mock_spark/dataframe/export.py` - SQLAlchemy table creation
 - `mock_spark/dataframe/sqlmodel_materializer.py` - Import cleanup
 
-### Phase 4: Database-Agnostic Query Building (New)
+### Phase 4: Database-Agnostic Query Building
 **New Files:**
 - `mock_spark/dataframe/sqlalchemy_query_builder.py` - Generic query builder (250 lines) ✨
 - `mock_spark/dataframe/sqlalchemy_materializer.py` - Generic materializer (150 lines) ✨
@@ -312,6 +312,20 @@ df = spark.sql("SELECT name, AVG(salary) FROM employees WHERE age > 25 GROUP BY 
 - `mock_spark/dataframe/duckdb_materializer.py` - Refactored as subclass (155→68 lines, -87 lines)
 - `mock_spark/dataframe/sql_builder.py` - Added deprecation warnings
 - `ZERO_RAW_SQL_SUMMARY.md` - Updated achievements to 100%
+
+### Phase 5: SQLModel Dependency Removal ✨
+**Modified Files:**
+- `mock_spark/dataframe/sqlmodel_materializer.py` - Replaced SQLModel with pure SQLAlchemy
+  - Changed `from sqlmodel import Session` → `from sqlalchemy.orm import Session`
+  - Changed `session.exec()` → `session.execute()` (19 occurrences)
+  - Removed unused `DynamicTable(SQLModel)` class
+  - Updated all docstrings and comments
+- `pyproject.toml` - Removed `sqlmodel>=0.0.14` dependency
+
+**Impact:**
+- ✅ -1 dependency (sqlmodel no longer required)
+- ✅ All 515 tests still passing
+- ✅ Same functionality, simpler stack
 
 ### Total Lines Added
 - Phase 1-3: 633 lines (SQL translation)
@@ -339,11 +353,12 @@ df = spark.sql("SELECT name, AVG(salary) FROM employees WHERE age > 25 GROUP BY 
 
 1. ✅ **100% Zero Raw SQL** - Eliminated ALL raw SQL string construction
 2. ✅ **Database Agnostic** - Works with DuckDB, PostgreSQL, MySQL, SQLite, and 20+ more backends
-3. ✅ **Comprehensive SQL translation** - 100+ Spark SQL functions supported via sqlglot
-4. ✅ **Type-safe architecture** - All queries use SQLAlchemy Core expressions
-5. ✅ **Backward compatible** - No breaking changes to public API
-6. ✅ **100% test success** - All 515 tests passing (509 parallel + 4 Delta serial + 2 skipped)
-7. ✅ **Production ready** - Type-safe, performant, and maintainable
+3. ✅ **Pure SQLAlchemy Stack** - Removed SQLModel dependency, using only SQLAlchemy
+4. ✅ **Comprehensive SQL translation** - 100+ Spark SQL functions supported via sqlglot
+5. ✅ **Type-safe architecture** - All queries use SQLAlchemy Core expressions
+6. ✅ **Backward compatible** - No breaking changes to public API
+7. ✅ **100% test success** - All 515 tests passing (509 parallel + 4 Delta serial + 2 skipped)
+8. ✅ **Production ready** - Type-safe, performant, and maintainable
 
 ---
 
@@ -354,7 +369,8 @@ df = spark.sql("SELECT name, AVG(salary) FROM employees WHERE age > 25 GROUP BY 
 ### What Changed
 - **Phase 1-3:** Eliminated raw SQL in storage backends, export operations, and metadata queries
 - **Phase 4:** Eliminated remaining raw SQL in query building and materialization
-- **Result:** Complete database portability and type safety
+- **Phase 5:** Removed SQLModel dependency, simplified to pure SQLAlchemy stack
+- **Result:** Complete database portability, type safety, and minimal dependencies
 
 ### What This Enables
 - ✅ Switch between DuckDB, PostgreSQL, MySQL, SQLite, or any SQLAlchemy backend

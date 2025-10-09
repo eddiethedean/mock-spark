@@ -1,13 +1,14 @@
 """
-SQLModel-based materializer for Mock Spark lazy evaluation.
+SQLAlchemy-based materializer for Mock Spark lazy evaluation.
 
-This module uses SQLModel with DuckDB to provide better SQL generation
+This module uses SQLAlchemy with DuckDB to provide better SQL generation
 and parsing capabilities for complex DataFrame operations using ORM expressions.
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
-from sqlmodel import SQLModel, Field, create_engine, Session, select
 from sqlalchemy import (
+    create_engine,
+    select,
     func,
     desc,
     asc,
@@ -23,10 +24,10 @@ from sqlalchemy import (
     Double,
     Boolean,
     literal,
-    select,
     insert,
     text,
 )
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 from ..spark_types import (
     MockStructType,
@@ -41,17 +42,11 @@ from ..spark_types import (
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
 
 
-class DynamicTable(SQLModel):
-    """Dynamic table class that can be created with any schema."""
-
-    pass
-
-
 class SQLModelMaterializer:
-    """Materializes lazy DataFrames using SQLModel with DuckDB."""
+    """Materializes lazy DataFrames using SQLAlchemy with DuckDB."""
 
     def __init__(self):
-        # Create DuckDB engine with SQLModel
+        # Create DuckDB engine with SQLAlchemy
         self.engine = create_engine("duckdb:///:memory:", echo=False)
         self._temp_table_counter = 0
         self._created_tables = {}  # Track created tables
@@ -61,7 +56,7 @@ class SQLModelMaterializer:
         self, data: List[Dict[str, Any]], schema: MockStructType, operations: List[Tuple[str, Any]]
     ) -> List[MockRow]:
         """
-        Materializes the DataFrame by building and executing operations using SQLModel.
+        Materializes the DataFrame by building and executing operations using SQLAlchemy.
         """
         if not operations:
             # No operations to apply, return original data as rows
@@ -143,7 +138,7 @@ class SQLModelMaterializer:
                 insert_stmt = table.insert().values(
                     dict(zip([col.name for col in columns], values))
                 )
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
             session.commit()
 
     def _apply_filter(self, source_table: str, target_table: str, condition: Any) -> None:
@@ -152,7 +147,7 @@ class SQLModelMaterializer:
 
         # Check if source table has any rows
         with Session(self.engine) as session:
-            row_count = session.exec(select(func.count()).select_from(source_table_obj)).scalar()
+            row_count = session.execute(select(func.count()).select_from(source_table_obj)).scalar()
 
         # Set flag to enable strict column validation for filters
         # Only validate if table has rows (errors should only occur when processing actual data)
@@ -179,7 +174,7 @@ class SQLModelMaterializer:
                 filter_sql = str(filter_expr.compile(compile_kwargs={"literal_binds": True}))
                 sql += f" WHERE {filter_sql}"
 
-            results = session.exec(text(sql)).all()
+            results = session.execute(text(sql)).all()
 
             # Insert into target table
             for result in results:
@@ -188,7 +183,7 @@ class SQLModelMaterializer:
                 for i, column in enumerate(source_table_obj.columns):
                     result_dict[column.name] = result[i]
                 insert_stmt = target_table_obj.insert().values(result_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
             session.commit()
 
     def _apply_select(self, source_table: str, target_table: str, columns: Tuple[Any, ...]) -> None:
@@ -907,10 +902,10 @@ class SQLModelMaterializer:
                     ]
                 )
                 sql = f"SELECT {select_clause} FROM {source_table}"
-                results = session.exec(text(sql)).all()
+                results = session.execute(text(sql)).all()
             else:
                 query = select(*select_columns)
-                results = session.exec(query).all()
+                results = session.execute(query).all()
 
             for result in results:
                 # Convert result to dict using column names
@@ -918,7 +913,7 @@ class SQLModelMaterializer:
                 for i, column in enumerate(new_columns):
                     result_dict[column.name] = result[i]
                 insert_stmt = target_table_obj.insert().values(result_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
             session.commit()
 
     def _apply_select_with_window_functions(
@@ -1370,7 +1365,7 @@ class SQLModelMaterializer:
         """
 
         with Session(self.engine) as session:
-            session.exec(text(sql))
+            session.execute(text(sql))
             session.commit()
 
     def _apply_with_column(
@@ -1471,7 +1466,7 @@ class SQLModelMaterializer:
 
         # Execute SQL
         with Session(self.engine) as session:
-            session.exec(text(sql))
+            session.execute(text(sql))
             session.commit()
 
     def _apply_with_column_sql(
@@ -1609,7 +1604,7 @@ class SQLModelMaterializer:
         # Execute with ORDER BY using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).order_by(*order_expressions)
-            results = session.exec(query).all()
+            results = session.execute(query).all()
 
             # Insert into target table
             for result in results:
@@ -1618,7 +1613,7 @@ class SQLModelMaterializer:
                 for i, column in enumerate(source_table_obj.columns):
                     result_dict[column.name] = result[i]
                 insert_stmt = target_table_obj.insert().values(result_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
             session.commit()
 
     def _apply_limit(self, source_table: str, target_table: str, limit_count: int) -> None:
@@ -1632,7 +1627,7 @@ class SQLModelMaterializer:
         # Execute with LIMIT using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).limit(limit_count)
-            results = session.exec(query).all()
+            results = session.execute(query).all()
 
             # Insert into target table
             for result in results:
@@ -1641,7 +1636,7 @@ class SQLModelMaterializer:
                 for i, column in enumerate(source_table_obj.columns):
                     result_dict[column.name] = result[i]
                 insert_stmt = target_table_obj.insert().values(result_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
             session.commit()
 
     def _build_case_when_sql(self, case_when_obj, source_table_obj):
@@ -1745,7 +1740,7 @@ class SQLModelMaterializer:
                 f'"{col.name.replace(chr(34), chr(34)+chr(34))}"' for col in table_obj.columns
             ]
             sql = f"SELECT {', '.join(column_names)} FROM {table_name}"
-            results = session.exec(text(sql)).all()
+            results = session.execute(text(sql)).all()
 
             mock_rows = []
             for result in results:
@@ -2062,7 +2057,7 @@ class SQLModelMaterializer:
         # Perform the actual join operation
         with Session(self.engine) as session:
             # Get source data
-            source_data = session.exec(select(*source_table_obj.columns)).all()
+            source_data = session.execute(select(*source_table_obj.columns)).all()
 
             # Create a lookup dictionary from other_data (key -> list of matching rows)
             other_lookup = {}
@@ -2099,7 +2094,7 @@ class SQLModelMaterializer:
 
                         # Insert into target table
                         insert_stmt = target_table_obj.insert().values(complete_row)
-                        session.exec(insert_stmt)
+                        session.execute(insert_stmt)
 
             session.commit()
 
@@ -2119,18 +2114,18 @@ class SQLModelMaterializer:
         # Combine data from both dataframes
         with Session(self.engine) as session:
             # Get source data
-            source_data = session.exec(select(*source_table_obj.columns)).all()
+            source_data = session.execute(select(*source_table_obj.columns)).all()
             for row in source_data:
                 row_dict = dict(row._mapping)
                 insert_stmt = target_table_obj.insert().values(row_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
 
             # Get other dataframe data by materializing it
             other_data = other_df.collect()
             for row in other_data:
                 row_dict = dict(row.asDict())
                 insert_stmt = target_table_obj.insert().values(row_dict)
-                session.exec(insert_stmt)
+                session.execute(insert_stmt)
 
             session.commit()
 
