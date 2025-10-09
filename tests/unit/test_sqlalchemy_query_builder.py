@@ -8,7 +8,13 @@ import pytest
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Float, insert
 from mock_spark.dataframe.sqlalchemy_query_builder import SQLAlchemyQueryBuilder
 from mock_spark.functions import col
-from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType, DoubleType
+from mock_spark.spark_types import (
+    MockStructType,
+    MockStructField,
+    IntegerType,
+    StringType,
+    DoubleType,
+)
 
 
 class TestSQLAlchemyQueryBuilder:
@@ -110,7 +116,7 @@ class TestSQLAlchemyQueryBuilder:
     def test_order_by_desc(self, engine, sample_table, schema):
         """Test ORDER BY DESC."""
         from mock_spark.functions import col
-        
+
         builder = SQLAlchemyQueryBuilder(sample_table, schema)
         builder.add_order_by((col("salary").desc(),))
         stmt = builder.build_select()
@@ -181,9 +187,7 @@ class TestSQLAlchemyQueryBuilder:
         """Test that the builder works with SQLite."""
         engine = create_engine("sqlite:///:memory:")
         metadata = MetaData()
-        table = Table(
-            "test", metadata, Column("id", Integer), Column("value", String)
-        )
+        table = Table("test", metadata, Column("id", Integer), Column("value", String))
         metadata.create_all(engine)
 
         builder = SQLAlchemyQueryBuilder(table)
@@ -196,12 +200,10 @@ class TestSQLAlchemyQueryBuilder:
     def test_cross_database_duckdb(self):
         """Test that the builder works with DuckDB."""
         pytest.importorskip("duckdb_engine")
-        
+
         engine = create_engine("duckdb:///:memory:")
         metadata = MetaData()
-        table = Table(
-            "test", metadata, Column("id", Integer), Column("value", String)
-        )
+        table = Table("test", metadata, Column("id", Integer), Column("value", String))
         metadata.create_all(engine)
 
         builder = SQLAlchemyQueryBuilder(table)
@@ -219,24 +221,23 @@ class TestSQLAlchemyMaterializer:
         """Test basic materialization with SQLite."""
         from mock_spark.dataframe.sqlalchemy_materializer import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
-        
-        schema = MockStructType([
-            MockStructField("id", IntegerType()),
-            MockStructField("name", StringType())
-        ])
-        
+
+        schema = MockStructType(
+            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+        )
+
         data = [
             {"id": 1, "name": "Alice"},
             {"id": 2, "name": "Bob"},
         ]
-        
+
         materializer = SQLAlchemyMaterializer(engine_url="sqlite:///:memory:")
-        
+
         # Test with no operations
         result = materializer.materialize(data, schema, [])
         assert len(result) == 2
         assert result[0]["id"] == 1
-        
+
         materializer.close()
 
     def test_materializer_with_filter(self):
@@ -244,43 +245,41 @@ class TestSQLAlchemyMaterializer:
         from mock_spark.dataframe.sqlalchemy_materializer import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
         from mock_spark.functions import col
-        
-        schema = MockStructType([
-            MockStructField("id", IntegerType()),
-            MockStructField("name", StringType())
-        ])
-        
+
+        schema = MockStructType(
+            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+        )
+
         data = [
             {"id": 1, "name": "Alice"},
             {"id": 2, "name": "Bob"},
             {"id": 3, "name": "Charlie"},
         ]
-        
+
         materializer = SQLAlchemyMaterializer(engine_url="sqlite:///:memory:")
-        
+
         # Apply filter operation
         operations = [("filter", col("id") > 1)]
         result = materializer.materialize(data, schema, operations)
-        
+
         assert len(result) == 2
         assert result[0]["name"] == "Bob"
         assert result[1]["name"] == "Charlie"
-        
+
         materializer.close()
 
     def test_temporary_table_creation(self):
         """Test that temporary tables are created with TEMPORARY prefix."""
         from mock_spark.dataframe.sqlalchemy_materializer import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType
-        
+
         schema = MockStructType([MockStructField("id", IntegerType())])
         data = [{"id": 1}]
-        
+
         materializer = SQLAlchemyMaterializer(engine_url="sqlite:///:memory:")
-        
+
         # The temp table should be created and cleaned up
         result = materializer.materialize(data, schema, [])
         assert len(result) == 1
-        
-        materializer.close()
 
+        materializer.close()

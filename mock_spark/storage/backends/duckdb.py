@@ -48,13 +48,13 @@ class DuckDBTable(ITable):
         self.schema = schema
         self.connection = connection
         self.sqlmodel_session = sqlmodel_session
-        
+
         # Create or use provided SQLAlchemy engine for type-safe operations
         if engine is None:
             self.engine = create_engine("duckdb:///:memory:")
         else:
             self.engine = engine
-        
+
         self.table_metadata = MetaData()
         self.sqlalchemy_table: Optional[Table] = None
 
@@ -81,11 +81,9 @@ class DuckDBTable(ITable):
         else:
             # Create SQLAlchemy table from MockSpark schema
             self.sqlalchemy_table = create_table_from_mock_schema(
-                self.name,
-                self.schema,
-                self.table_metadata
+                self.name, self.schema, self.table_metadata
             )
-        
+
         # Create the table in the database
         self.sqlalchemy_table.create(self.engine, checkfirst=True)
 
@@ -184,11 +182,12 @@ class DuckDBTable(ITable):
         try:
             if self.sqlalchemy_table is None:
                 return []
-            
+
             # Build SQLAlchemy select statement
             from sqlalchemy import select as sa_select
+
             stmt = sa_select(self.sqlalchemy_table)
-            
+
             # Add filter if provided (Note: filter_expr is a string, will need translation)
             if filter_expr:
                 # For now, we'll need to use the SQL translator for complex filters
@@ -213,7 +212,11 @@ class DuckDBTable(ITable):
                 row_count=len(data),
                 column_count=len(columns),
                 execution_time_ms=execution_time,
-                query=str(stmt) if not filter_expr else f"SELECT * FROM {self.name} WHERE {filter_expr}",
+                query=(
+                    str(stmt)
+                    if not filter_expr
+                    else f"SELECT * FROM {self.name} WHERE {filter_expr}"
+                ),
             )
 
             return data
@@ -235,14 +238,18 @@ class DuckDBSchema(ISchema):
     """DuckDB schema implementation with type safety."""
 
     def __init__(
-        self, name: str, connection: duckdb.DuckDBPyConnection, sqlmodel_session: Optional[Session], engine: Optional[Engine] = None
+        self,
+        name: str,
+        connection: duckdb.DuckDBPyConnection,
+        sqlmodel_session: Optional[Session],
+        engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB schema."""
         self.name = name
         self.connection = connection
         self.sqlmodel_session = sqlmodel_session
         self.tables: Dict[str, DuckDBTable] = {}
-        
+
         # Create or use provided SQLAlchemy engine
         if engine is None:
             self.engine = create_engine("duckdb:///:memory:")
@@ -259,7 +266,9 @@ class DuckDBSchema(ISchema):
             schema = columns
 
         # Create table using SQLAlchemy
-        duckdb_table = DuckDBTable(table, schema, self.connection, self.sqlmodel_session, self.engine)
+        duckdb_table = DuckDBTable(
+            table, schema, self.connection, self.sqlmodel_session, self.engine
+        )
         self.tables[table] = duckdb_table
         return duckdb_table
 
@@ -326,7 +335,7 @@ class DuckDBStorageManager(IStorageManager):
         # Create SQLAlchemy engine for type-safe operations
         db_url = f"duckdb:///{db_path}" if db_path else "duckdb:///:memory:"
         self.engine = create_engine(db_url)
-        
+
         self.schemas: Dict[str, DuckDBSchema] = {}
 
         # Configure DuckDB memory and spillover settings

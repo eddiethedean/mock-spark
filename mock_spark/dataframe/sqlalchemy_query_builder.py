@@ -19,7 +19,7 @@ class SQLAlchemyQueryBuilder:
 
     def __init__(self, table: Table, schema: Optional[MockStructType] = None):
         """Initialize with a SQLAlchemy Table object.
-        
+
         Args:
             table: SQLAlchemy Table to query from
             schema: Optional MockStructType for type information
@@ -52,7 +52,7 @@ class SQLAlchemyQueryBuilder:
             else:
                 # Handle expressions
                 sql_columns.append(self._column_to_sqlalchemy(col))
-        
+
         if sql_columns:
             self.select_stmt = select(*sql_columns).select_from(self.table)
 
@@ -71,7 +71,7 @@ class SQLAlchemyQueryBuilder:
                 group_cols.append(self.table.c[col])
             elif isinstance(col, MockColumn):
                 group_cols.append(self.table.c[col.name])
-        
+
         if group_cols:
             self.select_stmt = self.select_stmt.group_by(*group_cols)
 
@@ -89,13 +89,11 @@ class SQLAlchemyQueryBuilder:
                     order_cols.append(self.table.c[col.column.name].desc())
                 else:
                     order_cols.append(self.table.c[col.column.name])
-        
+
         if order_cols:
             self.select_stmt = self.select_stmt.order_by(*order_cols)
 
-    def add_join(
-        self, other_table: Table, on: Union[str, List[str]], how: str = "inner"
-    ) -> None:
+    def add_join(self, other_table: Table, on: Union[str, List[str]], how: str = "inner") -> None:
         """Add a JOIN operation using SQLAlchemy."""
         # Build join condition
         if isinstance(on, str):
@@ -224,10 +222,16 @@ class SQLAlchemyQueryBuilder:
         if hasattr(window_spec, "_rows_between") and window_spec._rows_between:
             start, end = window_spec._rows_between
             # SQLAlchemy handles rows between with range_ parameter
-            kwargs["rows"] = (self._frame_bound_to_sqlalchemy(start), self._frame_bound_to_sqlalchemy(end))
+            kwargs["rows"] = (
+                self._frame_bound_to_sqlalchemy(start),
+                self._frame_bound_to_sqlalchemy(end),
+            )
         elif hasattr(window_spec, "_range_between") and window_spec._range_between:
             start, end = window_spec._range_between
-            kwargs["range_"] = (self._frame_bound_to_sqlalchemy(start), self._frame_bound_to_sqlalchemy(end))
+            kwargs["range_"] = (
+                self._frame_bound_to_sqlalchemy(start),
+                self._frame_bound_to_sqlalchemy(end),
+            )
 
         return kwargs
 
@@ -261,4 +265,3 @@ class SQLAlchemyQueryBuilder:
             self.select_stmt = select(*current_cols).select_from(self.table)
 
         return self.select_stmt
-

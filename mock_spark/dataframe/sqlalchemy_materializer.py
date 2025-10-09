@@ -6,11 +6,31 @@ supporting DuckDB, PostgreSQL, MySQL, SQLite, and any other SQLAlchemy-supported
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from sqlalchemy import create_engine, MetaData, Table, Column, insert, Integer, Float, String, Boolean
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Table,
+    Column,
+    insert,
+    Integer,
+    Float,
+    String,
+    Boolean,
+)
 from sqlalchemy.engine import Engine
 from sqlalchemy.schema import CreateTable
 
-from ..spark_types import MockStructType, MockStructField, MockRow, IntegerType, LongType, FloatType, DoubleType, StringType, BooleanType
+from ..spark_types import (
+    MockStructType,
+    MockStructField,
+    MockRow,
+    IntegerType,
+    LongType,
+    FloatType,
+    DoubleType,
+    StringType,
+    BooleanType,
+)
 from ..storage.sqlalchemy_helpers import mock_type_to_sqlalchemy
 from .sqlalchemy_query_builder import SQLAlchemyQueryBuilder
 
@@ -33,12 +53,12 @@ class SQLAlchemyMaterializer:
         self, data: List[Dict[str, Any]], schema: MockStructType, operations: List[Tuple[str, Any]]
     ) -> List[MockRow]:
         """Materialize a lazy DataFrame using SQLAlchemy.
-        
+
         Args:
             data: List of dictionaries representing rows
             schema: MockStructType defining the schema
             operations: List of (operation_name, operation_value) tuples
-            
+
         Returns:
             List of MockRow objects with materialized data
         """
@@ -71,11 +91,11 @@ class SQLAlchemyMaterializer:
 
         # Build and execute the final query
         stmt = builder.build_select()
-        
+
         with self.engine.connect() as conn:
             result = conn.execute(stmt)
             columns = list(result.keys())
-            
+
             # Convert to MockRow objects
             rows = []
             for row_data in result:
@@ -91,11 +111,11 @@ class SQLAlchemyMaterializer:
 
     def _create_temp_table(self, data: List[Dict[str, Any]], schema: MockStructType) -> Table:
         """Create a temporary table and insert data.
-        
+
         Args:
             data: List of dictionaries to insert
             schema: MockStructType defining table schema
-            
+
         Returns:
             SQLAlchemy Table object
         """
@@ -106,12 +126,7 @@ class SQLAlchemyMaterializer:
         columns = self._schema_to_columns(data, schema)
 
         # Create table with TEMPORARY prefix (works on most databases)
-        table = Table(
-            table_name,
-            self.metadata,
-            *columns,
-            prefixes=['TEMPORARY']
-        )
+        table = Table(table_name, self.metadata, *columns, prefixes=["TEMPORARY"])
 
         # Create the table
         table.create(self.engine, checkfirst=True)
@@ -124,13 +139,15 @@ class SQLAlchemyMaterializer:
 
         return table
 
-    def _schema_to_columns(self, data: List[Dict[str, Any]], schema: Optional[MockStructType]) -> List[Column]:
+    def _schema_to_columns(
+        self, data: List[Dict[str, Any]], schema: Optional[MockStructType]
+    ) -> List[Column]:
         """Convert MockSpark schema to SQLAlchemy columns.
-        
+
         Args:
             data: Sample data to infer types if schema is None
             schema: Optional MockStructType schema
-            
+
         Returns:
             List of SQLAlchemy Column objects
         """
@@ -171,4 +188,3 @@ class SQLAlchemyMaterializer:
             self.close()
         except:
             pass
-

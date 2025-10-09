@@ -21,7 +21,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
         """
         # Initialize with DuckDB engine
         super().__init__(engine_url="duckdb:///:memory:")
-        
+
         self._temp_dir = None
 
         # Configure DuckDB-specific settings using raw connection
@@ -55,7 +55,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
                 self._temp_dir = None
             except:
                 pass  # Ignore cleanup errors
-        
+
         # Call parent close to dispose engine
         super().close()
 

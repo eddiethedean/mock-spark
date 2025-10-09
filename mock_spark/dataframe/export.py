@@ -91,13 +91,16 @@ class DataFrameExporter:
         # Insert data
         if df.data:
             import duckdb
+
             if isinstance(connection, duckdb.DuckDBPyConnection):
                 # Use DuckDB connection directly for backward compatibility
                 values_list = [
                     tuple(row.get(field.name) for field in df.schema.fields) for row in df.data
                 ]
                 placeholders = ", ".join(["?" for _ in df.schema.fields])
-                connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", values_list)
+                connection.executemany(
+                    f"INSERT INTO {table_name} VALUES ({placeholders})", values_list
+                )
             else:
                 # Use SQLAlchemy for engine-based connections
                 rows = [
@@ -117,7 +120,7 @@ class DataFrameExporter:
             df: MockDataFrame with schema
             connection: DuckDB connection or SQLAlchemy Engine
             table_name: Name for the table
-            
+
         Returns:
             SQLAlchemy Table object
         """
@@ -125,9 +128,9 @@ class DataFrameExporter:
             import duckdb
         except ImportError:
             raise ImportError("duckdb is required")
-        
+
         from mock_spark.storage.sqlalchemy_helpers import create_table_from_mock_schema
-        
+
         # Create SQLAlchemy engine from DuckDB connection if needed
         if isinstance(connection, duckdb.DuckDBPyConnection):
             # For DuckDB connections, use the connection directly with executemany for compatibility
@@ -151,11 +154,11 @@ class DataFrameExporter:
                 else:
                     duckdb_type = "VARCHAR"
                 columns.append(f"{field.name} {duckdb_type}")
-            
+
             # Create table using DuckDB connection (keep for backward compatibility)
             create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
             connection.execute(create_sql)
-            
+
             # Also create metadata representation for return
             metadata = MetaData()
             table = create_table_from_mock_schema(table_name, df.schema, metadata)
@@ -165,7 +168,7 @@ class DataFrameExporter:
             metadata = MetaData()
             table = create_table_from_mock_schema(table_name, df.schema, metadata)
             table.create(engine, checkfirst=True)
-        
+
         return table
 
     @staticmethod
