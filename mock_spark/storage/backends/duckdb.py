@@ -310,10 +310,11 @@ class DuckDBStorageManager(IStorageManager):
         # Create default schema (simplified without SQLModel for now)
         self.schemas["default"] = DuckDBSchema("default", self.connection, None)
 
-        # Enable extensions for enhanced functionality
+        # Enable extensions for enhanced functionality using DuckDB Python API
+        # Note: Using DuckDB Python API instead of raw SQL for extension management
         try:
-            self.connection.execute("INSTALL sqlite")
-            self.connection.execute("LOAD sqlite")
+            self.connection.install_extension("sqlite")
+            self.connection.load_extension("sqlite")
         except:
             pass  # Extensions might not be available
 
