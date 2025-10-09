@@ -260,7 +260,7 @@ from mock_spark.performance_simulation import MockPerformanceSimulator
 from mock_spark.data_generation import create_test_data
 ```
 
-**📘 Full guide**: [Testing Utilities Documentation](docs/testing_utilities_guide.md)
+**📘 Full guide**: [Testing Utilities Documentation](https://github.com/eddiethedean/mock-spark/blob/main/docs/testing_utilities_guide.md)
 
 ---
 
@@ -280,22 +280,22 @@ Real-world test suite improvements:
 ## Documentation
 
 ### Getting Started
-- 📖 [Installation & Setup](docs/getting_started.md)
-- 🎯 [Quick Start Guide](docs/getting_started.md#quick-start)
-- 🔄 [Migration from PySpark](docs/guides/migration.md)
+- 📖 [Installation & Setup](https://github.com/eddiethedean/mock-spark/blob/main/docs/getting_started.md)
+- 🎯 [Quick Start Guide](https://github.com/eddiethedean/mock-spark/blob/main/docs/getting_started.md#quick-start)
+- 🔄 [Migration from PySpark](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/migration.md)
 
 ### Core Concepts
-- 📊 [API Reference](docs/api_reference.md)
-- 🔄 [Lazy Evaluation](docs/guides/lazy_evaluation.md)
-- 🗄️ [SQL Operations](docs/sql_operations_guide.md)
-- 💾 [Storage & Persistence](docs/storage_serialization_guide.md)
+- 📊 [API Reference](https://github.com/eddiethedean/mock-spark/blob/main/docs/api_reference.md)
+- 🔄 [Lazy Evaluation](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/lazy_evaluation.md)
+- 🗄️ [SQL Operations](https://github.com/eddiethedean/mock-spark/blob/main/docs/sql_operations_guide.md)
+- 💾 [Storage & Persistence](https://github.com/eddiethedean/mock-spark/blob/main/docs/storage_serialization_guide.md)
 
 ### Advanced Topics
-- 🧪 [Testing Utilities](docs/testing_utilities_guide.md)
-- ⚙️ [Configuration](docs/guides/configuration.md)
-- 📈 [Benchmarking](docs/guides/benchmarking.md)
-- 🔌 [Plugins & Hooks](docs/guides/plugins.md)
-- 🐍 [Pytest Integration](docs/guides/pytest_integration.md)
+- 🧪 [Testing Utilities](https://github.com/eddiethedean/mock-spark/blob/main/docs/testing_utilities_guide.md)
+- ⚙️ [Configuration](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/configuration.md)
+- 📈 [Benchmarking](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/benchmarking.md)
+- 🔌 [Plugins & Hooks](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/plugins.md)
+- 🐍 [Pytest Integration](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/pytest_integration.md)
 
 ---
 
@@ -464,7 +464,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **GitHub**: [github.com/eddiethedean/mock-spark](https://github.com/eddiethedean/mock-spark)
 - **PyPI**: [pypi.org/project/mock-spark](https://pypi.org/project/mock-spark/)
 - **Issues**: [github.com/eddiethedean/mock-spark/issues](https://github.com/eddiethedean/mock-spark/issues)
-- **Documentation**: [Full documentation](docs/)
+- **Documentation**: [Full documentation](https://github.com/eddiethedean/mock-spark/tree/main/docs)
 
 ---
 
