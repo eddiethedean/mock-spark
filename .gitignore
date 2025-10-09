@@ -53,6 +53,7 @@ coverage.xml
 cover/
 .benchmarks/
 *.duckdb
+*.duckdb.wal
 
 # Translations
 *.mo

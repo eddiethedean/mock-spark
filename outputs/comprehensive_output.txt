@@ -1,0 +1,164 @@
+🚀 Mock Spark - Comprehensive Feature Showcase
+============================================================
+
+📦 Initializing Mock Spark...
+   ✓ Session: ComprehensiveDemo
+
+📊 Loading sample data...
+   ✓ Created DataFrame: 8 rows, 6 columns
+
+   Initial data:
+MockDataFrame[8 rows, 6 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+============================================================
+📊 ADVANCED TRANSFORMATIONS
+============================================================
+
+✓ Complex expressions with conditionals:
+MockDataFrame[8 rows, 8 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+============================================================
+🪟 WINDOW ANALYTICS
+============================================================
+
+✓ Ranking and department averages:
+MockDataFrame[8 rows, 6 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+============================================================
+📈 COMPLEX AGGREGATIONS
+============================================================
+
+✓ Department statistics:
+MockDataFrame[3 rows, 7 columns]
+
+dept        employee_count avg_salary        min_salary max_salary avg_tenure        avg_rating       
+Engineering   3                96000.0             88000        105000       5.0                 4.466666666666667  
+Sales         3                88333.33333333333   80000        95000        4.333333333333333   4.5                
+Marketing     2                78500.0             75000        82000        3.0                 4.2                
+
+✓ Seniority analysis:
+MockDataFrame[3 rows, 3 columns]
+
+level  count avg_salary       
+Senior   3       98333.33333333333  
+Mid      4       85000.0            
+Junior   1       75000.0            
+
+============================================================
+🗄️  SQL OPERATIONS
+============================================================
+
+✓ SQL query (salary > 85k):
+MockDataFrame[8 rows, 3 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+✓ Top rated employees (rating >= 4.5):
+MockDataFrame[8 rows, 3 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+============================================================
+🔬 ADVANCED FEATURES
+============================================================
+
+✓ Multiple metrics at once:
+MockDataFrame[1 rows, 6 columns]
+
+total_employees avg_salary min_salary max_salary avg_tenure avg_rating        
+8                 88750.0      75000        105000       4.25         4.4125000000000005  
+
+✓ Salary percentiles:
+MockDataFrame[8 rows, 3 columns]
+
+dept        id name    rating salary years
+Engineering   1    Alice     4.5      95000    5      
+Sales         2    Bob       4.2      80000    3      
+Engineering   3    Charlie   4.8      105000   7      
+Marketing     4    Diana     4.0      75000    2      
+Sales         5    Eve       4.6      90000    4      
+Engineering   6    Frank     4.1      88000    3      
+Marketing     7    Grace     4.4      82000    4      
+Sales         8    Henry     4.7      95000    6      
+
+============================================================
+⚠️  ERROR HANDLING
+============================================================
+
+✓ Lazy evaluation (error deferred):
+   Transformation queued (no error)
+   ✓ Error caught at action time: AnalysisException
+
+✓ Null handling with coalesce:
+MockDataFrame[2 rows, 2 columns]
+
+name  value
+Test1   100    
+Test2   None   
+
+============================================================
+⚡ PERFORMANCE BENEFITS
+============================================================
+
+✓ No JVM overhead - 10x faster than PySpark
+✓ In-memory DuckDB backend for fast analytics
+✓ Lazy evaluation with optimized execution
+✓ Perfect for unit tests and CI/CD pipelines
+
+============================================================
+🧹 CLEANUP
+============================================================
+   ✓ Session stopped
+
+✨ Comprehensive demonstration completed!
+
+📚 Learn more:
+   • Docs: docs/
+   • API Reference: docs/api_reference.md
+   • GitHub: https://github.com/eddiethedean/mock-spark

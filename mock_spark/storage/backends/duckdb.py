@@ -10,6 +10,8 @@ from sqlmodel import Session, select
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import time
+from sqlalchemy import create_engine, MetaData, Table, Column, insert, inspect
+from sqlalchemy.engine import Engine
 
 from ..interfaces import IStorageManager, ITable, ISchema
 from ..models import (
@@ -24,6 +26,10 @@ from ..models import (
     initialize_metadata_tables,
 )
 from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.storage.sqlalchemy_helpers import (
+    create_table_from_mock_schema,
+    mock_type_to_sqlalchemy,
+)
 
 
 class DuckDBTable(ITable):
@@ -35,12 +41,22 @@ class DuckDBTable(ITable):
         schema: MockStructType,
         connection: duckdb.DuckDBPyConnection,
         sqlmodel_session: Optional[Session],
+        engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB table with type safety."""
         self.name = name
         self.schema = schema
         self.connection = connection
         self.sqlmodel_session = sqlmodel_session
+
+        # Create or use provided SQLAlchemy engine for type-safe operations
+        if engine is None:
+            self.engine = create_engine("duckdb:///:memory:")
+        else:
+            self.engine = engine
+
+        self.table_metadata = MetaData()
+        self.sqlalchemy_table: Optional[Table] = None
 
         # Create simplified metadata (without SQLModel for now)
         self.metadata = {
@@ -54,18 +70,22 @@ class DuckDBTable(ITable):
             "is_temporary": False,
         }
 
-        # Create table in DuckDB
+        # Create table using SQLAlchemy
         self._create_table_from_schema()
 
     def _create_table_from_schema(self) -> None:
-        """Create table from MockSpark schema."""
-        columns = []
-        for field in self.schema.fields:
-            duckdb_type = self._get_duckdb_type(field.dataType)
-            columns.append(f"{field.name} {duckdb_type}")
+        """Create table from MockSpark schema using SQLAlchemy."""
+        # Check if table already exists in metadata
+        if self.name in self.table_metadata.tables:
+            self.sqlalchemy_table = self.table_metadata.tables[self.name]
+        else:
+            # Create SQLAlchemy table from MockSpark schema
+            self.sqlalchemy_table = create_table_from_mock_schema(
+                self.name, self.schema, self.table_metadata
+            )
 
-        create_sql = f"CREATE TABLE IF NOT EXISTS {self.name} ({', '.join(columns)})"
-        self.connection.execute(create_sql)
+        # Create the table in the database
+        self.sqlalchemy_table.create(self.engine, checkfirst=True)
 
     def _get_duckdb_type(self, data_type) -> str:
         """Convert MockSpark data type to DuckDB type."""
@@ -86,7 +106,7 @@ class DuckDBTable(ITable):
             return "VARCHAR"
 
     def insert_data(self, data: List[Dict[str, Any]], mode: str = "append") -> None:
-        """Type-safe data insertion with validation."""
+        """Type-safe data insertion with validation using SQLAlchemy."""
         if not data:
             return
 
@@ -98,17 +118,19 @@ class DuckDBTable(ITable):
 
             # Handle mode-specific operations
             if mode == StorageMode.OVERWRITE:
-                self.connection.execute(f"DROP TABLE IF EXISTS {self.name}")
+                # Drop and recreate table using SQLAlchemy
+                if self.sqlalchemy_table is not None:
+                    self.sqlalchemy_table.drop(self.engine, checkfirst=True)
                 self._create_table_from_schema()
             elif mode == StorageMode.IGNORE:
                 # Use INSERT OR IGNORE for DuckDB
                 pass
 
-            # Type-safe insertion
-            for row in validated_data:
-                values = [row.get(field.name) for field in self.schema.fields]
-                placeholders = ", ".join(["?" for _ in values])
-                self.connection.execute(f"INSERT INTO {self.name} VALUES ({placeholders})", values)
+            # Type-safe insertion using SQLAlchemy bulk insert
+            if self.sqlalchemy_table is not None:
+                # Use SQLAlchemy bulk insert for better performance
+                with self.engine.begin() as conn:
+                    conn.execute(insert(self.sqlalchemy_table), validated_data)
 
             # Update metadata with type safety
             self._update_row_count(len(validated_data))
@@ -153,29 +175,34 @@ class DuckDBTable(ITable):
         self.metadata["row_count"] += new_rows
         self.metadata["updated_at"] = datetime.utcnow().isoformat()
 
-    def _create_table_from_schema(self) -> None:
-        """Create table from MockSpark schema."""
-        columns = []
-        for field in self.schema.fields:
-            duckdb_type = self._get_duckdb_type(field.dataType)
-            columns.append(f"{field.name} {duckdb_type}")
-
-        create_sql = f"CREATE TABLE {self.name} ({', '.join(columns)})"
-        self.connection.execute(create_sql)
-
     def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Optimized querying with DuckDB's analytical engine."""
+        """Optimized querying using SQLAlchemy select()."""
         start_time = time.time()
 
         try:
-            if filter_expr:
-                query = f"SELECT * FROM {self.name} WHERE {filter_expr}"
-            else:
-                query = f"SELECT * FROM {self.name}"
+            if self.sqlalchemy_table is None:
+                return []
 
-            result = self.connection.execute(query).fetchall()
-            columns = [desc[0] for desc in self.connection.description]
-            data = [dict(zip(columns, row)) for row in result]
+            # Build SQLAlchemy select statement
+            from sqlalchemy import select as sa_select
+
+            stmt = sa_select(self.sqlalchemy_table)
+
+            # Add filter if provided (Note: filter_expr is a string, will need translation)
+            if filter_expr:
+                # For now, we'll need to use the SQL translator for complex filters
+                # This is a limitation we'll address in Phase 3
+                # As a temporary measure, use DuckDB directly for filtered queries
+                query = f"SELECT * FROM {self.name} WHERE {filter_expr}"
+                result = self.connection.execute(query).fetchall()
+                columns = [desc[0] for desc in self.connection.description]
+                data = [dict(zip(columns, row)) for row in result]
+            else:
+                # Use SQLAlchemy for unfiltered queries
+                with self.engine.connect() as conn:
+                    result = conn.execute(stmt).fetchall()
+                    columns = [col.name for col in self.sqlalchemy_table.columns]
+                    data = [dict(zip(columns, row)) for row in result]
 
             execution_time = (time.time() - start_time) * 1000
 
@@ -185,7 +212,11 @@ class DuckDBTable(ITable):
                 row_count=len(data),
                 column_count=len(columns),
                 execution_time_ms=execution_time,
-                query=query,
+                query=(
+                    str(stmt)
+                    if not filter_expr
+                    else f"SELECT * FROM {self.name} WHERE {filter_expr}"
+                ),
             )
 
             return data
@@ -207,13 +238,23 @@ class DuckDBSchema(ISchema):
     """DuckDB schema implementation with type safety."""
 
     def __init__(
-        self, name: str, connection: duckdb.DuckDBPyConnection, sqlmodel_session: Optional[Session]
+        self,
+        name: str,
+        connection: duckdb.DuckDBPyConnection,
+        sqlmodel_session: Optional[Session],
+        engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB schema."""
         self.name = name
         self.connection = connection
         self.sqlmodel_session = sqlmodel_session
         self.tables: Dict[str, DuckDBTable] = {}
+
+        # Create or use provided SQLAlchemy engine
+        if engine is None:
+            self.engine = create_engine("duckdb:///:memory:")
+        else:
+            self.engine = engine
 
     def create_table(
         self, table: str, columns: Union[List[MockStructField], MockStructType]
@@ -224,36 +265,40 @@ class DuckDBSchema(ISchema):
         else:
             schema = columns
 
-        # Create table in DuckDB
-        duckdb_table = DuckDBTable(table, schema, self.connection, self.sqlmodel_session)
+        # Create table using SQLAlchemy
+        duckdb_table = DuckDBTable(
+            table, schema, self.connection, self.sqlmodel_session, self.engine
+        )
         self.tables[table] = duckdb_table
         return duckdb_table
 
     def table_exists(self, table: str) -> bool:
-        """Check if table exists."""
-        try:
-            self.connection.execute(f"SELECT 1 FROM {table} LIMIT 1")
-            return True
-        except:
-            return False
+        """Check if table exists using SQLAlchemy Inspector."""
+        inspector = inspect(self.engine)
+        return inspector.has_table(table)
 
     def drop_table(self, table: str) -> None:
-        """Drop a table."""
-        self.connection.execute(f"DROP TABLE IF EXISTS {table}")
+        """Drop a table using SQLAlchemy."""
+        # Drop using SQLAlchemy if we have the table object
+        if table in self.tables and self.tables[table].sqlalchemy_table is not None:
+            self.tables[table].sqlalchemy_table.drop(self.engine, checkfirst=True)
+        else:
+            # Try to reflect and drop
+            try:
+                metadata = MetaData()
+                table_obj = Table(table, metadata, autoload_with=self.engine)
+                table_obj.drop(self.engine, checkfirst=True)
+            except:
+                pass  # Table doesn't exist
 
-        # Remove from metadata (simplified without SQLModel for now)
-        # TODO: Add back SQLModel metadata management in next iteration
-
+        # Remove from metadata
         if table in self.tables:
             del self.tables[table]
 
     def list_tables(self) -> List[str]:
-        """List all tables in schema."""
-        try:
-            result = self.connection.execute("SHOW TABLES").fetchall()
-            return [row[0] for row in result]
-        except:
-            return []
+        """List all tables in schema using SQLAlchemy Inspector."""
+        inspector = inspect(self.engine)
+        return inspector.get_table_names()
 
 
 class DuckDBStorageManager(IStorageManager):
@@ -287,9 +332,14 @@ class DuckDBStorageManager(IStorageManager):
             self.connection = duckdb.connect(db_path)
             self.is_in_memory = False
 
+        # Create SQLAlchemy engine for type-safe operations
+        db_url = f"duckdb:///{db_path}" if db_path else "duckdb:///:memory:"
+        self.engine = create_engine(db_url)
+
         self.schemas: Dict[str, DuckDBSchema] = {}
 
         # Configure DuckDB memory and spillover settings
+        # Note: These SET commands are DuckDB configuration, not data queries
         try:
             # Set memory limit
             self.connection.execute(f"SET max_memory='{max_memory}'")
@@ -307,20 +357,20 @@ class DuckDBStorageManager(IStorageManager):
         except:
             pass  # Ignore if settings not supported
 
-        # Create default schema (simplified without SQLModel for now)
-        self.schemas["default"] = DuckDBSchema("default", self.connection, None)
+        # Create default schema with SQLAlchemy engine
+        self.schemas["default"] = DuckDBSchema("default", self.connection, None, self.engine)
 
-        # Enable extensions for enhanced functionality
+        # Enable extensions using DuckDB Python API (zero raw SQL)
         try:
-            self.connection.execute("INSTALL sqlite")
-            self.connection.execute("LOAD sqlite")
+            self.connection.install_extension("sqlite")
+            self.connection.load_extension("sqlite")
         except:
             pass  # Extensions might not be available
 
     def create_schema(self, schema: str) -> None:
         """Create a new schema."""
         if schema not in self.schemas:
-            self.schemas[schema] = DuckDBSchema(schema, self.connection, None)
+            self.schemas[schema] = DuckDBSchema(schema, self.connection, None, self.engine)
 
     def schema_exists(self, schema: str) -> bool:
         """Check if schema exists."""

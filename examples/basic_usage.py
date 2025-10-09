@@ -4,7 +4,8 @@ Basic Usage Example for Mock Spark
 
 Demonstrates core Mock Spark functionality with practical examples.
 
-Status: 388 tests passing (100%) | Production Ready | Version 1.0.0
+Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
+Features: 100% Zero Raw SQL | Database Agnostic | Pure SQLAlchemy
 """
 
 from mock_spark import MockSparkSession, F

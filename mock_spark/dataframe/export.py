@@ -6,6 +6,7 @@ Extracted from dataframe.py to improve organization and maintainability.
 """
 
 from typing import Any, Optional, TYPE_CHECKING
+from sqlalchemy import create_engine, MetaData, insert
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame
@@ -84,40 +85,91 @@ class DataFrameExporter:
         if table_name is None:
             table_name = f"temp_df_{id(df)}"
 
-        # Create table from schema
-        DataFrameExporter._create_duckdb_table(df, connection, table_name)
+        # Create table from schema using SQLAlchemy
+        table = DataFrameExporter._create_duckdb_table(df, connection, table_name)
 
-        # Insert data (batch executemany for better performance)
+        # Insert data
         if df.data:
-            values_list = [
-                tuple(row.get(field.name) for field in df.schema.fields) for row in df.data
-            ]
-            placeholders = ", ".join(["?" for _ in df.schema.fields])
-            connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", values_list)
+            import duckdb
+
+            if isinstance(connection, duckdb.DuckDBPyConnection):
+                # Use DuckDB connection directly for backward compatibility
+                values_list = [
+                    tuple(row.get(field.name) for field in df.schema.fields) for row in df.data
+                ]
+                placeholders = ", ".join(["?" for _ in df.schema.fields])
+                connection.executemany(
+                    f"INSERT INTO {table_name} VALUES ({placeholders})", values_list
+                )
+            else:
+                # Use SQLAlchemy for engine-based connections
+                rows = [
+                    {field.name: row.get(field.name) for field in df.schema.fields}
+                    for row in df.data
+                ]
+                with connection.begin() as conn:
+                    conn.execute(insert(table), rows)
 
         return table_name
 
     @staticmethod
-    def _create_duckdb_table(df: "MockDataFrame", connection, table_name: str) -> None:
-        """Create DuckDB table from MockSpark schema.
+    def _create_duckdb_table(df: "MockDataFrame", connection, table_name: str) -> Any:
+        """Create DuckDB table from MockSpark schema using SQLAlchemy.
 
         Args:
             df: MockDataFrame with schema
-            connection: DuckDB connection
+            connection: DuckDB connection or SQLAlchemy Engine
             table_name: Name for the table
+
+        Returns:
+            SQLAlchemy Table object
         """
         try:
             import duckdb
         except ImportError:
             raise ImportError("duckdb is required")
 
-        columns = []
-        for field in df.schema.fields:
-            duckdb_type = DataFrameExporter._get_duckdb_type(field.dataType)
-            columns.append(f"{field.name} {duckdb_type}")
+        from mock_spark.storage.sqlalchemy_helpers import create_table_from_mock_schema
 
-        create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
-        connection.execute(create_sql)
+        # Create SQLAlchemy engine from DuckDB connection if needed
+        if isinstance(connection, duckdb.DuckDBPyConnection):
+            # For DuckDB connections, use the connection directly with executemany for compatibility
+            # Build column definitions
+            columns = []
+            for field in df.schema.fields:
+                # Get DuckDB type
+                type_name = type(field.dataType).__name__
+                if "String" in type_name:
+                    duckdb_type = "VARCHAR"
+                elif "Integer" in type_name or "Long" in type_name:
+                    duckdb_type = "INTEGER"
+                elif "Double" in type_name or "Float" in type_name:
+                    duckdb_type = "DOUBLE"
+                elif "Boolean" in type_name:
+                    duckdb_type = "BOOLEAN"
+                elif "Date" in type_name:
+                    duckdb_type = "DATE"
+                elif "Timestamp" in type_name:
+                    duckdb_type = "TIMESTAMP"
+                else:
+                    duckdb_type = "VARCHAR"
+                columns.append(f"{field.name} {duckdb_type}")
+
+            # Create table using DuckDB connection (keep for backward compatibility)
+            create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
+            connection.execute(create_sql)
+
+            # Also create metadata representation for return
+            metadata = MetaData()
+            table = create_table_from_mock_schema(table_name, df.schema, metadata)
+        else:
+            # Assume it's a SQLAlchemy engine
+            engine = connection
+            metadata = MetaData()
+            table = create_table_from_mock_schema(table_name, df.schema, metadata)
+            table.create(engine, checkfirst=True)
+
+        return table
 
     @staticmethod
     def _get_duckdb_type(data_type) -> str:
