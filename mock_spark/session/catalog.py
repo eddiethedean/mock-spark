@@ -130,6 +130,37 @@ class MockCatalog:
                 raise
             raise AnalysisException(f"Failed to create database '{name}': {str(e)}")
 
+    def dropDatabase(
+        self, name: str, ignoreIfNotExists: bool = True, cascade: bool = False
+    ) -> None:
+        """Drop a database.
+
+        Args:
+            name: Database name.
+            ignoreIfNotExists: Whether to ignore if database doesn't exist.
+            cascade: Whether to drop tables in the database (ignored in mock).
+
+        Raises:
+            IllegalArgumentException: If name is not a string or is empty.
+            AnalysisException: If database doesn't exist and ignoreIfNotExists is False.
+        """
+        if not isinstance(name, str):
+            raise IllegalArgumentException("Database name must be a string")
+
+        if not name:
+            raise IllegalArgumentException("Database name cannot be empty")
+
+        if not ignoreIfNotExists and not self.storage.schema_exists(name):
+            raise AnalysisException(f"Database '{name}' does not exist")
+
+        if self.storage.schema_exists(name):
+            try:
+                self.storage.drop_schema(name)
+            except Exception as e:
+                if isinstance(e, (AnalysisException, IllegalArgumentException)):
+                    raise
+                raise AnalysisException(f"Failed to drop database '{name}': {str(e)}")
+
     def tableExists(self, dbName: str, tableName: str) -> bool:
         """Check if table exists.
 

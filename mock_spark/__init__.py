@@ -40,7 +40,7 @@ Quick Start:
            ALICE
              BOB
     
-Version: 1.1.0
+Version: 1.4.0
 Author: Odos Matthews
 """
 
@@ -49,6 +49,7 @@ from .session.context import MockSparkContext, MockJVMContext
 from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData
 from .functions import MockFunctions, MockColumn, MockColumnOperation, F
 from .window import MockWindow, MockWindowSpec
+from .delta import DeltaTable, DeltaMergeBuilder
 from .spark_types import (
     MockDataType,
     StringType,
@@ -98,7 +99,7 @@ from .performance_simulation import (
 #   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
 # Not exported in main __all__ - use explicit import when needed
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -133,6 +134,11 @@ __all__ = [
     # -------------------------------------------------------------------------
     "MockWindow",  # Window - like pyspark.sql.Window
     "MockWindowSpec",  # Window spec - like pyspark.sql.WindowSpec
+    # -------------------------------------------------------------------------
+    # Delta Lake (Simple Support - Mock Operations)
+    # -------------------------------------------------------------------------
+    "DeltaTable",  # Basic Delta table wrapper
+    "DeltaMergeBuilder",  # Delta MERGE builder (mock)
     # -------------------------------------------------------------------------
     # Data Types (Core PySpark API)
     # -------------------------------------------------------------------------

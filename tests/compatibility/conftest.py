@@ -2,6 +2,87 @@
 Shared fixtures and configuration for compatibility tests.
 """
 
+import os
+import subprocess
+
+# Set Java 11+ compatibility flags BEFORE any pyspark imports
+# This must be done early so the JVM launches with correct options
+if "JAVA_TOOL_OPTIONS" not in os.environ or "add-opens" not in os.environ.get(
+    "JAVA_TOOL_OPTIONS", ""
+):
+    os.environ["JAVA_TOOL_OPTIONS"] = (
+        "--add-opens=java.base/java.lang=ALL-UNNAMED "
+        "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED "
+        "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED "
+        "--add-opens=java.base/java.io=ALL-UNNAMED "
+        "--add-opens=java.base/java.net=ALL-UNNAMED "
+        "--add-opens=java.base/java.nio=ALL-UNNAMED "
+        "--add-opens=java.base/java.util=ALL-UNNAMED "
+        "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED "
+        "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED "
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED "
+        "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED "
+        "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+    )
+
+
+# Auto-detect and set Java 11 for PySpark 3.2.x compatibility
+def _find_java11():
+    """Find Java 11 installation."""
+    import glob
+
+    candidates = []
+
+    # Priority 1: Check Homebrew openjdk@11 directory for any 11.x version
+    try:
+        homebrew_java11 = glob.glob(
+            "/opt/homebrew/Cellar/openjdk@11/*/libexec/openjdk.jdk/Contents/Home"
+        )
+        if homebrew_java11:
+            # Use latest version if multiple found
+            candidates.append(sorted(homebrew_java11)[-1])
+    except Exception:
+        pass
+
+    # Priority 2: Check /usr/libexec/java_home for Java 11
+    # Note: This sometimes returns wrong version, so we validate it
+    try:
+        result = subprocess.run(
+            ["/usr/libexec/java_home", "-v", "11"], capture_output=True, text=True, timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            path = result.stdout.strip()
+            # Validate it's actually Java 11
+            if "11" in path or "1.11" in path:
+                candidates.append(path)
+    except Exception:
+        pass
+
+    # Return first valid candidate
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+java11_home = _find_java11()
+if java11_home:
+    # Force Java 11 by setting JAVA_HOME and prepending to PATH
+    os.environ["JAVA_HOME"] = java11_home
+    # Remove any existing java from PATH and add Java 11 first
+    path_parts = [p for p in os.environ.get("PATH", "").split(":") if "java" not in p.lower()]
+    os.environ["PATH"] = f"{java11_home}/bin:{':'.join(path_parts)}"
+else:
+    # Warn that Java 11 is required
+    import warnings
+
+    warnings.warn(
+        "Java 11 not found! PySpark 3.2.x requires Java 11. "
+        "Install with: brew install openjdk@11 "
+        "Or run: source tests/setup_spark_env.sh",
+        UserWarning,
+    )
+
 import pytest
 from typing import Dict, Any, List
 from tests.compatibility.utils.environment import (

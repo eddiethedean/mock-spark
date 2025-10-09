@@ -39,8 +39,23 @@ export JAVA_HOME="${JAVA_CANDIDATE}"
 export PATH="$JAVA_HOME/bin:$PATH"
 export PYSPARK_PYTHON="$PYTHON_BIN"
 export SPARK_LOCAL_IP=127.0.0.1
-# Helpful JVM flags for newer macOS/JDKs; safe no-ops on JDK 11
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED"
+
+# Java 11+ requires these flags to allow PySpark access to internal APIs
+export JAVA_TOOL_OPTIONS="--add-opens=java.base/java.lang=ALL-UNNAMED \
+--add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
+--add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+--add-opens=java.base/java.io=ALL-UNNAMED \
+--add-opens=java.base/java.net=ALL-UNNAMED \
+--add-opens=java.base/java.nio=ALL-UNNAMED \
+--add-opens=java.base/java.util=ALL-UNNAMED \
+--add-opens=java.base/java.util.concurrent=ALL-UNNAMED \
+--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED \
+--add-opens=java.base/sun.nio.ch=ALL-UNNAMED \
+--add-opens=java.base/sun.nio.cs=ALL-UNNAMED \
+--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+
+# Note: Delta Lake JARs are configured per-test in test_delta_compat.py
+# This avoids breaking non-Delta tests with global Delta configuration
 
 # Verify versions
 echo "=== Environment Setup ==="
@@ -59,7 +74,7 @@ except Exception as e:
     print(f"PySpark not available: {e}")
 PY
 
-# Ensure PySpark 3.2.x
+# Ensure PySpark 3.2.x and Delta Lake 2.x
 NEED_INSTALL=0
 CURRENT_VER=$("$PYTHON_BIN" - <<'PY'
 try:
@@ -71,17 +86,30 @@ PY
 )
 case "$CURRENT_VER" in
   3.2.*) echo "PySpark already 3.2.x ($CURRENT_VER)" ;;
-  "") echo "Installing PySpark 3.2.x..." ; NEED_INSTALL=1 ;;
+  "") echo "Installing PySpark 3.2.x and Delta Lake 2.x..." ; NEED_INSTALL=1 ;;
   *) echo "Found PySpark $CURRENT_VER; installing 3.2.x for compatibility..." ; NEED_INSTALL=1 ;;
 esac
 
 if [ "$NEED_INSTALL" = "1" ]; then
-  # Try best-effort install of PySpark 3.2 latest patch
-  $PIP_BIN install --quiet 'pyspark>=3.2,<3.3' || {
-    echo "Failed to install PySpark 3.2.x. Please install manually: pip install 'pyspark>=3.2,<3.3'" >&2
+  # Install PySpark 3.2.x and compatible Delta Lake 2.x
+  echo "Installing PySpark 3.2.x and Delta Lake 2.x (compatible with Java 11)..."
+  $PIP_BIN install --quiet 'pyspark>=3.2.0,<3.3.0' 'delta-spark>=2.0.0,<2.2.0' || {
+    echo "Failed to install PySpark 3.2.x and Delta Lake 2.x." >&2
+    echo "Please install manually: pip install 'pyspark>=3.2.0,<3.3.0' 'delta-spark>=2.0.0,<2.2.0'" >&2
     exit 1
   }
+  echo "✅ PySpark 3.2.x and Delta Lake 2.x installed successfully"
 fi
+
+# Verify Delta Lake installation
+echo -e "\nDelta Lake:"
+"$PYTHON_BIN" - <<'PY'
+try:
+    import delta
+    print("✅ Delta Lake installed successfully")
+except Exception as e:
+    print(f"⚠️  Delta Lake not available: {e}")
+PY
 
 echo -e "\n=== Testing PySpark ==="
 "$PYTHON_BIN" - <<'PY'

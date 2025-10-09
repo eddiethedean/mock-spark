@@ -7,7 +7,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-388%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-489%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead*
@@ -39,7 +39,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 388 passing tests, type-safe |
+| 🏭 **Production Ready** | 489 passing tests, type-safe |
 
 ### Perfect For
 
@@ -260,6 +260,78 @@ Real-world test suite improvements:
 
 ---
 
+## What's New in 1.4.0
+
+### New Features
+
+#### 🔺 Delta Lake Support
+Mock Spark now includes basic Delta Lake API compatibility for testing Delta workflows:
+
+```python
+from mock_spark import MockSparkSession, DeltaTable
+
+spark = MockSparkSession("app")
+df = spark.createDataFrame([{"id": 1, "value": "test"}])
+
+# Save as table
+df.write.saveAsTable("my_table")
+
+# Access as Delta table
+delta_table = DeltaTable.forName(spark, "my_table")
+delta_df = delta_table.toDF()
+
+# Mock Delta operations (API compatible, no-op execution)
+delta_table.delete("id < 10")
+delta_table.merge(source_df, "target.id = source.id").whenMatchedUpdate({"value": "new"}).execute()
+delta_table.vacuum()
+history_df = delta_table.history()
+```
+
+**Features:**
+- ✅ `DeltaTable.forName()` and `DeltaTable.forPath()` - Load Delta tables
+- ✅ `toDF()` - Convert to DataFrame
+- ✅ `delete()`, `update()`, `merge()` - Mock Delta operations (API compatible)
+- ✅ `vacuum()`, `history()` - Mock maintenance operations
+- ✅ `DeltaMergeBuilder` - Fluent API for merge operations
+
+**Note:** Mock operations are no-ops for API compatibility. For real Delta features (time travel, ACID), use actual PySpark + delta-spark.
+
+#### 🗄️ SQL DDL Enhancements
+Enhanced SQL support for schema/database management:
+
+```python
+# CREATE DATABASE/SCHEMA with IF NOT EXISTS
+spark.sql("CREATE DATABASE IF NOT EXISTS analytics")
+spark.sql("CREATE SCHEMA bronze")
+
+# DROP DATABASE/SCHEMA with IF EXISTS
+spark.sql("DROP DATABASE IF EXISTS old_schema")
+
+# Catalog integration - SQL and API work together
+dbs = spark.catalog.listDatabases()
+spark.catalog.dropDatabase("temp_db")
+```
+
+**Features:**
+- ✅ `CREATE DATABASE/SCHEMA` - SQL parser recognizes both keywords
+- ✅ `DROP DATABASE/SCHEMA` - With IF EXISTS support
+- ✅ `catalog.dropDatabase()` - New catalog API method
+- ✅ Catalog Integration - SQL DDL updates catalog automatically
+- ✅ Case-insensitive keywords - `create`, `CREATE`, `CrEaTe` all work
+
+### Test Infrastructure Improvements
+- ⚡ **Parallel Testing** - Run 489 tests in parallel with pytest-xdist (8 cores)
+- ☕ **Java 11 Support** - Full Java 11 compatibility with automated configuration
+- 🔒 **Enhanced Test Isolation** - Delta Lake tests run serially with proper session cleanup
+- 🧪 **101 New Tests** - Expanded test coverage (388 → 489 tests)
+- 🎯 **Zero Test Failures** - All tests pass with parallel execution
+
+### Developer Experience
+- 🚀 **Faster CI/CD** - Tests complete in ~90 seconds with parallel execution
+- 🔧 **Automated Setup** - `setup_spark_env.sh` configures Java 11 and dependencies
+- 📝 **Black Formatting** - Consistent code style across entire codebase
+- 🏷️ **Test Markers** - `@pytest.mark.delta` for proper test categorization
+
 ## What's New in 1.3.0
 
 ### Major Improvements
@@ -275,12 +347,14 @@ Real-world test suite improvements:
 - Automatic cleanup on `session.stop()` and `__del__`
 - No shared temp files between tests - complete isolation
 
-### Previous Releases (1.0.0)
+### Previous Releases
+
+**1.0.0**
 - ✨ **DuckDB Integration** - Replaced SQLite for 30% faster operations
 - 🧹 **Code Consolidation** - Removed 1,300+ lines of duplicate code
 - 📦 **Optional Pandas** - Pandas now optional, reducing core dependencies
 - ⚡ **Performance** - Sub-4s aggregations on large datasets
-- 🧪 **Test Coverage** - 388 passing tests with 100% compatibility
+- 🧪 **Test Coverage** - Initial 388 passing tests with 100% compatibility
 
 ---
 
@@ -319,14 +393,21 @@ git clone https://github.com/eddiethedean/mock-spark.git
 cd mock-spark
 pip install -e ".[dev]"
 
-# Run tests
-pytest tests/
+# Setup Java 11 and Spark environment (macOS)
+bash tests/setup_spark_env.sh
+
+# Run all tests (parallel execution with 8 cores)
+pytest tests/ -v -n 8 -m "not delta"  # Non-Delta tests
+pytest tests/ -v -m "delta"            # Delta tests (serial)
+
+# Run all tests with proper isolation
+python3 -m pytest tests/ -v -n 8 -m "not delta" && python3 -m pytest tests/ -v -m "delta"
 
 # Format code
-black mock_spark tests
+black mock_spark tests --line-length 100
 
 # Type checking
-mypy mock_spark --ignore-missing-imports
+mypy mock_spark --config-file mypy.ini
 ```
 
 ---

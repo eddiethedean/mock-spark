@@ -151,7 +151,7 @@ class TestBasicCompatibility:
             # PySpark should now be available
             raise AssertionError(f"PySpark should be available: {e}")
 
-    def test_function_compatibility(self):
+    def test_function_compatibility(self, pyspark_environment):
         """Test function compatibility between mock and PySpark."""
         from mock_spark import functions as mock_functions
 
@@ -170,7 +170,7 @@ class TestBasicCompatibility:
 
         print("✅ Mock functions have expected attributes")
 
-        # Test PySpark functions if available
+        # Test PySpark functions with active SparkSession
         try:
             from pyspark.sql import functions as pyspark_functions
 

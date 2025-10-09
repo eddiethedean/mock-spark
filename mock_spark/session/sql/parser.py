@@ -414,9 +414,27 @@ class MockSQLParser:
         Returns:
             Dictionary of CREATE components.
         """
-        # Mock implementation
+        import re
+
+        # Parse CREATE DATABASE/SCHEMA [IF NOT EXISTS] <name>
+        create_db_match = re.match(
+            r"CREATE\s+(DATABASE|SCHEMA)\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w]+)", query, re.IGNORECASE
+        )
+        if create_db_match:
+            object_type = create_db_match.group(1).upper()
+            object_name = create_db_match.group(2).strip("`")
+            # if_not_exists should be True when "IF NOT EXISTS" is present (meaning: ignore if exists)
+            if_not_exists = "IF NOT EXISTS" in query.upper()
+            return {
+                "object_type": object_type,
+                "object_name": object_name,
+                "ignore_if_exists": if_not_exists,  # Renamed for clarity
+                "definition": query,
+            }
+
+        # Default for other CREATE statements
         return {
-            "object_type": "TABLE",  # or DATABASE, SCHEMA, etc.
+            "object_type": "TABLE",
             "object_name": "unknown",
             "definition": query,
         }
@@ -430,11 +448,28 @@ class MockSQLParser:
         Returns:
             Dictionary of DROP components.
         """
-        # Mock implementation
+        import re
+
+        # Parse DROP DATABASE/SCHEMA [IF EXISTS] <name>
+        drop_db_match = re.match(
+            r"DROP\s+(DATABASE|SCHEMA)\s+(?:IF\s+EXISTS\s+)?([`\w]+)", query, re.IGNORECASE
+        )
+        if drop_db_match:
+            object_type = drop_db_match.group(1).upper()
+            object_name = drop_db_match.group(2).strip("`")
+            # ignore_if_not_exists should be True when "IF EXISTS" is present (meaning: ignore if not exists)
+            ignore_if_not_exists = "IF EXISTS" in query.upper()
+            return {
+                "object_type": object_type,
+                "object_name": object_name,
+                "ignore_if_not_exists": ignore_if_not_exists,  # Renamed for clarity
+            }
+
+        # Default for other DROP statements
         return {
             "object_type": "TABLE",
             "object_name": "unknown",
-        }  # or DATABASE, SCHEMA, etc.
+        }
 
     def _parse_insert_query(self, query: str) -> Dict[str, Any]:
         """Parse INSERT query components.

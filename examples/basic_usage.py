@@ -32,10 +32,10 @@ def main():
     ]
     df = spark.createDataFrame(data)
     print(f"   ✓ Created DataFrame: {df.count()} rows, {len(df.columns)} columns")
-    
+
     print("\n   Schema:")
     df.printSchema()
-    
+
     print("\n   Data:")
     df.show()
 
@@ -51,30 +51,29 @@ def main():
         "name",
         "salary",
         F.round(F.col("salary") / 1000, 1).alias("salary_k"),
-        F.upper(F.col("name")).alias("upper_name")
+        F.upper(F.col("name")).alias("upper_name"),
     )
     print("   ✓ Applied transformations:")
     result.show()
 
     # 5. Aggregations
     print("\n5️⃣  Aggregations...")
-    dept_stats = df.groupBy("dept").agg(
-        F.count("*").alias("count"),
-        F.avg("salary").alias("avg_salary"),
-        F.max("salary").alias("max_salary")
-    ).orderBy(F.desc("avg_salary"))
+    dept_stats = (
+        df.groupBy("dept")
+        .agg(
+            F.count("*").alias("count"),
+            F.avg("salary").alias("avg_salary"),
+            F.max("salary").alias("max_salary"),
+        )
+        .orderBy(F.desc("avg_salary"))
+    )
     print("   ✓ Department statistics:")
     dept_stats.show()
 
     # 6. Window Functions
     print("\n6️⃣  Window Functions...")
     window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
-    ranked = df.select(
-        "name",
-        "dept",
-        "salary",
-        F.row_number().over(window_spec).alias("rank")
-    )
+    ranked = df.select("name", "dept", "salary", F.row_number().over(window_spec).alias("rank"))
     print("   ✓ Salary rankings by department:")
     ranked.show()
 
@@ -86,7 +85,7 @@ def main():
         {"dept": "Marketing", "location": "Boston"},
     ]
     dept_df = spark.createDataFrame(dept_data)
-    
+
     joined = df.join(dept_df, "dept").select("name", "dept", "salary", "location")
     print("   ✓ Joined with department locations:")
     joined.show()
@@ -102,13 +101,11 @@ def main():
     # 9. Lazy Evaluation Demo
     print("\n9️⃣  Lazy Evaluation...")
     # Transformations are queued (not executed)
-    lazy_result = (df
-        .filter(F.col("salary") > 70000)
-        .select("name", "salary")
-        .orderBy(F.desc("salary"))
+    lazy_result = (
+        df.filter(F.col("salary") > 70000).select("name", "salary").orderBy(F.desc("salary"))
     )
     print("   ✓ Transformations queued (not executed yet)")
-    
+
     # Action triggers execution
     top_earners = lazy_result.collect()
     print(f"   ✓ Action executed: {len(top_earners)} results")

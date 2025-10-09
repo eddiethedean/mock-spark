@@ -208,6 +208,8 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
         from pyspark.sql import functions as pyspark_functions
         from pyspark.sql import types as pyspark_types
 
+        # Note: JAVA_TOOL_OPTIONS are set in conftest.py before any pyspark imports
+
         # Clean up any existing Spark sessions first
         try:
             active_session = SparkSession.getActiveSession()
@@ -221,8 +223,15 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
             pass
 
         # Create Spark session with test configuration optimized for compatibility
+        # Use unique identifiers for parallel test execution isolation
+        import uuid
+        import tempfile
+
+        session_id = str(uuid.uuid4())[:8]
+        warehouse_dir = tempfile.mkdtemp(prefix=f"spark-warehouse-{session_id}-")
+
         spark = (
-            SparkSession.builder.appName("compatibility-test")
+            SparkSession.builder.appName(f"compatibility-test-{session_id}")
             .master("local[1]")
             .config("spark.sql.adaptive.enabled", "false")
             .config("spark.sql.adaptive.coalescePartitions.enabled", "false")
@@ -233,9 +242,12 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
             .config("spark.executor.memory", "1g")
             .config("spark.driver.maxResultSize", "1g")
             .config("spark.ui.enabled", "false")
-            .config("spark.sql.warehouse.dir", "/tmp/spark-warehouse")
+            .config("spark.sql.warehouse.dir", warehouse_dir)
             .getOrCreate()
         )
+
+        # Store warehouse dir for cleanup
+        modules["_warehouse_dir"] = warehouse_dir
 
         # Set log level to reduce noise
         spark.sparkContext.setLogLevel("ERROR")
@@ -256,6 +268,17 @@ def cleanup_environment(modules: Dict[str, Any], env_type: str) -> None:
         except Exception:
             # Ignore errors during cleanup
             pass
+
+        # Clean up warehouse directory if it was created
+        if "_warehouse_dir" in modules:
+            try:
+                import shutil
+
+                warehouse_dir = modules["_warehouse_dir"]
+                if os.path.exists(warehouse_dir):
+                    shutil.rmtree(warehouse_dir, ignore_errors=True)
+            except Exception:
+                pass
 
         # Also try to clean up any active Spark context
         try:

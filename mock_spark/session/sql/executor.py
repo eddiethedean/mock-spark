@@ -201,12 +201,15 @@ class MockSQLExecutor:
             Empty DataFrame indicating success.
         """
         components = ast.components
-        object_type = components.get("object_type", "TABLE")
+        object_type = components.get("object_type", "TABLE").upper()
         object_name = components.get("object_name", "unknown")
+        # Default to True for backward compatibility and safer behavior
+        ignore_if_exists = components.get("ignore_if_exists", True)
 
-        if object_type.upper() == "DATABASE":
-            self.session.catalog.createDatabase(object_name)
-        elif object_type.upper() == "TABLE":
+        # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
+        if object_type in ("DATABASE", "SCHEMA"):
+            self.session.catalog.createDatabase(object_name, ignoreIfExists=ignore_if_exists)
+        elif object_type == "TABLE":
             # Mock table creation
             pass
 
@@ -229,13 +232,15 @@ class MockSQLExecutor:
             Empty DataFrame indicating success.
         """
         components = ast.components
-        object_type = components.get("object_type", "TABLE")
+        object_type = components.get("object_type", "TABLE").upper()
         object_name = components.get("object_name", "unknown")
+        # Default to True for backward compatibility and safer behavior
+        ignore_if_not_exists = components.get("ignore_if_not_exists", True)
 
-        if object_type.upper() == "DATABASE":
-            # Mock database drop
-            pass
-        elif object_type.upper() == "TABLE":
+        # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
+        if object_type in ("DATABASE", "SCHEMA"):
+            self.session.catalog.dropDatabase(object_name, ignoreIfNotExists=ignore_if_not_exists)
+        elif object_type == "TABLE":
             # Mock table drop
             pass
 

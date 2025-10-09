@@ -97,14 +97,14 @@ class TestNullHandling:
         assert_dataframes_equal(mock_df, pyspark_df)
 
     def test_infer_all_nulls_raises_error(self, mock_environment, pyspark_environment):
-        """Test that all-null columns raise ValueError in both."""
+        """Test that all-null columns raise ValueError in both (PySpark 3.2.4 behavior)."""
         data = [{"value": None}]
 
-        # Both should raise ValueError
-        with pytest.raises(ValueError):
+        # Both should raise ValueError (verified with PySpark 3.2.4)
+        with pytest.raises(ValueError, match="cannot be determined"):
             mock_environment["session"].createDataFrame(data)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="cannot be determined"):
             pyspark_environment["session"].createDataFrame(data)
 
 

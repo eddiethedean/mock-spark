@@ -74,11 +74,11 @@ class TestBasicTypeDetection:
         assert value_field.nullable == True
 
     def test_all_nulls_raises_error(self, spark):
-        """Test that all-null columns raise ValueError (matching PySpark)."""
+        """Test that all-null columns raise ValueError (matching PySpark 3.2.4)."""
         data = [{"value": None}]
 
-        # PySpark raises: ValueError: Some of types cannot be determined after inferring
-        with pytest.raises(ValueError, match="cannot be determined|cannot infer"):
+        # PySpark 3.2.4 raises: ValueError: Some of types cannot be determined after inferring
+        with pytest.raises(ValueError, match="cannot be determined"):
             df = spark.createDataFrame(data)
 
 
@@ -462,6 +462,129 @@ class TestColumnOrdering:
         # Should be alphabetically sorted
         expected_order = sorted(["id", "name", "age"])
         assert df.columns == expected_order
+
+
+class TestNoneValueHandling:
+    """Test inference with None/null values (Critical Issue #1)."""
+
+    def test_all_none_single_column_raises_error(self, spark):
+        """Test that column with all None values raises ValueError (PySpark 3.2.4 behavior)."""
+        data = [{"id": 1, "optional": None}, {"id": 2, "optional": None}]
+
+        # This raises ValueError in both PySpark 3.2.4 and mock-spark
+        with pytest.raises(ValueError, match="cannot be determined"):
+            df = spark.createDataFrame(data)
+
+    def test_mixed_none_and_values(self, spark):
+        """Test inference with some None values."""
+        data = [
+            {"id": 1, "name": "Alice", "optional_field": None},
+            {"id": 2, "name": "Bob", "optional_field": "value"},
+            {"id": 3, "name": "Charlie", "optional_field": None},
+        ]
+        df = spark.createDataFrame(data)
+
+        fields_by_name = {f.name: f for f in df.schema.fields}
+        # Should infer StringType from non-null value
+        assert isinstance(fields_by_name["optional_field"].dataType, StringType)
+        assert df.count() == 3
+
+        # Verify None values are preserved
+        rows = df.collect()
+        assert rows[0]["optional_field"] is None
+        assert rows[1]["optional_field"] == "value"
+        assert rows[2]["optional_field"] is None
+
+    def test_none_first_then_value(self, spark):
+        """Test that None values at start don't prevent type inference."""
+        data = [
+            {"id": 1, "value": None},
+            {"id": 2, "value": None},
+            {"id": 3, "value": 100},
+        ]
+        df = spark.createDataFrame(data)
+
+        fields_by_name = {f.name: f for f in df.schema.fields}
+        # Should infer LongType from non-null value (row 3)
+        assert isinstance(
+            fields_by_name["value"].dataType, LongType
+        ), "Should infer type from non-null values"
+
+    def test_multiple_columns_all_none_raises_error(self, spark):
+        """Test multiple columns with all None values raises ValueError."""
+        data = [
+            {"id": 1, "col1": None, "col2": None, "col3": None},
+            {"id": 2, "col1": None, "col2": None, "col3": None},
+        ]
+
+        # This raises ValueError because col1, col2, col3 are all None
+        with pytest.raises(ValueError, match="cannot be determined"):
+            df = spark.createDataFrame(data)
+
+    def test_none_with_dict_metadata(self, spark):
+        """Test real-world case from SparkForge: metadata field with None values."""
+        data = [
+            {"user_id": "u1", "count": 10, "metadata": None},
+            {"user_id": "u2", "count": 20, "metadata": {"key": "value"}},
+        ]
+        df = spark.createDataFrame(data)
+
+        fields_by_name = {f.name: f for f in df.schema.fields}
+        assert "metadata" in fields_by_name
+        # Should infer MapType from non-null value
+        assert isinstance(fields_by_name["metadata"].dataType, MapType)
+        assert df.count() == 2
+
+    def test_sparse_data_with_none(self, spark):
+        """Test sparse data where some rows have None, others missing the key entirely."""
+        data = [
+            {"id": 1, "optional": None},  # Explicitly None
+            {"id": 2},  # Missing key
+            {"id": 3, "optional": "value"},  # Has value
+        ]
+        df = spark.createDataFrame(data)
+
+        fields_by_name = {f.name: f for f in df.schema.fields}
+        assert "optional" in fields_by_name
+        assert isinstance(fields_by_name["optional"].dataType, StringType)
+
+        # All rows should have the column filled with None
+        rows = df.collect()
+        assert rows[0]["optional"] is None
+        assert rows[1]["optional"] is None
+        assert rows[2]["optional"] == "value"
+
+    def test_writer_pattern_from_sparkforge(self, spark):
+        """Test the LogWriter pattern from SparkForge that was failing."""
+        # This is the exact pattern that failed in SparkForge
+        log_data = [
+            {
+                "pipeline_id": "test",
+                "step_name": "step1",
+                "status": "success",
+                "error_message": None,
+                "metadata": None,
+            },
+            {
+                "pipeline_id": "test",
+                "step_name": "step2",
+                "status": "failed",
+                "error_message": "Error occurred",
+                "metadata": {"attempt": 1},
+            },
+        ]
+
+        # This should no longer raise ValueError
+        df = spark.createDataFrame(log_data)
+
+        assert df.count() == 2
+        fields_by_name = {f.name: f for f in df.schema.fields}
+
+        # error_message: first None, then string -> StringType
+        assert isinstance(fields_by_name["error_message"].dataType, StringType)
+
+        # metadata: first None, then dict -> MapType
+        assert isinstance(fields_by_name["metadata"].dataType, MapType)
 
 
 class TestSparseMissingData:

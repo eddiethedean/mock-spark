@@ -19,12 +19,33 @@ from mock_spark.window import MockWindow as Window
 def create_sample_data():
     """Generate comprehensive sample dataset."""
     return [
-        {"id": 1, "name": "Alice", "dept": "Engineering", "salary": 95000, "years": 5, "rating": 4.5},
+        {
+            "id": 1,
+            "name": "Alice",
+            "dept": "Engineering",
+            "salary": 95000,
+            "years": 5,
+            "rating": 4.5,
+        },
         {"id": 2, "name": "Bob", "dept": "Sales", "salary": 80000, "years": 3, "rating": 4.2},
-        {"id": 3, "name": "Charlie", "dept": "Engineering", "salary": 105000, "years": 7, "rating": 4.8},
+        {
+            "id": 3,
+            "name": "Charlie",
+            "dept": "Engineering",
+            "salary": 105000,
+            "years": 7,
+            "rating": 4.8,
+        },
         {"id": 4, "name": "Diana", "dept": "Marketing", "salary": 75000, "years": 2, "rating": 4.0},
         {"id": 5, "name": "Eve", "dept": "Sales", "salary": 90000, "years": 4, "rating": 4.6},
-        {"id": 6, "name": "Frank", "dept": "Engineering", "salary": 88000, "years": 3, "rating": 4.1},
+        {
+            "id": 6,
+            "name": "Frank",
+            "dept": "Engineering",
+            "salary": 88000,
+            "years": 3,
+            "rating": 4.1,
+        },
         {"id": 7, "name": "Grace", "dept": "Marketing", "salary": 82000, "years": 4, "rating": 4.4},
         {"id": 8, "name": "Henry", "dept": "Sales", "salary": 95000, "years": 6, "rating": 4.7},
     ]
@@ -47,15 +68,16 @@ def demo_advanced_transformations(df):
         (F.col("salary") * 1.1).alias("salary_with_raise"),
         # Conditional logic
         F.when(F.col("years") >= 5, "Senior")
-         .when(F.col("years") >= 3, "Mid")
-         .otherwise("Junior").alias("level"),
+        .when(F.col("years") >= 3, "Mid")
+        .otherwise("Junior")
+        .alias("level"),
         # Ratings
-        F.round(F.col("rating") * 20, 0).alias("rating_pct")
+        F.round(F.col("rating") * 20, 0).alias("rating_pct"),
     )
-    
+
     print("\n✓ Complex expressions with conditionals:")
     result.show()
-    
+
     return result
 
 
@@ -67,7 +89,7 @@ def demo_window_analytics(df):
 
     # Ranking within departments
     dept_window = Window.partitionBy("dept").orderBy(F.desc("salary"))
-    
+
     # Multiple window functions
     analytics = df.select(
         "name",
@@ -75,12 +97,12 @@ def demo_window_analytics(df):
         "salary",
         F.row_number().over(dept_window).alias("rank"),
         F.rank().over(dept_window).alias("dense_rank"),
-        F.round(F.avg("salary").over(Window.partitionBy("dept")), 0).alias("dept_avg")
+        F.round(F.avg("salary").over(Window.partitionBy("dept")), 0).alias("dept_avg"),
     )
-    
+
     print("\n✓ Ranking and department averages:")
     analytics.show()
-    
+
     return analytics
 
 
@@ -91,32 +113,37 @@ def demo_complex_aggregations(df):
     print("=" * 60)
 
     # Department statistics
-    dept_stats = df.groupBy("dept").agg(
-        F.count("*").alias("employee_count"),
-        F.avg("salary").alias("avg_salary"),
-        F.min("salary").alias("min_salary"),
-        F.max("salary").alias("max_salary"),
-        F.avg("years").alias("avg_tenure"),
-        F.avg("rating").alias("avg_rating")
-    ).orderBy(F.desc("avg_salary"))
-    
+    dept_stats = (
+        df.groupBy("dept")
+        .agg(
+            F.count("*").alias("employee_count"),
+            F.avg("salary").alias("avg_salary"),
+            F.min("salary").alias("min_salary"),
+            F.max("salary").alias("max_salary"),
+            F.avg("years").alias("avg_tenure"),
+            F.avg("rating").alias("avg_rating"),
+        )
+        .orderBy(F.desc("avg_salary"))
+    )
+
     print("\n✓ Department statistics:")
     dept_stats.show()
-    
+
     # Seniority analysis
-    seniority = df.withColumn(
-        "level",
-        F.when(F.col("years") >= 5, "Senior")
-         .when(F.col("years") >= 3, "Mid")
-         .otherwise("Junior")
-    ).groupBy("level").agg(
-        F.count("*").alias("count"),
-        F.avg("salary").alias("avg_salary")
+    seniority = (
+        df.withColumn(
+            "level",
+            F.when(F.col("years") >= 5, "Senior")
+            .when(F.col("years") >= 3, "Mid")
+            .otherwise("Junior"),
+        )
+        .groupBy("level")
+        .agg(F.count("*").alias("count"), F.avg("salary").alias("avg_salary"))
     )
-    
+
     print("\n✓ Seniority analysis:")
     seniority.show()
-    
+
     return dept_stats
 
 
@@ -128,16 +155,16 @@ def demo_sql_operations(spark, df):
 
     # Create temp view
     df.createOrReplaceTempView("employees")
-    
+
     # Simple SQL query with filtering
     sql_result = spark.sql("SELECT name, dept, salary FROM employees WHERE salary > 85000")
-    
+
     print("\n✓ SQL query (salary > 85k):")
     sql_result.show()
-    
+
     # Another SQL example
     top_rated = spark.sql("SELECT name, dept, rating FROM employees WHERE rating >= 4.5")
-    
+
     print("\n✓ Top rated employees (rating >= 4.5):")
     top_rated.show()
 
@@ -156,17 +183,15 @@ def demo_advanced_features(df):
         F.min("salary").alias("min_salary"),
         F.max("salary").alias("max_salary"),
         F.avg("years").alias("avg_tenure"),
-        F.avg("rating").alias("avg_rating")
+        F.avg("rating").alias("avg_rating"),
     )
     overall_stats.show()
-    
+
     # Percentiles using window functions
     print("\n✓ Salary percentiles:")
     percentile_window = Window.orderBy("salary")
     percentiles = df.select(
-        "name",
-        "salary",
-        F.row_number().over(percentile_window).alias("salary_rank")
+        "name", "salary", F.row_number().over(percentile_window).alias("salary_rank")
     ).orderBy(F.desc("salary"))
     percentiles.show()
 
@@ -181,12 +206,12 @@ def demo_error_handling(spark, df):
     print("\n✓ Lazy evaluation (error deferred):")
     bad_query = df.filter(F.col("nonexistent") > 0)  # No error yet
     print("   Transformation queued (no error)")
-    
+
     try:
         bad_query.count()  # Error happens here
     except Exception as e:
         print(f"   ✓ Error caught at action time: {type(e).__name__}")
-    
+
     # Valid null handling
     print("\n✓ Null handling with coalesce:")
     null_data = [
@@ -194,10 +219,7 @@ def demo_error_handling(spark, df):
         {"name": "Test2", "value": None},
     ]
     null_df = spark.createDataFrame(null_data)
-    result = null_df.select(
-        "name",
-        F.coalesce(F.col("value"), F.lit(0)).alias("value_safe")
-    )
+    result = null_df.select("name", F.coalesce(F.col("value"), F.lit(0)).alias("value_safe"))
     result.show()
 
 
@@ -210,13 +232,13 @@ def main():
     print("\n📦 Initializing Mock Spark...")
     spark = MockSparkSession("ComprehensiveDemo")
     print(f"   ✓ Session: {spark.app_name}")
-    
+
     # Load data
     print("\n📊 Loading sample data...")
     data = create_sample_data()
     df = spark.createDataFrame(data)
     print(f"   ✓ Created DataFrame: {df.count()} rows, {len(df.columns)} columns")
-    
+
     print("\n   Initial data:")
     df.show()
 
