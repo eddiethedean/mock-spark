@@ -30,6 +30,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Select, Insert, Update, Delete
 from sqlalchemy.sql.elements import ColumnElement
+from .spark_function_mapper import get_sqlalchemy_function, is_supported_function
 
 
 class SQLTranslationError(Exception):
@@ -156,6 +157,32 @@ class SQLToSQLAlchemyTranslator:
         else:
             stmt = select(table)
         
+        # Handle JOINs
+        joins = ast.find_all(exp.Join)
+        for join_exp in joins:
+            join_table_exp = join_exp.this
+            if isinstance(join_table_exp, exp.Table):
+                join_table_name = str(join_table_exp.this)
+                join_table = self._get_table(join_table_name)
+                
+                # Get join condition
+                on_exp = join_exp.args.get('on')
+                if on_exp:
+                    join_condition = self._translate_join_condition(on_exp, table, join_table)
+                    
+                    # Determine join type
+                    join_kind = join_exp.args.get('kind', '').upper()
+                    if join_kind == 'LEFT':
+                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)
+                    elif join_kind == 'RIGHT':
+                        # SQLAlchemy doesn't have right join, need to swap tables
+                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)
+                    elif join_kind == 'FULL':
+                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition, full=True)
+                    else:
+                        # INNER join (default)
+                        stmt = stmt.select_from(table).join(join_table, join_condition)
+        
         # Add WHERE clause
         where = ast.find(exp.Where)
         if where:
@@ -201,6 +228,18 @@ class SQLToSQLAlchemyTranslator:
             stmt = stmt.distinct()
         
         return stmt
+    
+    def _translate_join_condition(self, on_exp: exp.Expression, left_table: Table, right_table: Table) -> ColumnElement:
+        """Translate JOIN ON condition to SQLAlchemy."""
+        # Simple implementation for now - assumes ON clause references columns from both tables
+        # This will need enhancement for complex join conditions
+        if isinstance(on_exp, exp.EQ):
+            left = self._translate_expression(on_exp.this, left_table)
+            right = self._translate_expression(on_exp.expression, right_table)
+            return left == right
+        else:
+            # Try to translate as general expression using left table
+            return self._translate_expression(on_exp, left_table)
     
     def _translate_insert(self, ast: exp.Insert) -> Insert:
         """Translate INSERT statement to SQLAlchemy."""
@@ -413,6 +452,9 @@ class SQLToSQLAlchemyTranslator:
         if isinstance(expr, exp.Count):
             if expr.this and not isinstance(expr.this, exp.Star):
                 col = self._translate_expression(expr.this, table)
+                distinct = expr.args.get('distinct')
+                if distinct:
+                    return func.count(col.distinct())
                 return func.count(col)
             else:
                 return func.count()
@@ -433,6 +475,22 @@ class SQLToSQLAlchemyTranslator:
             col = self._translate_expression(expr.this, table)
             return func.max(col)
         
+        elif isinstance(expr, exp.StddevSamp):
+            col = self._translate_expression(expr.this, table)
+            return func.stddev_samp(col)
+        
+        elif isinstance(expr, exp.StddevPop):
+            col = self._translate_expression(expr.this, table)
+            return func.stddev_pop(col)
+        
+        elif isinstance(expr, exp.VarianceSamp):
+            col = self._translate_expression(expr.this, table)
+            return func.var_samp(col)
+        
+        elif isinstance(expr, exp.VariancePop):
+            col = self._translate_expression(expr.this, table)
+            return func.var_pop(col)
+        
         # String functions
         elif isinstance(expr, exp.Upper):
             col = self._translate_expression(expr.this, table)
@@ -446,6 +504,48 @@ class SQLToSQLAlchemyTranslator:
             args = [self._translate_expression(arg, table) for arg in expr.expressions]
             return func.concat(*args)
         
+        elif isinstance(expr, exp.Substring):
+            col = self._translate_expression(expr.this, table)
+            start = self._translate_expression(expr.args.get('start'), table)
+            length = expr.args.get('length')
+            if length:
+                length_val = self._translate_expression(length, table)
+                return func.substr(col, start, length_val)
+            return func.substr(col, start)
+        
+        elif isinstance(expr, exp.Length):
+            col = self._translate_expression(expr.this, table)
+            return func.length(col)
+        
+        elif isinstance(expr, exp.Trim):
+            col = self._translate_expression(expr.this, table)
+            return func.trim(col)
+        
+        # Math functions
+        elif isinstance(expr, exp.Abs):
+            col = self._translate_expression(expr.this, table)
+            return func.abs(col)
+        
+        elif isinstance(expr, exp.Round):
+            col = self._translate_expression(expr.this, table)
+            decimals = expr.args.get('decimals')
+            if decimals:
+                dec_val = self._extract_literal(decimals)
+                return func.round(col, dec_val)
+            return func.round(col)
+        
+        elif isinstance(expr, exp.Ceil):
+            col = self._translate_expression(expr.this, table)
+            return func.ceil(col)
+        
+        elif isinstance(expr, exp.Floor):
+            col = self._translate_expression(expr.this, table)
+            return func.floor(col)
+        
+        elif isinstance(expr, exp.Sqrt):
+            col = self._translate_expression(expr.this, table)
+            return func.sqrt(col)
+        
         # Date functions
         elif isinstance(expr, exp.CurrentDate):
             return func.current_date()
@@ -453,13 +553,31 @@ class SQLToSQLAlchemyTranslator:
         elif isinstance(expr, exp.CurrentTimestamp):
             return func.current_timestamp()
         
+        elif isinstance(expr, exp.Year):
+            col = self._translate_expression(expr.this, table)
+            return func.year(col)
+        
+        elif isinstance(expr, exp.Month):
+            col = self._translate_expression(expr.this, table)
+            return func.month(col)
+        
+        elif isinstance(expr, exp.Day):
+            col = self._translate_expression(expr.this, table)
+            return func.day(col)
+        
         # COALESCE
         elif isinstance(expr, exp.Coalesce):
             args = [self._translate_expression(arg, table) for arg in expr.expressions]
             return func.coalesce(*args)
         
+        # CAST
+        elif isinstance(expr, exp.Cast):
+            col = self._translate_expression(expr.this, table)
+            target_type = self._get_cast_type(expr.to)
+            return cast(col, target_type)
+        
         else:
-            # Generic function - try to map by name
+            # Generic function - try to map using function mapper
             args = []
             if expr.this:
                 args.append(self._translate_expression(expr.this, table))
@@ -467,7 +585,36 @@ class SQLToSQLAlchemyTranslator:
                 for arg in expr.expressions:
                     args.append(self._translate_expression(arg, table))
             
-            return getattr(func, func_name)(*args)
+            # Try to get function from mapper
+            try:
+                sql_func = get_sqlalchemy_function(func_name)
+                return sql_func(*args)
+            except ValueError:
+                # Fall back to generic func attribute access
+                if hasattr(func, func_name):
+                    return getattr(func, func_name)(*args)
+                raise SQLTranslationError(f"Unsupported function: {func_name}")
+    
+    def _get_cast_type(self, type_exp: exp.Expression) -> Any:
+        """Get SQLAlchemy type for CAST operation."""
+        from sqlalchemy import Integer, String, Float, Boolean, Date, DateTime
+        
+        type_str = str(type_exp).upper()
+        
+        if 'INT' in type_str:
+            return Integer
+        elif 'STRING' in type_str or 'VARCHAR' in type_str:
+            return String
+        elif 'FLOAT' in type_str or 'DOUBLE' in type_str:
+            return Float
+        elif 'BOOL' in type_str:
+            return Boolean
+        elif 'DATE' in type_str and 'TIME' not in type_str:
+            return Date
+        elif 'TIMESTAMP' in type_str:
+            return DateTime
+        else:
+            return String  # Default fallback
     
     def _translate_case(self, expr: exp.Case, table: Table) -> ColumnElement:
         """Translate CASE WHEN to SQLAlchemy case()."""
