@@ -88,28 +88,24 @@ class DataFrameExporter:
         # Create table from schema using SQLAlchemy
         table = DataFrameExporter._create_duckdb_table(df, connection, table_name)
 
-        # Insert data using SQLAlchemy insert() for type safety
+        # Insert data
         if df.data:
-            # Convert data to use actual column names
-            rows = [
-                {field.name: row.get(field.name) for field in df.schema.fields}
-                for row in df.data
-            ]
-            
-            # Get engine for insert operation
-            if hasattr(connection, "raw_connection"):
-                engine = connection
+            import duckdb
+            if isinstance(connection, duckdb.DuckDBPyConnection):
+                # Use DuckDB connection directly for backward compatibility
+                values_list = [
+                    tuple(row.get(field.name) for field in df.schema.fields) for row in df.data
+                ]
+                placeholders = ", ".join(["?" for _ in df.schema.fields])
+                connection.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", values_list)
             else:
-                # Create engine from DuckDB connection
-                import duckdb
-                if isinstance(connection, duckdb.DuckDBPyConnection):
-                    engine = create_engine("duckdb:///:memory:")
-                else:
-                    engine = connection
-            
-            # Use SQLAlchemy bulk insert
-            with engine.begin() as conn:
-                conn.execute(insert(table), rows)
+                # Use SQLAlchemy for engine-based connections
+                rows = [
+                    {field.name: row.get(field.name) for field in df.schema.fields}
+                    for row in df.data
+                ]
+                with connection.begin() as conn:
+                    conn.execute(insert(table), rows)
 
         return table_name
 
@@ -134,17 +130,41 @@ class DataFrameExporter:
         
         # Create SQLAlchemy engine from DuckDB connection if needed
         if isinstance(connection, duckdb.DuckDBPyConnection):
-            # Create engine from existing DuckDB connection
-            from duckdb_engine import Connection
-            engine = create_engine("duckdb:///:memory:")
-            # Note: We'll use a new engine for now; ideally would reuse connection
+            # For DuckDB connections, use the connection directly with executemany for compatibility
+            # Build column definitions
+            columns = []
+            for field in df.schema.fields:
+                # Get DuckDB type
+                type_name = type(field.dataType).__name__
+                if "String" in type_name:
+                    duckdb_type = "VARCHAR"
+                elif "Integer" in type_name or "Long" in type_name:
+                    duckdb_type = "INTEGER"
+                elif "Double" in type_name or "Float" in type_name:
+                    duckdb_type = "DOUBLE"
+                elif "Boolean" in type_name:
+                    duckdb_type = "BOOLEAN"
+                elif "Date" in type_name:
+                    duckdb_type = "DATE"
+                elif "Timestamp" in type_name:
+                    duckdb_type = "TIMESTAMP"
+                else:
+                    duckdb_type = "VARCHAR"
+                columns.append(f"{field.name} {duckdb_type}")
+            
+            # Create table using DuckDB connection (keep for backward compatibility)
+            create_sql = f"CREATE TABLE {table_name} ({', '.join(columns)})"
+            connection.execute(create_sql)
+            
+            # Also create metadata representation for return
+            metadata = MetaData()
+            table = create_table_from_mock_schema(table_name, df.schema, metadata)
         else:
-            # Assume it's already an engine
+            # Assume it's a SQLAlchemy engine
             engine = connection
-        
-        metadata = MetaData()
-        table = create_table_from_mock_schema(table_name, df.schema, metadata)
-        table.create(engine, checkfirst=True)
+            metadata = MetaData()
+            table = create_table_from_mock_schema(table_name, df.schema, metadata)
+            table.create(engine, checkfirst=True)
         
         return table
 
