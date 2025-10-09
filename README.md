@@ -7,7 +7,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-489%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-515%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead*
@@ -39,7 +39,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 489 passing tests, type-safe |
+| 🏭 **Production Ready** | 515 passing tests, 100% zero raw SQL, type-safe |
 
 ### Perfect For
 
@@ -49,6 +49,37 @@ from mock_spark import MockSparkSession as SparkSession
 - **Documentation** - Runnable examples without setup
 - **Learning** - Understand PySpark without complexity
 - **Integration Tests** - Configurable memory limits for large dataset testing
+
+---
+
+## What's New in 2.0.0
+
+### 🎯 Zero Raw SQL Architecture
+- **100% type-safe** - All database operations use SQLAlchemy Core expressions
+- **Database agnostic** - Switch between DuckDB, PostgreSQL, MySQL, SQLite with one line
+- **SQL injection prevention** - Comprehensive parameter binding throughout
+- **515 passing tests** - Up from 489 tests
+
+### 🔧 Pure SQLAlchemy Stack
+- **Removed SQLModel dependency** - Simplified to pure SQLAlchemy for cleaner architecture
+- **1,400+ lines of new infrastructure** - SQL translation, query building, type-safe helpers
+- **100+ Spark SQL functions mapped** - Comprehensive function support via sqlglot
+- **Improved performance** - Optimized query execution and bulk operations
+
+### 🗄️ Backend Flexibility
+```python
+# DuckDB (default - fastest)
+spark = MockSparkSession("app", backend="duckdb:///:memory:")
+
+# PostgreSQL
+spark = MockSparkSession("app", backend="postgresql://localhost/testdb")
+
+# SQLite
+spark = MockSparkSession("app", backend="sqlite:///test.db")
+
+# MySQL
+spark = MockSparkSession("app", backend="mysql://localhost/testdb")
+```
 
 ---
 
@@ -260,7 +291,9 @@ Real-world test suite improvements:
 
 ---
 
-## What's New in 1.4.0
+## Previous Releases
+
+### Version 1.4.0
 
 ### New Features
 
