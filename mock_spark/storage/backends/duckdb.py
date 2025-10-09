@@ -75,12 +75,16 @@ class DuckDBTable(ITable):
 
     def _create_table_from_schema(self) -> None:
         """Create table from MockSpark schema using SQLAlchemy."""
-        # Create SQLAlchemy table from MockSpark schema
-        self.sqlalchemy_table = create_table_from_mock_schema(
-            self.name,
-            self.schema,
-            self.table_metadata
-        )
+        # Check if table already exists in metadata
+        if self.name in self.table_metadata.tables:
+            self.sqlalchemy_table = self.table_metadata.tables[self.name]
+        else:
+            # Create SQLAlchemy table from MockSpark schema
+            self.sqlalchemy_table = create_table_from_mock_schema(
+                self.name,
+                self.schema,
+                self.table_metadata
+            )
         
         # Create the table in the database
         self.sqlalchemy_table.create(self.engine, checkfirst=True)
