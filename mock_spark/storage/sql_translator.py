@@ -142,9 +142,11 @@ class SQLToSQLAlchemyTranslator:
         
         # Build SELECT columns
         select_cols = []
+        has_star = False
         for projection in ast.expressions:
             if isinstance(projection, exp.Star):
                 # SELECT *
+                has_star = True
                 select_cols = [table]
                 break
             else:
@@ -154,6 +156,10 @@ class SQLToSQLAlchemyTranslator:
         # Start building statement
         if select_cols:
             stmt = select(*select_cols)
+            # If not SELECT *, need to add from clause for aggregate functions
+            if not has_star and select_cols:
+                # Check if any columns are aggregate functions
+                stmt = stmt.select_from(table)
         else:
             stmt = select(table)
         
@@ -220,8 +226,11 @@ class SQLToSQLAlchemyTranslator:
         # Add LIMIT
         limit_exp = ast.find(exp.Limit)
         if limit_exp:
-            limit_val = int(str(limit_exp.this))
-            stmt = stmt.limit(limit_val)
+            # Get limit expression value
+            limit_expr = limit_exp.expression if hasattr(limit_exp, 'expression') else limit_exp.this
+            if limit_expr:
+                limit_val = int(str(limit_expr))
+                stmt = stmt.limit(limit_val)
         
         # Add DISTINCT
         if ast.args.get('distinct'):
@@ -474,22 +483,6 @@ class SQLToSQLAlchemyTranslator:
         elif isinstance(expr, exp.Max):
             col = self._translate_expression(expr.this, table)
             return func.max(col)
-        
-        elif isinstance(expr, exp.StddevSamp):
-            col = self._translate_expression(expr.this, table)
-            return func.stddev_samp(col)
-        
-        elif isinstance(expr, exp.StddevPop):
-            col = self._translate_expression(expr.this, table)
-            return func.stddev_pop(col)
-        
-        elif isinstance(expr, exp.VarianceSamp):
-            col = self._translate_expression(expr.this, table)
-            return func.var_samp(col)
-        
-        elif isinstance(expr, exp.VariancePop):
-            col = self._translate_expression(expr.this, table)
-            return func.var_pop(col)
         
         # String functions
         elif isinstance(expr, exp.Upper):
