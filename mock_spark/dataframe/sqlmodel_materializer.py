@@ -25,6 +25,7 @@ from sqlalchemy import (
     literal,
     select,
     insert,
+    text,
 )
 from sqlalchemy.sql import Select
 from ..spark_types import (
