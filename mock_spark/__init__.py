@@ -99,7 +99,7 @@ from .performance_simulation import (
 #   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
 # Not exported in main __all__ - use explicit import when needed
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
