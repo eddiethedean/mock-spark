@@ -1,13 +1,22 @@
 """
 SQL query builder for lazy evaluation using DuckDB optimization.
 
-This module converts DataFrame operations to SQL queries incrementally,
-allowing DuckDB's query optimizer to handle execution order and optimization.
+DEPRECATED: This module is deprecated in favor of sqlalchemy_query_builder.SQLAlchemyQueryBuilder
+which provides database-agnostic query building. This file remains for backwards compatibility only.
 """
 
+import warnings
 from typing import Any, Dict, List, Optional, Union, Tuple
 from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
 from ..spark_types import MockStructType
+
+# Emit deprecation warning when this module is imported
+warnings.warn(
+    "sql_builder.SQLQueryBuilder is deprecated and will be removed in a future version. "
+    "Use sqlalchemy_query_builder.SQLAlchemyQueryBuilder for database-agnostic query building.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 
 class SQLQueryBuilder:
