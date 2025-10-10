@@ -88,14 +88,20 @@ class MockLiteral(IColumn):
         else:
             return StringType()
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":
-        """Equality comparison."""
+    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Equality comparison.
+        
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        """
         from .column import MockColumnOperation
 
         return MockColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":
-        """Inequality comparison."""
+    def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Inequality comparison.
+        
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        """
         from .column import MockColumnOperation
 
         return MockColumnOperation(self, "!=", other)
