@@ -59,13 +59,13 @@ class LazyEvaluationEngine:
 
             return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)
 
-        # Use SQLModel with DuckDB for optimization
+        # Use SQLAlchemy with DuckDB for optimization
         try:
-            from .sqlmodel_materializer import SQLModelMaterializer
+            from .sqlalchemy_materializer import SQLAlchemyMaterializer
 
-            materializer = SQLModelMaterializer()
+            materializer = SQLAlchemyMaterializer()
             try:
-                # Let SQLModel optimize and execute the operations
+                # Let SQLAlchemy optimize and execute the operations
                 rows = materializer.materialize(df.data, df.schema, df._operations_queue)
 
                 # Convert rows back to data format
@@ -87,7 +87,7 @@ class LazyEvaluationEngine:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
-            rows: Rows from SQLModel materializer
+            rows: Rows from SQLAlchemy materializer
             schema: Expected schema
 
         Returns:

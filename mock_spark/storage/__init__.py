@@ -65,7 +65,7 @@ __all__ = [
     "DuckDBStorageManager",
     "DuckDBTable",
     "DuckDBSchema",
-    # SQLModel models
+    # Storage models (dataclasses)
     "MockTableMetadata",
     "MockColumnDefinition",
     "StorageMode",

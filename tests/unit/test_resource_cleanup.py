@@ -11,7 +11,7 @@ import weakref
 from mock_spark import MockSparkSession
 from mock_spark.storage.backends.duckdb import DuckDBStorageManager
 from mock_spark.dataframe.duckdb_materializer import DuckDBMaterializer
-from mock_spark.dataframe.sqlmodel_materializer import SQLModelMaterializer
+from mock_spark.dataframe.sqlalchemy_materializer import SQLAlchemyMaterializer
 
 
 class TestSessionCleanup:
@@ -189,9 +189,9 @@ class TestMaterializerCleanup:
         if mat_ref() is not None:
             assert mat_ref().connection is None
 
-    def test_sqlmodel_materializer_cleanup(self):
-        """Test SQLModelMaterializer closes engine."""
-        materializer = SQLModelMaterializer()
+    def test_sqlalchemy_materializer_cleanup(self):
+        """Test SQLAlchemyMaterializer closes engine."""
+        materializer = SQLAlchemyMaterializer()
 
         assert materializer.engine is not None
 
@@ -199,9 +199,9 @@ class TestMaterializerCleanup:
 
         assert materializer.engine is None
 
-    def test_sqlmodel_materializer_destructor(self):
-        """Test SQLModelMaterializer destructor cleanup."""
-        materializer = SQLModelMaterializer()
+    def test_sqlalchemy_materializer_destructor(self):
+        """Test SQLAlchemyMaterializer destructor cleanup."""
+        materializer = SQLAlchemyMaterializer()
         mat_ref = weakref.ref(materializer)
 
         del materializer
