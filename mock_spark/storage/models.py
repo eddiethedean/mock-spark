@@ -1,11 +1,11 @@
 """
-SQLModel models for type-safe DuckDB storage operations.
+Dataclass models for type-safe DuckDB storage operations.
 
-This module provides Pydantic-based models for Mock Spark's storage layer,
-ensuring type safety and runtime validation for all database operations.
+This module provides dataclass-based models for Mock Spark's storage layer,
+ensuring type safety for all database operations.
 """
 
-from sqlmodel import SQLModel, Field, create_engine, Session
+from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -19,49 +19,41 @@ class StorageMode(str, Enum):
     IGNORE = "ignore"
 
 
-class MockTableMetadata(SQLModel, table=True):
+@dataclass
+class MockTableMetadata:
     """Type-safe table metadata model for DuckDB storage."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    table_name: str = Field(index=True, max_length=255)
-    schema_name: str = Field(default="default", index=True, max_length=255)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default=None)
-    row_count: int = Field(default=0, ge=0)
-    schema_version: str = Field(default="1.0", max_length=50)
-    storage_format: str = Field(default="columnar", max_length=50)
-    is_temporary: bool = Field(default=False)
-
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        use_enum_values = True
+    table_name: str
+    schema_name: str = "default"
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+    row_count: int = 0
+    schema_version: str = "1.0"
+    storage_format: str = "columnar"
+    is_temporary: bool = False
 
 
-class MockColumnDefinition(SQLModel, table=True):
+@dataclass
+class MockColumnDefinition:
     """Type-safe column definition model for DuckDB tables."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    table_id: int = Field(foreign_key="mocktablemetadata.id", index=True)
-    column_name: str = Field(max_length=255)
-    column_type: str = Field(max_length=100)
-    is_nullable: bool = Field(default=True)
-    is_primary_key: bool = Field(default=False)
-    default_value: Optional[str] = Field(default=None, max_length=1000)
-    column_order: int = Field(default=0, ge=0)
-
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    column_name: str
+    column_type: str
+    table_id: Optional[int] = None
+    id: Optional[int] = None
+    is_nullable: bool = True
+    is_primary_key: bool = False
+    default_value: Optional[str] = None
+    column_order: int = 0
 
 
-class DuckDBTableModel(SQLModel):
+@dataclass
+class DuckDBTableModel:
     """Base model for DuckDB table operations with type safety."""
 
-    table_name: str = Field(max_length=255)
-    schema_name: str = Field(default="default", max_length=255)
+    table_name: str
+    schema_name: str = "default"
 
     def get_full_name(self) -> str:
         """Get fully qualified table name."""
@@ -71,60 +63,43 @@ class DuckDBTableModel(SQLModel):
             else self.table_name
         )
 
-    class Config:
-        """Pydantic configuration."""
 
-        validate_assignment = True
-
-
-class DuckDBConnectionConfig(SQLModel):
+@dataclass
+class DuckDBConnectionConfig:
     """Type-safe configuration for DuckDB connections."""
 
-    database_path: str = Field(default="mock_spark.duckdb")
-    read_only: bool = Field(default=False)
-    memory_limit: Optional[str] = Field(default=None, max_length=50)
-    thread_count: Optional[int] = Field(default=None, ge=1, le=64)
-    enable_extensions: bool = Field(default=True)
-
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    database_path: str = "mock_spark.duckdb"
+    read_only: bool = False
+    memory_limit: Optional[str] = None
+    thread_count: Optional[int] = None
+    enable_extensions: bool = True
 
 
-class StorageOperationResult(SQLModel):
+@dataclass
+class StorageOperationResult:
     """Type-safe result model for storage operations."""
 
     success: bool
-    rows_affected: int = Field(ge=0)
+    rows_affected: int
     operation_type: str
     table_name: str
-    error_message: Optional[str] = Field(default=None)
-    execution_time_ms: Optional[float] = Field(default=None, ge=0)
-
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    error_message: Optional[str] = None
+    execution_time_ms: Optional[float] = None
 
 
-class QueryResult(SQLModel):
+@dataclass
+class QueryResult:
     """Type-safe model for query results."""
 
     data: List[Dict[str, Any]]
-    row_count: int = Field(ge=0)
-    column_count: int = Field(ge=0)
-    execution_time_ms: Optional[float] = Field(default=None, ge=0)
+    row_count: int
+    column_count: int
     query: str
-
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    execution_time_ms: Optional[float] = None
 
 
 def create_duckdb_engine(database_path: str = "mock_spark.duckdb") -> Any:
-    """Create a DuckDB engine with SQLModel integration."""
+    """Create a DuckDB engine with SQLAlchemy integration."""
     from sqlalchemy import create_engine as sa_create_engine
 
     # DuckDB connection string
@@ -141,17 +116,19 @@ def create_duckdb_engine(database_path: str = "mock_spark.duckdb") -> Any:
     return engine
 
 
-def create_session(engine: Any) -> Session:
-    """Create a SQLModel session for database operations."""
+def create_session(engine: Any) -> Any:
+    """Create a SQLAlchemy session for database operations."""
+    from sqlalchemy.orm import Session
     return Session(engine)
 
 
 def initialize_metadata_tables(engine: Any) -> None:
-    """Initialize metadata tables for Mock Spark storage."""
-    # Create all tables
-    SQLModel.metadata.create_all(engine)
-
-    # Create indexes for better performance
+    """Initialize metadata tables for Mock Spark storage.
+    
+    Note: This function is a placeholder for compatibility.
+    Metadata tables are not automatically created from dataclasses.
+    """
+    from sqlalchemy.orm import Session
     with Session(engine) as session:
-        # Add any additional setup here
+        # Add any additional setup here if needed
         session.commit()

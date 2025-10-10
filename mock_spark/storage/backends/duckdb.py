@@ -1,12 +1,13 @@
 """
-DuckDB storage backend with SQLModel integration.
+DuckDB storage backend with SQLAlchemy integration.
 
 This module provides a type-safe, high-performance storage backend using DuckDB
-with SQLModel for enhanced type safety and maintainability.
+with SQLAlchemy for enhanced type safety and maintainability.
 """
 
 import duckdb
-from sqlmodel import Session, select
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import time
@@ -40,14 +41,14 @@ class DuckDBTable(ITable):
         name: str,
         schema: MockStructType,
         connection: duckdb.DuckDBPyConnection,
-        sqlmodel_session: Optional[Session],
+        sqlalchemy_session: Optional[Session],
         engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB table with type safety."""
         self.name = name
         self.schema = schema
         self.connection = connection
-        self.sqlmodel_session = sqlmodel_session
+        self.sqlalchemy_session = sqlalchemy_session
 
         # Create or use provided SQLAlchemy engine for type-safe operations
         if engine is None:
@@ -58,7 +59,7 @@ class DuckDBTable(ITable):
         self.table_metadata = MetaData()
         self.sqlalchemy_table: Optional[Table] = None
 
-        # Create simplified metadata (without SQLModel for now)
+        # Create simplified metadata using dataclasses
         self.metadata = {
             "table_name": name,
             "schema_name": "default",
@@ -241,13 +242,13 @@ class DuckDBSchema(ISchema):
         self,
         name: str,
         connection: duckdb.DuckDBPyConnection,
-        sqlmodel_session: Optional[Session],
+        sqlalchemy_session: Optional[Session],
         engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB schema."""
         self.name = name
         self.connection = connection
-        self.sqlmodel_session = sqlmodel_session
+        self.sqlalchemy_session = sqlalchemy_session
         self.tables: Dict[str, DuckDBTable] = {}
 
         # Create or use provided SQLAlchemy engine
@@ -267,7 +268,7 @@ class DuckDBSchema(ISchema):
 
         # Create table using SQLAlchemy
         duckdb_table = DuckDBTable(
-            table, schema, self.connection, self.sqlmodel_session, self.engine
+            table, schema, self.connection, self.sqlalchemy_session, self.engine
         )
         self.tables[table] = duckdb_table
         return duckdb_table
@@ -476,7 +477,7 @@ class DuckDBStorageManager(IStorageManager):
             "total_tables": total_tables,
             "schemas": list(self.schemas.keys()),
             "storage_engine": "DuckDB",
-            "type_safety": "SQLModel + Pydantic",
+            "type_safety": "SQLAlchemy + Dataclasses",
         }
 
     def execute_analytical_query(self, query: str) -> List[Dict[str, Any]]:
