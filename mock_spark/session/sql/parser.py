@@ -286,6 +286,8 @@ class MockSQLParser:
             return "UPDATE"
         elif query_upper.startswith("DELETE"):
             return "DELETE"
+        elif query_upper.startswith("MERGE"):
+            return "MERGE"
         elif query_upper.startswith("CREATE"):
             return "CREATE"
         elif query_upper.startswith("DROP"):
@@ -339,6 +341,8 @@ class MockSQLParser:
             components.update(self._parse_update_query(query))
         elif query_type == "DELETE":
             components.update(self._parse_delete_query(query))
+        elif query_type == "MERGE":
+            components.update(self._parse_merge_query(query))
 
         return components
 
@@ -506,3 +510,84 @@ class MockSQLParser:
         """
         # Mock implementation
         return {"table_name": "unknown", "where_conditions": []}
+
+    def _parse_merge_query(self, query: str) -> Dict[str, Any]:
+        """Parse MERGE INTO query components.
+
+        Args:
+            query: MERGE query string.
+
+        Returns:
+            Dictionary of MERGE components.
+        """
+        import re
+        
+        components = {}
+        
+        # Extract: MERGE INTO target_table
+        target_match = re.search(r"MERGE\s+INTO\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
+        if target_match:
+            components["target_table"] = target_match.group(1)
+            components["target_alias"] = None
+            # Check for alias
+            alias_match = re.search(
+                r"MERGE\s+INTO\s+\w+(?:\.\w+)?\s+(?:AS\s+)?(\w+)", query, re.IGNORECASE
+            )
+            if alias_match:
+                potential_alias = alias_match.group(1)
+                if potential_alias.upper() not in ["USING"]:
+                    components["target_alias"] = potential_alias
+        
+        # Extract: USING source_table
+        using_match = re.search(r"USING\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
+        if using_match:
+            components["source_table"] = using_match.group(1)
+            components["source_alias"] = None
+            # Check for alias
+            alias_match = re.search(
+                r"USING\s+\w+(?:\.\w+)?\s+(?:AS\s+)?(\w+)", query, re.IGNORECASE
+            )
+            if alias_match:
+                potential_alias = alias_match.group(1)
+                if potential_alias.upper() not in ["ON"]:
+                    components["source_alias"] = potential_alias
+        
+        # Extract: ON condition
+        on_match = re.search(r"ON\s+(.*?)\s+WHEN", query, re.IGNORECASE | re.DOTALL)
+        if on_match:
+            components["on_condition"] = on_match.group(1).strip()
+        
+        # Extract: WHEN MATCHED clauses
+        matched_clauses = []
+        for match in re.finditer(
+            r"WHEN\s+MATCHED\s+THEN\s+(UPDATE|DELETE)(.*?)(?=WHEN|$)",
+            query,
+            re.IGNORECASE | re.DOTALL
+        ):
+            action = match.group(1).upper()
+            details = match.group(2).strip()
+            
+            if action == "UPDATE":
+                # Parse SET clause
+                set_match = re.search(r"SET\s+(.*?)(?=WHEN|$)", details, re.IGNORECASE | re.DOTALL)
+                if set_match:
+                    set_clause = set_match.group(1).strip()
+                    matched_clauses.append({"action": "UPDATE", "set_clause": set_clause})
+            elif action == "DELETE":
+                matched_clauses.append({"action": "DELETE"})
+        
+        components["when_matched"] = matched_clauses
+        
+        # Extract: WHEN NOT MATCHED clauses
+        not_matched_clauses = []
+        for match in re.finditer(
+            r"WHEN\s+NOT\s+MATCHED\s+THEN\s+INSERT\s+(.*?)(?=WHEN|$)",
+            query,
+            re.IGNORECASE | re.DOTALL
+        ):
+            insert_clause = match.group(1).strip()
+            not_matched_clauses.append({"action": "INSERT", "insert_clause": insert_clause})
+        
+        components["when_not_matched"] = not_matched_clauses
+        
+        return components
