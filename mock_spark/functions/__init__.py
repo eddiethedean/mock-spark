@@ -108,6 +108,7 @@ to_date = F.to_date
 to_timestamp = F.to_timestamp
 hour = F.hour
 day = F.day
+dayofmonth = F.day  # Alias for day
 month = F.month
 year = F.year
 dayofweek = F.dayofweek
@@ -207,6 +208,7 @@ __all__ = [
     "to_timestamp",
     "hour",
     "day",
+    "dayofmonth",
     "month",
     "year",
     "dayofweek",

@@ -1522,11 +1522,26 @@ class SQLAlchemyMaterializer:
                 new_expr = left_col - right_val
             elif col.operation == "/":
                 new_expr = left_col / right_val
+            # Handle datetime functions (unary - value is None)
+            elif col.value is None and col.operation in [
+                "to_date", "to_timestamp", "hour", "minute", "second", 
+                "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", 
+                "weekofyear", "quarter"
+            ]:
+                datetime_sql = self._expression_to_sql(col)
+                from sqlalchemy import literal_column
+                new_expr = literal_column(datetime_sql)
             else:
                 # Fallback to raw SQL for other operations
                 new_expr = text(f"({left_col.name} {col.operation} {right_val})")
 
-            select_columns.append(new_expr.label(col_name))
+            # Safe label application - use .label() if available, otherwise use literal_column
+            try:
+                select_columns.append(new_expr.label(col_name))
+            except (NotImplementedError, AttributeError):
+                # For expressions that don't support .label(), use literal_column
+                from sqlalchemy import literal_column
+                select_columns.append(literal_column(str(new_expr)).label(col_name))
         else:
             # Fallback to raw SQL for other expressions
             from sqlalchemy import literal_column
@@ -1548,9 +1563,23 @@ class SQLAlchemyMaterializer:
             new_columns.append(Column(col_name_existing, col_type, primary_key=False))
 
         # Add the new column with appropriate type
-        if hasattr(col, "operation") and hasattr(col, "column") and hasattr(col, "value"):
-            # For arithmetic operations, use Float type
-            new_columns.append(Column(col_name, Float, primary_key=False))
+        if hasattr(col, "operation") and hasattr(col, "column"):
+            # Determine type based on operation
+            if col.operation in ["to_date"]:
+                from sqlalchemy import Date
+                new_columns.append(Column(col_name, Date, primary_key=False))
+            elif col.operation in ["to_timestamp", "current_timestamp"]:
+                from sqlalchemy import DateTime
+                new_columns.append(Column(col_name, DateTime, primary_key=False))
+            elif col.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                # All datetime component extractions return integers
+                new_columns.append(Column(col_name, Integer, primary_key=False))
+            elif hasattr(col, "value") and col.value is not None:
+                # For arithmetic operations with a value, use Float type
+                new_columns.append(Column(col_name, Float, primary_key=False))
+            else:
+                # Default to String for unknown operations
+                new_columns.append(Column(col_name, String, primary_key=False))
         else:
             new_columns.append(Column(col_name, String, primary_key=False))
 
@@ -2149,6 +2178,28 @@ class SQLAlchemyMaterializer:
                     return f"(-{left})"
                 elif expr.operation == "+":
                     return f"(+{left})"
+                # Handle datetime functions
+                elif expr.operation in ["to_date", "to_timestamp"]:
+                    # DuckDB: CAST(column AS DATE/TIMESTAMP)
+                    target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
+                    return f"CAST({left} AS {target_type})"
+                elif expr.operation in ["hour", "minute", "second"]:
+                    # DuckDB: extract(part from timestamp)
+                    return f"extract({expr.operation} from CAST({left} AS TIMESTAMP))"
+                elif expr.operation in ["year", "month", "day", "dayofmonth"]:
+                    # DuckDB: extract(part from date)
+                    part = "day" if expr.operation == "dayofmonth" else expr.operation
+                    return f"extract({part} from CAST({left} AS DATE))"
+                elif expr.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                    # DuckDB date part extraction
+                    part_map = {
+                        "dayofweek": "dow",
+                        "dayofyear": "doy",
+                        "weekofyear": "week",
+                        "quarter": "quarter"
+                    }
+                    part = part_map.get(expr.operation, expr.operation)
+                    return f"extract({part} from CAST({left} AS DATE))"
                 else:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"
