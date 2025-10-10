@@ -1522,6 +1522,16 @@ class SQLAlchemyMaterializer:
                 new_expr = left_col - right_val
             elif col.operation == "/":
                 new_expr = left_col / right_val
+            elif col.operation == "&":
+                # Logical AND - recursively process both sides
+                left_expr = self._expression_to_sqlalchemy(col.column, source_table_obj)
+                right_expr = self._expression_to_sqlalchemy(col.value, source_table_obj)
+                new_expr = and_(left_expr, right_expr)
+            elif col.operation == "|":
+                # Logical OR - recursively process both sides
+                left_expr = self._expression_to_sqlalchemy(col.column, source_table_obj)
+                right_expr = self._expression_to_sqlalchemy(col.value, source_table_obj)
+                new_expr = or_(left_expr, right_expr)
             # Handle datetime functions (unary - value is None)
             elif col.value is None and col.operation in [
                 "to_date", "to_timestamp", "hour", "minute", "second", 
@@ -1822,12 +1832,12 @@ class SQLAlchemyMaterializer:
                     # Logical AND operation
                     left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
                     right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
-                    return left_expr & right_expr
+                    return and_(left_expr, right_expr)
                 elif condition.operation == "|":
                     # Logical OR operation
                     left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
                     right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
-                    return left_expr | right_expr
+                    return or_(left_expr, right_expr)
                 elif condition.operation == "!":
                     # Logical NOT operation
                     expr = self._condition_to_sqlalchemy(table_obj, condition.column)
@@ -1870,6 +1880,55 @@ class SQLAlchemyMaterializer:
                 return literal(False)
 
         return table_obj.c[column_name]
+
+    def _expression_to_sqlalchemy(self, expr: Any, table_obj: Any) -> Any:
+        """Convert a complex expression (including AND/OR) to SQLAlchemy."""
+        if isinstance(expr, MockColumnOperation):
+            # Recursively process left and right sides
+            if hasattr(expr, 'column'):
+                left = self._expression_to_sqlalchemy(expr.column, table_obj)
+            else:
+                left = None
+            
+            if hasattr(expr, 'value') and expr.value is not None:
+                if isinstance(expr.value, (MockColumn, MockColumnOperation)):
+                    right = self._expression_to_sqlalchemy(expr.value, table_obj)
+                elif isinstance(expr.value, MockLiteral):
+                    right = expr.value.value
+                else:
+                    right = expr.value
+            else:
+                right = None
+            
+            # Apply operation
+            if expr.operation == ">":
+                return left > right
+            elif expr.operation == "<":
+                return left < right
+            elif expr.operation == ">=":
+                return left >= right
+            elif expr.operation == "<=":
+                return left <= right
+            elif expr.operation == "==":
+                return left == right
+            elif expr.operation == "!=":
+                return left != right
+            elif expr.operation == "&":
+                return and_(left, right)
+            elif expr.operation == "|":
+                return or_(left, right)
+            elif expr.operation == "!":
+                return ~left
+            else:
+                # Fallback
+                return table_obj.c[str(expr)]
+        elif isinstance(expr, MockColumn):
+            return table_obj.c[expr.name]
+        elif isinstance(expr, MockLiteral):
+            return expr.value
+        else:
+            # Literal value
+            return expr
 
     def _value_to_sqlalchemy(self, value: Any) -> Any:
         """Convert a value to SQLAlchemy expression."""
