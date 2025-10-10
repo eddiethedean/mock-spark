@@ -12,13 +12,9 @@ delta-core JARs are available to PySpark.
 import pytest
 
 # Mark all tests in this module as requiring delta
-# These tests are currently skipped because they require additional Delta Lake
-# configuration in PySpark that goes beyond standard setup. The delta-spark package
-# is installed as a test dependency, but these integration tests need more work.
 pytestmark = [
     pytest.mark.compatibility,
     pytest.mark.delta,
-    pytest.mark.skip(reason="Delta Lake integration tests need additional PySpark configuration"),
 ]
 
 

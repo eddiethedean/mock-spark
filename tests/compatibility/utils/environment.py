@@ -249,13 +249,21 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
         # Try to configure Delta Lake if available
         try:
             from delta import configure_spark_with_delta_pip
+            # Configure Delta JARs via pip
             builder = configure_spark_with_delta_pip(builder)
+            # Manually add Delta extensions (configure_spark_with_delta_pip doesn't set these)
+            builder = (
+                builder
+                .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+                .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+            )
         except ImportError:
             # Delta Lake not installed, continue without it
             pass
-        except Exception:
+        except Exception as e:
             # Delta Lake configuration failed, continue without it
-            pass
+            import warnings
+            warnings.warn(f"Failed to configure Delta Lake: {e}")
         
         spark = builder.getOrCreate()
 
