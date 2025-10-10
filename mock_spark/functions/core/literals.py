@@ -5,9 +5,13 @@ This module provides MockLiteral class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING, Union, List
 from ...spark_types import MockDataType, StringType
 from ...core.interfaces.functions import IColumn
+
+if TYPE_CHECKING:
+    from .operations import MockColumnOperation
+    from .column import MockColumn
 
 
 class MockLiteral(IColumn):
@@ -84,14 +88,20 @@ class MockLiteral(IColumn):
         else:
             return StringType()
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":
-        """Equality comparison."""
+    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Equality comparison.
+
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        """
         from .column import MockColumnOperation
 
         return MockColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":
-        """Inequality comparison."""
+    def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Inequality comparison.
+
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        """
         from .column import MockColumnOperation
 
         return MockColumnOperation(self, "!=", other)
@@ -242,19 +252,19 @@ class MockLiteral(IColumn):
 
         return MockColumnOperation(self, "cast", data_type)
 
-    def when(self, condition: "MockColumnOperation", value: Any):
+    def when(self, condition: "MockColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""
         from ..conditional import MockCaseWhen
 
         return MockCaseWhen(self, condition, value)
 
-    def otherwise(self, value: Any):
+    def otherwise(self, value: Any) -> Any:
         """End a CASE WHEN expression with default value."""
         from ..conditional import MockCaseWhen
 
         return MockCaseWhen(self, None, value)
 
-    def over(self, window_spec):
+    def over(self, window_spec: Any) -> Any:
         """Apply window function over window specification."""
         from ..window_execution import MockWindowFunction
 

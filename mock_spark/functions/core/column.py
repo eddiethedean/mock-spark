@@ -222,7 +222,7 @@ class MockColumnOperation(IColumn):
 
     def __init__(
         self,
-        column: Union[MockColumn, "MockColumnOperation"],
+        column: Any,  # Can be MockColumn, MockColumnOperation, IColumn, mixin, or None
         operation: str,
         value: Any = None,
         name: Optional[str] = None,
@@ -230,7 +230,7 @@ class MockColumnOperation(IColumn):
         """Initialize MockColumnOperation.
 
         Args:
-            column: The column being operated on.
+            column: The column being operated on (can be None for some operations).
             operation: The operation being performed.
             value: The value or operand for the operation.
             name: Optional custom name for the operation.
@@ -314,14 +314,22 @@ class MockColumnOperation(IColumn):
         aliased_operation = MockColumnOperation(self.column, self.operation, self.value, name)
         return aliased_operation
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":
-        """Equality comparison."""
+    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Equality comparison.
+
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        This allows chaining operations like: (col("a") == 1) & (col("b") == 2)
+        """
         if isinstance(other, MockColumnOperation):
             return MockColumnOperation(self, "==", other)
         return MockColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":
-        """Inequality comparison."""
+    def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+        """Inequality comparison.
+
+        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        This allows chaining operations like: (col("a") != 1) | (col("b") != 2)
+        """
         if isinstance(other, MockColumnOperation):
             return MockColumnOperation(self, "!=", other)
         return MockColumnOperation(self, "!=", other)
@@ -431,11 +439,6 @@ class MockColumnOperation(IColumn):
     def rlike(self, pattern: str) -> "MockColumnOperation":
         """Regular expression pattern matching."""
         return MockColumnOperation(self, "rlike", pattern)
-
-    def alias(self, name: str) -> "MockColumnOperation":
-        """Create an alias for this operation."""
-        aliased_operation = MockColumnOperation(self.column, self.operation, self.value, name)
-        return aliased_operation
 
     def asc(self) -> "MockColumnOperation":
         """Ascending sort order."""

@@ -156,7 +156,7 @@ class MockAggregateFunction:
         else:
             return None
 
-    def over(self, window_spec) -> "MockWindowFunction":
+    def over(self, window_spec: Any) -> "MockWindowFunction":
         """Apply window function over window specification."""
         from .window_execution import MockWindowFunction
 

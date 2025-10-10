@@ -7,7 +7,7 @@ providing database-agnostic query building that works with any SQLAlchemy backen
 
 from typing import Any, Dict, List, Optional, Union, Tuple
 from sqlalchemy import select, Table, Column, MetaData, and_, or_, func, literal
-from sqlalchemy.sql import Select
+from sqlalchemy.sql import Select, CompoundSelect
 from sqlalchemy.sql.elements import BinaryExpression, UnaryExpression
 
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
@@ -26,7 +26,7 @@ class SQLAlchemyQueryBuilder:
         """
         self.table = table
         self.schema = schema
-        self.select_stmt: Select = select(table)
+        self.select_stmt: Any = select(table)  # Can be Select or CompoundSelect after union()
         self._with_columns: Dict[str, Any] = {}
         self._join_tables: List[Tuple[Table, Any, str]] = []
 
@@ -37,7 +37,7 @@ class SQLAlchemyQueryBuilder:
 
     def add_select(self, columns: Tuple[Any, ...]) -> None:
         """Add SELECT columns using SQLAlchemy column expressions."""
-        sql_columns = []
+        sql_columns: List[Any] = []
         for col in columns:
             if isinstance(col, str):
                 if col == "*":
@@ -222,13 +222,13 @@ class SQLAlchemyQueryBuilder:
         if hasattr(window_spec, "_rows_between") and window_spec._rows_between:
             start, end = window_spec._rows_between
             # SQLAlchemy handles rows between with range_ parameter
-            kwargs["rows"] = (
+            kwargs["rows"] = (  # type: ignore[assignment]
                 self._frame_bound_to_sqlalchemy(start),
                 self._frame_bound_to_sqlalchemy(end),
             )
         elif hasattr(window_spec, "_range_between") and window_spec._range_between:
             start, end = window_spec._range_between
-            kwargs["range_"] = (
+            kwargs["range_"] = (  # type: ignore[assignment]
                 self._frame_bound_to_sqlalchemy(start),
                 self._frame_bound_to_sqlalchemy(end),
             )
@@ -247,7 +247,7 @@ class SQLAlchemyQueryBuilder:
                 return bound.value
         return bound
 
-    def build_select(self) -> Select:
+    def build_select(self) -> Any:  # Can be Select or CompoundSelect
         """Build the final SQLAlchemy Select statement."""
         # Apply computed columns if any
         if self._with_columns:

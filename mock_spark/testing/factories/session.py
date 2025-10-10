@@ -34,6 +34,7 @@ class SessionTestFactory:
                 first_row = data[0]
                 fields = []
                 for key, value in first_row.items():
+                    field_type: Any  # Can be IntegerType, DoubleType, BooleanType, StringType
                     if isinstance(value, int):
                         field_type = IntegerType()
                     elif isinstance(value, float):
@@ -71,6 +72,7 @@ class SessionTestFactory:
                 first_row = data[0]
                 fields = []
                 for key, value in first_row.items():
+                    field_type: Any  # Can be IntegerType, DoubleType, BooleanType, StringType
                     if isinstance(value, int):
                         field_type = IntegerType()
                     elif isinstance(value, float):

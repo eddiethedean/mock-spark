@@ -12,6 +12,17 @@ from .interfaces.storage import IStorageManager, ITable, ISchema
 from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
 from .schema_inference import SchemaInferenceEngine, infer_schema_from_data
 from .data_validation import DataValidator, validate_data, coerce_data
+from .protocols import (
+    ColumnLike,
+    OperationLike,
+    LiteralLike,
+    CaseWhenLike,
+    DataFrameLike,
+    SchemaLike,
+    ColumnExpression,
+    AggregateExpression,
+    WindowExpression,
+)
 
 __all__ = [
     # Interfaces
@@ -27,6 +38,16 @@ __all__ = [
     "IFunction",
     "IColumnFunction",
     "IAggregateFunction",
+    # Protocols
+    "ColumnLike",
+    "OperationLike",
+    "LiteralLike",
+    "CaseWhenLike",
+    "DataFrameLike",
+    "SchemaLike",
+    "ColumnExpression",
+    "AggregateExpression",
+    "WindowExpression",
     # Schema Inference
     "SchemaInferenceEngine",
     "infer_schema_from_data",

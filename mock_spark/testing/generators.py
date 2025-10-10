@@ -87,9 +87,9 @@ class DataGenerator:
 class TestDataBuilder:
     """Builder pattern for creating test data with various configurations."""
 
-    def __init__(self):
-        self.data = []
-        self.schema = None
+    def __init__(self) -> None:
+        self.data: List[Dict[str, Any]] = []
+        self.schema: Optional[MockStructType] = None
         self.num_rows = 100
         self.corruption_rate = 0.0
         self.null_rate = 0.1
@@ -365,11 +365,14 @@ def create_edge_case_data() -> List[Dict[str, Any]]:
     return EdgeCaseDataGenerator.generate_boundary_values()
 
 
-def create_dataframe_from_schema_string(session, schema_string: str, row_count: int = 10) -> Any:
+def create_dataframe_from_schema_string(
+    session: Any, schema_string: str, row_count: int = 10
+) -> Any:
     """Create DataFrame from schema string like 'id:int,name:string'."""
     fields: List[MockStructField] = []
     for part in schema_string.split(","):
         name, typ = [p.strip() for p in part.split(":", 1)]
+        dtype: Any  # Can be LongType, DoubleType, BooleanType, etc.
         if typ in ("int", "integer", "long"):
             dtype = LongType()
         elif typ in ("double", "float"):

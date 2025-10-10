@@ -145,7 +145,7 @@ class MockSparkSession:
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create a DataFrame from data (mockable version)."""
         # Plugin hook: before_create_dataframe
         for plugin in getattr(self, "_plugins", []):
@@ -177,7 +177,7 @@ class MockSparkSession:
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create a DataFrame from data.
 
         Args:
@@ -377,7 +377,7 @@ class MockSparkSession:
 
     def range(
         self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create DataFrame with range of numbers.
 
         Args:
@@ -410,11 +410,11 @@ class MockSparkSession:
         except Exception:
             pass
 
-    def __enter__(self):
+    def __enter__(self) -> "MockSparkSession":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.stop()
 
@@ -427,68 +427,68 @@ class MockSparkSession:
         return MockSparkSession(self.app_name)
 
     # Mockable methods for testing
-    def mock_createDataFrame(self, side_effect=None, return_value=None):
+    def mock_createDataFrame(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock createDataFrame method for testing."""
         if side_effect:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 raise side_effect
 
             self._createDataFrame_impl = mock_impl
         elif return_value:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 return return_value
 
             self._createDataFrame_impl = mock_impl
 
-    def mock_table(self, side_effect=None, return_value=None):
+    def mock_table(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock table method for testing."""
         if side_effect:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 raise side_effect
 
             self._table_impl = mock_impl
         elif return_value:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 return return_value
 
             self._table_impl = mock_impl
 
-    def mock_sql(self, side_effect=None, return_value=None):
+    def mock_sql(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock sql method for testing."""
         if side_effect:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 raise side_effect
 
             self._sql_impl = mock_impl
         elif return_value:
 
-            def mock_impl(*args, **kwargs):
+            def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 return return_value
 
             self._sql_impl = mock_impl
 
     # Error simulation methods
-    def add_error_rule(self, method_name: str, error_condition, error_exception):
+    def add_error_rule(self, method_name: str, error_condition: Any, error_exception: Any) -> None:
         """Add error simulation rule."""
         self._error_rules[method_name] = (error_condition, error_exception)
 
-    def clear_error_rules(self):
+    def clear_error_rules(self) -> None:
         """Clear all error simulation rules."""
         self._error_rules.clear()
 
-    def reset_mocks(self):
+    def reset_mocks(self) -> None:
         """Reset all mocks to original implementations."""
         self._createDataFrame_impl = self._real_createDataFrame
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
         self.clear_error_rules()
 
-    def _check_error_rules(self, method_name: str, *args, **kwargs):
+    def _check_error_rules(self, method_name: str, *args: Any, **kwargs: Any) -> None:
         """Check if error should be raised for method."""
         if method_name in self._error_rules:
             for condition, exception in self._error_rules[method_name]:
@@ -496,13 +496,13 @@ class MockSparkSession:
                     raise exception
 
     # Integration with MockErrorSimulator
-    def _add_error_rule(self, method_name: str, condition, exception):
+    def _add_error_rule(self, method_name: str, condition: Any, exception: Any) -> None:
         """Add error rule (used by MockErrorSimulator)."""
         if method_name not in self._error_rules:
             self._error_rules[method_name] = []
         self._error_rules[method_name].append((condition, exception))
 
-    def _remove_error_rule(self, method_name: str, condition=None):
+    def _remove_error_rule(self, method_name: str, condition: Any = None) -> None:
         """Remove error rule (used by MockErrorSimulator)."""
         if method_name in self._error_rules:
             if condition is None:
@@ -512,7 +512,7 @@ class MockSparkSession:
                     (c, e) for c, e in self._error_rules[method_name] if c != condition
                 ]
 
-    def _should_raise_error(self, method_name: str, *args, **kwargs):
+    def _should_raise_error(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
         """Check if error should be raised (used by MockErrorSimulator)."""
         if method_name in self._error_rules:
             for condition, exception in self._error_rules[method_name]:

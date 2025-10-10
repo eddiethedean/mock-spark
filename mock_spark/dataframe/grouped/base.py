@@ -13,6 +13,9 @@ from ...core.exceptions.analysis import ColumnNotFoundException, AnalysisExcepti
 
 if TYPE_CHECKING:
     from ..dataframe import MockDataFrame
+    from .rollup import MockRollupGroupedData
+    from .cube import MockCubeGroupedData
+    from .pivot import MockPivotGroupedData
 
 
 class MockGroupedData:

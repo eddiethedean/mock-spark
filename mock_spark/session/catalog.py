@@ -131,13 +131,18 @@ class MockCatalog:
             raise AnalysisException(f"Failed to create database '{name}': {str(e)}")
 
     def dropDatabase(
-        self, name: str, ignoreIfNotExists: bool = True, cascade: bool = False
+        self,
+        name: str,
+        ignoreIfNotExists: bool = True,
+        ignore_if_not_exists: Optional[bool] = None,
+        cascade: bool = False,
     ) -> None:
         """Drop a database.
 
         Args:
             name: Database name.
-            ignoreIfNotExists: Whether to ignore if database doesn't exist.
+            ignoreIfNotExists: Whether to ignore if database doesn't exist (PySpark style).
+            ignore_if_not_exists: Whether to ignore if database doesn't exist (Python style).
             cascade: Whether to drop tables in the database (ignored in mock).
 
         Raises:
@@ -150,7 +155,12 @@ class MockCatalog:
         if not name:
             raise IllegalArgumentException("Database name cannot be empty")
 
-        if not ignoreIfNotExists and not self.storage.schema_exists(name):
+        # Support both camelCase (PySpark) and snake_case (Python) parameter names
+        ignore_flag = (
+            ignore_if_not_exists if ignore_if_not_exists is not None else ignoreIfNotExists
+        )
+
+        if not ignore_flag and not self.storage.schema_exists(name):
             raise AnalysisException(f"Database '{name}' does not exist")
 
         if self.storage.schema_exists(name):

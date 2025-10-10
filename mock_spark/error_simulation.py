@@ -26,7 +26,7 @@ Example:
     ...     spark.table("nonexistent.table")
 """
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 from .errors import AnalysisException, PySparkValueError
 
 
@@ -46,7 +46,7 @@ class MockErrorSimulator:
         >>> error_sim.add_rule("createDataFrame", lambda data, schema: len(data) > 1000, PySparkValueError("Too much data"))
     """
 
-    def __init__(self, spark_session):
+    def __init__(self, spark_session: Any) -> None:
         """Initialize MockErrorSimulator.
 
         Args:
@@ -54,9 +54,9 @@ class MockErrorSimulator:
         """
         self.spark_session = spark_session
         self.error_rules: Dict[str, List[tuple]] = {}
-        self._original_methods = {}
+        self._original_methods: Dict[str, Any] = {}
 
-    def add_rule(self, method_name: str, condition: Callable, exception: Exception):
+    def add_rule(self, method_name: str, condition: Callable, exception: Exception) -> None:
         """Add an error rule for a specific method.
 
         Args:
@@ -116,7 +116,9 @@ class MockErrorSimulator:
             else:
                 self.error_rules.clear()
 
-    def should_raise_error(self, method_name: str, *args, **kwargs) -> Optional[Exception]:
+    def should_raise_error(
+        self, method_name: str, *args: Any, **kwargs: Any
+    ) -> Optional[Exception]:
         """Check if an error should be raised for a method call.
 
         Args:
@@ -144,7 +146,7 @@ class MockErrorSimulator:
                     continue
             return None
 
-    def enable_error_simulation(self):
+    def enable_error_simulation(self) -> None:
         """Enable error simulation by wrapping methods."""
         # Store original methods
         self._original_methods = {
@@ -158,17 +160,17 @@ class MockErrorSimulator:
         self.spark_session.table = self._wrap_method("table")
         self.spark_session.sql = self._wrap_method("sql")
 
-    def disable_error_simulation(self):
+    def disable_error_simulation(self) -> None:
         """Disable error simulation by restoring original methods."""
         for method_name, original_method in self._original_methods.items():
             setattr(self.spark_session, method_name, original_method)
         self._original_methods.clear()
 
-    def _wrap_method(self, method_name: str):
+    def _wrap_method(self, method_name: str) -> Callable:
         """Wrap a method with error simulation logic."""
         original_method = getattr(self.spark_session, method_name)
 
-        def wrapped_method(*args, **kwargs):
+        def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             # Check if error should be raised
             error = self.should_raise_error(method_name, *args, **kwargs)
             if error:
@@ -195,7 +197,7 @@ class MockErrorSimulatorBuilder:
         ...     .build())
     """
 
-    def __init__(self, spark_session):
+    def __init__(self, spark_session: Any) -> None:
         """Initialize MockErrorSimulatorBuilder.
 
         Args:
@@ -204,7 +206,7 @@ class MockErrorSimulatorBuilder:
         self.spark_session = spark_session
         self.error_sim = MockErrorSimulator(spark_session)
 
-    def table_not_found(self, pattern: str = "nonexistent.*"):
+    def table_not_found(self, pattern: str = "nonexistent.*") -> "MockErrorSimulatorBuilder":
         """Add rule for table not found errors.
 
         Args:
@@ -220,7 +222,7 @@ class MockErrorSimulatorBuilder:
         )
         return self
 
-    def data_too_large(self, max_rows: int = 1000):
+    def data_too_large(self, max_rows: int = 1000) -> "MockErrorSimulatorBuilder":
         """Add rule for data too large errors.
 
         Args:
@@ -233,7 +235,7 @@ class MockErrorSimulatorBuilder:
         )
         return self
 
-    def invalid_schema(self, pattern: str = "invalid.*"):
+    def invalid_schema(self, pattern: str = "invalid.*") -> "MockErrorSimulatorBuilder":
         """Add rule for invalid schema errors.
 
         Args:
@@ -251,7 +253,7 @@ class MockErrorSimulatorBuilder:
         )
         return self
 
-    def sql_syntax_error(self, pattern: str = "INVALID.*"):
+    def sql_syntax_error(self, pattern: str = "INVALID.*") -> "MockErrorSimulatorBuilder":
         """Add rule for SQL syntax errors.
 
         Args:
@@ -277,7 +279,9 @@ class MockErrorSimulatorBuilder:
 
 
 # Convenience functions for common error scenarios
-def create_table_not_found_simulator(spark_session, table_pattern: str = "nonexistent.*"):
+def create_table_not_found_simulator(
+    spark_session: Any, table_pattern: str = "nonexistent.*"
+) -> MockErrorSimulator:
     """Create a simulator that raises table not found errors.
 
     Args:
@@ -290,7 +294,7 @@ def create_table_not_found_simulator(spark_session, table_pattern: str = "nonexi
     return MockErrorSimulatorBuilder(spark_session).table_not_found(table_pattern).build()
 
 
-def create_data_too_large_simulator(spark_session, max_rows: int = 1000):
+def create_data_too_large_simulator(spark_session: Any, max_rows: int = 1000) -> MockErrorSimulator:
     """Create a simulator that raises data too large errors.
 
     Args:
@@ -303,7 +307,9 @@ def create_data_too_large_simulator(spark_session, max_rows: int = 1000):
     return MockErrorSimulatorBuilder(spark_session).data_too_large(max_rows).build()
 
 
-def create_sql_error_simulator(spark_session, error_pattern: str = "INVALID.*"):
+def create_sql_error_simulator(
+    spark_session: Any, error_pattern: str = "INVALID.*"
+) -> MockErrorSimulator:
     """Create a simulator that raises SQL syntax errors.
 
     Args:

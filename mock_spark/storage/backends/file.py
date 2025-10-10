@@ -32,7 +32,7 @@ class FileTable(ITable):
         }
         self._ensure_file_exists()
 
-    def _ensure_file_exists(self):
+    def _ensure_file_exists(self) -> None:
         """Ensure the table data file exists."""
         os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
         if not os.path.exists(self.file_path):
@@ -353,7 +353,7 @@ class FileStorageManager(IStorageManager):
         """
         return self.query_table(schema, table)
 
-    def create_temp_view(self, name: str, dataframe) -> None:
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create a temporary view from a DataFrame.
 
         Args:

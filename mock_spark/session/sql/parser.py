@@ -63,7 +63,7 @@ class MockSQLParser:
         'SELECT'
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockSQLParser."""
         self._keywords = {
             "SELECT",
@@ -523,9 +523,9 @@ class MockSQLParser:
             Dictionary of MERGE components.
         """
         import re
-        
+
         components = {}
-        
+
         # Extract: MERGE INTO target_table
         target_match = re.search(r"MERGE\s+INTO\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
         if target_match:
@@ -539,7 +539,7 @@ class MockSQLParser:
                 potential_alias = alias_match.group(1)
                 if potential_alias.upper() not in ["USING"]:
                     components["target_alias"] = potential_alias
-        
+
         # Extract: USING source_table
         using_match = re.search(r"USING\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
         if using_match:
@@ -553,22 +553,22 @@ class MockSQLParser:
                 potential_alias = alias_match.group(1)
                 if potential_alias.upper() not in ["ON"]:
                     components["source_alias"] = potential_alias
-        
+
         # Extract: ON condition
         on_match = re.search(r"ON\s+(.*?)\s+WHEN", query, re.IGNORECASE | re.DOTALL)
         if on_match:
             components["on_condition"] = on_match.group(1).strip()
-        
+
         # Extract: WHEN MATCHED clauses
         matched_clauses = []
         for match in re.finditer(
             r"WHEN\s+MATCHED\s+THEN\s+(UPDATE|DELETE)(.*?)(?=WHEN|$)",
             query,
-            re.IGNORECASE | re.DOTALL
+            re.IGNORECASE | re.DOTALL,
         ):
             action = match.group(1).upper()
             details = match.group(2).strip()
-            
+
             if action == "UPDATE":
                 # Parse SET clause
                 set_match = re.search(r"SET\s+(.*?)(?=WHEN|$)", details, re.IGNORECASE | re.DOTALL)
@@ -577,19 +577,19 @@ class MockSQLParser:
                     matched_clauses.append({"action": "UPDATE", "set_clause": set_clause})
             elif action == "DELETE":
                 matched_clauses.append({"action": "DELETE"})
-        
+
         components["when_matched"] = matched_clauses
-        
+
         # Extract: WHEN NOT MATCHED clauses
         not_matched_clauses = []
         for match in re.finditer(
             r"WHEN\s+NOT\s+MATCHED\s+THEN\s+INSERT\s+(.*?)(?=WHEN|$)",
             query,
-            re.IGNORECASE | re.DOTALL
+            re.IGNORECASE | re.DOTALL,
         ):
             insert_clause = match.group(1).strip()
             not_matched_clauses.append({"action": "INSERT", "insert_clause": insert_clause})
-        
+
         components["when_not_matched"] = not_matched_clauses
-        
+
         return components

@@ -48,7 +48,9 @@ class DataFrameExporter:
         return pd.DataFrame(df.data)
 
     @staticmethod
-    def to_duckdb(df: "MockDataFrame", connection=None, table_name: Optional[str] = None) -> str:
+    def to_duckdb(
+        df: "MockDataFrame", connection: Any = None, table_name: Optional[str] = None
+    ) -> str:
         """Convert DataFrame to DuckDB table for analytical operations.
 
         Args:
@@ -113,7 +115,7 @@ class DataFrameExporter:
         return table_name
 
     @staticmethod
-    def _create_duckdb_table(df: "MockDataFrame", connection, table_name: str) -> Any:
+    def _create_duckdb_table(df: "MockDataFrame", connection: Any, table_name: str) -> Any:
         """Create DuckDB table from MockSpark schema using SQLAlchemy.
 
         Args:
@@ -172,7 +174,7 @@ class DataFrameExporter:
         return table
 
     @staticmethod
-    def _get_duckdb_type(data_type) -> str:
+    def _get_duckdb_type(data_type: Any) -> str:
         """Map MockSpark data type to DuckDB type.
 
         Args:

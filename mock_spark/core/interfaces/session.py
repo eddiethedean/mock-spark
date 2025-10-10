@@ -126,7 +126,11 @@ class ICatalog(ABC):
 
     @abstractmethod
     def dropDatabase(
-        self, db_name: str, ignore_if_not_exists: bool = False, cascade: bool = False
+        self,
+        db_name: str,
+        ignoreIfNotExists: bool = True,
+        ignore_if_not_exists: Optional[bool] = None,
+        cascade: bool = False,
     ) -> None:
         """Drop database."""
         pass

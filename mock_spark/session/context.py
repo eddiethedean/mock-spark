@@ -28,7 +28,7 @@ from ..core.interfaces.session import ISparkContext
 class MockJVMFunctions:
     """Mock JVM functions for testing without actual JVM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock JVM functions."""
         pass
 
@@ -36,7 +36,7 @@ class MockJVMFunctions:
 class MockJVMContext:
     """Mock JVM context for testing without actual JVM."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock JVM context."""
         self._jvm_available = True
         self.functions = MockJVMFunctions()
@@ -118,10 +118,10 @@ class MockSparkContext:
         # Mock implementation - in real Spark this would stop the context
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> "MockSparkContext":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.stop()

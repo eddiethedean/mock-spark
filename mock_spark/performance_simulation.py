@@ -180,11 +180,11 @@ class MockPerformanceSimulator:
             setattr(self.spark_session, method_name, original_method)
         self._original_methods.clear()
 
-    def _wrap_method(self, method_name: str):
+    def _wrap_method(self, method_name: str) -> Callable:
         """Wrap a method with performance simulation logic."""
         original_method = getattr(self.spark_session, method_name)
 
-        def wrapped_method(*args, **kwargs):
+        def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             # Check memory limits for createDataFrame
             if method_name == "createDataFrame" and args:
                 data = args[0]
@@ -212,7 +212,7 @@ class MockPerformanceSimulatorBuilder:
         ...     .build())
     """
 
-    def __init__(self, spark_session):
+    def __init__(self, spark_session: Any) -> None:
         """Initialize MockPerformanceSimulatorBuilder.
 
         Args:
@@ -221,7 +221,7 @@ class MockPerformanceSimulatorBuilder:
         self.spark_session = spark_session
         self.perf_sim = MockPerformanceSimulator(spark_session)
 
-    def slowdown(self, factor: float):
+    def slowdown(self, factor: float) -> "MockPerformanceSimulatorBuilder":
         """Set slowdown factor.
 
         Args:
@@ -230,7 +230,7 @@ class MockPerformanceSimulatorBuilder:
         self.perf_sim.set_slowdown(factor)
         return self
 
-    def memory_limit(self, max_rows: int):
+    def memory_limit(self, max_rows: int) -> "MockPerformanceSimulatorBuilder":
         """Set memory limit.
 
         Args:
@@ -239,7 +239,7 @@ class MockPerformanceSimulatorBuilder:
         self.perf_sim.set_memory_limit(max_rows)
         return self
 
-    def enable_monitoring(self):
+    def enable_monitoring(self) -> "MockPerformanceSimulatorBuilder":
         """Enable performance monitoring."""
         self.perf_sim.enable_performance_simulation()
         return self
@@ -281,7 +281,9 @@ def performance_simulation(
 
 
 # Convenience functions for common performance scenarios
-def create_slow_simulator(spark_session, slowdown_factor: float = 2.0):
+def create_slow_simulator(
+    spark_session: Any, slowdown_factor: float = 2.0
+) -> MockPerformanceSimulator:
     """Create a simulator that slows down operations.
 
     Args:
@@ -294,7 +296,9 @@ def create_slow_simulator(spark_session, slowdown_factor: float = 2.0):
     return MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
 
 
-def create_memory_limited_simulator(spark_session, memory_limit: int = 1000):
+def create_memory_limited_simulator(
+    spark_session: Any, memory_limit: int = 1000
+) -> MockPerformanceSimulator:
     """Create a simulator that limits memory usage.
 
     Args:
@@ -307,7 +311,7 @@ def create_memory_limited_simulator(spark_session, memory_limit: int = 1000):
     return MockPerformanceSimulatorBuilder(spark_session).memory_limit(memory_limit).build()
 
 
-def create_high_performance_simulator(spark_session):
+def create_high_performance_simulator(spark_session: Any) -> MockPerformanceSimulator:
     """Create a simulator optimized for high performance.
 
     Args:

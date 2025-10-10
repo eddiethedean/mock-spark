@@ -39,7 +39,7 @@ class LazyEvaluationEngine:
         return MockDataFrame(
             df.data,
             new_schema,
-            df.storage,
+            df.storage,  # type: ignore[has-type]
             is_lazy=True,
             operations=df._operations_queue + [(op_name, payload)],
         )
@@ -57,7 +57,7 @@ class LazyEvaluationEngine:
         if not df._operations_queue:
             from ..dataframe import MockDataFrame
 
-            return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)
+            return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
 
         # Use SQLAlchemy with DuckDB for optimization
         try:
@@ -74,7 +74,7 @@ class LazyEvaluationEngine:
                 # Create new eager DataFrame with materialized data
                 from ..dataframe import MockDataFrame
 
-                return MockDataFrame(materialized_data, df.schema, df.storage, is_lazy=False)
+                return MockDataFrame(materialized_data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
             finally:
                 materializer.close()
 
@@ -155,7 +155,7 @@ class LazyEvaluationEngine:
         """
         from ..dataframe import MockDataFrame
 
-        current = MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)
+        current = MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
@@ -166,7 +166,7 @@ class LazyEvaluationEngine:
                 elif op_name == "select":
                     current = current.select(*op_val)  # eager path
                 elif op_name == "groupBy":
-                    current = current.groupBy(*op_val)  # eager path
+                    current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns MockGroupedData
                 elif op_name == "join":
                     other_df, on, how = op_val
                     current = current.join(other_df, on, how)  # eager path
@@ -327,7 +327,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _filter_depends_on_original_columns(
-        filter_condition, original_schema: "MockStructType"
+        filter_condition: Any, original_schema: "MockStructType"
     ) -> bool:
         """Check if a filter condition depends on original columns.
 

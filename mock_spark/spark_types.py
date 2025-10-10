@@ -267,30 +267,30 @@ class MockStructType(StructType):
 
     def merge_with(self, other: "MockStructType") -> "MockStructType":
         """Merge this schema with another, adding new fields from other.
-        
+
         Args:
             other: Schema to merge with
-            
+
         Returns:
             New schema with fields from both schemas
         """
         # Create dict of existing fields by name
         existing_fields = {f.name: f for f in self.fields}
-        
+
         # Add fields from other that don't exist
         merged_fields = list(self.fields)  # Start with current fields
         for field in other.fields:
             if field.name not in existing_fields:
                 merged_fields.append(field)
-        
+
         return MockStructType(merged_fields)
-    
+
     def has_same_columns(self, other: "MockStructType") -> bool:
         """Check if two schemas have the same column names.
-        
+
         Args:
             other: Schema to compare with
-            
+
         Returns:
             True if column names match, False otherwise
         """

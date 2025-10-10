@@ -150,7 +150,7 @@ class SortOperations:
 class TypeOperations:
     """Mixin class for type operations."""
 
-    def cast(self, data_type) -> MockColumnOperation:
+    def cast(self, data_type: Any) -> MockColumnOperation:
         """Cast column to different data type."""
         return MockColumnOperation(self, "cast", data_type)
 
@@ -158,13 +158,13 @@ class TypeOperations:
 class ConditionalOperations:
     """Mixin class for conditional operations."""
 
-    def when(self, condition: MockColumnOperation, value: Any):
+    def when(self, condition: MockColumnOperation, value: Any) -> Any:
         """Start a CASE WHEN expression."""
         from ..conditional import MockCaseWhen
 
         return MockCaseWhen(self, condition, value)
 
-    def otherwise(self, value: Any):
+    def otherwise(self, value: Any) -> Any:
         """End a CASE WHEN expression with default value."""
         from ..conditional import MockCaseWhen
 
@@ -174,7 +174,7 @@ class ConditionalOperations:
 class WindowOperations:
     """Mixin class for window operations."""
 
-    def over(self, window_spec):
+    def over(self, window_spec: Any) -> Any:
         """Apply window function over window specification."""
         from ..window_execution import MockWindowFunction
 

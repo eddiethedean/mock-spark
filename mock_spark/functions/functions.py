@@ -314,80 +314,84 @@ class MockFunctions:
         return DateTimeFunctions.current_date()
 
     @staticmethod
-    def to_date(column, format: Optional[str] = None) -> MockColumnOperation:
+    def to_date(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert to date."""
         return DateTimeFunctions.to_date(column, format)
 
     @staticmethod
-    def to_timestamp(column, format: Optional[str] = None) -> MockColumnOperation:
+    def to_timestamp(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert to timestamp."""
         return DateTimeFunctions.to_timestamp(column, format)
 
     @staticmethod
-    def hour(column) -> MockColumnOperation:
+    def hour(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract hour."""
         return DateTimeFunctions.hour(column)
 
     @staticmethod
-    def day(column) -> MockColumnOperation:
+    def day(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract day."""
         return DateTimeFunctions.day(column)
 
     @staticmethod
-    def month(column) -> MockColumnOperation:
+    def month(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract month."""
         return DateTimeFunctions.month(column)
 
     @staticmethod
-    def year(column) -> MockColumnOperation:
+    def year(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract year."""
         return DateTimeFunctions.year(column)
 
     # Conditional functions
     @staticmethod
-    def coalesce(*columns) -> MockColumnOperation:
+    def coalesce(*columns: Union[MockColumn, str, Any]) -> MockColumnOperation:
         """Return first non-null value."""
         return ConditionalFunctions.coalesce(*columns)
 
     @staticmethod
-    def isnull(column) -> MockColumnOperation:
+    def isnull(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if column is null."""
         return ConditionalFunctions.isnull(column)
 
     @staticmethod
-    def isnotnull(column) -> MockColumnOperation:
+    def isnotnull(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if column is not null."""
         return ConditionalFunctions.isnotnull(column)
 
     @staticmethod
-    def isnan(column) -> MockColumnOperation:
+    def isnan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Check if column is NaN."""
         return ConditionalFunctions.isnan(column)
 
     @staticmethod
-    def when(condition, value=None) -> MockCaseWhen:
+    def when(condition: Any, value: Any = None) -> MockCaseWhen:
         """Start CASE WHEN expression."""
         if value is not None:
             return ConditionalFunctions.when(condition, value)
         return ConditionalFunctions.when(condition)
 
     @staticmethod
-    def dayofweek(column) -> MockColumnOperation:
+    def dayofweek(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract day of week."""
         return DateTimeFunctions.dayofweek(column)
 
     @staticmethod
-    def dayofyear(column) -> MockColumnOperation:
+    def dayofyear(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract day of year."""
         return DateTimeFunctions.dayofyear(column)
 
     @staticmethod
-    def weekofyear(column) -> MockColumnOperation:
+    def weekofyear(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract week of year."""
         return DateTimeFunctions.weekofyear(column)
 
     @staticmethod
-    def quarter(column) -> MockColumnOperation:
+    def quarter(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract quarter."""
         return DateTimeFunctions.quarter(column)
 
@@ -404,37 +408,39 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def minute(column) -> MockColumnOperation:
+    def minute(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract minute."""
         return DateTimeFunctions.minute(column)
 
     @staticmethod
-    def second(column) -> MockColumnOperation:
+    def second(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract second."""
         return DateTimeFunctions.second(column)
 
     @staticmethod
-    def add_months(column, num_months: int) -> MockColumnOperation:
+    def add_months(column: Union[MockColumn, str], num_months: int) -> MockColumnOperation:
         """Add months to date."""
         return DateTimeFunctions.add_months(column, num_months)
 
     @staticmethod
-    def months_between(column1, column2) -> MockColumnOperation:
+    def months_between(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Calculate months between two dates."""
         return DateTimeFunctions.months_between(column1, column2)
 
     @staticmethod
-    def date_add(column, days: int) -> MockColumnOperation:
+    def date_add(column: Union[MockColumn, str], days: int) -> MockColumnOperation:
         """Add days to date."""
         return DateTimeFunctions.date_add(column, days)
 
     @staticmethod
-    def date_sub(column, days: int) -> MockColumnOperation:
+    def date_sub(column: Union[MockColumn, str], days: int) -> MockColumnOperation:
         """Subtract days from date."""
         return DateTimeFunctions.date_sub(column, days)
 
     @staticmethod
-    def nvl(column, default_value) -> MockColumnOperation:
+    def nvl(column: Union[MockColumn, str], default_value: Any) -> MockColumnOperation:
         """Return default if null."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -444,7 +450,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def nvl2(column, value_if_not_null, value_if_null) -> MockColumnOperation:
+    def nvl2(
+        column: Union[MockColumn, str], value_if_not_null: Any, value_if_null: Any
+    ) -> MockColumnOperation:
         """Return value based on null check."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -491,7 +499,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def lag(column, offset: int = 1, default_value=None) -> MockColumnOperation:
+    def lag(
+        column: Union[MockColumn, str], offset: int = 1, default_value: Any = None
+    ) -> MockColumnOperation:
         """Lag window function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -502,7 +512,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def lead(column, offset: int = 1, default_value=None) -> MockColumnOperation:
+    def lead(
+        column: Union[MockColumn, str], offset: int = 1, default_value: Any = None
+    ) -> MockColumnOperation:
         """Lead window function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -513,7 +525,7 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def nth_value(column, n: int) -> MockColumnOperation:
+    def nth_value(column: Union[MockColumn, str], n: int) -> MockColumnOperation:
         """Nth value window function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -557,7 +569,7 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def desc(column) -> MockColumnOperation:
+    def desc(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Create descending order column."""
         if isinstance(column, str):
             column = MockColumn(column)

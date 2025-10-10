@@ -42,7 +42,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
         except:
             pass  # Ignore if settings not supported
 
-    def close(self):
+    def close(self) -> None:
         """Close the DuckDB connection and clean up temp directory."""
         # Clean up unique temp directory if it exists
         if self._temp_dir:
@@ -59,7 +59,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
         # Call parent close to dispose engine
         super().close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()

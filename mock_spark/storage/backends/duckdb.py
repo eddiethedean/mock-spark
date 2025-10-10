@@ -88,7 +88,7 @@ class DuckDBTable(ITable):
         # Create the table in the database
         self.sqlalchemy_table.create(self.engine, checkfirst=True)
 
-    def _get_duckdb_type(self, data_type) -> str:
+    def _get_duckdb_type(self, data_type: Any) -> str:
         """Convert MockSpark data type to DuckDB type."""
         type_name = type(data_type).__name__
         if "String" in type_name:
@@ -173,7 +173,8 @@ class DuckDBTable(ITable):
 
     def _update_row_count(self, new_rows: int) -> None:
         """Update row count with type safety."""
-        self.metadata["row_count"] += new_rows
+        current_count = self.metadata.get("row_count", 0)
+        self.metadata["row_count"] = int(current_count) + new_rows if current_count else new_rows
         self.metadata["updated_at"] = datetime.utcnow().isoformat()
 
     def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -195,15 +196,15 @@ class DuckDBTable(ITable):
                 # This is a limitation we'll address in Phase 3
                 # As a temporary measure, use DuckDB directly for filtered queries
                 query = f"SELECT * FROM {self.name} WHERE {filter_expr}"
-                result = self.connection.execute(query).fetchall()
+                duckdb_result = self.connection.execute(query).fetchall()
                 columns = [desc[0] for desc in self.connection.description]
-                data = [dict(zip(columns, row)) for row in result]
+                data = [dict(zip(columns, row)) for row in duckdb_result]
             else:
                 # Use SQLAlchemy for unfiltered queries
                 with self.engine.connect() as conn:
-                    result = conn.execute(stmt).fetchall()
+                    sqlalchemy_result: Any = conn.execute(stmt).fetchall()  # Sequence[Row]
                     columns = [col.name for col in self.sqlalchemy_table.columns]
-                    data = [dict(zip(columns, row)) for row in result]
+                    data = [dict(zip(columns, row)) for row in sqlalchemy_result]
 
             execution_time = (time.time() - start_time) * 1000
 
@@ -282,7 +283,9 @@ class DuckDBSchema(ISchema):
         """Drop a table using SQLAlchemy."""
         # Drop using SQLAlchemy if we have the table object
         if table in self.tables and self.tables[table].sqlalchemy_table is not None:
-            self.tables[table].sqlalchemy_table.drop(self.engine, checkfirst=True)
+            table_obj = self.tables[table].sqlalchemy_table
+            assert table_obj is not None  # Type narrowing for mypy
+            table_obj.drop(self.engine, checkfirst=True)
         else:
             # Try to reflect and drop
             try:
@@ -434,7 +437,7 @@ class DuckDBStorageManager(IStorageManager):
         """Get all data from table."""
         return self.query_table(schema, table)
 
-    def create_temp_view(self, name: str, dataframe) -> None:
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create temporary view with type safety."""
         schema = "default"
         self.create_schema(schema)
@@ -512,7 +515,7 @@ class DuckDBStorageManager(IStorageManager):
         except Exception as e:
             raise ValueError(f"Analytical query failed: {e}") from e
 
-    def close(self):
+    def close(self) -> None:
         """Close connections with proper cleanup."""
         if self.connection:
             try:
@@ -526,7 +529,7 @@ class DuckDBStorageManager(IStorageManager):
 
                 # Close the connection
                 self.connection.close()
-                self.connection = None
+                self.connection = None  # type: ignore[assignment]
             except Exception:
                 pass  # Ignore errors during cleanup
 
@@ -542,17 +545,17 @@ class DuckDBStorageManager(IStorageManager):
             except:
                 pass  # Ignore cleanup errors
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()
         except:
             pass
 
-    def __enter__(self):
+    def __enter__(self) -> "DuckDBStorageManager":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()

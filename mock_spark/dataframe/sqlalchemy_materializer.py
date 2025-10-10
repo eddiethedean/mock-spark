@@ -5,6 +5,8 @@ This module uses SQLAlchemy with DuckDB to provide SQL generation
 and execution capabilities for complex DataFrame operations.
 """
 
+# mypy: disable-error-code="arg-type"
+
 from typing import Any, Dict, List, Optional, Union, Tuple
 from sqlalchemy import (
     create_engine,
@@ -49,7 +51,7 @@ class SQLAlchemyMaterializer:
         # Create DuckDB engine with SQLAlchemy
         self.engine = create_engine(engine_url, echo=False)
         self._temp_table_counter = 0
-        self._created_tables = {}  # Track created tables
+        self._created_tables: Dict[str, Any] = {}  # Track created tables
         self.metadata = MetaData()
 
     def materialize(
@@ -213,7 +215,7 @@ class SQLAlchemyMaterializer:
 
         # Build select columns and new table structure
         select_columns = []
-        new_columns = []
+        new_columns: List[Any] = []
 
         for col in columns:
             # print(f"DEBUG _apply_select: Processing {type(col).__name__}, name={getattr(col, 'name', 'N/A')}, has_operation={hasattr(col, 'operation')}")
@@ -417,7 +419,7 @@ class SQLAlchemyMaterializer:
                         and col.value is not None
                     ):
                         # Use the SQL expression directly
-                        func_expr = text(col.value)
+                        func_expr: Any = text(col.value)  # Can be TextClause or Function[Any]
                         # Handle labeling
                         try:
                             select_columns.append(func_expr.label(col.name))
@@ -716,7 +718,7 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                 elif isinstance(col.value, (tuple, list)):
                                     # Flatten nested tuples/lists and process parameters
-                                    flattened_params = []
+                                    flattened_params: List[Any] = []
                                     for param in col.value:
                                         if isinstance(param, (tuple, list)):
                                             # Handle nested tuples/lists (like format_string)
@@ -924,7 +926,7 @@ class SQLAlchemyMaterializer:
 
         # Build the SELECT clause
         select_parts = []
-        new_columns = []
+        new_columns: List[Any] = []
 
         for col in columns:
             # print(f"DEBUG _apply_select_with_window_functions: Processing {type(col).__name__}, name={getattr(col, 'name', 'N/A')}, has_operation={hasattr(col, 'operation')}, has_function_name={hasattr(col, 'function_name')}")
@@ -1181,7 +1183,11 @@ class SQLAlchemyMaterializer:
                             select_parts.append(
                                 f"{col.function_name.upper()}() OVER ({window_sql})"
                             )
-                        elif hasattr(original_function, "column") and original_function.column:
+                        elif (
+                            original_function
+                            and hasattr(original_function, "column")
+                            and original_function.column
+                        ):
                             column_name = getattr(original_function.column, "name", "unknown")
                             # Check if column exists in table before adding to SQL
                             if column_name != "unknown" and column_name in source_table_obj.c:
@@ -1375,7 +1381,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy existing columns and add new column
-        new_columns = []
+        new_columns: List[Any] = []
 
         # Copy all existing columns
         for column in source_table_obj.columns:
@@ -1534,12 +1540,23 @@ class SQLAlchemyMaterializer:
                 new_expr = or_(left_expr, right_expr)
             # Handle datetime functions (unary - value is None)
             elif col.value is None and col.operation in [
-                "to_date", "to_timestamp", "hour", "minute", "second", 
-                "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", 
-                "weekofyear", "quarter"
+                "to_date",
+                "to_timestamp",
+                "hour",
+                "minute",
+                "second",
+                "year",
+                "month",
+                "day",
+                "dayofmonth",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+                "quarter",
             ]:
                 datetime_sql = self._expression_to_sql(col)
                 from sqlalchemy import literal_column
+
                 new_expr = literal_column(datetime_sql)
             else:
                 # Fallback to raw SQL for other operations
@@ -1551,6 +1568,7 @@ class SQLAlchemyMaterializer:
             except (NotImplementedError, AttributeError):
                 # For expressions that don't support .label(), use literal_column
                 from sqlalchemy import literal_column
+
                 select_columns.append(literal_column(str(new_expr)).label(col_name))
         else:
             # Fallback to raw SQL for other expressions
@@ -1567,7 +1585,7 @@ class SQLAlchemyMaterializer:
         select_stmt = select(*select_columns).select_from(source_table_obj)
 
         # Create the target table with the new column
-        new_columns = []
+        new_columns: List[Any] = []
         for col_name_existing in existing_columns:
             col_type = source_table_obj.c[col_name_existing].type
             new_columns.append(Column(col_name_existing, col_type, primary_key=False))
@@ -1577,11 +1595,25 @@ class SQLAlchemyMaterializer:
             # Determine type based on operation
             if col.operation in ["to_date"]:
                 from sqlalchemy import Date
+
                 new_columns.append(Column(col_name, Date, primary_key=False))
             elif col.operation in ["to_timestamp", "current_timestamp"]:
                 from sqlalchemy import DateTime
+
                 new_columns.append(Column(col_name, DateTime, primary_key=False))
-            elif col.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter"]:
+            elif col.operation in [
+                "hour",
+                "minute",
+                "second",
+                "year",
+                "month",
+                "day",
+                "dayofmonth",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+                "quarter",
+            ]:
                 # All datetime component extractions return integers
                 new_columns.append(Column(col_name, Integer, primary_key=False))
             elif hasattr(col, "value") and col.value is not None:
@@ -1643,7 +1675,7 @@ class SQLAlchemyMaterializer:
         # Execute with ORDER BY using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).order_by(*order_expressions)
-            results = session.execute(query).all()
+            results: List[Any] = list(session.execute(query).all())
 
             # Insert into target table
             for result in results:
@@ -1666,7 +1698,7 @@ class SQLAlchemyMaterializer:
         # Execute with LIMIT using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).limit(limit_count)
-            results = session.execute(query).all()
+            results: List[Any] = list(session.execute(query).all())
 
             # Insert into target table
             for result in results:
@@ -1678,7 +1710,7 @@ class SQLAlchemyMaterializer:
                 session.execute(insert_stmt)
             session.commit()
 
-    def _build_case_when_sql(self, case_when_obj, source_table_obj):
+    def _build_case_when_sql(self, case_when_obj: Any, source_table_obj: Any) -> str:
         """Build SQL CASE WHEN expression from MockCaseWhen object."""
         sql_parts = ["CASE"]
 
@@ -1698,7 +1730,7 @@ class SQLAlchemyMaterializer:
         sql_parts.append("END")
         return " ".join(sql_parts)
 
-    def _condition_to_sql(self, condition, source_table_obj):
+    def _condition_to_sql(self, condition: Any, source_table_obj: Any) -> str:
         """Convert a condition to SQL."""
         if hasattr(condition, "column") and hasattr(condition, "function_name"):
             # Handle column operations like F.col("age") > 30
@@ -1722,7 +1754,7 @@ class SQLAlchemyMaterializer:
                 return f'"{column_name}" <= {value_sql}'
         return str(condition)
 
-    def _value_to_sql(self, value):
+    def _value_to_sql(self, value: Any) -> str:
         """Convert a value to SQL."""
         if value is None:
             return "NULL"
@@ -1755,7 +1787,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy all columns from source table
-        new_columns = []
+        new_columns: List[Any] = []
         for column in source_table_obj.columns:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 
@@ -1795,7 +1827,7 @@ class SQLAlchemyMaterializer:
                             result_dict[column.name] = value
                     elif isinstance(column.type, Float) and value is not None:
                         try:
-                            result_dict[column.name] = float(value)
+                            result_dict[column.name] = float(value)  # type: ignore[assignment]
                         except (ValueError, TypeError):
                             result_dict[column.name] = value
                     elif isinstance(column.type, Boolean) and value is not None:
@@ -1809,7 +1841,7 @@ class SQLAlchemyMaterializer:
 
             return mock_rows
 
-    def _condition_to_sqlalchemy(self, table_obj, condition: Any) -> Any:
+    def _condition_to_sqlalchemy(self, table_obj: Any, condition: Any) -> Any:
         """Convert a condition to SQLAlchemy expression."""
         if isinstance(condition, MockColumnOperation):
             if hasattr(condition, "operation") and hasattr(condition, "column"):
@@ -1855,7 +1887,7 @@ class SQLAlchemyMaterializer:
 
         return None  # Fallback
 
-    def _column_to_sqlalchemy(self, table_obj, column: Any) -> Any:
+    def _column_to_sqlalchemy(self, table_obj: Any, column: Any) -> Any:
         """Convert a MockColumn to SQLAlchemy expression."""
         if isinstance(column, MockColumn):
             column_name = column.name
@@ -1885,12 +1917,12 @@ class SQLAlchemyMaterializer:
         """Convert a complex expression (including AND/OR) to SQLAlchemy."""
         if isinstance(expr, MockColumnOperation):
             # Recursively process left and right sides
-            if hasattr(expr, 'column'):
+            if hasattr(expr, "column"):
                 left = self._expression_to_sqlalchemy(expr.column, table_obj)
             else:
                 left = None
-            
-            if hasattr(expr, 'value') and expr.value is not None:
+
+            if hasattr(expr, "value") and expr.value is not None:
                 if isinstance(expr.value, (MockColumn, MockColumnOperation)):
                     right = self._expression_to_sqlalchemy(expr.value, table_obj)
                 elif isinstance(expr.value, MockLiteral):
@@ -1899,7 +1931,7 @@ class SQLAlchemyMaterializer:
                     right = expr.value
             else:
                 right = None
-            
+
             # Apply operation
             if expr.operation == ">":
                 return left > right
@@ -1939,7 +1971,7 @@ class SQLAlchemyMaterializer:
             return value.name
         return value
 
-    def _column_to_orm(self, table_class, column: Any) -> Any:
+    def _column_to_orm(self, table_class: Any, column: Any) -> Any:
         """Convert a MockColumn to SQLAlchemy ORM expression."""
         if isinstance(column, MockColumn):
             return getattr(table_class, column.name)
@@ -1956,7 +1988,7 @@ class SQLAlchemyMaterializer:
             return value.name
         return value
 
-    def _window_function_to_orm(self, table_class, window_func: Any) -> Any:
+    def _window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
         """Convert a window function to SQLAlchemy ORM expression."""
         function_name = getattr(window_func, "function_name", "window_function")
 
@@ -2117,7 +2149,7 @@ class SQLAlchemyMaterializer:
             on_columns = [on]
 
         # Create target table with combined schema
-        new_columns = []
+        new_columns: List[Any] = []
 
         # Add all columns from source table
         for column in source_table_obj.columns:
@@ -2129,7 +2161,7 @@ class SQLAlchemyMaterializer:
                 c.name for c in source_table_obj.columns
             ]:
                 # Convert MockSpark types to SQLAlchemy types
-                sql_type = String  # Default
+                sql_type: Any = String  # Default, can be Integer, Float, or other types
                 field_type_name = type(field.dataType).__name__
                 if field_type_name in ["LongType", "IntegerType"]:
                     sql_type = Integer
@@ -2148,7 +2180,7 @@ class SQLAlchemyMaterializer:
             source_data = session.execute(select(*source_table_obj.columns)).all()
 
             # Create a lookup dictionary from other_data (key -> list of matching rows)
-            other_lookup = {}
+            other_lookup: Dict[Any, Any] = {}
             for other_row in other_data:
                 # Create join key from on_columns
                 join_key = tuple(other_row.get(col) for col in on_columns)
@@ -2186,11 +2218,11 @@ class SQLAlchemyMaterializer:
 
             session.commit()
 
-    def _apply_union(self, source_table: str, target_table: str, other_df) -> None:
+    def _apply_union(self, source_table: str, target_table: str, other_df: Any) -> None:
         """Apply a union operation."""
         # Get source table structure
         source_table_obj = self._created_tables[source_table]
-        new_columns = []
+        new_columns: List[Any] = []
         for column in source_table_obj.columns:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 
@@ -2255,7 +2287,7 @@ class SQLAlchemyMaterializer:
                         "dayofweek": "dow",
                         "dayofyear": "doy",
                         "weekofyear": "week",
-                        "quarter": "quarter"
+                        "quarter": "quarter",
                     }
                     part = part_map.get(expr.operation, expr.operation)
                     return f"extract({part} from CAST({left} AS DATE))"
@@ -2318,16 +2350,16 @@ class SQLAlchemyMaterializer:
         else:
             return str(expr)
 
-    def close(self):
+    def close(self) -> None:
         """Close the SQLAlchemy engine."""
         try:
             if hasattr(self, "engine") and self.engine:
                 self.engine.dispose()
-                self.engine = None
+                self.engine = None  # type: ignore[assignment]
         except Exception:
             pass  # Ignore errors during cleanup
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()

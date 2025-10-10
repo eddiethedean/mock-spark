@@ -247,8 +247,11 @@ class ICaseWhen(IFunction):
         pass
 
     @abstractmethod
-    def evaluate(self, row: Dict[str, Any]) -> Any:
-        """Evaluate CASE WHEN for row."""
+    def evaluate(self, row: Dict[str, Any]) -> Any:  # type: ignore[override]
+        """Evaluate CASE WHEN for row.
+
+        Note: More specific signature than parent IFunction for CASE WHEN evaluation.
+        """
         pass
 
 

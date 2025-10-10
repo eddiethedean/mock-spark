@@ -135,7 +135,7 @@ class SQLToSQLAlchemyTranslator:
             raise SQLTranslationError(f"Unsupported FROM clause: {type(table_exp).__name__}")
 
         # Build SELECT columns
-        select_cols = []
+        select_cols: List[Any] = []  # Can contain Table or ColumnElement
         has_star = False
         for projection in ast.expressions:
             if isinstance(projection, exp.Star):
@@ -173,17 +173,17 @@ class SQLToSQLAlchemyTranslator:
                     # Determine join type
                     join_kind = join_exp.args.get("kind", "").upper()
                     if join_kind == "LEFT":
-                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)
+                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)  # type: ignore[attr-defined]
                     elif join_kind == "RIGHT":
                         # SQLAlchemy doesn't have right join, need to swap tables
-                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)
+                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)  # type: ignore[attr-defined]
                     elif join_kind == "FULL":
-                        stmt = stmt.select_from(table).outerjoin(
+                        stmt = stmt.select_from(table).outerjoin(  # type: ignore[attr-defined]
                             join_table, join_condition, full=True
                         )
                     else:
                         # INNER join (default)
-                        stmt = stmt.select_from(table).join(join_table, join_condition)
+                        stmt = stmt.select_from(table).join(join_table, join_condition)  # type: ignore[attr-defined]
 
         # Add WHERE clause
         where = ast.find(exp.Where)
@@ -499,7 +499,12 @@ class SQLToSQLAlchemyTranslator:
 
         elif isinstance(expr, exp.Substring):
             col = self._translate_expression(expr.this, table)
-            start = self._translate_expression(expr.args.get("start"), table)
+            start_arg = expr.args.get("start")
+            start: Any  # Can be BindParameter or ColumnElement
+            if start_arg is None:
+                start = literal(1)  # Default to position 1
+            else:
+                start = self._translate_expression(start_arg, table)
             length = expr.args.get("length")
             if length:
                 length_val = self._translate_expression(length, table)

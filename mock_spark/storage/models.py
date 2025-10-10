@@ -22,6 +22,7 @@ class StorageMode(str, Enum):
 @dataclass
 class MockDeltaVersion:
     """Represents a single version of a Delta table for time travel."""
+
     version: int
     timestamp: datetime
     operation: str  # "WRITE", "APPEND", "OVERWRITE", "MERGE", etc.
@@ -45,7 +46,9 @@ class MockTableMetadata:
     format: Optional[str] = None  # "delta", "parquet", "json", etc.
     version: int = 0  # Current Delta table version
     properties: Dict[str, Any] = field(default_factory=dict)  # Delta properties
-    version_history: List["MockDeltaVersion"] = field(default_factory=list)  # Version history for time travel
+    version_history: List["MockDeltaVersion"] = field(
+        default_factory=list
+    )  # Version history for time travel
 
 
 @dataclass

@@ -8,18 +8,20 @@ including errors, performance issues, and memory constraints.
 import time
 import random
 import psutil
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable
 from contextlib import contextmanager
 
 
 class ErrorSimulator:
     """Simulator for various error conditions during testing."""
 
-    def __init__(self):
-        self.error_rules = {}
+    def __init__(self) -> None:
+        self.error_rules: Dict[str, Dict[str, Any]] = {}
         self.error_count = 0
 
-    def add_error_rule(self, condition: str, exception_class: type, message: Optional[str] = None):
+    def add_error_rule(
+        self, condition: str, exception_class: type, message: Optional[str] = None
+    ) -> None:
         """Add an error rule that triggers under specific conditions."""
         if message is None:
             message = f"Simulated error: {condition}"
@@ -30,17 +32,17 @@ class ErrorSimulator:
             "count": 0,
         }
 
-    def remove_error_rule(self, condition: str):
+    def remove_error_rule(self, condition: str) -> None:
         """Remove an error rule."""
         if condition in self.error_rules:
             del self.error_rules[condition]
 
-    def clear_error_rules(self):
+    def clear_error_rules(self) -> None:
         """Clear all error rules."""
         self.error_rules.clear()
         self.error_count = 0
 
-    def should_raise_error(self, operation: str, **kwargs) -> Optional[Exception]:
+    def should_raise_error(self, operation: str, **kwargs: Any) -> Optional[Exception]:
         """Check if an error should be raised for the given operation."""
         for condition, rule in self.error_rules.items():
             if self._evaluate_condition(condition, operation, **kwargs):
@@ -54,7 +56,7 @@ class ErrorSimulator:
                     return None
         return None
 
-    def _evaluate_condition(self, condition: str, operation: str, **kwargs) -> bool:
+    def _evaluate_condition(self, condition: str, operation: str, **kwargs: Any) -> bool:
         """Evaluate if a condition is met."""
         # Simple condition evaluation - can be extended
         if condition == "always":
@@ -84,22 +86,22 @@ class ErrorSimulator:
 class PerformanceSimulator:
     """Simulator for performance testing and benchmarking."""
 
-    def __init__(self):
-        self.performance_rules = {}
-        self.measurements = []
+    def __init__(self) -> None:
+        self.performance_rules: Dict[str, Dict[str, Any]] = {}
+        self.measurements: List[Dict[str, Any]] = []
 
-    def add_slowdown(self, operation: str, delay_seconds: float):
+    def add_slowdown(self, operation: str, delay_seconds: float) -> None:
         """Add a slowdown rule for a specific operation."""
         self.performance_rules[operation] = {"type": "slowdown", "delay": delay_seconds}
 
-    def add_memory_limit(self, limit_mb: int):
+    def add_memory_limit(self, limit_mb: int) -> None:
         """Add a memory limit for testing memory constraints."""
         self.performance_rules["memory"] = {
             "type": "memory_limit",
             "limit_mb": limit_mb,
         }
 
-    def simulate_operation(self, operation: str, func: Callable, *args, **kwargs):
+    def simulate_operation(self, operation: str, func: Callable, *args: Any, **kwargs: Any) -> Any:
         """Simulate an operation with performance modifications."""
         start_time = time.time()
 
@@ -154,7 +156,7 @@ class PerformanceSimulator:
             "operations": self.measurements,
         }
 
-    def clear_measurements(self):
+    def clear_measurements(self) -> None:
         """Clear performance measurements."""
         self.measurements.clear()
 
@@ -162,8 +164,8 @@ class PerformanceSimulator:
 class MemorySimulator:
     """Simulator for memory-related testing scenarios."""
 
-    def __init__(self):
-        self.memory_usage = []
+    def __init__(self) -> None:
+        self.memory_usage: List[Dict[str, Any]] = []
         self.peak_memory = 0.0
 
     def get_current_memory_mb(self) -> float:
@@ -171,7 +173,7 @@ class MemorySimulator:
         memory_bytes = psutil.Process().memory_info().rss
         return float(memory_bytes) / 1024 / 1024
 
-    def record_memory_usage(self, operation: str = "unknown"):
+    def record_memory_usage(self, operation: str = "unknown") -> None:
         """Record current memory usage."""
         current_memory = self.get_current_memory_mb()
         self.memory_usage.append(
@@ -183,7 +185,7 @@ class MemorySimulator:
         )
         self.peak_memory = max(self.peak_memory, current_memory)
 
-    def simulate_memory_pressure(self, target_mb: int):
+    def simulate_memory_pressure(self, target_mb: int) -> str:
         """Simulate memory pressure by allocating memory."""
         # This is a simple simulation - in real scenarios you'd allocate actual memory
         self.record_memory_usage("memory_pressure_simulation")
@@ -204,7 +206,7 @@ class MemorySimulator:
 
 # Context managers for easy use in tests
 @contextmanager
-def error_simulation(condition: str, exception_class: type, message: Optional[str] = None):
+def error_simulation(condition: str, exception_class: type, message: Optional[str] = None) -> Any:
     """Context manager for error simulation."""
     simulator = ErrorSimulator()
     simulator.add_error_rule(condition, exception_class, message)
@@ -215,7 +217,7 @@ def error_simulation(condition: str, exception_class: type, message: Optional[st
 
 
 @contextmanager
-def performance_simulation(operation: Optional[str] = None, delay_seconds: float = 0.1):
+def performance_simulation(operation: Optional[str] = None, delay_seconds: float = 0.1) -> Any:
     """Context manager for performance simulation."""
     simulator = PerformanceSimulator()
     if operation and delay_seconds > 0:
@@ -227,7 +229,7 @@ def performance_simulation(operation: Optional[str] = None, delay_seconds: float
 
 
 @contextmanager
-def memory_simulation():
+def memory_simulation() -> Any:
     """Context manager for memory simulation."""
     simulator = MemorySimulator()
     try:
