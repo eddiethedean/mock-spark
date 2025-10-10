@@ -327,7 +327,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _filter_depends_on_original_columns(
-        filter_condition, original_schema: "MockStructType"
+        filter_condition: Any, original_schema: "MockStructType"
     ) -> bool:
         """Check if a filter condition depends on original columns.
 
