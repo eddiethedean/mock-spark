@@ -196,15 +196,15 @@ class DuckDBTable(ITable):
                 # This is a limitation we'll address in Phase 3
                 # As a temporary measure, use DuckDB directly for filtered queries
                 query = f"SELECT * FROM {self.name} WHERE {filter_expr}"
-                result = self.connection.execute(query).fetchall()
+                duckdb_result = self.connection.execute(query).fetchall()
                 columns = [desc[0] for desc in self.connection.description]
-                data = [dict(zip(columns, row)) for row in result]
+                data = [dict(zip(columns, row)) for row in duckdb_result]
             else:
                 # Use SQLAlchemy for unfiltered queries
                 with self.engine.connect() as conn:
-                    result = list(conn.execute(stmt).fetchall())
+                    sqlalchemy_result: Any = conn.execute(stmt).fetchall()  # Sequence[Row]
                     columns = [col.name for col in self.sqlalchemy_table.columns]
-                    data = [dict(zip(columns, row)) for row in result]
+                    data = [dict(zip(columns, row)) for row in sqlalchemy_result]
 
             execution_time = (time.time() - start_time) * 1000
 

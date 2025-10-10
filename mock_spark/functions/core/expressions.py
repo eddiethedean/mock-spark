@@ -5,7 +5,7 @@ This module provides the F namespace functions and expression utilities
 for creating column expressions and transformations.
 """
 
-from typing import Any, Union, Optional, TYPE_CHECKING
+from typing import Any, Union, Optional, List, TYPE_CHECKING
 from .column import MockColumn, MockColumnOperation
 from .literals import MockLiteral
 
@@ -65,7 +65,7 @@ class ExpressionFunctions:
         Returns:
             MockColumnOperation for coalesce.
         """
-        col_refs = []
+        col_refs: List[Union[MockColumn, MockColumnOperation]] = []
         for col in columns:
             if isinstance(col, str):
                 col_refs.append(MockColumn(col))

@@ -26,7 +26,7 @@ class SQLAlchemyQueryBuilder:
         """
         self.table = table
         self.schema = schema
-        self.select_stmt: Union[Select, CompoundSelect] = select(table)
+        self.select_stmt: Any = select(table)  # Can be Select or CompoundSelect after union()
         self._with_columns: Dict[str, Any] = {}
         self._join_tables: List[Tuple[Table, Any, str]] = []
 
@@ -247,7 +247,7 @@ class SQLAlchemyQueryBuilder:
                 return bound.value
         return bound
 
-    def build_select(self) -> Select:
+    def build_select(self) -> Any:  # Can be Select or CompoundSelect
         """Build the final SQLAlchemy Select statement."""
         # Apply computed columns if any
         if self._with_columns:

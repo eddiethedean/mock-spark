@@ -1797,7 +1797,7 @@ class SQLAlchemyMaterializer:
                             result_dict[column.name] = value
                     elif isinstance(column.type, Float) and value is not None:
                         try:
-                            result_dict[column.name] = float(value)
+                            result_dict[column.name] = float(value)  # type: ignore[assignment]
                         except (ValueError, TypeError):
                             result_dict[column.name] = value
                     elif isinstance(column.type, Boolean) and value is not None:
@@ -2131,7 +2131,7 @@ class SQLAlchemyMaterializer:
                 c.name for c in source_table_obj.columns
             ]:
                 # Convert MockSpark types to SQLAlchemy types
-                sql_type = String  # Default
+                sql_type: Any = String  # Default, can be Integer, Float, or other types
                 field_type_name = type(field.dataType).__name__
                 if field_type_name in ["LongType", "IntegerType"]:
                     sql_type = Integer

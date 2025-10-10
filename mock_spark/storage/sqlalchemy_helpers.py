@@ -237,7 +237,7 @@ def table_exists(engine: Engine, table_name: str) -> bool:
     return inspector.has_table(table_name)
 
 
-def get_table_columns(engine: Engine, table_name: str) -> List[Dict[str, Any]]:
+def get_table_columns(engine: Engine, table_name: str) -> List[Any]:
     """
     Get table column metadata using SQLAlchemy Inspector.
 
@@ -246,7 +246,7 @@ def get_table_columns(engine: Engine, table_name: str) -> List[Dict[str, Any]]:
         table_name: Name of table
 
     Returns:
-        List of column metadata dicts
+        List of column metadata (ReflectedColumn objects that act like dicts)
     """
     inspector = inspect(engine)
     return inspector.get_columns(table_name)

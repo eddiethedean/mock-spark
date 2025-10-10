@@ -241,7 +241,7 @@ class MockSQLExecutor:
 
         # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
         if object_type in ("DATABASE", "SCHEMA"):
-            self.session.catalog.dropDatabase(object_name, ignore_if_not_exists=ignore_if_not_exists)
+            self.session.catalog.dropDatabase(object_name, ignoreIfNotExists=ignore_if_not_exists)
         elif object_type == "TABLE":
             # Mock table drop
             pass

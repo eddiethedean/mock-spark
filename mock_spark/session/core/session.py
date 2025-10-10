@@ -145,7 +145,7 @@ class MockSparkSession:
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create a DataFrame from data (mockable version)."""
         # Plugin hook: before_create_dataframe
         for plugin in getattr(self, "_plugins", []):
@@ -177,7 +177,7 @@ class MockSparkSession:
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
         schema: Optional[Union[MockStructType, List[str]]] = None,
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create a DataFrame from data.
 
         Args:
@@ -377,7 +377,7 @@ class MockSparkSession:
 
     def range(
         self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create DataFrame with range of numbers.
 
         Args:

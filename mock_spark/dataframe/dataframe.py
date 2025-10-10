@@ -88,7 +88,7 @@ class MockDataFrame:
         self,
         data: List[Dict[str, Any]],
         schema: MockStructType,
-        storage: Optional[MemoryStorageManager] = None,
+        storage: Any = None,  # Can be MemoryStorageManager, DuckDBStorageManager, or None
         is_lazy: bool = True,  # Changed default to True for lazy-by-default
         operations: Optional[List[Any]] = None,
     ):
@@ -694,7 +694,7 @@ class MockDataFrame:
             filtered_data.append(filtered_row)
 
         # Handle window functions that need to be evaluated across all rows
-        window_functions = []
+        window_functions: List[Tuple[Any, ...]] = []
         for i, col in enumerate(columns):
             if hasattr(col, "function_name") and hasattr(col, "window_spec"):
                 window_functions.append((i, col))
@@ -2792,7 +2792,7 @@ class MockDataFrame:
         return any(col_name.startswith(pattern) for pattern in function_patterns)
 
     def _evaluate_window_functions(
-        self, data: List[Dict[str, Any]], window_functions: List[tuple]
+        self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
     ) -> List[Dict[str, Any]]:
         """Evaluate window functions across all rows."""
         result_data = data.copy()

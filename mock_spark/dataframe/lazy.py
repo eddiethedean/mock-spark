@@ -166,7 +166,7 @@ class LazyEvaluationEngine:
                 elif op_name == "select":
                     current = current.select(*op_val)  # eager path
                 elif op_name == "groupBy":
-                    current = current.groupBy(*op_val)  # eager path
+                    current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns MockGroupedData
                 elif op_name == "join":
                     other_df, on, how = op_val
                     current = current.join(other_df, on, how)  # eager path
