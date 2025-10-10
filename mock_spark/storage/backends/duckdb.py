@@ -173,7 +173,8 @@ class DuckDBTable(ITable):
 
     def _update_row_count(self, new_rows: int) -> None:
         """Update row count with type safety."""
-        self.metadata["row_count"] += new_rows
+        current_count = self.metadata.get("row_count", 0)
+        self.metadata["row_count"] = int(current_count) + new_rows if current_count else new_rows
         self.metadata["updated_at"] = datetime.utcnow().isoformat()
 
     def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -201,7 +202,7 @@ class DuckDBTable(ITable):
             else:
                 # Use SQLAlchemy for unfiltered queries
                 with self.engine.connect() as conn:
-                    result = conn.execute(stmt).fetchall()
+                    result = list(conn.execute(stmt).fetchall())
                     columns = [col.name for col in self.sqlalchemy_table.columns]
                     data = [dict(zip(columns, row)) for row in result]
 
@@ -282,7 +283,9 @@ class DuckDBSchema(ISchema):
         """Drop a table using SQLAlchemy."""
         # Drop using SQLAlchemy if we have the table object
         if table in self.tables and self.tables[table].sqlalchemy_table is not None:
-            self.tables[table].sqlalchemy_table.drop(self.engine, checkfirst=True)
+            table_obj = self.tables[table].sqlalchemy_table
+            assert table_obj is not None  # Type narrowing for mypy
+            table_obj.drop(self.engine, checkfirst=True)
         else:
             # Try to reflect and drop
             try:

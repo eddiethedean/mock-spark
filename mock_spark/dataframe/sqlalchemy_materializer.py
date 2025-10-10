@@ -1183,7 +1183,7 @@ class SQLAlchemyMaterializer:
                             select_parts.append(
                                 f"{col.function_name.upper()}() OVER ({window_sql})"
                             )
-                        elif hasattr(original_function, "column") and original_function.column:
+                        elif original_function and hasattr(original_function, "column") and original_function.column:
                             column_name = getattr(original_function.column, "name", "unknown")
                             # Check if column exists in table before adding to SQL
                             if column_name != "unknown" and column_name in source_table_obj.c:
@@ -1645,7 +1645,7 @@ class SQLAlchemyMaterializer:
         # Execute with ORDER BY using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).order_by(*order_expressions)
-            results: List[Any] = session.execute(query).all()
+            results: List[Any] = list(session.execute(query).all())
 
             # Insert into target table
             for result in results:
@@ -1668,7 +1668,7 @@ class SQLAlchemyMaterializer:
         # Execute with LIMIT using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).limit(limit_count)
-            results: List[Any] = session.execute(query).all()
+            results: List[Any] = list(session.execute(query).all())
 
             # Insert into target table
             for result in results:

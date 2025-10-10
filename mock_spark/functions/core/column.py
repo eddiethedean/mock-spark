@@ -440,11 +440,6 @@ class MockColumnOperation(IColumn):
         """Regular expression pattern matching."""
         return MockColumnOperation(self, "rlike", pattern)
 
-    def alias(self, name: str) -> "MockColumnOperation":
-        """Create an alias for this operation."""
-        aliased_operation = MockColumnOperation(self.column, self.operation, self.value, name)
-        return aliased_operation
-
     def asc(self) -> "MockColumnOperation":
         """Ascending sort order."""
         return MockColumnOperation(self, "asc", None)

@@ -6,7 +6,7 @@ Extracted from session.py to improve organization.
 """
 
 import time
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame
@@ -17,7 +17,7 @@ class SessionPerformanceTracker:
 
     def __init__(self) -> None:
         """Initialize performance tracker."""
-        self._tracked_dataframes = []
+        self._tracked_dataframes: List[Any] = []
         self._approx_memory_usage_bytes = 0
         self._benchmark_results: Dict[str, Dict[str, Any]] = {}
 

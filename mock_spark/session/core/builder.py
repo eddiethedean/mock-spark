@@ -16,7 +16,7 @@ class MockSparkSessionBuilder:
     def __init__(self) -> None:
         """Initialize builder."""
         self._app_name = "MockSparkApp"
-        self._config = {}
+        self._config: Dict[str, Any] = {}
 
     def appName(self, name: str) -> "MockSparkSessionBuilder":
         """Set app name.
