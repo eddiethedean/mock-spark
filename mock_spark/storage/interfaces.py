@@ -168,6 +168,32 @@ class IStorageManager(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+        """Get table metadata including Delta-specific fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+
+        Returns:
+            Table metadata dictionary or None if table doesn't exist.
+        """
+        pass
+
+    @abstractmethod
+    def update_table_metadata(
+        self, schema: str, table: str, metadata_updates: Dict[str, Any]
+    ) -> None:
+        """Update table metadata fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+            metadata_updates: Dictionary of metadata fields to update.
+        """
+        pass
+
 
 class ITable(ABC):
     """Interface for table operations."""

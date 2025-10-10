@@ -314,3 +314,33 @@ class MemoryStorageManager(IStorageManager):
         if schema not in self.schemas:
             return []
         return self.schemas[schema].list_tables()
+
+    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+        """Get table metadata including Delta-specific fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+
+        Returns:
+            Table metadata dictionary or None if table doesn't exist.
+        """
+        if schema not in self.schemas:
+            return None
+        if table not in self.schemas[schema].tables:
+            return None
+        return self.schemas[schema].tables[table].get_metadata()
+
+    def update_table_metadata(
+        self, schema: str, table: str, metadata_updates: Dict[str, Any]
+    ) -> None:
+        """Update table metadata fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+            metadata_updates: Dictionary of metadata fields to update.
+        """
+        if schema in self.schemas and table in self.schemas[schema].tables:
+            table_obj = self.schemas[schema].tables[table]
+            table_obj.metadata.update(metadata_updates)

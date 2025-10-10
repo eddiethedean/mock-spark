@@ -32,6 +32,10 @@ class MockTableMetadata:
     schema_version: str = "1.0"
     storage_format: str = "columnar"
     is_temporary: bool = False
+    # Delta Lake specific fields
+    format: Optional[str] = None  # "delta", "parquet", "json", etc.
+    version: int = 0  # Delta table version (increments on each write)
+    properties: Dict[str, Any] = field(default_factory=dict)  # Delta properties
 
 
 @dataclass

@@ -1,0 +1,108 @@
+"""
+Compatibility tests for Delta Lake basic write support.
+
+Tests mock-spark against real PySpark to ensure API compatibility.
+Based on exploration/delta_basic_write.py findings.
+"""
+
+import pytest
+
+
+@pytest.mark.compatibility
+@pytest.mark.delta
+class TestDeltaWriteCompatibility:
+    """Test Delta write compatibility with real PySpark."""
+
+    def test_delta_write_save_as_table_basic(self, real_spark, mock_spark):
+        """Test basic Delta write compatibility."""
+        data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+        
+        # Real PySpark
+        real_df = real_spark.createDataFrame(data)
+        real_df.write.format("delta").mode("overwrite").saveAsTable("test_schema.users")
+        real_result = real_spark.table("test_schema.users")
+        real_count = real_result.count()
+        real_rows = sorted(real_result.collect(), key=lambda r: r["id"])
+        
+        # Mock Spark
+        mock_df = mock_spark.createDataFrame(data)
+        mock_df.write.format("delta").mode("overwrite").saveAsTable("test_schema.users")
+        mock_result = mock_spark.table("test_schema.users")
+        mock_count = mock_result.count()
+        mock_rows = sorted(mock_result.collect(), key=lambda r: r["id"])
+        
+        # Compare
+        assert mock_count == real_count
+        assert len(mock_rows) == len(real_rows)
+        for mock_row, real_row in zip(mock_rows, real_rows):
+            assert mock_row["id"] == real_row["id"]
+            assert mock_row["name"] == real_row["name"]
+
+    def test_delta_write_modes_compatibility(self, real_spark, mock_spark):
+        """Test Delta write modes match real PySpark behavior."""
+        # Test overwrite mode
+        df1 = [{"id": 1, "value": "first"}]
+        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.modes")
+        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.modes")
+        
+        df2 = [{"id": 2, "value": "second"}]
+        real_spark.createDataFrame(df2).write.format("delta").mode("overwrite").saveAsTable("test.modes")
+        mock_spark.createDataFrame(df2).write.format("delta").mode("overwrite").saveAsTable("test.modes")
+        
+        real_count = real_spark.table("test.modes").count()
+        mock_count = mock_spark.table("test.modes").count()
+        assert mock_count == real_count == 1
+
+    def test_delta_write_append_compatibility(self, real_spark, mock_spark):
+        """Test Delta append mode compatibility."""
+        df1 = [{"id": 1}]
+        df2 = [{"id": 2}]
+        
+        # Real
+        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.append")
+        real_spark.createDataFrame(df2).write.format("delta").mode("append").saveAsTable("test.append")
+        real_count = real_spark.table("test.append").count()
+        
+        # Mock
+        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.append")
+        mock_spark.createDataFrame(df2).write.format("delta").mode("append").saveAsTable("test.append")
+        mock_count = mock_spark.table("test.append").count()
+        
+        assert mock_count == real_count == 2
+
+    def test_delta_write_error_mode_raises(self, real_spark, mock_spark):
+        """Test that error mode raises exception in both implementations."""
+        df1 = [{"id": 1}]
+        df2 = [{"id": 2}]
+        
+        # Create table in both
+        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.error")
+        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.error")
+        
+        # Both should raise on error mode
+        with pytest.raises(Exception):  # Real raises AnalysisException
+            real_spark.createDataFrame(df2).write.format("delta").mode("error").saveAsTable("test.error")
+        
+        with pytest.raises(Exception):  # Mock should raise same
+            mock_spark.createDataFrame(df2).write.format("delta").mode("error").saveAsTable("test.error")
+
+    def test_delta_write_ignore_mode_compatibility(self, real_spark, mock_spark):
+        """Test ignore mode leaves table unchanged in both implementations."""
+        df1 = [{"id": 1, "value": "original"}]
+        df2 = [{"id": 2, "value": "should be ignored"}]
+        
+        # Real
+        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.ignore")
+        real_spark.createDataFrame(df2).write.format("delta").mode("ignore").saveAsTable("test.ignore")
+        real_count = real_spark.table("test.ignore").count()
+        real_val = real_spark.table("test.ignore").collect()[0]["value"]
+        
+        # Mock
+        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.ignore")
+        mock_spark.createDataFrame(df2).write.format("delta").mode("ignore").saveAsTable("test.ignore")
+        mock_count = mock_spark.table("test.ignore").count()
+        mock_val = mock_spark.table("test.ignore").collect()[0]["value"]
+        
+        assert mock_count == real_count == 1
+        assert mock_val == real_val == "original"
+
