@@ -27,15 +27,17 @@ from ...core.exceptions.analysis import ParseException
 class MockSQLAST:
     """Abstract Syntax Tree for SQL queries."""
 
-    def __init__(self, query_type: str, components: Dict[str, Any]):
+    def __init__(self, query_type: str, components: Dict[str, Any], query: str = ""):
         """Initialize SQL AST.
 
         Args:
             query_type: Type of SQL query (SELECT, INSERT, CREATE, etc.).
             components: Dictionary of query components.
+            query: Original SQL query string.
         """
         self.query_type = query_type
         self.components = components
+        self.query = query
 
     def __str__(self) -> str:
         """String representation."""
@@ -263,7 +265,7 @@ class MockSQLParser:
 
         try:
             components = self._parse_components(query, query_type)
-            return MockSQLAST(query_type, components)
+            return MockSQLAST(query_type, components, query)
         except Exception as e:
             raise ParseException(f"Failed to parse query: {str(e)}")
 

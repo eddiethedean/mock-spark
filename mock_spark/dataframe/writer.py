@@ -201,26 +201,37 @@ class MockDataFrameWriter:
                 return  # Do nothing if table exists
 
         elif self.save_mode == "overwrite":
-            # Track version before dropping for Delta tables
+            # Track version and history before dropping for Delta tables
             next_version = 0
+            preserved_history = []
             if table_exists and is_delta:
                 meta = self.storage.get_table_metadata(schema, table)
                 if meta and meta.get("format") == "delta":
                     # Increment version for next write
                     next_version = meta.get("version", 0) + 1
+                    # Preserve version history
+                    preserved_history = meta.get("version_history", [])
             
             if table_exists:
                 self.storage.drop_table(schema, table)
             self.storage.create_table(schema, table, self.df.schema.fields)
             
-            # Store next version for Delta tables
+            # Store next version and history for Delta tables
             if is_delta:
                 self._delta_next_version = next_version
+                self._delta_preserved_history = preserved_history
 
         elif self.save_mode == "append":
             if not table_exists:
                 self.storage.create_table(schema, table, self.df.schema.fields)
             elif is_delta:
+                # For Delta append, increment version
+                meta = self.storage.get_table_metadata(schema, table)
+                if meta and meta.get("format") == "delta":
+                    self._delta_next_version = meta.get("version", 0) + 1
+                    self._delta_preserved_history = meta.get("version_history", [])
+                
+            if is_delta and table_exists:
                 # For Delta append, check mergeSchema option
                 merge_schema = self._options.get("mergeSchema", "false").lower() == "true"
                 existing_schema = self.storage.get_table_schema(schema, table)
@@ -282,7 +293,41 @@ class MockDataFrameWriter:
                 meta = self.storage.get_table_metadata(schema, table)
                 version = meta.get("version", 0) if meta else 0
             
-            # Update with Delta properties
+            # Capture version snapshot for time travel
+            from datetime import datetime
+            from ..storage.models import MockDeltaVersion
+            
+            current_data = self.storage.get_data(schema, table)
+            
+            # Determine operation name
+            if version == 0:
+                operation = "WRITE"  # First write is always "WRITE"
+            else:
+                operation = self.save_mode.upper() if self.save_mode else "WRITE"
+                if operation == "ERROR":
+                    operation = "WRITE"
+                if operation == "IGNORE":
+                    operation = "WRITE"
+            
+            version_snapshot = MockDeltaVersion(
+                version=version,
+                timestamp=datetime.utcnow(),
+                operation=operation,
+                data_snapshot=[row if isinstance(row, dict) else row for row in current_data]
+            )
+            
+            # Get existing metadata to preserve history
+            # Use preserved history if available (from before overwrite drop)
+            if hasattr(self, '_delta_preserved_history'):
+                version_history = self._delta_preserved_history
+            else:
+                meta = self.storage.get_table_metadata(schema, table) or {}
+                version_history = meta.get("version_history", [])
+            
+            # Add new version to history
+            version_history.append(version_snapshot)
+            
+            # Update with Delta properties including version history
             self.storage.update_table_metadata(
                 schema,
                 table,
@@ -294,6 +339,7 @@ class MockDataFrameWriter:
                         "delta.minWriterVersion": "2",
                         "Type": "MANAGED",
                     },
+                    "version_history": version_history,
                 },
             )
 

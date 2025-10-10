@@ -352,7 +352,62 @@ class MockSQLExecutor:
         Returns:
             DataFrame with DESCRIBE results.
         """
-        # Mock implementation
+        # Check for DESCRIBE HISTORY
+        query = ast.query if hasattr(ast, 'query') else ""
+        
+        if "HISTORY" in query.upper():
+            # DESCRIBE HISTORY table_name
+            import re
+            match = re.search(r"DESCRIBE\s+HISTORY\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
+            if match:
+                table_name = match.group(1)
+                
+                # Parse schema and table
+                if "." in table_name:
+                    schema_name, table_only = table_name.split(".", 1)
+                else:
+                    schema_name, table_only = "default", table_name
+                
+                # Get table metadata
+                meta = self.session.storage.get_table_metadata(schema_name, table_only)
+                
+                if not meta or meta.get("format") != "delta":
+                    from ...errors import AnalysisException
+                    raise AnalysisException(
+                        f"Table {table_name} is not a Delta table. "
+                        "DESCRIBE HISTORY can only be used with Delta format tables."
+                    )
+                
+                version_history = meta.get("version_history", [])
+                
+                # Create DataFrame with history
+                from ...dataframe import MockDataFrame
+                from ...spark_types import MockStructType, MockStructField, IntegerType, StringType, TimestampType
+                from typing import cast
+                from ...core.interfaces.dataframe import IDataFrame
+                
+                # Build history rows
+                history_data = []
+                for v in version_history:
+                    # Handle both MockDeltaVersion objects and dicts
+                    if hasattr(v, 'version'):
+                        row = {
+                            "version": v.version,
+                            "timestamp": v.timestamp,
+                            "operation": v.operation
+                        }
+                    else:
+                        row = {
+                            "version": v.get("version"),
+                            "timestamp": v.get("timestamp"),
+                            "operation": v.get("operation")
+                        }
+                    history_data.append(row)
+                
+                # Return DataFrame using session's createDataFrame
+                return cast(IDataFrame, self.session.createDataFrame(history_data))
+        
+        # Default DESCRIBE implementation
         from ...dataframe import MockDataFrame
         from ...spark_types import MockStructType
 
