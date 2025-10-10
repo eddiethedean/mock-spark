@@ -164,7 +164,7 @@ class MockDataFrameReader:
                 schema_name, table_only = "default", table_name
             
             # Get table metadata to access version history
-            meta = self.session.storage.get_table_metadata(schema_name, table_only)
+            meta = self.session.storage.get_table_metadata(schema_name, table_only)  # type: ignore[attr-defined]
             
             if not meta or meta.get("format") != "delta":
                 from ..errors import AnalysisException

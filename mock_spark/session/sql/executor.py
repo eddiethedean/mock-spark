@@ -369,7 +369,7 @@ class MockSQLExecutor:
                     schema_name, table_only = "default", table_name
                 
                 # Get table metadata
-                meta = self.session.storage.get_table_metadata(schema_name, table_only)
+                meta = self.session.storage.get_table_metadata(schema_name, table_only)  # type: ignore[attr-defined]
                 
                 if not meta or meta.get("format") != "delta":
                     from ...errors import AnalysisException
@@ -544,10 +544,10 @@ class MockSQLExecutor:
         # Write merged data back to target table
         from ...spark_types import MockRow
         
-        self.session.storage.drop_table(target_schema, target_name)
-        self.session.storage.create_table(target_schema, target_name, target_df.schema.fields)
+        self.session.storage.drop_table(target_schema, target_name)  # type: ignore[attr-defined]
+        self.session.storage.create_table(target_schema, target_name, target_df.schema.fields)  # type: ignore[attr-defined]
         if updated_rows:
-            self.session.storage.insert_data(target_schema, target_name, updated_rows, mode="append")
+            self.session.storage.insert_data(target_schema, target_name, updated_rows, mode="append")  # type: ignore[attr-defined]
         
         # MERGE returns empty DataFrame
         return cast(IDataFrame, MockDataFrame([], MockStructType([])))

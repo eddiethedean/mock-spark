@@ -173,17 +173,17 @@ class SQLToSQLAlchemyTranslator:
                     # Determine join type
                     join_kind = join_exp.args.get("kind", "").upper()
                     if join_kind == "LEFT":
-                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)
+                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)  # type: ignore[attr-defined]
                     elif join_kind == "RIGHT":
                         # SQLAlchemy doesn't have right join, need to swap tables
-                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)
+                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)  # type: ignore[attr-defined]
                     elif join_kind == "FULL":
-                        stmt = stmt.select_from(table).outerjoin(
+                        stmt = stmt.select_from(table).outerjoin(  # type: ignore[attr-defined]
                             join_table, join_condition, full=True
                         )
                     else:
                         # INNER join (default)
-                        stmt = stmt.select_from(table).join(join_table, join_condition)
+                        stmt = stmt.select_from(table).join(join_table, join_condition)  # type: ignore[attr-defined]
 
         # Add WHERE clause
         where = ast.find(exp.Where)
