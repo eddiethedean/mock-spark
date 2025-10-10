@@ -222,7 +222,7 @@ class MockColumnOperation(IColumn):
 
     def __init__(
         self,
-        column: Union[MockColumn, "MockColumnOperation"],
+        column: Union[MockColumn, "MockColumnOperation", "IColumn", None],
         operation: str,
         value: Any = None,
         name: Optional[str] = None,
@@ -230,7 +230,7 @@ class MockColumnOperation(IColumn):
         """Initialize MockColumnOperation.
 
         Args:
-            column: The column being operated on.
+            column: The column being operated on (can be None for some operations).
             operation: The operation being performed.
             value: The value or operand for the operation.
             name: Optional custom name for the operation.
