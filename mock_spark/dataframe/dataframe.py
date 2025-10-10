@@ -239,7 +239,7 @@ class MockDataFrame:
 
         return DataFrameExporter.to_pandas(self)
 
-    def toDuckDB(self, connection=None, table_name: str = None) -> str:
+    def toDuckDB(self, connection: Any = None, table_name: Optional[str] = None) -> str:
         """Convert to DuckDB table for analytical operations.
 
         Args:
@@ -253,7 +253,7 @@ class MockDataFrame:
 
         return DataFrameExporter.to_duckdb(self, connection, table_name)
 
-    def _get_duckdb_type(self, data_type) -> str:
+    def _get_duckdb_type(self, data_type: Any) -> str:
         """Map MockSpark data type to DuckDB type (backwards compatibility).
 
         This method is kept for backwards compatibility with existing tests.
@@ -1566,7 +1566,7 @@ class MockDataFrame:
 
         return LazyEvaluationEngine.materialize(self)
 
-    def _filter_depends_on_original_columns(self, filter_condition, original_schema) -> bool:
+    def _filter_depends_on_original_columns(self, filter_condition: Any, original_schema: Any) -> bool:
         """Check if a filter condition depends on original columns that might be removed by select."""
         from .lazy import LazyEvaluationEngine
 
@@ -2959,7 +2959,7 @@ class MockDataFrame:
         if not order_by_cols:
             return indices
 
-        def sort_key(idx):
+        def sort_key(idx: int) -> Tuple[Any, ...]:
             row = data[idx]
             key_values = []
             for col in order_by_cols:
@@ -3231,7 +3231,7 @@ class MockDataFrame:
             elif func_name == "min":
                 data[idx][col_name] = min(window_values) if window_values else None
 
-    def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj) -> Any:
+    def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
         # Evaluate each condition in order
         for condition, value in case_when_obj.conditions:
@@ -3244,7 +3244,7 @@ class MockDataFrame:
 
         return None
 
-    def _evaluate_case_when_condition(self, row: Dict[str, Any], condition) -> bool:
+    def _evaluate_case_when_condition(self, row: Dict[str, Any], condition: Any) -> bool:
         """Evaluate a CASE WHEN condition for a row."""
         if hasattr(condition, "operation") and hasattr(condition, "column"):
             # Handle MockColumnOperation conditions
@@ -3290,7 +3290,7 @@ class MockDataFrame:
         else:
             return row.get(str(column))
 
-    def _get_column_type(self, column) -> Any:
+    def _get_column_type(self, column: Any) -> Any:
         """Get column type from schema."""
         if hasattr(column, "name"):
             for field in self.schema.fields:
@@ -3353,13 +3353,13 @@ class MockDataFrame:
                 columns.append(colname)
         return self.select(*columns)
 
-    def head(self, n: int = 1):
+    def head(self, n: int = 1) -> Union[MockRow, List[MockRow], None]:
         """Return first n rows."""
         if n == 1:
             return self.collect()[0] if self.data else None
         return self.collect()[:n]
 
-    def tail(self, n: int = 1):
+    def tail(self, n: int = 1) -> Union[MockRow, List[MockRow], None]:
         """Return last n rows."""
         if n == 1:
             return self.collect()[-1] if self.data else None
@@ -3380,7 +3380,7 @@ class MockDataFrame:
         """Whether this DataFrame is streaming (always False in mock)."""
         return False
 
-    def repartition(self, numPartitions: int, *cols) -> "MockDataFrame":
+    def repartition(self, numPartitions: int, *cols: Any) -> "MockDataFrame":
         """Repartition DataFrame (no-op in mock; returns self)."""
         return self
 
