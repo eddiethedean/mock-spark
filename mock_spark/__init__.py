@@ -40,7 +40,6 @@ Quick Start:
            ALICE
              BOB
 
-Version: 2.1.0
 Author: Odos Matthews
 """
 
