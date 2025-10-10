@@ -41,7 +41,7 @@ class MockConfiguration:
         'MyApp'
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockConfiguration with default settings."""
         self._config = {
             "spark.app.name": "MockSparkApp",
@@ -170,7 +170,7 @@ class MockConfigBuilder:
         ...     .build())
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockConfigBuilder."""
         self._config = MockConfiguration()
 

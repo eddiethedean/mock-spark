@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class SessionPerformanceTracker:
     """Tracks memory usage and performance metrics for a Spark session."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance tracker."""
         self._tracked_dataframes = []
         self._approx_memory_usage_bytes = 0

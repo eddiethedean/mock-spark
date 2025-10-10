@@ -37,7 +37,7 @@ class MockSQLValidator:
         True
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockSQLValidator."""
         self._reserved_keywords = {
             "SELECT",

@@ -63,7 +63,7 @@ class MockQueryOptimizer:
         >>> optimized_ast = optimizer.optimize(ast)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockQueryOptimizer."""
         self._optimization_rules = [
             self._rule_predicate_pushdown,

@@ -13,7 +13,7 @@ from .session import MockSparkSession
 class MockSparkSessionBuilder:
     """Mock SparkSession builder."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize builder."""
         self._app_name = "MockSparkApp"
         self._config = {}

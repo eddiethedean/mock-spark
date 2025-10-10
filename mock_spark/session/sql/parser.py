@@ -63,7 +63,7 @@ class MockSQLParser:
         'SELECT'
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MockSQLParser."""
         self._keywords = {
             "SELECT",
