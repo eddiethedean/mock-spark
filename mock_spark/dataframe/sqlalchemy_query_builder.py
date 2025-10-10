@@ -37,7 +37,7 @@ class SQLAlchemyQueryBuilder:
 
     def add_select(self, columns: Tuple[Any, ...]) -> None:
         """Add SELECT columns using SQLAlchemy column expressions."""
-        sql_columns = []
+        sql_columns: List[Any] = []
         for col in columns:
             if isinstance(col, str):
                 if col == "*":

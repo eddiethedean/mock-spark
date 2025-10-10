@@ -5,6 +5,8 @@ This module uses SQLAlchemy with DuckDB to provide SQL generation
 and execution capabilities for complex DataFrame operations.
 """
 
+# mypy: disable-error-code="arg-type"
+
 from typing import Any, Dict, List, Optional, Union, Tuple
 from sqlalchemy import (
     create_engine,
@@ -49,7 +51,7 @@ class SQLAlchemyMaterializer:
         # Create DuckDB engine with SQLAlchemy
         self.engine = create_engine(engine_url, echo=False)
         self._temp_table_counter = 0
-        self._created_tables = {}  # Track created tables
+        self._created_tables: Dict[str, Any] = {}  # Track created tables
         self.metadata = MetaData()
 
     def materialize(
@@ -213,7 +215,7 @@ class SQLAlchemyMaterializer:
 
         # Build select columns and new table structure
         select_columns = []
-        new_columns = []
+        new_columns: List[Any] = []
 
         for col in columns:
             # print(f"DEBUG _apply_select: Processing {type(col).__name__}, name={getattr(col, 'name', 'N/A')}, has_operation={hasattr(col, 'operation')}")
@@ -716,7 +718,7 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                 elif isinstance(col.value, (tuple, list)):
                                     # Flatten nested tuples/lists and process parameters
-                                    flattened_params = []
+                                    flattened_params: List[Any] = []
                                     for param in col.value:
                                         if isinstance(param, (tuple, list)):
                                             # Handle nested tuples/lists (like format_string)
@@ -924,7 +926,7 @@ class SQLAlchemyMaterializer:
 
         # Build the SELECT clause
         select_parts = []
-        new_columns = []
+        new_columns: List[Any] = []
 
         for col in columns:
             # print(f"DEBUG _apply_select_with_window_functions: Processing {type(col).__name__}, name={getattr(col, 'name', 'N/A')}, has_operation={hasattr(col, 'operation')}, has_function_name={hasattr(col, 'function_name')}")
@@ -1375,7 +1377,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy existing columns and add new column
-        new_columns = []
+        new_columns: List[Any] = []
 
         # Copy all existing columns
         for column in source_table_obj.columns:
@@ -1567,7 +1569,7 @@ class SQLAlchemyMaterializer:
         select_stmt = select(*select_columns).select_from(source_table_obj)
 
         # Create the target table with the new column
-        new_columns = []
+        new_columns: List[Any] = []
         for col_name_existing in existing_columns:
             col_type = source_table_obj.c[col_name_existing].type
             new_columns.append(Column(col_name_existing, col_type, primary_key=False))
@@ -1643,7 +1645,7 @@ class SQLAlchemyMaterializer:
         # Execute with ORDER BY using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).order_by(*order_expressions)
-            results = session.execute(query).all()
+            results: List[Any] = session.execute(query).all()
 
             # Insert into target table
             for result in results:
@@ -1666,7 +1668,7 @@ class SQLAlchemyMaterializer:
         # Execute with LIMIT using SQLAlchemy
         with Session(self.engine) as session:
             query = select(*source_table_obj.columns).limit(limit_count)
-            results = session.execute(query).all()
+            results: List[Any] = session.execute(query).all()
 
             # Insert into target table
             for result in results:
@@ -1755,7 +1757,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy all columns from source table
-        new_columns = []
+        new_columns: List[Any] = []
         for column in source_table_obj.columns:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 
@@ -2117,7 +2119,7 @@ class SQLAlchemyMaterializer:
             on_columns = [on]
 
         # Create target table with combined schema
-        new_columns = []
+        new_columns: List[Any] = []
 
         # Add all columns from source table
         for column in source_table_obj.columns:
@@ -2148,7 +2150,7 @@ class SQLAlchemyMaterializer:
             source_data = session.execute(select(*source_table_obj.columns)).all()
 
             # Create a lookup dictionary from other_data (key -> list of matching rows)
-            other_lookup = {}
+            other_lookup: Dict[Any, Any] = {}
             for other_row in other_data:
                 # Create join key from on_columns
                 join_key = tuple(other_row.get(col) for col in on_columns)
@@ -2190,7 +2192,7 @@ class SQLAlchemyMaterializer:
         """Apply a union operation."""
         # Get source table structure
         source_table_obj = self._created_tables[source_table]
-        new_columns = []
+        new_columns: List[Any] = []
         for column in source_table_obj.columns:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 

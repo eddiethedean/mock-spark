@@ -141,7 +141,7 @@ def create_table_from_mock_schema(
     Returns:
         SQLAlchemy Table object
     """
-    columns = []
+    columns: List[Any] = []
 
     for field in mock_schema.fields:
         sql_type = mock_type_to_sqlalchemy(field.dataType)
@@ -199,7 +199,7 @@ def create_table_from_data(
 
     # Infer types from first row
     first_row = data[0]
-    columns = []
+    columns: List[Any] = []
 
     for key, value in first_row.items():
         col_type = get_column_type_for_value(value)
