@@ -15,13 +15,13 @@ Key Features:
 Example:
     >>> from mock_spark import MockSparkSession
     >>> from mock_spark.error_simulation import MockErrorSimulator
-    >>> 
+    >>>
     >>> spark = MockSparkSession("test")
     >>> error_sim = MockErrorSimulator(spark)
-    >>> 
+    >>>
     >>> # Simulate table not found error
     >>> error_sim.add_rule("table", lambda name: "nonexistent" in name, AnalysisException("Table not found"))
-    >>> 
+    >>>
     >>> with pytest.raises(AnalysisException):
     ...     spark.table("nonexistent.table")
 """

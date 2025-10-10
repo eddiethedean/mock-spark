@@ -119,16 +119,18 @@ def create_duckdb_engine(database_path: str = "mock_spark.duckdb") -> Any:
 def create_session(engine: Any) -> Any:
     """Create a SQLAlchemy session for database operations."""
     from sqlalchemy.orm import Session
+
     return Session(engine)
 
 
 def initialize_metadata_tables(engine: Any) -> None:
     """Initialize metadata tables for Mock Spark storage.
-    
+
     Note: This function is a placeholder for compatibility.
     Metadata tables are not automatically created from dataclasses.
     """
     from sqlalchemy.orm import Session
+
     with Session(engine) as session:
         # Add any additional setup here if needed
         session.commit()

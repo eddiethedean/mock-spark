@@ -20,12 +20,12 @@ Testing Utilities (Optional):
     - Error simulation for testing error handling
     - Performance simulation for testing edge cases
     - Test data generation with realistic patterns
-    
+
     Import explicitly when needed:
         from mock_spark.error_simulation import MockErrorSimulator
         from mock_spark.performance_simulation import MockPerformanceSimulator
         from mock_spark.data_generation import create_test_data
-    
+
     See docs/testing_utilities_guide.md for details.
 
 Quick Start:
@@ -39,7 +39,7 @@ Quick Start:
     ------------
            ALICE
              BOB
-    
+
 Version: 1.4.0
 Author: Odos Matthews
 """
@@ -99,7 +99,7 @@ from .performance_simulation import (
 #   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
 # Not exported in main __all__ - use explicit import when needed
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

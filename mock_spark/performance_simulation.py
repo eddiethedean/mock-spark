@@ -15,13 +15,13 @@ Key Features:
 Example:
     >>> from mock_spark import MockSparkSession
     >>> from mock_spark.performance_simulation import MockPerformanceSimulator
-    >>> 
+    >>>
     >>> spark = MockSparkSession("test")
     >>> perf_sim = MockPerformanceSimulator(spark)
-    >>> 
+    >>>
     >>> # Simulate slow operations
     >>> perf_sim.set_slowdown(2.0)  # 2x slower
-    >>> 
+    >>>
     >>> # Simulate memory constraints
     >>> perf_sim.set_memory_limit(1000)  # 1000 rows max
 """
