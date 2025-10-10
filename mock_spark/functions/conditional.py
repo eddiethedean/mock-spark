@@ -116,7 +116,7 @@ class MockCaseWhen:
         # For simple values, check if truthy
         return bool(condition) if condition is not None else False
 
-    def _evaluate_column_operation(self, row: dict, operation) -> bool:
+    def _evaluate_column_operation(self, row: dict, operation: Any) -> bool:
         """Evaluate a column operation.
 
         Args:
@@ -201,7 +201,7 @@ class MockCaseWhen:
         else:
             return value
 
-    def _evaluate_column_operation_value(self, row: dict, operation) -> Any:
+    def _evaluate_column_operation_value(self, row: dict, operation: Any) -> Any:
         """Evaluate a column operation for a value.
 
         Args:

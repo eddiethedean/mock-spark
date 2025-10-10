@@ -252,19 +252,19 @@ class MockLiteral(IColumn):
 
         return MockColumnOperation(self, "cast", data_type)
 
-    def when(self, condition: "MockColumnOperation", value: Any):
+    def when(self, condition: "MockColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""
         from ..conditional import MockCaseWhen
 
         return MockCaseWhen(self, condition, value)
 
-    def otherwise(self, value: Any):
+    def otherwise(self, value: Any) -> Any:
         """End a CASE WHEN expression with default value."""
         from ..conditional import MockCaseWhen
 
         return MockCaseWhen(self, None, value)
 
-    def over(self, window_spec):
+    def over(self, window_spec: Any) -> Any:
         """Apply window function over window specification."""
         from ..window_execution import MockWindowFunction
 
