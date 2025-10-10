@@ -1680,7 +1680,7 @@ class SQLAlchemyMaterializer:
                 session.execute(insert_stmt)
             session.commit()
 
-    def _build_case_when_sql(self, case_when_obj, source_table_obj):
+    def _build_case_when_sql(self, case_when_obj: Any, source_table_obj: Any) -> str:
         """Build SQL CASE WHEN expression from MockCaseWhen object."""
         sql_parts = ["CASE"]
 
@@ -1700,7 +1700,7 @@ class SQLAlchemyMaterializer:
         sql_parts.append("END")
         return " ".join(sql_parts)
 
-    def _condition_to_sql(self, condition, source_table_obj):
+    def _condition_to_sql(self, condition: Any, source_table_obj: Any) -> str:
         """Convert a condition to SQL."""
         if hasattr(condition, "column") and hasattr(condition, "function_name"):
             # Handle column operations like F.col("age") > 30
@@ -1724,7 +1724,7 @@ class SQLAlchemyMaterializer:
                 return f'"{column_name}" <= {value_sql}'
         return str(condition)
 
-    def _value_to_sql(self, value):
+    def _value_to_sql(self, value: Any) -> str:
         """Convert a value to SQL."""
         if value is None:
             return "NULL"
@@ -1811,7 +1811,7 @@ class SQLAlchemyMaterializer:
 
             return mock_rows
 
-    def _condition_to_sqlalchemy(self, table_obj, condition: Any) -> Any:
+    def _condition_to_sqlalchemy(self, table_obj: Any, condition: Any) -> Any:
         """Convert a condition to SQLAlchemy expression."""
         if isinstance(condition, MockColumnOperation):
             if hasattr(condition, "operation") and hasattr(condition, "column"):
@@ -1857,7 +1857,7 @@ class SQLAlchemyMaterializer:
 
         return None  # Fallback
 
-    def _column_to_sqlalchemy(self, table_obj, column: Any) -> Any:
+    def _column_to_sqlalchemy(self, table_obj: Any, column: Any) -> Any:
         """Convert a MockColumn to SQLAlchemy expression."""
         if isinstance(column, MockColumn):
             column_name = column.name
@@ -1941,7 +1941,7 @@ class SQLAlchemyMaterializer:
             return value.name
         return value
 
-    def _column_to_orm(self, table_class, column: Any) -> Any:
+    def _column_to_orm(self, table_class: Any, column: Any) -> Any:
         """Convert a MockColumn to SQLAlchemy ORM expression."""
         if isinstance(column, MockColumn):
             return getattr(table_class, column.name)
@@ -1958,7 +1958,7 @@ class SQLAlchemyMaterializer:
             return value.name
         return value
 
-    def _window_function_to_orm(self, table_class, window_func: Any) -> Any:
+    def _window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
         """Convert a window function to SQLAlchemy ORM expression."""
         function_name = getattr(window_func, "function_name", "window_function")
 
@@ -2188,7 +2188,7 @@ class SQLAlchemyMaterializer:
 
             session.commit()
 
-    def _apply_union(self, source_table: str, target_table: str, other_df) -> None:
+    def _apply_union(self, source_table: str, target_table: str, other_df: Any) -> None:
         """Apply a union operation."""
         # Get source table structure
         source_table_obj = self._created_tables[source_table]
@@ -2320,16 +2320,16 @@ class SQLAlchemyMaterializer:
         else:
             return str(expr)
 
-    def close(self):
+    def close(self) -> None:
         """Close the SQLAlchemy engine."""
         try:
             if hasattr(self, "engine") and self.engine:
                 self.engine.dispose()
-                self.engine = None
+                self.engine = None  # type: ignore[assignment]
         except Exception:
             pass  # Ignore errors during cleanup
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()

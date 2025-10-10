@@ -88,7 +88,7 @@ class DuckDBTable(ITable):
         # Create the table in the database
         self.sqlalchemy_table.create(self.engine, checkfirst=True)
 
-    def _get_duckdb_type(self, data_type) -> str:
+    def _get_duckdb_type(self, data_type: Any) -> str:
         """Convert MockSpark data type to DuckDB type."""
         type_name = type(data_type).__name__
         if "String" in type_name:
@@ -434,7 +434,7 @@ class DuckDBStorageManager(IStorageManager):
         """Get all data from table."""
         return self.query_table(schema, table)
 
-    def create_temp_view(self, name: str, dataframe) -> None:
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create temporary view with type safety."""
         schema = "default"
         self.create_schema(schema)
@@ -512,7 +512,7 @@ class DuckDBStorageManager(IStorageManager):
         except Exception as e:
             raise ValueError(f"Analytical query failed: {e}") from e
 
-    def close(self):
+    def close(self) -> None:
         """Close connections with proper cleanup."""
         if self.connection:
             try:
@@ -526,7 +526,7 @@ class DuckDBStorageManager(IStorageManager):
 
                 # Close the connection
                 self.connection.close()
-                self.connection = None
+                self.connection = None  # type: ignore[assignment]
             except Exception:
                 pass  # Ignore errors during cleanup
 
@@ -542,17 +542,17 @@ class DuckDBStorageManager(IStorageManager):
             except:
                 pass  # Ignore cleanup errors
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()
         except:
             pass
 
-    def __enter__(self):
+    def __enter__(self) -> "DuckDBStorageManager":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()
