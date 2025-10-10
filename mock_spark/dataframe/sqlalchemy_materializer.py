@@ -419,7 +419,7 @@ class SQLAlchemyMaterializer:
                         and col.value is not None
                     ):
                         # Use the SQL expression directly
-                        func_expr = text(col.value)
+                        func_expr: Any = text(col.value)  # Can be TextClause or Function[Any]
                         # Handle labeling
                         try:
                             select_columns.append(func_expr.label(col.name))
