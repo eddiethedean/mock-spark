@@ -226,6 +226,18 @@ def comparison_tolerance():
     return 1e-6
 
 
+@pytest.fixture
+def real_spark(pyspark_environment):
+    """Fixture providing PySpark session (real_spark alias)."""
+    return pyspark_environment["session"]
+
+
+@pytest.fixture
+def mock_spark(mock_environment):
+    """Fixture providing mock_spark session (mock_spark alias)."""
+    return mock_environment["session"]
+
+
 @pytest.fixture(autouse=True)
 def setup_test_environment():
     """Automatic setup/teardown for test environment."""

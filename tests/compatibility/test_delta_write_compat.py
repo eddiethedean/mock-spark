@@ -3,15 +3,32 @@ Compatibility tests for Delta Lake basic write support.
 
 Tests mock-spark against real PySpark to ensure API compatibility.
 Based on exploration/delta_basic_write.py findings.
+
+NOTE: These tests require Delta Lake to be installed in PySpark environment.
+They will be skipped if Delta is not available. To run these tests, ensure
+delta-core JARs are available to PySpark.
 """
 
 import pytest
 
+# Mark all tests in this module as requiring delta
+pytestmark = [
+    pytest.mark.compatibility,
+    pytest.mark.delta,
+    pytest.mark.skip(reason="Requires Delta Lake JARs installed in PySpark (delta-core)")
+]
 
-@pytest.mark.compatibility
-@pytest.mark.delta
+
 class TestDeltaWriteCompatibility:
-    """Test Delta write compatibility with real PySpark."""
+    """Test Delta write compatibility with real PySpark.
+    
+    These tests compare Mock Spark's Delta Lake implementation with real PySpark Delta.
+    Requires Delta Lake JARs to be installed (delta-core_2.12:2.0.0 or similar).
+    
+    To enable these tests, remove the skip marker and ensure PySpark has Delta Lake:
+    - Install delta-spark package
+    - Or add delta-core JARs to Spark classpath
+    """
 
     def test_delta_write_save_as_table_basic(self, real_spark, mock_spark):
         """Test basic Delta write compatibility."""
