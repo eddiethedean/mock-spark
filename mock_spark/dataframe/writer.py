@@ -223,9 +223,49 @@ class MockDataFrameWriter:
             elif is_delta:
                 # For Delta append, check mergeSchema option
                 merge_schema = self._options.get("mergeSchema", "false").lower() == "true"
-                if merge_schema:
-                    # Schema evolution will be handled in Phase 1.2
-                    pass
+                existing_schema = self.storage.get_table_schema(schema, table)
+                
+                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                    # Schema mismatch detected
+                    if merge_schema:
+                        # Merge schemas: add new columns
+                        merged_schema = existing_schema.merge_with(self.df.schema)
+                        
+                        # Get existing data
+                        existing_data = self.storage.get_data(schema, table)
+                        
+                        # Fill null for new columns in existing data
+                        new_columns = set(self.df.schema.fieldNames()) - set(existing_schema.fieldNames())
+                        for row in existing_data:
+                            for col_name in new_columns:
+                                row[col_name] = None
+                        
+                        # Drop and recreate table with new schema
+                        self.storage.drop_table(schema, table)
+                        self.storage.create_table(schema, table, merged_schema.fields)
+                        
+                        # Reinsert existing data with nulls
+                        if existing_data:
+                            self.storage.insert_data(schema, table, existing_data, mode="append")
+                    else:
+                        # Schema mismatch without mergeSchema - raise error
+                        from ..errors import AnalysisException
+                        raise AnalysisException(
+                            f"Cannot append to table {schema}.{table}: schema mismatch. "
+                            f"Existing columns: {existing_schema.fieldNames()}, "
+                            f"New columns: {self.df.schema.fieldNames()}. "
+                            f"Set option mergeSchema=true to allow schema evolution."
+                        )
+            else:
+                # Non-Delta append: check schema compatibility
+                existing_schema = self.storage.get_table_schema(schema, table)
+                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                    from ..errors import AnalysisException
+                    raise AnalysisException(
+                        f"Cannot append to table {schema}.{table}: schema mismatch. "
+                        f"Existing columns: {existing_schema.fieldNames()}, "
+                        f"New columns: {self.df.schema.fieldNames()}."
+                    )
 
         # Insert data
         data = self.df.collect()
