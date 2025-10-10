@@ -12,10 +12,13 @@ delta-core JARs are available to PySpark.
 import pytest
 
 # Mark all tests in this module as requiring delta
+# These tests are currently skipped because they require additional Delta Lake
+# configuration in PySpark that goes beyond standard setup. The delta-spark package
+# is installed as a test dependency, but these integration tests need more work.
 pytestmark = [
     pytest.mark.compatibility,
     pytest.mark.delta,
-    pytest.mark.skip(reason="Requires Delta Lake JARs installed in PySpark (delta-core)")
+    pytest.mark.skip(reason="Delta Lake integration tests need additional PySpark configuration"),
 ]
 
 
@@ -33,6 +36,10 @@ class TestDeltaWriteCompatibility:
     def test_delta_write_save_as_table_basic(self, real_spark, mock_spark):
         """Test basic Delta write compatibility."""
         data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
+        
+        # Create schemas
+        real_spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        mock_spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
         
         # Real PySpark
         real_df = real_spark.createDataFrame(data)
@@ -57,6 +64,10 @@ class TestDeltaWriteCompatibility:
 
     def test_delta_write_modes_compatibility(self, real_spark, mock_spark):
         """Test Delta write modes match real PySpark behavior."""
+        # Create schemas
+        real_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        mock_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        
         # Test overwrite mode
         df1 = [{"id": 1, "value": "first"}]
         real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable("test.modes")
@@ -72,6 +83,10 @@ class TestDeltaWriteCompatibility:
 
     def test_delta_write_append_compatibility(self, real_spark, mock_spark):
         """Test Delta append mode compatibility."""
+        # Create schemas
+        real_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        mock_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        
         df1 = [{"id": 1}]
         df2 = [{"id": 2}]
         
@@ -89,6 +104,10 @@ class TestDeltaWriteCompatibility:
 
     def test_delta_write_error_mode_raises(self, real_spark, mock_spark):
         """Test that error mode raises exception in both implementations."""
+        # Create schemas
+        real_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        mock_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        
         df1 = [{"id": 1}]
         df2 = [{"id": 2}]
         
@@ -105,6 +124,10 @@ class TestDeltaWriteCompatibility:
 
     def test_delta_write_ignore_mode_compatibility(self, real_spark, mock_spark):
         """Test ignore mode leaves table unchanged in both implementations."""
+        # Create schemas
+        real_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        mock_spark.sql("CREATE SCHEMA IF NOT EXISTS test")
+        
         df1 = [{"id": 1, "value": "original"}]
         df2 = [{"id": 2, "value": "should be ignored"}]
         

@@ -230,7 +230,8 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
         session_id = str(uuid.uuid4())[:8]
         warehouse_dir = tempfile.mkdtemp(prefix=f"spark-warehouse-{session_id}-")
 
-        spark = (
+        # Configure Spark session builder
+        builder = (
             SparkSession.builder.appName(f"compatibility-test-{session_id}")
             .master("local[1]")
             .config("spark.sql.adaptive.enabled", "false")
@@ -243,8 +244,20 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
             .config("spark.driver.maxResultSize", "1g")
             .config("spark.ui.enabled", "false")
             .config("spark.sql.warehouse.dir", warehouse_dir)
-            .getOrCreate()
         )
+        
+        # Try to configure Delta Lake if available
+        try:
+            from delta import configure_spark_with_delta_pip
+            builder = configure_spark_with_delta_pip(builder)
+        except ImportError:
+            # Delta Lake not installed, continue without it
+            pass
+        except Exception:
+            # Delta Lake configuration failed, continue without it
+            pass
+        
+        spark = builder.getOrCreate()
 
         # Store warehouse dir for cleanup
         modules["_warehouse_dir"] = warehouse_dir
