@@ -156,47 +156,53 @@ class MockDataFrameReader:
         # Check for versionAsOf option (Delta time travel)
         if "versionAsOf" in self._options and self._format == "delta":
             version_number = int(self._options["versionAsOf"])
-            
+
             # Parse schema and table name
             if "." in table_name:
                 schema_name, table_only = table_name.split(".", 1)
             else:
                 schema_name, table_only = "default", table_name
-            
+
             # Get table metadata to access version history
             meta = self.session.storage.get_table_metadata(schema_name, table_only)  # type: ignore[attr-defined]
-            
+
             if not meta or meta.get("format") != "delta":
                 from ..errors import AnalysisException
+
                 raise AnalysisException(
                     f"Table {table_name} is not a Delta table. "
                     "versionAsOf can only be used with Delta format tables."
                 )
-            
+
             version_history = meta.get("version_history", [])
-            
+
             # Find the requested version
             target_version = None
             for v in version_history:
                 # Handle both MockDeltaVersion objects and dicts
-                v_num = v.version if hasattr(v, 'version') else v.get('version')
+                v_num = v.version if hasattr(v, "version") else v.get("version")
                 if v_num == version_number:
                     target_version = v
                     break
-            
+
             if target_version is None:
                 from ..errors import AnalysisException
+
                 raise AnalysisException(
                     f"Version {version_number} does not exist for table {table_name}. "
                     f"Available versions: {[v.version if hasattr(v, 'version') else v.get('version') for v in version_history]}"
                 )
-            
+
             # Get the data snapshot for this version
-            data_snapshot = target_version.data_snapshot if hasattr(target_version, 'data_snapshot') else target_version.get('data_snapshot', [])
-            
+            data_snapshot = (
+                target_version.data_snapshot
+                if hasattr(target_version, "data_snapshot")
+                else target_version.get("data_snapshot", [])
+            )
+
             # Create DataFrame with the historical data using session's createDataFrame
             return self.session.createDataFrame(data_snapshot)
-        
+
         return self.session.table(table_name)
 
     def json(self, path: str, **options: Any) -> IDataFrame:

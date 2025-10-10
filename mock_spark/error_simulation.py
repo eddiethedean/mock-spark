@@ -116,7 +116,9 @@ class MockErrorSimulator:
             else:
                 self.error_rules.clear()
 
-    def should_raise_error(self, method_name: str, *args: Any, **kwargs: Any) -> Optional[Exception]:
+    def should_raise_error(
+        self, method_name: str, *args: Any, **kwargs: Any
+    ) -> Optional[Exception]:
         """Check if an error should be raised for a method call.
 
         Args:
@@ -277,7 +279,9 @@ class MockErrorSimulatorBuilder:
 
 
 # Convenience functions for common error scenarios
-def create_table_not_found_simulator(spark_session: Any, table_pattern: str = "nonexistent.*") -> MockErrorSimulator:
+def create_table_not_found_simulator(
+    spark_session: Any, table_pattern: str = "nonexistent.*"
+) -> MockErrorSimulator:
     """Create a simulator that raises table not found errors.
 
     Args:
@@ -303,7 +307,9 @@ def create_data_too_large_simulator(spark_session: Any, max_rows: int = 1000) ->
     return MockErrorSimulatorBuilder(spark_session).data_too_large(max_rows).build()
 
 
-def create_sql_error_simulator(spark_session: Any, error_pattern: str = "INVALID.*") -> MockErrorSimulator:
+def create_sql_error_simulator(
+    spark_session: Any, error_pattern: str = "INVALID.*"
+) -> MockErrorSimulator:
     """Create a simulator that raises SQL syntax errors.
 
     Args:

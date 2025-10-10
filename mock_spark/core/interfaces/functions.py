@@ -249,7 +249,7 @@ class ICaseWhen(IFunction):
     @abstractmethod
     def evaluate(self, row: Dict[str, Any]) -> Any:  # type: ignore[override]
         """Evaluate CASE WHEN for row.
-        
+
         Note: More specific signature than parent IFunction for CASE WHEN evaluation.
         """
         pass

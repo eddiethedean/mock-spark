@@ -281,7 +281,9 @@ def performance_simulation(
 
 
 # Convenience functions for common performance scenarios
-def create_slow_simulator(spark_session: Any, slowdown_factor: float = 2.0) -> MockPerformanceSimulator:
+def create_slow_simulator(
+    spark_session: Any, slowdown_factor: float = 2.0
+) -> MockPerformanceSimulator:
     """Create a simulator that slows down operations.
 
     Args:
@@ -294,7 +296,9 @@ def create_slow_simulator(spark_session: Any, slowdown_factor: float = 2.0) -> M
     return MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
 
 
-def create_memory_limited_simulator(spark_session: Any, memory_limit: int = 1000) -> MockPerformanceSimulator:
+def create_memory_limited_simulator(
+    spark_session: Any, memory_limit: int = 1000
+) -> MockPerformanceSimulator:
     """Create a simulator that limits memory usage.
 
     Args:

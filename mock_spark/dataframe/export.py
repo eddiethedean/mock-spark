@@ -48,7 +48,9 @@ class DataFrameExporter:
         return pd.DataFrame(df.data)
 
     @staticmethod
-    def to_duckdb(df: "MockDataFrame", connection: Any = None, table_name: Optional[str] = None) -> str:
+    def to_duckdb(
+        df: "MockDataFrame", connection: Any = None, table_name: Optional[str] = None
+    ) -> str:
         """Convert DataFrame to DuckDB table for analytical operations.
 
         Args:

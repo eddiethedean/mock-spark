@@ -316,7 +316,7 @@ class MockColumnOperation(IColumn):
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison.
-        
+
         Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
         This allows chaining operations like: (col("a") == 1) & (col("b") == 2)
         """
@@ -326,7 +326,7 @@ class MockColumnOperation(IColumn):
 
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison.
-        
+
         Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
         This allows chaining operations like: (col("a") != 1) | (col("b") != 2)
         """

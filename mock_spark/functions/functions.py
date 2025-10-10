@@ -314,12 +314,16 @@ class MockFunctions:
         return DateTimeFunctions.current_date()
 
     @staticmethod
-    def to_date(column: Union[MockColumn, str], format: Optional[str] = None) -> MockColumnOperation:
+    def to_date(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert to date."""
         return DateTimeFunctions.to_date(column, format)
 
     @staticmethod
-    def to_timestamp(column: Union[MockColumn, str], format: Optional[str] = None) -> MockColumnOperation:
+    def to_timestamp(
+        column: Union[MockColumn, str], format: Optional[str] = None
+    ) -> MockColumnOperation:
         """Convert to timestamp."""
         return DateTimeFunctions.to_timestamp(column, format)
 
@@ -419,7 +423,9 @@ class MockFunctions:
         return DateTimeFunctions.add_months(column, num_months)
 
     @staticmethod
-    def months_between(column1: Union[MockColumn, str], column2: Union[MockColumn, str]) -> MockColumnOperation:
+    def months_between(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Calculate months between two dates."""
         return DateTimeFunctions.months_between(column1, column2)
 
@@ -444,7 +450,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def nvl2(column: Union[MockColumn, str], value_if_not_null: Any, value_if_null: Any) -> MockColumnOperation:
+    def nvl2(
+        column: Union[MockColumn, str], value_if_not_null: Any, value_if_null: Any
+    ) -> MockColumnOperation:
         """Return value based on null check."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -491,7 +499,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def lag(column: Union[MockColumn, str], offset: int = 1, default_value: Any = None) -> MockColumnOperation:
+    def lag(
+        column: Union[MockColumn, str], offset: int = 1, default_value: Any = None
+    ) -> MockColumnOperation:
         """Lag window function."""
         if isinstance(column, str):
             column = MockColumn(column)
@@ -502,7 +512,9 @@ class MockFunctions:
         return operation
 
     @staticmethod
-    def lead(column: Union[MockColumn, str], offset: int = 1, default_value: Any = None) -> MockColumnOperation:
+    def lead(
+        column: Union[MockColumn, str], offset: int = 1, default_value: Any = None
+    ) -> MockColumnOperation:
         """Lead window function."""
         if isinstance(column, str):
             column = MockColumn(column)

@@ -365,7 +365,9 @@ def create_edge_case_data() -> List[Dict[str, Any]]:
     return EdgeCaseDataGenerator.generate_boundary_values()
 
 
-def create_dataframe_from_schema_string(session: Any, schema_string: str, row_count: int = 10) -> Any:
+def create_dataframe_from_schema_string(
+    session: Any, schema_string: str, row_count: int = 10
+) -> Any:
     """Create DataFrame from schema string like 'id:int,name:string'."""
     fields: List[MockStructField] = []
     for part in schema_string.split(","):

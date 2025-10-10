@@ -90,7 +90,7 @@ class MockLiteral(IColumn):
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison.
-        
+
         Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
         """
         from .column import MockColumnOperation
@@ -99,7 +99,7 @@ class MockLiteral(IColumn):
 
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison.
-        
+
         Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
         """
         from .column import MockColumnOperation

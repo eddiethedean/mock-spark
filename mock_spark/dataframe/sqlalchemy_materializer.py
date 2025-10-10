@@ -1183,7 +1183,11 @@ class SQLAlchemyMaterializer:
                             select_parts.append(
                                 f"{col.function_name.upper()}() OVER ({window_sql})"
                             )
-                        elif original_function and hasattr(original_function, "column") and original_function.column:
+                        elif (
+                            original_function
+                            and hasattr(original_function, "column")
+                            and original_function.column
+                        ):
                             column_name = getattr(original_function.column, "name", "unknown")
                             # Check if column exists in table before adding to SQL
                             if column_name != "unknown" and column_name in source_table_obj.c:
@@ -1536,12 +1540,23 @@ class SQLAlchemyMaterializer:
                 new_expr = or_(left_expr, right_expr)
             # Handle datetime functions (unary - value is None)
             elif col.value is None and col.operation in [
-                "to_date", "to_timestamp", "hour", "minute", "second", 
-                "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", 
-                "weekofyear", "quarter"
+                "to_date",
+                "to_timestamp",
+                "hour",
+                "minute",
+                "second",
+                "year",
+                "month",
+                "day",
+                "dayofmonth",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+                "quarter",
             ]:
                 datetime_sql = self._expression_to_sql(col)
                 from sqlalchemy import literal_column
+
                 new_expr = literal_column(datetime_sql)
             else:
                 # Fallback to raw SQL for other operations
@@ -1553,6 +1568,7 @@ class SQLAlchemyMaterializer:
             except (NotImplementedError, AttributeError):
                 # For expressions that don't support .label(), use literal_column
                 from sqlalchemy import literal_column
+
                 select_columns.append(literal_column(str(new_expr)).label(col_name))
         else:
             # Fallback to raw SQL for other expressions
@@ -1579,11 +1595,25 @@ class SQLAlchemyMaterializer:
             # Determine type based on operation
             if col.operation in ["to_date"]:
                 from sqlalchemy import Date
+
                 new_columns.append(Column(col_name, Date, primary_key=False))
             elif col.operation in ["to_timestamp", "current_timestamp"]:
                 from sqlalchemy import DateTime
+
                 new_columns.append(Column(col_name, DateTime, primary_key=False))
-            elif col.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter"]:
+            elif col.operation in [
+                "hour",
+                "minute",
+                "second",
+                "year",
+                "month",
+                "day",
+                "dayofmonth",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+                "quarter",
+            ]:
                 # All datetime component extractions return integers
                 new_columns.append(Column(col_name, Integer, primary_key=False))
             elif hasattr(col, "value") and col.value is not None:
@@ -1887,12 +1917,12 @@ class SQLAlchemyMaterializer:
         """Convert a complex expression (including AND/OR) to SQLAlchemy."""
         if isinstance(expr, MockColumnOperation):
             # Recursively process left and right sides
-            if hasattr(expr, 'column'):
+            if hasattr(expr, "column"):
                 left = self._expression_to_sqlalchemy(expr.column, table_obj)
             else:
                 left = None
-            
-            if hasattr(expr, 'value') and expr.value is not None:
+
+            if hasattr(expr, "value") and expr.value is not None:
                 if isinstance(expr.value, (MockColumn, MockColumnOperation)):
                     right = self._expression_to_sqlalchemy(expr.value, table_obj)
                 elif isinstance(expr.value, MockLiteral):
@@ -1901,7 +1931,7 @@ class SQLAlchemyMaterializer:
                     right = expr.value
             else:
                 right = None
-            
+
             # Apply operation
             if expr.operation == ">":
                 return left > right
@@ -2257,7 +2287,7 @@ class SQLAlchemyMaterializer:
                         "dayofweek": "dow",
                         "dayofyear": "doy",
                         "weekofyear": "week",
-                        "quarter": "quarter"
+                        "quarter": "quarter",
                     }
                     part = part_map.get(expr.operation, expr.operation)
                     return f"extract({part} from CAST({left} AS DATE))"

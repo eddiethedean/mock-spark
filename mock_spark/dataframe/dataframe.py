@@ -1566,7 +1566,9 @@ class MockDataFrame:
 
         return LazyEvaluationEngine.materialize(self)
 
-    def _filter_depends_on_original_columns(self, filter_condition: Any, original_schema: Any) -> bool:
+    def _filter_depends_on_original_columns(
+        self, filter_condition: Any, original_schema: Any
+    ) -> bool:
         """Check if a filter condition depends on original columns that might be removed by select."""
         from .lazy import LazyEvaluationEngine
 

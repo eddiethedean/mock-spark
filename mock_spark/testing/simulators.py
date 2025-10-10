@@ -19,7 +19,9 @@ class ErrorSimulator:
         self.error_rules: Dict[str, Dict[str, Any]] = {}
         self.error_count = 0
 
-    def add_error_rule(self, condition: str, exception_class: type, message: Optional[str] = None) -> None:
+    def add_error_rule(
+        self, condition: str, exception_class: type, message: Optional[str] = None
+    ) -> None:
         """Add an error rule that triggers under specific conditions."""
         if message is None:
             message = f"Simulated error: {condition}"
