@@ -5,9 +5,12 @@ This module provides the DataFrameTestFactory class for creating
 comprehensive DataFrame test scenarios and data.
 """
 
-from typing import Dict
+from typing import Any, Dict, TYPE_CHECKING
 from ...core.interfaces.dataframe import IDataFrame
 from ...session import MockSparkSession
+
+if TYPE_CHECKING:
+    from ...dataframe import MockDataFrame
 from ...spark_types import (
     MockStructType,
     MockStructField,
@@ -25,11 +28,11 @@ class DataFrameTestFactory:
     @staticmethod
     def create_performance_test_dataframe(
         session: MockSparkSession, num_rows: int = 10000, num_columns: int = 10
-    ) -> IDataFrame:
+    ) -> "MockDataFrame":
         """Create a large DataFrame for performance testing."""
         data = []
         for i in range(num_rows):
-            row = {"id": i}
+            row: Dict[str, Any] = {"id": i}
             for j in range(num_columns - 1):  # -1 because id is already added
                 row[f"col_{j}"] = DataGenerator.generate_string(10)
             data.append(row)
@@ -43,7 +46,7 @@ class DataFrameTestFactory:
         return session.createDataFrame(data, schema)
 
     @staticmethod
-    def create_stress_test_dataframe(session: MockSparkSession) -> IDataFrame:
+    def create_stress_test_dataframe(session: MockSparkSession) -> "MockDataFrame":
         """Create a DataFrame with stress test data (edge cases, nulls, etc.)."""
         data = [
             # Normal data
@@ -100,7 +103,7 @@ class DataFrameTestFactory:
         return session.createDataFrame(data, schema)
 
     @staticmethod
-    def create_join_test_dataframes(session: MockSparkSession) -> Dict[str, IDataFrame]:
+    def create_join_test_dataframes(session: MockSparkSession) -> Dict[str, "MockDataFrame"]:
         """Create DataFrames for testing join operations."""
         # Left DataFrame
         left_data = [
@@ -143,7 +146,7 @@ class DataFrameTestFactory:
         }
 
     @staticmethod
-    def create_window_test_dataframe(session: MockSparkSession) -> IDataFrame:
+    def create_window_test_dataframe(session: MockSparkSession) -> "MockDataFrame":
         """Create a DataFrame for testing window functions."""
         data = [
             {

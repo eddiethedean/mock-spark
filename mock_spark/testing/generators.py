@@ -370,6 +370,7 @@ def create_dataframe_from_schema_string(session, schema_string: str, row_count: 
     fields: List[MockStructField] = []
     for part in schema_string.split(","):
         name, typ = [p.strip() for p in part.split(":", 1)]
+        dtype: Any  # Can be LongType, DoubleType, BooleanType, etc.
         if typ in ("int", "integer", "long"):
             dtype = LongType()
         elif typ in ("double", "float"):
