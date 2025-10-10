@@ -46,7 +46,7 @@ class MockErrorSimulator:
         >>> error_sim.add_rule("createDataFrame", lambda data, schema: len(data) > 1000, PySparkValueError("Too much data"))
     """
 
-    def __init__(self, spark_session):
+    def __init__(self, spark_session: Any) -> None:
         """Initialize MockErrorSimulator.
 
         Args:
@@ -54,7 +54,7 @@ class MockErrorSimulator:
         """
         self.spark_session = spark_session
         self.error_rules: Dict[str, List[tuple]] = {}
-        self._original_methods = {}
+        self._original_methods: Dict[str, Any] = {}
 
     def add_rule(self, method_name: str, condition: Callable, exception: Exception) -> None:
         """Add an error rule for a specific method.
@@ -144,7 +144,7 @@ class MockErrorSimulator:
                     continue
             return None
 
-    def enable_error_simulation(self):
+    def enable_error_simulation(self) -> None:
         """Enable error simulation by wrapping methods."""
         # Store original methods
         self._original_methods = {
@@ -158,7 +158,7 @@ class MockErrorSimulator:
         self.spark_session.table = self._wrap_method("table")
         self.spark_session.sql = self._wrap_method("sql")
 
-    def disable_error_simulation(self):
+    def disable_error_simulation(self) -> None:
         """Disable error simulation by restoring original methods."""
         for method_name, original_method in self._original_methods.items():
             setattr(self.spark_session, method_name, original_method)

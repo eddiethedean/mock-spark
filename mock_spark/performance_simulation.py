@@ -212,7 +212,7 @@ class MockPerformanceSimulatorBuilder:
         ...     .build())
     """
 
-    def __init__(self, spark_session):
+    def __init__(self, spark_session: Any) -> None:
         """Initialize MockPerformanceSimulatorBuilder.
 
         Args:
@@ -307,7 +307,7 @@ def create_memory_limited_simulator(spark_session: Any, memory_limit: int = 1000
     return MockPerformanceSimulatorBuilder(spark_session).memory_limit(memory_limit).build()
 
 
-def create_high_performance_simulator(spark_session):
+def create_high_performance_simulator(spark_session: Any) -> MockPerformanceSimulator:
     """Create a simulator optimized for high performance.
 
     Args:
