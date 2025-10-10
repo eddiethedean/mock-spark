@@ -1522,11 +1522,36 @@ class SQLAlchemyMaterializer:
                 new_expr = left_col - right_val
             elif col.operation == "/":
                 new_expr = left_col / right_val
+            elif col.operation == "&":
+                # Logical AND - recursively process both sides
+                left_expr = self._expression_to_sqlalchemy(col.column, source_table_obj)
+                right_expr = self._expression_to_sqlalchemy(col.value, source_table_obj)
+                new_expr = and_(left_expr, right_expr)
+            elif col.operation == "|":
+                # Logical OR - recursively process both sides
+                left_expr = self._expression_to_sqlalchemy(col.column, source_table_obj)
+                right_expr = self._expression_to_sqlalchemy(col.value, source_table_obj)
+                new_expr = or_(left_expr, right_expr)
+            # Handle datetime functions (unary - value is None)
+            elif col.value is None and col.operation in [
+                "to_date", "to_timestamp", "hour", "minute", "second", 
+                "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", 
+                "weekofyear", "quarter"
+            ]:
+                datetime_sql = self._expression_to_sql(col)
+                from sqlalchemy import literal_column
+                new_expr = literal_column(datetime_sql)
             else:
                 # Fallback to raw SQL for other operations
                 new_expr = text(f"({left_col.name} {col.operation} {right_val})")
 
-            select_columns.append(new_expr.label(col_name))
+            # Safe label application - use .label() if available, otherwise use literal_column
+            try:
+                select_columns.append(new_expr.label(col_name))
+            except (NotImplementedError, AttributeError):
+                # For expressions that don't support .label(), use literal_column
+                from sqlalchemy import literal_column
+                select_columns.append(literal_column(str(new_expr)).label(col_name))
         else:
             # Fallback to raw SQL for other expressions
             from sqlalchemy import literal_column
@@ -1548,9 +1573,23 @@ class SQLAlchemyMaterializer:
             new_columns.append(Column(col_name_existing, col_type, primary_key=False))
 
         # Add the new column with appropriate type
-        if hasattr(col, "operation") and hasattr(col, "column") and hasattr(col, "value"):
-            # For arithmetic operations, use Float type
-            new_columns.append(Column(col_name, Float, primary_key=False))
+        if hasattr(col, "operation") and hasattr(col, "column"):
+            # Determine type based on operation
+            if col.operation in ["to_date"]:
+                from sqlalchemy import Date
+                new_columns.append(Column(col_name, Date, primary_key=False))
+            elif col.operation in ["to_timestamp", "current_timestamp"]:
+                from sqlalchemy import DateTime
+                new_columns.append(Column(col_name, DateTime, primary_key=False))
+            elif col.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                # All datetime component extractions return integers
+                new_columns.append(Column(col_name, Integer, primary_key=False))
+            elif hasattr(col, "value") and col.value is not None:
+                # For arithmetic operations with a value, use Float type
+                new_columns.append(Column(col_name, Float, primary_key=False))
+            else:
+                # Default to String for unknown operations
+                new_columns.append(Column(col_name, String, primary_key=False))
         else:
             new_columns.append(Column(col_name, String, primary_key=False))
 
@@ -1793,12 +1832,12 @@ class SQLAlchemyMaterializer:
                     # Logical AND operation
                     left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
                     right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
-                    return left_expr & right_expr
+                    return and_(left_expr, right_expr)
                 elif condition.operation == "|":
                     # Logical OR operation
                     left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
                     right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
-                    return left_expr | right_expr
+                    return or_(left_expr, right_expr)
                 elif condition.operation == "!":
                     # Logical NOT operation
                     expr = self._condition_to_sqlalchemy(table_obj, condition.column)
@@ -1841,6 +1880,55 @@ class SQLAlchemyMaterializer:
                 return literal(False)
 
         return table_obj.c[column_name]
+
+    def _expression_to_sqlalchemy(self, expr: Any, table_obj: Any) -> Any:
+        """Convert a complex expression (including AND/OR) to SQLAlchemy."""
+        if isinstance(expr, MockColumnOperation):
+            # Recursively process left and right sides
+            if hasattr(expr, 'column'):
+                left = self._expression_to_sqlalchemy(expr.column, table_obj)
+            else:
+                left = None
+            
+            if hasattr(expr, 'value') and expr.value is not None:
+                if isinstance(expr.value, (MockColumn, MockColumnOperation)):
+                    right = self._expression_to_sqlalchemy(expr.value, table_obj)
+                elif isinstance(expr.value, MockLiteral):
+                    right = expr.value.value
+                else:
+                    right = expr.value
+            else:
+                right = None
+            
+            # Apply operation
+            if expr.operation == ">":
+                return left > right
+            elif expr.operation == "<":
+                return left < right
+            elif expr.operation == ">=":
+                return left >= right
+            elif expr.operation == "<=":
+                return left <= right
+            elif expr.operation == "==":
+                return left == right
+            elif expr.operation == "!=":
+                return left != right
+            elif expr.operation == "&":
+                return and_(left, right)
+            elif expr.operation == "|":
+                return or_(left, right)
+            elif expr.operation == "!":
+                return ~left
+            else:
+                # Fallback
+                return table_obj.c[str(expr)]
+        elif isinstance(expr, MockColumn):
+            return table_obj.c[expr.name]
+        elif isinstance(expr, MockLiteral):
+            return expr.value
+        else:
+            # Literal value
+            return expr
 
     def _value_to_sqlalchemy(self, value: Any) -> Any:
         """Convert a value to SQLAlchemy expression."""
@@ -2149,6 +2237,28 @@ class SQLAlchemyMaterializer:
                     return f"(-{left})"
                 elif expr.operation == "+":
                     return f"(+{left})"
+                # Handle datetime functions
+                elif expr.operation in ["to_date", "to_timestamp"]:
+                    # DuckDB: CAST(column AS DATE/TIMESTAMP)
+                    target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
+                    return f"CAST({left} AS {target_type})"
+                elif expr.operation in ["hour", "minute", "second"]:
+                    # DuckDB: extract(part from timestamp)
+                    return f"extract({expr.operation} from CAST({left} AS TIMESTAMP))"
+                elif expr.operation in ["year", "month", "day", "dayofmonth"]:
+                    # DuckDB: extract(part from date)
+                    part = "day" if expr.operation == "dayofmonth" else expr.operation
+                    return f"extract({part} from CAST({left} AS DATE))"
+                elif expr.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                    # DuckDB date part extraction
+                    part_map = {
+                        "dayofweek": "dow",
+                        "dayofyear": "doy",
+                        "weekofyear": "week",
+                        "quarter": "quarter"
+                    }
+                    part = part_map.get(expr.operation, expr.operation)
+                    return f"extract({part} from CAST({left} AS DATE))"
                 else:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"

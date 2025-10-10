@@ -142,6 +142,21 @@ class MockDataFrameWriter:
         self._options.update(kwargs)
         return self
 
+    def partitionBy(self, *cols: str) -> "MockDataFrameWriter":
+        """Partition output by given columns.
+
+        Args:
+            *cols: Column names to partition by.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            >>> df.write.partitionBy("year", "month")
+        """
+        self._options["partitionBy"] = list(cols)
+        return self
+
     def saveAsTable(self, table_name: str) -> None:
         """Save DataFrame as a table in storage.
 
@@ -167,34 +182,166 @@ class MockDataFrameWriter:
         if not self.storage.schema_exists(schema):
             self.storage.create_schema(schema)
 
+        # Check if this is a Delta table write
+        is_delta = self.format_name == "delta"
+        table_exists = self.storage.table_exists(schema, table)
+        
         # Handle different save modes
         if self.save_mode == "error":
-            if self.storage.table_exists(schema, table):
+            if table_exists:
                 from ..errors import AnalysisException
 
                 raise AnalysisException(f"Table '{schema}.{table}' already exists")
             self.storage.create_table(schema, table, self.df.schema.fields)
 
         elif self.save_mode == "ignore":
-            if not self.storage.table_exists(schema, table):
+            if not table_exists:
                 self.storage.create_table(schema, table, self.df.schema.fields)
             else:
                 return  # Do nothing if table exists
 
         elif self.save_mode == "overwrite":
-            if self.storage.table_exists(schema, table):
+            # Track version and history before dropping for Delta tables
+            next_version = 0
+            preserved_history = []
+            if table_exists and is_delta:
+                meta = self.storage.get_table_metadata(schema, table)
+                if meta and meta.get("format") == "delta":
+                    # Increment version for next write
+                    next_version = meta.get("version", 0) + 1
+                    # Preserve version history
+                    preserved_history = meta.get("version_history", [])
+            
+            if table_exists:
                 self.storage.drop_table(schema, table)
             self.storage.create_table(schema, table, self.df.schema.fields)
+            
+            # Store next version and history for Delta tables
+            if is_delta:
+                self._delta_next_version = next_version
+                self._delta_preserved_history = preserved_history
 
         elif self.save_mode == "append":
-            if not self.storage.table_exists(schema, table):
+            if not table_exists:
                 self.storage.create_table(schema, table, self.df.schema.fields)
+            elif is_delta:
+                # For Delta append, increment version
+                meta = self.storage.get_table_metadata(schema, table)
+                if meta and meta.get("format") == "delta":
+                    self._delta_next_version = meta.get("version", 0) + 1
+                    self._delta_preserved_history = meta.get("version_history", [])
+                
+            if is_delta and table_exists:
+                # For Delta append, check mergeSchema option
+                merge_schema = self._options.get("mergeSchema", "false").lower() == "true"
+                existing_schema = self.storage.get_table_schema(schema, table)
+                
+                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                    # Schema mismatch detected
+                    if merge_schema:
+                        # Merge schemas: add new columns
+                        merged_schema = existing_schema.merge_with(self.df.schema)
+                        
+                        # Get existing data
+                        existing_data = self.storage.get_data(schema, table)
+                        
+                        # Fill null for new columns in existing data
+                        new_columns = set(self.df.schema.fieldNames()) - set(existing_schema.fieldNames())
+                        for row in existing_data:
+                            for col_name in new_columns:
+                                row[col_name] = None
+                        
+                        # Drop and recreate table with new schema
+                        self.storage.drop_table(schema, table)
+                        self.storage.create_table(schema, table, merged_schema.fields)
+                        
+                        # Reinsert existing data with nulls
+                        if existing_data:
+                            self.storage.insert_data(schema, table, existing_data, mode="append")
+                    else:
+                        # Schema mismatch without mergeSchema - raise error
+                        from ..errors import AnalysisException
+                        raise AnalysisException(
+                            f"Cannot append to table {schema}.{table}: schema mismatch. "
+                            f"Existing columns: {existing_schema.fieldNames()}, "
+                            f"New columns: {self.df.schema.fieldNames()}. "
+                            f"Set option mergeSchema=true to allow schema evolution."
+                        )
+            else:
+                # Non-Delta append: check schema compatibility
+                existing_schema = self.storage.get_table_schema(schema, table)
+                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                    from ..errors import AnalysisException
+                    raise AnalysisException(
+                        f"Cannot append to table {schema}.{table}: schema mismatch. "
+                        f"Existing columns: {existing_schema.fieldNames()}, "
+                        f"New columns: {self.df.schema.fieldNames()}."
+                    )
 
         # Insert data
         data = self.df.collect()
         # Convert MockRow objects to dictionaries
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data, mode=self.save_mode)
+        
+        # Set Delta-specific metadata
+        if is_delta:
+            # Determine version to set
+            if hasattr(self, '_delta_next_version'):
+                version = self._delta_next_version
+            else:
+                meta = self.storage.get_table_metadata(schema, table)
+                version = meta.get("version", 0) if meta else 0
+            
+            # Capture version snapshot for time travel
+            from datetime import datetime
+            from ..storage.models import MockDeltaVersion
+            
+            current_data = self.storage.get_data(schema, table)
+            
+            # Determine operation name
+            if version == 0:
+                operation = "WRITE"  # First write is always "WRITE"
+            else:
+                operation = self.save_mode.upper() if self.save_mode else "WRITE"
+                if operation == "ERROR":
+                    operation = "WRITE"
+                if operation == "IGNORE":
+                    operation = "WRITE"
+            
+            version_snapshot = MockDeltaVersion(
+                version=version,
+                timestamp=datetime.utcnow(),
+                operation=operation,
+                data_snapshot=[row if isinstance(row, dict) else row for row in current_data]
+            )
+            
+            # Get existing metadata to preserve history
+            # Use preserved history if available (from before overwrite drop)
+            if hasattr(self, '_delta_preserved_history'):
+                version_history = self._delta_preserved_history
+            else:
+                meta = self.storage.get_table_metadata(schema, table) or {}
+                version_history = meta.get("version_history", [])
+            
+            # Add new version to history
+            version_history.append(version_snapshot)
+            
+            # Update with Delta properties including version history
+            self.storage.update_table_metadata(
+                schema,
+                table,
+                {
+                    "format": "delta",
+                    "version": version,
+                    "properties": {
+                        "delta.minReaderVersion": "1",
+                        "delta.minWriterVersion": "2",
+                        "Type": "MANAGED",
+                    },
+                    "version_history": version_history,
+                },
+            )
 
     def save(self, path: Optional[str] = None) -> None:
         """Save DataFrame to a file path.

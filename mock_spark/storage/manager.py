@@ -203,6 +203,30 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self.backend.list_tables(schema)
 
+    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+        """Get table metadata including Delta-specific fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+
+        Returns:
+            Table metadata dictionary or None if table doesn't exist.
+        """
+        return self.backend.get_table_metadata(schema, table)
+
+    def update_table_metadata(
+        self, schema: str, table: str, metadata_updates: Dict[str, Any]
+    ) -> None:
+        """Update table metadata fields.
+
+        Args:
+            schema: Name of the schema.
+            table: Name of the table.
+            metadata_updates: Dictionary of metadata fields to update.
+        """
+        self.backend.update_table_metadata(schema, table, metadata_updates)
+
     def switch_backend(self, backend: IStorageManager) -> None:
         """Switch to a different storage backend.
 

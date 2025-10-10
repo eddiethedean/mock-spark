@@ -40,7 +40,7 @@ Quick Start:
            ALICE
              BOB
 
-Version: 1.4.0
+Version: 2.1.0
 Author: Odos Matthews
 """
 
@@ -99,7 +99,7 @@ from .performance_simulation import (
 #   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
 # Not exported in main __all__ - use explicit import when needed
 
-__version__ = "2.0.2"
+__version__ = "2.1.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

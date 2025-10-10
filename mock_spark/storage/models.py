@@ -20,6 +20,15 @@ class StorageMode(str, Enum):
 
 
 @dataclass
+class MockDeltaVersion:
+    """Represents a single version of a Delta table for time travel."""
+    version: int
+    timestamp: datetime
+    operation: str  # "WRITE", "APPEND", "OVERWRITE", "MERGE", etc.
+    data_snapshot: List[Dict[str, Any]]  # Snapshot of data at this version
+
+
+@dataclass
 class MockTableMetadata:
     """Type-safe table metadata model for DuckDB storage."""
 
@@ -32,6 +41,11 @@ class MockTableMetadata:
     schema_version: str = "1.0"
     storage_format: str = "columnar"
     is_temporary: bool = False
+    # Delta Lake specific fields
+    format: Optional[str] = None  # "delta", "parquet", "json", etc.
+    version: int = 0  # Current Delta table version
+    properties: Dict[str, Any] = field(default_factory=dict)  # Delta properties
+    version_history: List["MockDeltaVersion"] = field(default_factory=list)  # Version history for time travel
 
 
 @dataclass
