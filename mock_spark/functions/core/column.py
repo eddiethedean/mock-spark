@@ -222,7 +222,7 @@ class MockColumnOperation(IColumn):
 
     def __init__(
         self,
-        column: Union[MockColumn, "MockColumnOperation", "IColumn", None],
+        column: Any,  # Can be MockColumn, MockColumnOperation, IColumn, mixin, or None
         operation: str,
         value: Any = None,
         name: Optional[str] = None,
