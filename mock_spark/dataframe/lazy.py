@@ -39,7 +39,7 @@ class LazyEvaluationEngine:
         return MockDataFrame(
             df.data,
             new_schema,
-            df.storage,
+            df.storage,  # type: ignore[has-type]
             is_lazy=True,
             operations=df._operations_queue + [(op_name, payload)],
         )
@@ -57,7 +57,7 @@ class LazyEvaluationEngine:
         if not df._operations_queue:
             from ..dataframe import MockDataFrame
 
-            return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)
+            return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
 
         # Use SQLAlchemy with DuckDB for optimization
         try:
@@ -74,7 +74,7 @@ class LazyEvaluationEngine:
                 # Create new eager DataFrame with materialized data
                 from ..dataframe import MockDataFrame
 
-                return MockDataFrame(materialized_data, df.schema, df.storage, is_lazy=False)
+                return MockDataFrame(materialized_data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
             finally:
                 materializer.close()
 
@@ -155,7 +155,7 @@ class LazyEvaluationEngine:
         """
         from ..dataframe import MockDataFrame
 
-        current = MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)
+        current = MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
