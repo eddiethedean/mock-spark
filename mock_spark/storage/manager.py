@@ -183,7 +183,7 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self.backend.get_data(schema, table)
 
-    def create_temp_view(self, name: str, dataframe) -> None:
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create a temporary view from a DataFrame.
 
         Args:

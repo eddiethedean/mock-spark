@@ -90,7 +90,7 @@ class CSVSerializer:
             return MockStructType([])
 
     @staticmethod
-    def _create_data_type(type_name: str):
+    def _create_data_type(type_name: str) -> Any:
         """Create data type from type name.
 
         Args:

@@ -139,7 +139,7 @@ class MemorySchema(ISchema):
 class MemoryStorageManager(IStorageManager):
     """In-memory storage manager implementation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize memory storage manager."""
         self.schemas: Dict[str, MemorySchema] = {}
         # Create default schema
@@ -281,7 +281,7 @@ class MemoryStorageManager(IStorageManager):
         """
         return self.query_table(schema, table)
 
-    def create_temp_view(self, name: str, dataframe) -> None:
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create a temporary view from a DataFrame.
 
         Args:
