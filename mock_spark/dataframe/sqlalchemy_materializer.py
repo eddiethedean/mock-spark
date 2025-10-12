@@ -2274,9 +2274,29 @@ class SQLAlchemyMaterializer:
             return self._build_case_when_sql(expr, None)
         elif hasattr(expr, "operation") and hasattr(expr, "column") and hasattr(expr, "value"):
             # Handle string/math functions like upper, lower, abs, etc.
-            if expr.operation in ["upper", "lower", "length", "trim", "abs", "round"]:
+            if expr.operation in [
+                "upper", "lower", "length", "trim", "abs", "round",
+                "sqrt", "exp", "log", "log10", "sin", "cos", "tan",
+                "asin", "acos", "atan", "degrees", "radians", "ceil", "floor",
+                "ltrim", "rtrim", "reverse"
+            ]:
                 column_name = self._column_to_sql(expr.column)
-                return f"{expr.operation.upper()}({column_name})"
+                func_name = expr.operation.upper()
+                # Handle special cases
+                if func_name == "LOG10":
+                    func_name = "LOG10"
+                return f"{func_name}({column_name})"
+            
+            # Handle functions with two arguments
+            elif expr.operation in ["pow", "atan2", "log"]:
+                column_name = self._column_to_sql(expr.column)
+                value_sql = self._value_to_sql(expr.value)
+                if expr.operation == "pow":
+                    return f"POWER({column_name}, {value_sql})"
+                elif expr.operation == "atan2":
+                    return f"ATAN2({column_name}, {value_sql})"
+                elif expr.operation == "log" and expr.value is not None:
+                    return f"LOG({value_sql}, {column_name})"  # log(base, value) in SQL
 
             # Handle unary operations (value is None)
             if expr.value is None:

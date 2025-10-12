@@ -2080,7 +2080,7 @@ class MockDataFrame:
 
         return MockDataFrame(filtered_data, self.schema, self.storage)
 
-    def fillna(self, value: Union[Any, Dict[str, Any]]) -> "MockDataFrame":
+    def fillna(self, value: Union[Any, Dict[str, Any]], subset: Optional[List[str]] = None) -> "MockDataFrame":
         """Fill null values."""
         new_data = []
         for row in self.data:
