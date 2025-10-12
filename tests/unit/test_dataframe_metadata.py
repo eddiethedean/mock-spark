@@ -71,7 +71,6 @@ def test_explain(spark, capsys):
     assert len(captured.out) > 0
 
 
-@pytest.mark.skip(reason="explain(extended=True) parameter not implemented")
 def test_explain_extended(spark, capsys):
     """Test explain with extended=True."""
     data = [{"value": 10}]

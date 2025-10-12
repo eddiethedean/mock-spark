@@ -2097,9 +2097,11 @@ class MockDataFrame:
 
         return MockDataFrame(new_data, self.schema, self.storage)
 
-    def explain(self) -> None:
+    def explain(self, extended: bool = False) -> None:
         """Explain execution plan."""
         print("MockDataFrame Execution Plan:")
+        if extended:
+            print("  == Physical Plan ==")
         print("  MockDataFrame")
         print("    MockDataSource")
 
