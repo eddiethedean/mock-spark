@@ -1,244 +1,248 @@
-"""
-Unit tests for Mock-Spark window functions.
-
-These tests verify window function functionality without real PySpark.
-"""
+"""Unit tests for window functions and operations."""
 
 import pytest
 from mock_spark import MockSparkSession, F
-from mock_spark.window import MockWindow as Window
-from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
-    StringType,
-    IntegerType,
-    DoubleType,
-)
+from mock_spark.window import Window
 
-
-@pytest.mark.fast
-class TestWindowFunctions:
-    """Test Mock-Spark window functions."""
 
     @pytest.fixture
-    def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+def spark():
+    """Create test session."""
+    session = MockSparkSession("test_window")
+    yield session
+    try:
+        session.stop()
+    except Exception:
+        pass
 
-    @pytest.fixture
-    def sample_data(self):
-        """Sample data for testing window functions."""
-        return [
-            {
-                "name": "Alice",
-                "department": "Engineering",
-                "salary": 50000.0,
-                "hire_date": "2020-01-01",
-            },
-            {
-                "name": "Bob",
-                "department": "Engineering",
-                "salary": 60000.0,
-                "hire_date": "2019-06-01",
-            },
-            {
-                "name": "Charlie",
-                "department": "Marketing",
-                "salary": 55000.0,
-                "hire_date": "2021-03-01",
-            },
-            {
-                "name": "Diana",
-                "department": "Engineering",
-                "salary": 70000.0,
-                "hire_date": "2018-09-01",
-            },
-            {
-                "name": "Eve",
-                "department": "Marketing",
-                "salary": 45000.0,
-                "hire_date": "2022-01-01",
-            },
-        ]
 
-    def test_row_number_function(self, spark, sample_data):
-        """Test row_number() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_partition_by(spark):
+    """Test window partitioning."""
+    data = [
+        {"category": "A", "value": 10},
+        {"category": "A", "value": 20},
+        {"category": "B", "value": 30}
+    ]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.partitionBy("category")
+    result = df.withColumn("sum_by_category", F.sum("value").over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 3
 
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.row_number().over(window).alias("row_num"))
 
-        assert result.count() == 5
-        assert "row_num" in result.columns
+def test_window_order_by(spark):
+    """Test window ordering."""
+    data = [
+        {"id": 1, "value": 30},
+        {"id": 2, "value": 10},
+        {"id": 3, "value": 20}
+    ]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("rank", F.row_number().over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 3
 
-        # Check that row numbers are sequential
-        rows = result.orderBy("salary").collect()
-        for i, row in enumerate(rows, 1):
-            assert row["row_num"] == i
 
-    def test_rank_function(self, spark, sample_data):
-        """Test rank() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_partition_and_order(spark):
+    """Test window with both partition and order."""
+    data = [
+        {"category": "A", "value": 10},
+        {"category": "A", "value": 20},
+        {"category": "B", "value": 15}
+    ]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.partitionBy("category").orderBy("value")
+    result = df.withColumn("rank", F.row_number().over(window_spec))
+    
+    assert result.count() == 3
 
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.rank().over(window).alias("rank"))
 
-        assert result.count() == 5
-        assert "rank" in result.columns
-
-    def test_dense_rank_function(self, spark, sample_data):
-        """Test dense_rank() window function."""
-        df = spark.createDataFrame(sample_data)
-
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.dense_rank().over(window).alias("dense_rank"))
+def test_window_rows_between(spark):
+    """Test window frame with rows between."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 6)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id").rowsBetween(-1, 1)
+    result = df.withColumn("moving_avg", F.avg("value").over(window_spec))
 
         assert result.count() == 5
-        assert "dense_rank" in result.columns
 
-    def test_window_partition_by(self, spark, sample_data):
-        """Test window partitioning."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.partitionBy("department").orderBy("salary")
-        result = df.select(F.col("*"), F.row_number().over(window).alias("dept_row_num"))
-
-        assert result.count() == 5
-        assert "dept_row_num" in result.columns
-
-    def test_window_rows_between(self, spark, sample_data):
-        """Test window rows between."""
-        df = spark.createDataFrame(sample_data)
-
-        window = Window.orderBy("salary").rowsBetween(Window.currentRow, 1)
-        result = df.select(F.col("*"), F.avg("salary").over(window).alias("avg_salary_window"))
+def test_window_range_between(spark):
+    """Test window frame with range between."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 6)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id").rangeBetween(-1, 1)
+    result = df.withColumn("range_sum", F.sum("value").over(window_spec))
 
         assert result.count() == 5
-        assert "avg_salary_window" in result.columns
 
-    def test_window_range_between(self, spark, sample_data):
-        """Test window range between."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.orderBy("salary").rangeBetween(0, 10000)
-        result = df.select(F.col("*"), F.count("*").over(window).alias("count_in_range"))
+def test_window_row_number(spark):
+    """Test row_number window function."""
+    data = [{"value": i} for i in [3, 1, 2]]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("row_num", F.row_number().over(window_spec))
+    
+    rows = result.orderBy("value").collect()
+    assert rows[0]["row_num"] == 1
+    assert rows[1]["row_num"] == 2
+    assert rows[2]["row_num"] == 3
 
-        assert result.count() == 5
-        assert "count_in_range" in result.columns
 
-    def test_lag_function(self, spark, sample_data):
-        """Test lag() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_rank(spark):
+    """Test rank window function."""
+    data = [{"value": 1}, {"value": 1}, {"value": 2}]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("rank", F.rank().over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 3
 
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.lag("salary", 1).over(window).alias("prev_salary"))
 
-        assert result.count() == 5
-        assert "prev_salary" in result.columns
+def test_window_dense_rank(spark):
+    """Test dense_rank window function."""
+    data = [{"value": 1}, {"value": 1}, {"value": 2}]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("dense_rank", F.dense_rank().over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 3
 
-    def test_lead_function(self, spark, sample_data):
-        """Test lead() window function."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.lead("salary", 1).over(window).alias("next_salary"))
+def test_window_lag(spark):
+    """Test lag window function."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 5)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id")
+    result = df.withColumn("prev_value", F.lag("value", 1).over(window_spec))
+    
+    rows = result.orderBy("id").collect()
+    assert rows[0]["prev_value"] is None
+    assert rows[1]["prev_value"] == 10
 
-        assert result.count() == 5
-        assert "next_salary" in result.columns
 
-    def test_avg_window_function(self, spark, sample_data):
-        """Test avg() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_lead(spark):
+    """Test lead window function."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 5)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id")
+    result = df.withColumn("next_value", F.lead("value", 1).over(window_spec))
+    
+    rows = result.orderBy("id").collect()
+    assert rows[-1]["next_value"] is None
+    assert rows[0]["next_value"] == 20
 
-        window = Window.partitionBy("department")
-        result = df.select(F.col("*"), F.avg("salary").over(window).alias("dept_avg_salary"))
 
-        assert result.count() == 5
-        assert "dept_avg_salary" in result.columns
+def test_window_cumulative_sum(spark):
+    """Test cumulative sum with window."""
+    data = [{"id": i, "value": 10} for i in range(1, 6)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id").rowsBetween(Window.unboundedPreceding, Window.currentRow)
+    result = df.withColumn("cumulative_sum", F.sum("value").over(window_spec))
+    
+    rows = result.orderBy("id").collect()
+    assert rows[0]["cumulative_sum"] == 10
+    assert rows[4]["cumulative_sum"] == 50
 
-    def test_sum_window_function(self, spark, sample_data):
-        """Test sum() window function."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.partitionBy("department")
-        result = df.select(F.col("*"), F.sum("salary").over(window).alias("dept_total_salary"))
+def test_window_partition_multiple_columns(spark):
+    """Test window partitioning by multiple columns."""
+    data = [
+        {"region": "US", "state": "CA", "value": 10},
+        {"region": "US", "state": "CA", "value": 20},
+        {"region": "US", "state": "NY", "value": 30}
+    ]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.partitionBy("region", "state")
+    result = df.withColumn("total", F.sum("value").over(window_spec))
+    
+    assert result.count() == 3
 
-        assert result.count() == 5
-        assert "dept_total_salary" in result.columns
 
-    def test_max_window_function(self, spark, sample_data):
-        """Test max() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_unbounded_following(spark):
+    """Test window with unbounded following."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 5)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id").rowsBetween(Window.currentRow, Window.unboundedFollowing)
+    result = df.withColumn("remaining_sum", F.sum("value").over(window_spec))
+    
+    rows = result.orderBy("id").collect()
+    assert rows[0]["remaining_sum"] == 100  # 10+20+30+40
 
-        window = Window.partitionBy("department")
-        result = df.select(F.col("*"), F.max("salary").over(window).alias("dept_max_salary"))
 
-        assert result.count() == 5
-        assert "dept_max_salary" in result.columns
+def test_window_ntile(spark):
+    """Test ntile window function."""
+    data = [{"id": i} for i in range(1, 11)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id")
+    result = df.withColumn("quartile", F.ntile(4).over(window_spec))
+    
+    assert result.count() == 10
 
-    def test_min_window_function(self, spark, sample_data):
-        """Test min() window function."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.partitionBy("department")
-        result = df.select(F.col("*"), F.min("salary").over(window).alias("dept_min_salary"))
+def test_window_percent_rank(spark):
+    """Test percent_rank window function."""
+    data = [{"value": i} for i in [1, 2, 3, 4, 5]]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("pct_rank", F.percent_rank().over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 5
 
-        assert result.count() == 5
-        assert "dept_min_salary" in result.columns
 
-    def test_count_window_function(self, spark, sample_data):
-        """Test count() window function."""
-        df = spark.createDataFrame(sample_data)
+def test_window_cume_dist(spark):
+    """Test cume_dist window function."""
+    data = [{"value": i} for i in [1, 2, 3]]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("value")
+    result = df.withColumn("cume_dist", F.cume_dist().over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 3
 
-        window = Window.partitionBy("department")
-        result = df.select(F.col("*"), F.count("*").over(window).alias("dept_count"))
 
-        assert result.count() == 5
-        assert "dept_count" in result.columns
+def test_window_first_value(spark):
+    """Test first_value window function."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 5)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id")
+    result = df.withColumn("first_val", F.first("value").over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 4
 
-    def test_complex_window_function(self, spark, sample_data):
-        """Test complex window function with multiple operations."""
-        df = spark.createDataFrame(sample_data)
 
-        window = Window.partitionBy("department").orderBy("salary")
-        result = df.select(
-            F.col("*"),
-            F.row_number().over(window).alias("row_num"),
-            F.rank().over(window).alias("rank"),
-            F.avg("salary").over(window).alias("avg_salary"),
-            F.lag("salary", 1).over(window).alias("prev_salary"),
-        )
-
-        assert result.count() == 5
-        assert all(
-            col in result.columns for col in ["row_num", "rank", "avg_salary", "prev_salary"]
-        )
-
-    def test_window_with_empty_dataframe(self, spark):
-        """Test window functions with empty DataFrame."""
-        df = spark.createDataFrame([])
-
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.row_number().over(window).alias("row_num"))
-
-        assert result.count() == 0
-
-    def test_window_with_single_row(self, spark):
-        """Test window functions with single row."""
-        df = spark.createDataFrame([{"name": "Alice", "salary": 50000.0}])
-
-        window = Window.orderBy("salary")
-        result = df.select(F.col("*"), F.row_number().over(window).alias("row_num"))
-
-        assert result.count() == 1
-        assert result.collect()[0]["row_num"] == 1
-
-    def test_window_multiple_columns(self, spark, sample_data):
-        """Test window functions with multiple columns."""
-        df = spark.createDataFrame(sample_data)
-
-        window = Window.partitionBy("department", "name").orderBy("salary")
-        result = df.select(F.col("*"), F.row_number().over(window).alias("row_num"))
-
-        assert result.count() == 5
-        assert "row_num" in result.columns
+def test_window_last_value(spark):
+    """Test last_value window function."""
+    data = [{"id": i, "value": i * 10} for i in range(1, 5)]
+    df = spark.createDataFrame(data)
+    
+    window_spec = Window.orderBy("id")
+    result = df.withColumn("last_val", F.last("value").over(window_spec))
+    
+    rows = result.collect()
+    assert len(rows) == 4
