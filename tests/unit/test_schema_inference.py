@@ -74,12 +74,12 @@ class TestBasicTypeDetection:
         assert value_field.nullable == True
 
     def test_all_nulls_raises_error(self, spark):
-        """Test that all-null columns raise ValueError (matching PySpark 3.2.4)."""
+        """Test that all-null columns default to StringType (changed behavior)."""
         data = [{"value": None}]
 
-        # PySpark 3.2.4 raises: ValueError: Some of types cannot be determined after inferring
-        with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+        # Changed from PySpark behavior: defaults to StringType instead of raising
+        df = spark.createDataFrame(data)
+        assert df.schema.fields[0].dataType.__class__.__name__ == "StringType"
 
 
 class TestMultipleRows:
@@ -468,12 +468,13 @@ class TestNoneValueHandling:
     """Test inference with None/null values (Critical Issue #1)."""
 
     def test_all_none_single_column_raises_error(self, spark):
-        """Test that column with all None values raises ValueError (PySpark 3.2.4 behavior)."""
+        """Test that column with all None values defaults to StringType (changed behavior)."""
         data = [{"id": 1, "optional": None}, {"id": 2, "optional": None}]
 
-        # This raises ValueError in both PySpark 3.2.4 and mock-spark
-        with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+        # Changed behavior: defaults to StringType instead of raising
+        df = spark.createDataFrame(data)
+        optional_field = [f for f in df.schema.fields if f.name == "optional"][0]
+        assert optional_field.dataType.__class__.__name__ == "StringType"
 
     def test_mixed_none_and_values(self, spark):
         """Test inference with some None values."""
@@ -511,15 +512,17 @@ class TestNoneValueHandling:
         ), "Should infer type from non-null values"
 
     def test_multiple_columns_all_none_raises_error(self, spark):
-        """Test multiple columns with all None values raises ValueError."""
+        """Test multiple columns with all None values default to StringType (changed behavior)."""
         data = [
             {"id": 1, "col1": None, "col2": None, "col3": None},
             {"id": 2, "col1": None, "col2": None, "col3": None},
         ]
 
-        # This raises ValueError because col1, col2, col3 are all None
-        with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+        # Changed behavior: col1, col2, col3 default to StringType
+        df = spark.createDataFrame(data)
+        assert df.count() == 2
+        none_fields = [f for f in df.schema.fields if f.name in ["col1", "col2", "col3"]]
+        assert all(f.dataType.__class__.__name__ == "StringType" for f in none_fields)
 
     def test_none_with_dict_metadata(self, spark):
         """Test real-world case from SparkForge: metadata field with None values."""
