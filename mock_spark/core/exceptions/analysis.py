@@ -5,7 +5,7 @@ This module provides exception classes for analysis-related errors,
 including SQL parsing, query analysis, and schema validation errors.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, List
 from .base import MockSparkException
 
 
@@ -172,3 +172,38 @@ class TypeMismatchException(AnalysisException):
         super().__init__(message, stackTrace)
         self.expected_type = expected_type
         self.actual_type = actual_type
+
+
+class AmbiguousColumnException(AnalysisException):
+    """Exception raised when a column reference is ambiguous.
+    
+    Raised when a column name exists in multiple tables in a join
+    and the reference is not qualified.
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        column_name: Optional[str] = None,
+        tables: Optional[List[str]] = None,
+        stackTrace: Optional[Any] = None,
+    ):
+        super().__init__(message, stackTrace)
+        self.column_name = column_name
+        self.tables = tables or []
+
+
+class TemporaryViewAlreadyExistsException(AnalysisException):
+    """Exception raised when trying to create a temp view that already exists.
+    
+    Raised when createTempView is used and the view name already exists.
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        view_name: Optional[str] = None,
+        stackTrace: Optional[Any] = None,
+    ):
+        super().__init__(message, stackTrace)
+        self.view_name = view_name

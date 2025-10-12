@@ -5,8 +5,8 @@ from mock_spark.core.exceptions.analysis import (
     AnalysisException,
     ColumnNotFoundException,
     TableNotFoundException,
-    # AmbiguousColumnException - not yet implemented
-    # TemporaryViewAlreadyExistsException - not yet implemented
+    AmbiguousColumnException,
+    TemporaryViewAlreadyExistsException
 )
 
 
@@ -54,28 +54,41 @@ def test_table_not_found_with_table_name():
     assert "orders" in str(exc)
 
 
-@pytest.mark.skip(reason="AmbiguousColumnException not yet implemented")
 def test_ambiguous_column_exception():
     """Test AmbiguousColumnException."""
-    pass
+    with pytest.raises(AmbiguousColumnException) as exc_info:
+        raise AmbiguousColumnException("Column 'id' is ambiguous")
+    
+    assert "ambiguous" in str(exc_info.value).lower()
+    assert isinstance(exc_info.value, AnalysisException)
 
 
-@pytest.mark.skip(reason="AmbiguousColumnException not yet implemented")
 def test_ambiguous_column_with_details():
     """Test AmbiguousColumnException with column details."""
-    pass
+    exc = AmbiguousColumnException(
+        "Ambiguous column reference",
+        column_name="id",
+        tables=["t1", "t2"]
+    )
+    assert "id" in str(exc) or exc.column_name == "id"
 
 
-@pytest.mark.skip(reason="TemporaryViewAlreadyExistsException not yet implemented")
 def test_temporary_view_already_exists():
     """Test TemporaryViewAlreadyExistsException."""
-    pass
+    with pytest.raises(TemporaryViewAlreadyExistsException) as exc_info:
+        raise TemporaryViewAlreadyExistsException("View 'temp_view' already exists")
+    
+    assert "temp_view" in str(exc_info.value)
+    assert isinstance(exc_info.value, AnalysisException)
 
 
-@pytest.mark.skip(reason="TemporaryViewAlreadyExistsException not yet implemented")
 def test_temporary_view_exists_with_view_name():
     """Test TemporaryViewAlreadyExistsException with view name."""
-    pass
+    exc = TemporaryViewAlreadyExistsException(
+        "View already exists",
+        view_name="my_temp_view"
+    )
+    assert "my_temp_view" in str(exc) or exc.view_name == "my_temp_view"
 
 
 def test_exception_inheritance_chain():
