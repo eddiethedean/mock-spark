@@ -161,10 +161,11 @@ addopts = [
     "--cov-report=xml",
 ]
 markers = [
+    "unit: Pure unit tests (fast, isolated)",
+    "integration: Integration tests (multiple components)",
+    "system: System tests (end-to-end workflows)",
+    "compatibility: PySpark compatibility tests (requires PySpark)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-    "compatibility: marks tests as compatibility tests with real PySpark",
     "fast: marks tests as fast unit tests without PySpark",
     "delta: marks tests that require Delta Lake JARs (run serially for isolation)",
 ]

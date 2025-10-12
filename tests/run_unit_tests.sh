@@ -1,14 +1,18 @@
 #!/bin/bash
+# Run only unit tests (fast, no integration or system tests)
 
-# Fast unit tests for Mock-Spark
-# These tests run directly against Mock-Spark without real PySpark
+set -e
 
-echo "🚀 Running Mock-Spark Unit Tests (Fast Mode)"
-echo "============================================="
+echo "🧪 Running Unit Tests"
+echo "===================="
 
-# Run unit tests (from tests directory)
-python -m pytest unit/ -v --tb=short
+python -m pytest tests/unit/ \
+    --cov=mock_spark \
+    --cov-report=term-missing \
+    --cov-report=html \
+    --cov-report=xml \
+    -v \
+    "$@"
 
 echo ""
 echo "✅ Unit tests completed!"
-echo "💡 These tests run much faster than compatibility tests since they don't use real PySpark"
