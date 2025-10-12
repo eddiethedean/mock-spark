@@ -478,3 +478,7 @@ class MockGroupedData:
             values.sort()  # Sort for consistent ordering
 
         return MockPivotGroupedData(self.df, self.group_columns, pivot_col, values)
+    
+    def mean(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Compute the average value for each numeric column for each group (alias for avg)."""
+        return self.avg(*columns)
