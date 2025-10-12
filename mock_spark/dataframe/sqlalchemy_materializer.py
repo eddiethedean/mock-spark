@@ -1508,13 +1508,16 @@ class SQLAlchemyMaterializer:
                 left_col = source_table_obj.c[str(col.column)]
 
             # Convert right operand - handle MockColumn, MockLiteral, and raw values
-            if hasattr(col.value, "name") and (
+            if hasattr(col.value, "value") and hasattr(col.value, "data_type") and not hasattr(col.value, "operation"):
+                # MockLiteral - extract the value FIRST
+                right_val = col.value.value
+            elif hasattr(col.value, "name") and (
                 not hasattr(col.value, "operation") or col.value.operation is None
             ):
                 # MockColumn - convert to SQLAlchemy column reference
                 right_val = source_table_obj.c[col.value.name]
             elif hasattr(col.value, "value"):
-                # MockLiteral - extract the value
+                # Other objects with value attribute
                 right_val = col.value.value
             else:
                 # Raw value (int, float, str)
@@ -1762,20 +1765,22 @@ class SQLAlchemyMaterializer:
             return f"'{value}'"
         elif isinstance(value, (int, float)):
             return str(value)
+        elif hasattr(value, "value") and hasattr(value, "data_type") and not hasattr(value, "operation"):
+            # Handle MockLiteral FIRST (before checking name/operation)
+            if value.value is None:
+                return "NULL"
+            elif isinstance(value.value, str):
+                return f"'{value.value}'"
+            elif isinstance(value.value, bool):
+                return "true" if value.value else "false"
+            else:
+                return str(value.value)
         elif hasattr(value, "operation") and hasattr(value, "column") and hasattr(value, "value"):
             # Handle arithmetic/comparison operations (MockColumnOperation)
             return self._expression_to_sql(value)
         elif hasattr(value, "name") and not hasattr(value, "operation"):
             # Handle MockColumn - convert to SQL column reference
             return self._column_to_sql(value)
-        elif hasattr(value, "value") and hasattr(value, "data_type"):
-            # Handle MockLiteral
-            if value.value is None:
-                return "NULL"
-            elif isinstance(value.value, str):
-                return f"'{value.value}'"
-            else:
-                return str(value.value)
         elif hasattr(value, "name"):
             # Handle column references (MockColumn)
             return f'"{value.name}"'
@@ -2253,6 +2258,17 @@ class SQLAlchemyMaterializer:
         """Convert an expression to SQL."""
         if isinstance(expr, str):
             return f'"{expr}"'
+        elif hasattr(expr, "value") and not hasattr(expr, "operation"):
+            # Handle MockLiteral objects FIRST (before checking for name)
+            # MockLiteral has both "value" and "name" attributes
+            if isinstance(expr.value, str):
+                return f"'{expr.value}'"
+            elif isinstance(expr.value, bool):
+                return "true" if expr.value else "false"
+            elif expr.value is None:
+                return "NULL"
+            else:
+                return str(expr.value)
         elif hasattr(expr, "conditions") and hasattr(expr, "default_value"):
             # Handle MockCaseWhen objects
             return self._build_case_when_sql(expr, None)
@@ -2345,6 +2361,16 @@ class SQLAlchemyMaterializer:
         """Convert a column reference to SQL without quotes for expressions."""
         if isinstance(expr, str):
             return expr
+        elif hasattr(expr, "value") and hasattr(expr, "data_type") and not hasattr(expr, "operation"):
+            # MockLiteral - convert to SQL literal
+            if isinstance(expr.value, str):
+                return f"'{expr.value}'"
+            elif isinstance(expr.value, bool):
+                return "true" if expr.value else "false"
+            elif expr.value is None:
+                return "NULL"
+            else:
+                return str(expr.value)
         elif hasattr(expr, "name"):
             return expr.name
         else:
