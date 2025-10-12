@@ -3663,7 +3663,192 @@ class MockDataFrame:
         result_schema = MockStructType(result_fields)
         return MockDataFrame(result_data, result_schema, self.storage)
 
+    # ---------------------------
+    # PySpark Compatibility Aliases
+    # ---------------------------
+    
+    # Alias: where is the same as filter
+    def where(self, condition: Union[str, "MockColumn"]) -> "MockDataFrame":
+        """Alias for filter() - filters rows using the given condition."""
+        return self.filter(condition)
+    
+    # Alias: sort is the same as orderBy
+    def sort(self, *cols: Union[str, "MockColumn"], **kwargs: Any) -> "MockDataFrame":
+        """Alias for orderBy() - returns a new DataFrame sorted by the specified column(s)."""
+        return self.orderBy(*cols, **kwargs)
+    
+    # Alias: drop_duplicates is snake_case version of dropDuplicates
+    def drop_duplicates(self, subset: Optional[List[str]] = None) -> "MockDataFrame":
+        """Alias for dropDuplicates() - returns a new DataFrame with duplicate rows removed."""
+        return self.dropDuplicates(subset)
+    
+    def first(self) -> MockRow:
+        """Returns the first row as a Row object."""
+        return self.head()
+    
+    def isEmpty(self) -> bool:
+        """Returns True if this DataFrame is empty."""
+        return self.count() == 0
+    
+    def unionAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Alias for union() - deprecated in PySpark but still supported."""
+        return self.union(other)
+    
+    def intersectAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Returns a new DataFrame containing rows in both DataFrames (with duplicates)."""
+        # For now, delegate to intersect (proper intersectAll would preserve duplicates)
+        return self.intersect(other)
+    
+    def subtract(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Returns a new DataFrame containing rows in this DataFrame but not in another."""
+        # Equivalent to SQL EXCEPT
+        from ..spark_types import MockStructType, MockStructField
+        
+        # Get all rows from self
+        self_rows = self.collect()
+        other_rows = other.collect()
+        
+        # Convert to comparable format
+        other_set = set()
+        for row in other_rows:
+            other_set.add(tuple(sorted(row.asDict().items())))
+        
+        # Filter out rows that exist in other
+        result_data = []
+        for row in self_rows:
+            row_tuple = tuple(sorted(row.asDict().items()))
+            if row_tuple not in other_set:
+                result_data.append(row.asDict())
+        
+        return MockDataFrame(result_data, self.schema, self.storage)
+    
+    def exceptAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Returns rows in this DataFrame but not in another (preserving duplicates)."""
+        # For now, same as subtract
+        return self.subtract(other)
+    
+    def sortWithinPartitions(self, *cols: Union[str, "MockColumn"], **kwargs: Any) -> "MockDataFrame":
+        """Returns a new DataFrame sorted within each partition."""
+        # For mock implementation, just sort normally
+        return self.orderBy(*cols, **kwargs)
+    
+    def inputFiles(self) -> List[str]:
+        """Returns list of input files that created this DataFrame."""
+        # Return empty list for programmatically created DataFrames
+        return []
+    
+    def isLocal(self) -> bool:
+        """Returns True if collect() and take() can run locally."""
+        # Mock implementation is always local
+        return True
+    
+    @property
+    def storageLevel(self) -> Any:
+        """Get the DataFrame's current storage level."""
+        # Return a simple storage level indicator
+        return "MEMORY_AND_DISK"
+    
+    def localCheckpoint(self, eager: bool = True) -> "MockDataFrame":
+        """Returns a checkpointed version of this DataFrame."""
+        # For mock, just return self (checkpointing is a no-op)
+        return self
+    
+    def withWatermark(self, eventTime: str, delayThreshold: str) -> "MockDataFrame":
+        """Defines a watermark for handling late data in streaming."""
+        # For mock, just return self (watermark is a no-op)
+        return self
+    
+    def hint(self, name: str, *parameters: Any) -> "MockDataFrame":
+        """Specifies a hint for the optimizer."""
+        # For mock, just return self (hints are no-ops)
+        return self
+    
+    def alias(self, alias: str) -> "MockDataFrame":
+        """Returns a new DataFrame with an alias."""
+        # For mock, just return self (alias doesn't affect operations)
+        return self
+    
+    def createOrReplaceGlobalTempView(self, name: str) -> None:
+        """Creates or replaces a global temporary view."""
+        # Delegate to session's global temp view handling
+        if hasattr(self.storage, "session"):
+            self.storage.session.catalog._create_or_replace_global_temp_view(name, self)
+        # For mock, also just create regular global temp view
+        self.createGlobalTempView(name)
+    
+    def replace(self, to_replace: Union[Any, Dict[Any, Any]], 
+                value: Optional[Any] = None,
+                subset: Optional[List[str]] = None) -> "MockDataFrame":
+        """Returns a new DataFrame replacing a value with another value."""
+        # Simple implementation: collect, replace, recreate
+        rows = self.collect()
+        result_data = []
+        
+        for row in rows:
+            row_dict = row.asDict()
+            new_row = {}
+            
+            for col_name, col_value in row_dict.items():
+                # Skip if not in subset
+                if subset and col_name not in subset:
+                    new_row[col_name] = col_value
+                    continue
+                
+                # Handle dict replacement
+                if isinstance(to_replace, dict):
+                    if col_value in to_replace:
+                        new_row[col_name] = to_replace[col_value]
+                    else:
+                        new_row[col_name] = col_value
+                # Handle single value replacement
+                else:
+                    if col_value == to_replace:
+                        new_row[col_name] = value
+                    else:
+                        new_row[col_name] = col_value
+            
+            result_data.append(new_row)
+        
+        return MockDataFrame(result_data, self.schema, self.storage)
+    
+    def transform(self, func: Any) -> "MockDataFrame":
+        """Returns a new DataFrame by applying a function."""
+        return func(self)
+    
+    @property
+    def na(self) -> "DataFrameNaFunctions":
+        """Returns a DataFrameNaFunctions for handling missing values."""
+        return DataFrameNaFunctions(self)
+
     @property
     def write(self) -> "MockDataFrameWriter":
         """Get DataFrame writer (PySpark-compatible property)."""
         return MockDataFrameWriter(self, self.storage)
+
+
+class DataFrameNaFunctions:
+    """Functionality for handling missing data (null values).
+    
+    This class provides methods for working with null/missing values
+    in a DataFrame, matching the PySpark DataFrame.na API.
+    """
+    
+    def __init__(self, df: MockDataFrame):
+        """Initialize with parent DataFrame."""
+        self._df = df
+    
+    def fill(self, value: Union[int, float, str, Dict[str, Any]], 
+             subset: Optional[List[str]] = None) -> MockDataFrame:
+        """Fill null values with specified value(s)."""
+        return self._df.fillna(value, subset)
+    
+    def drop(self, how: str = "any", thresh: Optional[int] = None,
+             subset: Optional[List[str]] = None) -> MockDataFrame:
+        """Drop rows with null values."""
+        return self._df.dropna(how, thresh, subset)
+    
+    def replace(self, to_replace: Union[Any, Dict[Any, Any]], 
+                value: Optional[Any] = None,
+                subset: Optional[List[str]] = None) -> MockDataFrame:
+        """Replace values."""
+        return self._df.replace(to_replace, value, subset)

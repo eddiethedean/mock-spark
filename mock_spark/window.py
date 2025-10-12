@@ -194,3 +194,7 @@ class MockWindow:
     def rangeBetween(start: int, end: int) -> MockWindowSpec:
         """Create a window spec with range between boundaries."""
         return MockWindowSpec().rangeBetween(start, end)
+
+
+# PySpark compatibility alias
+Window = MockWindow
