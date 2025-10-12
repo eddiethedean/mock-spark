@@ -3778,6 +3778,20 @@ class MockDataFrame:
         # For mock, also just create regular global temp view
         self.createGlobalTempView(name)
     
+    def toLocalIterator(self) -> Any:
+        """Returns an iterator that contains all rows in this DataFrame."""
+        return iter(self.collect())
+    
+    def foreach(self, f: Any) -> None:
+        """Applies a function to all rows of this DataFrame."""
+        for row in self.collect():
+            f(row)
+    
+    def foreachPartition(self, f: Any) -> None:
+        """Applies a function to each partition of this DataFrame."""
+        # For mock, treat all data as single partition
+        f(iter(self.collect()))
+    
     def replace(self, to_replace: Union[Any, Dict[Any, Any]], 
                 value: Optional[Any] = None,
                 subset: Optional[List[str]] = None) -> "MockDataFrame":
