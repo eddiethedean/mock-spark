@@ -344,3 +344,10 @@ class MemoryStorageManager(IStorageManager):
         if schema in self.schemas and table in self.schemas[schema].tables:
             table_obj = self.schemas[schema].tables[table]
             table_obj.metadata.update(metadata_updates)
+
+    def close(self) -> None:
+        """Close storage backend and clean up resources.
+        
+        For in-memory storage, this is a no-op as there are no external resources.
+        """
+        pass

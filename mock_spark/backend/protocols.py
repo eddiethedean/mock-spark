@@ -246,7 +246,7 @@ class StorageBackend(Protocol):
         self, schema: str, table: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata.
-
+        
         Args:
             schema: Schema name
             table: Table name

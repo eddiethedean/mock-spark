@@ -104,8 +104,8 @@ class DataFrameExporter:
         Returns:
             DuckDB type string
         """
-        # Delegate to backend implementation
-        from mock_spark.backend.factory import BackendFactory
+        # Directly use DuckDBExporter to avoid protocol issues with private methods
+        from mock_spark.backend.duckdb.export import DuckDBExporter
 
-        exporter = BackendFactory.create_export_backend("duckdb")
+        exporter = DuckDBExporter()
         return exporter._get_duckdb_type(data_type)
