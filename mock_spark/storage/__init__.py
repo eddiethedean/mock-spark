@@ -32,11 +32,10 @@ Example:
 # Import interfaces
 from .interfaces import IStorageManager, ITable, ISchema
 
-# Import backends
+# Import backends (all consolidated in storage/backends/)
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
-
-# Import DuckDB from new backend location, re-export for backward compatibility
-from mock_spark.backend.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
+from .backends.file import FileStorageManager, FileTable, FileSchema
+from .backends.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
 from .models import (
     MockTableMetadata,
     MockColumnDefinition,
@@ -45,7 +44,6 @@ from .models import (
     StorageOperationResult,
     QueryResult,
 )
-from .backends.file import FileStorageManager, FileTable, FileSchema
 
 # Import serialization
 from .serialization.json import JSONSerializer
@@ -53,6 +51,7 @@ from .serialization.csv import CSVSerializer
 
 # Import managers
 from .manager import StorageManagerFactory, UnifiedStorageManager
+from .factory import StorageFactory, BackendFactory
 
 __all__ = [
     # Interfaces
@@ -84,4 +83,7 @@ __all__ = [
     # Storage managers
     "StorageManagerFactory",
     "UnifiedStorageManager",
+    # Unified factory (new)
+    "StorageFactory",
+    "BackendFactory",  # Alias for backward compatibility
 ]

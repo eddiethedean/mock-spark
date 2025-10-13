@@ -1,33 +1,35 @@
 """
-Backend module for Mock Spark.
+Backend module (Deprecated)
 
-This module provides backend implementations for storage, query execution,
-and data materialization. It decouples backend-specific logic from the
-core DataFrame and Session modules.
+This module has been consolidated into mock_spark.storage/ to eliminate
+architectural redundancy and improve code organization.
 
-Architecture:
-    - protocols.py: Protocol definitions for backend interfaces
-    - factory.py: Factory for creating backend instances
-    - duckdb/: DuckDB-specific backend implementation
+For backward compatibility, we re-export key components from their new locations.
+Please update your imports to use mock_spark.storage directly.
 
-Example:
-    >>> from mock_spark.backend.factory import BackendFactory
-    >>> storage = BackendFactory.create_storage_backend("duckdb")
-    >>> materializer = BackendFactory.create_materializer("duckdb")
+Deprecated imports:
+    from mock_spark.backend.duckdb import DuckDBStorageManager  # Use storage.backends.duckdb
+    from mock_spark.backend.factory import BackendFactory       # Use storage.factory.StorageFactory
+
+New imports:
+    from mock_spark.storage.backends.duckdb import DuckDBStorageManager
+    from mock_spark.storage.factory import StorageFactory
+    # Or simply:
+    from mock_spark.storage import DuckDBStorageManager, StorageFactory
 """
 
-from .protocols import (
-    QueryExecutor,
-    DataMaterializer,
-    StorageBackend,
-    ExportBackend,
-)
-from .factory import BackendFactory
+import warnings
 
-__all__ = [
-    "QueryExecutor",
-    "DataMaterializer",
-    "StorageBackend",
-    "ExportBackend",
-    "BackendFactory",
-]
+# Emit deprecation warning when this module is imported
+warnings.warn(
+    "Importing from mock_spark.backend is deprecated and will be removed in a future version. "
+    "Please use mock_spark.storage instead. "
+    "See migration guide in documentation.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export from new locations for backward compatibility
+from mock_spark.storage.factory import StorageFactory as BackendFactory
+
+__all__ = ["BackendFactory"]

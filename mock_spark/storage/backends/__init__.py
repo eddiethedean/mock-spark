@@ -3,6 +3,7 @@
 from .base import BaseStorageManager
 from .memory import MemoryStorageManager, MemoryTable, MemorySchema
 from .file import FileStorageManager, FileTable, FileSchema
+from .duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
 
 __all__ = [
     "BaseStorageManager",
@@ -12,4 +13,7 @@ __all__ = [
     "FileStorageManager",
     "FileTable",
     "FileSchema",
+    "DuckDBStorageManager",
+    "DuckDBTable",
+    "DuckDBSchema",
 ]

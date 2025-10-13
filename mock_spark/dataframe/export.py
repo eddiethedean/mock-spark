@@ -66,10 +66,10 @@ class DataFrameExporter:
         Raises:
             ImportError: If duckdb is not installed
         """
-        # Use backend export functionality
-        from mock_spark.backend.factory import BackendFactory
+        # Use storage export functionality
+        from mock_spark.storage.factory import StorageFactory
 
-        exporter = BackendFactory.create_export_backend("duckdb")
+        exporter = StorageFactory.create_exporter("duckdb")
         return exporter.to_duckdb(df, connection, table_name)
 
     @staticmethod
@@ -86,10 +86,10 @@ class DataFrameExporter:
         Returns:
             SQLAlchemy Table object
         """
-        # Delegate to backend implementation
-        from mock_spark.backend.factory import BackendFactory
+        # Delegate to storage export implementation
+        from mock_spark.storage.factory import StorageFactory
 
-        exporter = BackendFactory.create_export_backend("duckdb")
+        exporter = StorageFactory.create_exporter("duckdb")
         return exporter.create_duckdb_table(df, connection, table_name)
 
     @staticmethod
@@ -105,7 +105,7 @@ class DataFrameExporter:
             DuckDB type string
         """
         # Directly use DuckDBExporter to avoid protocol issues with private methods
-        from mock_spark.backend.duckdb.export import DuckDBExporter
+        from mock_spark.storage.export.duckdb import DuckDBExporter
 
         exporter = DuckDBExporter()
         return exporter._get_duckdb_type(data_type)

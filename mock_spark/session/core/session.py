@@ -14,8 +14,8 @@ from ..context import MockSparkContext
 from ..catalog import MockCatalog
 from ..config import MockConfiguration, MockSparkConfig
 from ..sql.executor import MockSQLExecutor
-from mock_spark.backend.factory import BackendFactory
-from mock_spark.backend.protocols import StorageBackend
+from mock_spark.storage.factory import StorageFactory
+from mock_spark.storage.interfaces import IStorageManager
 from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
 from ...spark_types import (
     MockStructType,
@@ -63,7 +63,7 @@ class MockSparkSession:
         enable_lazy_evaluation: bool = True,
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
-        storage_backend: Optional[StorageBackend] = None,
+        storage_backend: Optional[IStorageManager] = None,
     ):
         """Initialize MockSparkSession.
 
@@ -81,8 +81,8 @@ class MockSparkSession:
         self.app_name = app_name
         # Use dependency injection for storage backend
         if storage_backend is None:
-            self.storage = BackendFactory.create_storage_backend(
-                backend_type="duckdb",
+            self.storage = StorageFactory.create_storage(
+                backend="duckdb",
                 max_memory=max_memory,
                 allow_disk_spillover=allow_disk_spillover,
             )

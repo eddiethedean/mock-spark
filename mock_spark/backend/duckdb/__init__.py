@@ -1,30 +1,34 @@
 """
-DuckDB backend implementation for Mock Spark.
+DuckDB Backend (Deprecated)
 
-This module provides DuckDB-specific implementations for storage,
-query execution, materialization, and export operations.
+This module has been moved to mock_spark.storage.backends.duckdb
 
-Components:
-    - storage: DuckDB storage backend
-    - query_executor: SQLAlchemy-based query execution
-    - materializer: DuckDB-based lazy operation materialization
-    - export: DataFrame export to DuckDB
-
-Example:
-    >>> from mock_spark.backend.duckdb import DuckDBStorageManager
-    >>> storage = DuckDBStorageManager(max_memory="1GB")
+For backward compatibility, we re-export from the new location.
+Please update your imports.
 """
 
-from .storage import DuckDBStorageManager, DuckDBTable, DuckDBSchema
-from .materializer import DuckDBMaterializer
-from .query_executor import SQLAlchemyMaterializer
-from .export import DuckDBExporter
+import warnings
+
+warnings.warn(
+    "Importing from mock_spark.backend.duckdb is deprecated. "
+    "Use mock_spark.storage.backends.duckdb instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export from new locations
+from mock_spark.storage.backends.duckdb import (
+    DuckDBStorageManager,
+    DuckDBTable,
+    DuckDBSchema,
+)
+from mock_spark.storage.execution.query_executor import SQLAlchemyMaterializer
+from mock_spark.storage.execution.materializer import DuckDBMaterializer
 
 __all__ = [
     "DuckDBStorageManager",
     "DuckDBTable",
     "DuckDBSchema",
-    "DuckDBMaterializer",
     "SQLAlchemyMaterializer",
-    "DuckDBExporter",
+    "DuckDBMaterializer",
 ]
