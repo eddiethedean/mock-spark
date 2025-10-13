@@ -153,7 +153,7 @@ class SQLAlchemyMaterializer:
 
         # Set flag to enable strict column validation for filters
         # Only validate if table has rows (errors should only occur when processing actual data)
-        self._strict_column_validation = row_count > 0
+        self._strict_column_validation = bool(row_count and row_count > 0)
 
         # Convert condition to SQLAlchemy expression
         try:

@@ -20,7 +20,6 @@ This document provides a comprehensive reference for Mock Spark's API, including
 - [Window Functions](#window-functions)
 - [Data Types](#data-types)
 - [Storage Backends](#storage-backends)
-- [Testing Utilities](#testing-utilities)
 - [Error Handling](#error-handling)
 - [Performance Simulation](#performance-simulation)
 
@@ -305,56 +304,6 @@ storage.save_data("users", data, format="csv")
 storage.load_data("users", format="csv")
 ```
 
-## Testing Utilities
-
-### Factories
-
-```python
-from mock_spark.testing.factories import (
-    MockDataFrameFactory, MockSessionFactory, MockFunctionFactory
-)
-
-# DataFrame factory
-df_factory = MockDataFrameFactory()
-df = df_factory.create_simple_dataframe()
-df = df_factory.create_large_dataframe(1000)
-
-# Session factory
-session_factory = MockSessionFactory()
-spark = session_factory.create_default_session()
-
-# Function factory
-func_factory = MockFunctionFactory()
-col_func = func_factory.create_column()
-```
-
-### Generators
-
-```python
-from mock_spark.testing.generators import DataGenerator
-
-# Data generator
-generator = DataGenerator()
-names = generator.generate_string(10)
-ages = generator.generate_integer(10)
-data = generator.generate_data_with_schema(schema, 100)
-```
-
-### Simulators
-
-```python
-from mock_spark.testing.simulators import ErrorSimulator, PerformanceSimulator
-
-# Error simulator
-error_sim = ErrorSimulator()
-error_sim.add_error_rule("operation", condition, error)
-
-# Performance simulator
-perf_sim = PerformanceSimulator()
-perf_sim.set_slowdown(2.0)
-perf_sim.set_memory_limit(1024 * 1024)
-```
-
 ## Error Handling
 
 ### Exception Classes
@@ -467,13 +416,6 @@ storage = FileStorageManager(
 2. **Handle exceptions gracefully** - Use try-catch blocks
 3. **Provide meaningful error messages** - Help with debugging
 4. **Test error scenarios** - Use error simulation
-
-### Testing
-
-1. **Use factories for test data** - Consistent test setup
-2. **Mock external dependencies** - Isolate units under test
-3. **Test edge cases** - Cover boundary conditions
-4. **Use realistic data** - Generate appropriate test data
 
 ### Code Quality
 
