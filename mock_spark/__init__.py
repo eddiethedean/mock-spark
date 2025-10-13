@@ -190,9 +190,6 @@ __all__ = [
 #   - mock_spark.error_simulation - Error injection for testing
 #   - mock_spark.performance_simulation - Performance testing utilities
 #   - mock_spark.data_generation - Test data generation
-#   - mock_spark.testing - Test fixtures and utilities
-#
-# See docs/testing_utilities_guide.md for full documentation.
 # ==============================================================================
 
 # Add type aliases for PySpark compatibility

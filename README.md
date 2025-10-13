@@ -361,22 +361,6 @@ spark = MockSparkSession(
 - **Default Behavior**: Disk spillover disabled by default for fast, isolated tests
 - **Automatic Cleanup**: Temp directories automatically cleaned up when session stops
 
-### Testing Utilities (Optional)
-Optional utilities to make testing easier:
-
-```python
-# Error simulation for testing error handling
-from mock_spark.error_simulation import MockErrorSimulator
-
-# Performance simulation for edge cases
-from mock_spark.performance_simulation import MockPerformanceSimulator
-
-# Test data generation
-from mock_spark.data_generation import create_test_data
-```
-
-**📘 Full guide**: [Testing Utilities Documentation](https://github.com/eddiethedean/mock-spark/blob/main/docs/testing_utilities_guide.md)
-
 ---
 
 ## Performance Comparison
@@ -406,7 +390,6 @@ Real-world test suite improvements:
 - 💾 [Storage & Persistence](https://github.com/eddiethedean/mock-spark/blob/main/docs/storage_serialization_guide.md)
 
 ### Advanced Topics
-- 🧪 [Testing Utilities](https://github.com/eddiethedean/mock-spark/blob/main/docs/testing_utilities_guide.md)
 - ⚙️ [Configuration](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/configuration.md)
 - 📈 [Benchmarking](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/benchmarking.md)
 - 🔌 [Plugins & Hooks](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/plugins.md)

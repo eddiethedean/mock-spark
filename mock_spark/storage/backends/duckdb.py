@@ -197,7 +197,8 @@ class DuckDBTable(ITable):
                 # As a temporary measure, use DuckDB directly for filtered queries
                 query = f"SELECT * FROM {self.name} WHERE {filter_expr}"
                 duckdb_result = self.connection.execute(query).fetchall()
-                columns = [desc[0] for desc in self.connection.description]
+                description = self.connection.description
+                columns = [desc[0] for desc in description] if description else []
                 data = [dict(zip(columns, row)) for row in duckdb_result]
             else:
                 # Use SQLAlchemy for unfiltered queries
@@ -505,7 +506,8 @@ class DuckDBStorageManager(IStorageManager):
 
         try:
             result = self.connection.execute(query).fetchall()
-            columns = [desc[0] for desc in self.connection.description]
+            description = self.connection.description
+            columns = [desc[0] for desc in description] if description else []
             data = [dict(zip(columns, row)) for row in result]
 
             execution_time = (time.time() - start_time) * 1000
