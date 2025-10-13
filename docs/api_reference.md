@@ -260,7 +260,11 @@ TimestampType()
 ### DuckDB Storage (Default)
 
 ```python
-from mock_spark.storage.backends.duckdb import DuckDBStorageManager
+# Recommended: Use via storage module (backward compatible)
+from mock_spark.storage import DuckDBStorageManager
+
+# Or: Direct import from new backend location
+from mock_spark.backend.duckdb import DuckDBStorageManager
 
 # Create storage manager (in-memory by default)
 storage = DuckDBStorageManager()
