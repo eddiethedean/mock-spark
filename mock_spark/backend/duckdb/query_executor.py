@@ -1901,7 +1901,7 @@ class SQLAlchemyMaterializer:
             # Only raise errors if we're in strict validation mode (e.g., filters)
             # Window functions and other operations handle missing columns differently
             if getattr(self, "_strict_column_validation", False):
-                from ..core.exceptions import AnalysisException
+                from mock_spark.core.exceptions import AnalysisException
 
                 available_columns = list(table_obj.c.keys())
                 raise AnalysisException(
