@@ -135,7 +135,7 @@ class DuckDBExporter:
             DuckDB type string
         """
         type_name = type(data_type).__name__
-        
+
         type_mapping = {
             "StringType": "VARCHAR",
             "IntegerType": "INTEGER",
@@ -154,6 +154,5 @@ class DuckDBExporter:
             "ByteType": "TINYINT",
             "NullType": "VARCHAR",
         }
-        
-        return type_mapping.get(type_name, "VARCHAR")
 
+        return type_mapping.get(type_name, "VARCHAR")

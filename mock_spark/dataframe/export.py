@@ -68,14 +68,14 @@ class DataFrameExporter:
         """
         # Use backend export functionality
         from mock_spark.backend.factory import BackendFactory
-        
+
         exporter = BackendFactory.create_export_backend("duckdb")
         return exporter.to_duckdb(df, connection, table_name)
 
     @staticmethod
     def _create_duckdb_table(df: "MockDataFrame", connection: Any, table_name: str) -> Any:
         """Create DuckDB table from MockSpark schema.
-        
+
         Deprecated: Use backend.duckdb.export.DuckDBExporter instead.
 
         Args:
@@ -88,14 +88,14 @@ class DataFrameExporter:
         """
         # Delegate to backend implementation
         from mock_spark.backend.factory import BackendFactory
-        
+
         exporter = BackendFactory.create_export_backend("duckdb")
         return exporter.create_duckdb_table(df, connection, table_name)
 
     @staticmethod
     def _get_duckdb_type(data_type: Any) -> str:
         """Map MockSpark data type to DuckDB type.
-        
+
         Deprecated: Use backend.duckdb.export.DuckDBExporter instead.
 
         Args:
@@ -106,6 +106,6 @@ class DataFrameExporter:
         """
         # Delegate to backend implementation
         from mock_spark.backend.factory import BackendFactory
-        
+
         exporter = BackendFactory.create_export_backend("duckdb")
         return exporter._get_duckdb_type(data_type)
