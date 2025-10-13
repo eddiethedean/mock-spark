@@ -8,4 +8,3 @@ and external systems like DuckDB, Pandas, etc.
 from .duckdb import DuckDBExporter
 
 __all__ = ["DuckDBExporter"]
-

@@ -9,7 +9,8 @@ import pytest
 import gc
 import weakref
 from mock_spark import MockSparkSession
-from mock_spark.backend.duckdb import DuckDBStorageManager, DuckDBMaterializer, SQLAlchemyMaterializer
+from mock_spark.storage.backends.duckdb import DuckDBStorageManager
+from mock_spark.storage.execution import DuckDBMaterializer, SQLAlchemyMaterializer
 
 
 class TestSessionCleanup:

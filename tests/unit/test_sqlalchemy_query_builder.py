@@ -219,7 +219,7 @@ class TestSQLAlchemyMaterializer:
 
     def test_materializer_basic(self):
         """Test basic materialization with SQLite."""
-        from mock_spark.backend.duckdb import SQLAlchemyMaterializer
+        from mock_spark.storage.execution import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
 
         schema = MockStructType(
@@ -242,7 +242,7 @@ class TestSQLAlchemyMaterializer:
 
     def test_materializer_with_filter(self):
         """Test materialization with filter operation."""
-        from mock_spark.backend.duckdb import SQLAlchemyMaterializer
+        from mock_spark.storage.execution import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
         from mock_spark.functions import col
 
@@ -270,7 +270,7 @@ class TestSQLAlchemyMaterializer:
 
     def test_temporary_table_creation(self):
         """Test that temporary tables are created with TEMPORARY prefix."""
-        from mock_spark.backend.duckdb import SQLAlchemyMaterializer
+        from mock_spark.storage.execution import SQLAlchemyMaterializer
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType
 
         schema = MockStructType([MockStructField("id", IntegerType())])

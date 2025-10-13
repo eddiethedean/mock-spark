@@ -8,7 +8,6 @@ maintaining compatibility with PySpark's SparkSession interface.
 from typing import Any, Dict, List, Optional, Union, cast
 from ...core.interfaces.session import ISession
 from ...core.interfaces.dataframe import IDataFrame, IDataFrameReader
-from ...core.interfaces.storage import IStorageManager
 from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
 from ..catalog import MockCatalog
@@ -88,10 +87,8 @@ class MockSparkSession:
             )
         else:
             self.storage = storage_backend
-        from typing import cast
-        from ...core.interfaces.storage import IStorageManager
 
-        self._catalog = MockCatalog(cast(IStorageManager, self.storage))
+        self._catalog = MockCatalog(self.storage)
         self.sparkContext = MockSparkContext(app_name)
         self._conf = MockConfiguration()
         self._version = "3.4.0"  # Mock version

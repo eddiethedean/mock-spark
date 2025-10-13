@@ -23,7 +23,7 @@ Example:
 
 from typing import Any, Dict, List, Optional
 from ..core.interfaces.session import ICatalog
-from ..core.interfaces.storage import IStorageManager
+from ..storage.interfaces import IStorageManager
 from ..core.exceptions.analysis import AnalysisException
 from ..core.exceptions.validation import IllegalArgumentException
 

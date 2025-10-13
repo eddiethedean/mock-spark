@@ -10,4 +10,3 @@ from .materializer import DuckDBMaterializer
 from .query_executor import SQLAlchemyMaterializer
 
 __all__ = ["DuckDBMaterializer", "SQLAlchemyMaterializer"]
-

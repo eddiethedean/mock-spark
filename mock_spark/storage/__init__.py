@@ -30,7 +30,15 @@ Example:
 """
 
 # Import interfaces
-from .interfaces import IStorageManager, ITable, ISchema
+from .interfaces import (
+    IStorageManager,
+    ITable,
+    ISchema,
+    DataMaterializer,
+    QueryExecutor,
+    ExportBackend,
+    StorageBackend,
+)
 
 # Import backends (all consolidated in storage/backends/)
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
@@ -54,10 +62,14 @@ from .manager import StorageManagerFactory, UnifiedStorageManager
 from .factory import StorageFactory, BackendFactory
 
 __all__ = [
-    # Interfaces
+    # Interfaces & Protocols
     "IStorageManager",
     "ITable",
     "ISchema",
+    "DataMaterializer",
+    "QueryExecutor",
+    "ExportBackend",
+    "StorageBackend",
     # Memory backend
     "MemoryStorageManager",
     "MemoryTable",
