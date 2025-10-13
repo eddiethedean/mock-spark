@@ -12,6 +12,7 @@ from .interfaces.storage import IStorageManager, ITable, ISchema
 from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
 from .schema_inference import SchemaInferenceEngine, infer_schema_from_data
 from .data_validation import DataValidator, validate_data, coerce_data
+from .expression_evaluator import ExpressionEvaluator
 from .protocols import (
     ColumnLike,
     OperationLike,
@@ -55,4 +56,6 @@ __all__ = [
     "DataValidator",
     "validate_data",
     "coerce_data",
+    # Expression Evaluation
+    "ExpressionEvaluator",
 ]
