@@ -14,7 +14,8 @@ from ..context import MockSparkContext
 from ..catalog import MockCatalog
 from ..config import MockConfiguration, MockSparkConfig
 from ..sql.executor import MockSQLExecutor
-from mock_spark.storage import DuckDBStorageManager
+from mock_spark.backend.factory import BackendFactory
+from mock_spark.backend.protocols import StorageBackend
 from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
 from ...spark_types import (
     MockStructType,
@@ -62,6 +63,7 @@ class MockSparkSession:
         enable_lazy_evaluation: bool = True,
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
+        storage_backend: Optional[StorageBackend] = None,
     ):
         """Initialize MockSparkSession.
 
@@ -74,12 +76,18 @@ class MockSparkSession:
                        Default is '1GB' for test isolation.
             allow_disk_spillover: If True, allows DuckDB to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
+            storage_backend: Optional storage backend instance. If None, creates DuckDB backend.
         """
         self.app_name = app_name
-        self.storage = DuckDBStorageManager(
-            max_memory=max_memory,
-            allow_disk_spillover=allow_disk_spillover,
-        )
+        # Use dependency injection for storage backend
+        if storage_backend is None:
+            self.storage = BackendFactory.create_storage_backend(
+                backend_type="duckdb",
+                max_memory=max_memory,
+                allow_disk_spillover=allow_disk_spillover,
+            )
+        else:
+            self.storage = storage_backend
         from typing import cast
         from ...core.interfaces.storage import IStorageManager
 

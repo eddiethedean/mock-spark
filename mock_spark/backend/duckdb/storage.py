@@ -14,8 +14,8 @@ import time
 from sqlalchemy import create_engine, MetaData, Table, Column, insert, inspect
 from sqlalchemy.engine import Engine
 
-from ..interfaces import IStorageManager, ITable, ISchema
-from ..models import (
+from mock_spark.storage.interfaces import IStorageManager, ITable, ISchema
+from mock_spark.storage.models import (
     MockTableMetadata,
     MockColumnDefinition,
     StorageMode,

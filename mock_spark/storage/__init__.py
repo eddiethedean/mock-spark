@@ -34,7 +34,8 @@ from .interfaces import IStorageManager, ITable, ISchema
 
 # Import backends
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
-from .backends.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
+# Import DuckDB from new backend location, re-export for backward compatibility
+from mock_spark.backend.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
 from .models import (
     MockTableMetadata,
     MockColumnDefinition,

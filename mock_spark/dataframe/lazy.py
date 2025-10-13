@@ -59,13 +59,13 @@ class LazyEvaluationEngine:
 
             return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
 
-        # Use SQLAlchemy with DuckDB for optimization
+        # Use backend factory to get materializer
         try:
-            from .sqlalchemy_materializer import SQLAlchemyMaterializer
+            from mock_spark.backend.factory import BackendFactory
 
-            materializer = SQLAlchemyMaterializer()
+            materializer = BackendFactory.create_materializer("duckdb")
             try:
-                # Let SQLAlchemy optimize and execute the operations
+                # Let materializer optimize and execute the operations
                 rows = materializer.materialize(df.data, df.schema, df._operations_queue)
 
                 # Convert rows back to data format

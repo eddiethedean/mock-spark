@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Union, Type
 from .interfaces import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager
-from .backends.duckdb import DuckDBStorageManager
+from mock_spark.backend.duckdb import DuckDBStorageManager
 from mock_spark.spark_types import MockStructType, MockStructField
 
 

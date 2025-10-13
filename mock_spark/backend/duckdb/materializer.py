@@ -5,8 +5,8 @@ This module provides DuckDB-specific optimizations on top of the generic SQLAlch
 """
 
 from typing import Any, Dict, List, Tuple
-from ..spark_types import MockStructType, MockRow
-from .sqlalchemy_materializer import SQLAlchemyMaterializer
+from mock_spark.spark_types import MockStructType, MockRow
+from .query_executor import SQLAlchemyMaterializer
 
 
 class DuckDBMaterializer(SQLAlchemyMaterializer):

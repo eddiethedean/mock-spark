@@ -31,7 +31,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
-from ..spark_types import (
+from mock_spark.spark_types import (
     MockStructType,
     MockStructField,
     MockRow,
@@ -41,7 +41,7 @@ from ..spark_types import (
     IntegerType,
     BooleanType,
 )
-from ..functions import MockColumn, MockColumnOperation, MockLiteral
+from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
 
 
 class SQLAlchemyMaterializer:
