@@ -41,6 +41,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 🧪 **100% Compatible** | Full PySpark 3.2 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
 | 🏭 **Production Ready** | 856 passing tests, 100% mypy typed, zero raw SQL |
+| 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 
 ### Perfect For
 
@@ -134,6 +135,15 @@ df.withColumn(
 ---
 
 ## What's New in 2.2.0
+
+### 🔧 DDL Parser Extraction
+Major architectural improvement with DDL parser extracted to standalone package:
+
+- **spark-ddl-parser** - New zero-dependency package for DDL schema parsing
+- **Zero Dependencies** - Uses only Python standard library (no external deps)
+- **119 Tests** - Comprehensive test coverage in standalone package
+- **Clean Architecture** - Mock-spark now uses spark-ddl-parser via adapter layer
+- **Independent Versioning** - Both packages can be released independently
 
 ### 🧪 Comprehensive Test Coverage
 Major test infrastructure improvements with expanded coverage:
@@ -418,6 +428,9 @@ Real-world test suite improvements:
 - 📖 [Installation & Setup](https://github.com/eddiethedean/mock-spark/blob/main/docs/getting_started.md)
 - 🎯 [Quick Start Guide](https://github.com/eddiethedean/mock-spark/blob/main/docs/getting_started.md#quick-start)
 - 🔄 [Migration from PySpark](https://github.com/eddiethedean/mock-spark/blob/main/docs/guides/migration.md)
+
+### Related Packages
+- 🔧 [spark-ddl-parser](https://github.com/eddiethedean/spark-ddl-parser) - Zero-dependency PySpark DDL schema parser (used by mock-spark)
 
 ### Core Concepts
 - 📊 [API Reference](https://github.com/eddiethedean/mock-spark/blob/main/docs/api_reference.md)
