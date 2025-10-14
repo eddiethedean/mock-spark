@@ -7,7 +7,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-856%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-737%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-100%25%20typed-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -40,7 +40,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 856 passing tests, 100% mypy typed, zero raw SQL |
+| 🏭 **Production Ready** | 737 passing tests, 100% mypy typed, zero raw SQL |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 
 ### Perfect For
@@ -129,8 +129,32 @@ df.withColumn(
 
 ### 📊 Test Coverage
 - **38 new tests** across Delta Lake, datetime, and complex expressions
-- **856 total tests** passing with comprehensive coverage
+- **737 total tests** passing with comprehensive coverage (119 DDL tests moved to spark-ddl-parser)
 - **Zero regressions** - all existing functionality preserved
+
+---
+
+## What's New in 2.3.0
+
+### 🔧 Modular Architecture
+Major architectural improvement with DDL parser extracted to standalone package:
+
+- **spark-ddl-parser** - New zero-dependency package for DDL schema parsing
+- **Zero Dependencies** - Uses only Python standard library (no external deps)
+- **119 Tests** - Comprehensive test coverage in standalone package
+- **Clean Architecture** - Mock-spark now uses spark-ddl-parser via adapter layer
+- **Independent Versioning** - Both packages can be released independently
+- **Backwards Compatible** - No API changes, all existing code works unchanged
+
+### 📦 New Dependency
+- **spark-ddl-parser>=0.1.0** - Published to PyPI
+- Transparent to users - DDL parsing works identically
+- Improved maintainability and code organization
+
+### 🧹 Code Quality
+- **Removed** ~4,000 lines of DDL parser code from mock-spark
+- **Added** ~140 lines of adapter code
+- **Result** Cleaner, more maintainable codebase
 
 ---
 
@@ -508,10 +532,10 @@ spark.catalog.dropDatabase("temp_db")
 - ✅ Case-insensitive keywords - `create`, `CREATE`, `CrEaTe` all work
 
 ### Test Infrastructure Improvements
-- ⚡ **Parallel Testing** - Run 856 tests in parallel with pytest-xdist (8 cores)
+- ⚡ **Parallel Testing** - Run 737 tests in parallel with pytest-xdist (8 cores)
 - ☕ **Java 11 Support** - Full Java 11 compatibility with automated configuration
 - 🔒 **Enhanced Test Isolation** - Delta Lake tests run serially with proper session cleanup
-- 🧪 **856 Total Tests** - Comprehensive test coverage with zero failures
+- 🧪 **737 Total Tests** - Comprehensive test coverage with zero failures (119 DDL tests in spark-ddl-parser)
 - 🎯 **Zero Test Failures** - All tests pass with parallel execution
 - ✅ **100% Type Coverage** - Full mypy type checking across all 95 source files
 - 🧹 **Zero Linting Errors** - All code passes ruff linting checks
@@ -548,7 +572,7 @@ spark.catalog.dropDatabase("temp_db")
 - 🧪 **Test Coverage** - Initial 388 passing tests with 100% compatibility
 
 **Current Status (Latest)**
-- 🎯 **856 Tests Passing** - Comprehensive test coverage with zero failures
+- 🎯 **737 Tests Passing** - Comprehensive test coverage with zero failures (119 DDL tests in spark-ddl-parser)
 - ✅ **100% Type Coverage** - All 95 source files fully type-checked with mypy
 - 🧹 **Zero Linting Errors** - All code passes ruff linting checks
 - 🚀 **Production Ready** - Battle-tested with extensive test suite
