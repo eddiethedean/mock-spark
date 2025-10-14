@@ -5,6 +5,7 @@
 **🚀 Test PySpark code at lightning speed—no JVM required**
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
 [![Tests](https://img.shields.io/badge/tests-535%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
@@ -38,10 +39,11 @@ from mock_spark import MockSparkSession as SparkSession
 | ⚡ **10x Faster** | No JVM startup (30s → 0.1s) |
 | 🎯 **Drop-in Replacement** | Use existing PySpark code unchanged |
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
-| 🧪 **100% Compatible** | Full PySpark 3.2 API support |
+| 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
 | 🏭 **Production Ready** | 535 passing tests, 100% mypy typed, zero raw SQL |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
+| ✅ **Tested** | Verified on Python 3.9-3.13 + PySpark 3.2-3.5 |
 
 ### Perfect For
 
@@ -693,6 +695,38 @@ mypy mock_spark --config-file mypy.ini
 # Linting
 ruff check .
 ```
+
+---
+
+## Compatibility Testing
+
+Mock Spark is tested against multiple Python and PySpark version combinations to ensure broad compatibility.
+
+### Run Compatibility Matrix Tests
+
+Test mock-spark against Python 3.9-3.13 and PySpark 3.2-3.5:
+
+```bash
+# Run all compatibility tests (requires Docker)
+./run_compatibility_tests.sh
+
+# Or run directly
+python tests/compatibility_matrix/run_matrix_tests.py
+```
+
+This will:
+- Build Docker images for each Python/PySpark combination
+- Run critical tests in isolated containers
+- Generate `COMPATIBILITY_REPORT.md` with results
+
+### Test a Single Combination
+
+```bash
+# Test Python 3.10 + PySpark 3.3.4
+./tests/compatibility_matrix/test_single_combination.sh 3.10 3.3.4
+```
+
+See [tests/compatibility_matrix/README.md](tests/compatibility_matrix/README.md) for more details.
 
 ---
 
