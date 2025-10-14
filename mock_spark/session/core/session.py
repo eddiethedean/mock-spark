@@ -202,7 +202,7 @@ class MockSparkSession:
 
         # Handle DDL schema strings
         if isinstance(schema, str):
-            from ...core.ddl_parser import parse_ddl_schema
+            from ...core.ddl_adapter import parse_ddl_schema
             schema = parse_ddl_schema(schema)
 
         # Handle list of column names as schema
