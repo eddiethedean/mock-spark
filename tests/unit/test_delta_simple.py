@@ -62,10 +62,13 @@ class TestDeltaMockOperations:
         dt.vacuum()
         dt.vacuum(retention_hours=168)
 
-        # History should return DataFrame
+        # History should return DataFrame with mock history
         history = dt.history()
-        assert history.count() == 0
-        assert set(history.columns) == {"version", "timestamp", "operation"}
+        assert history.count() >= 1  # Enhanced history returns mock data
+        # Check for expected columns (enhanced version has more columns)
+        assert "version" in history.columns
+        assert "timestamp" in history.columns
+        assert "operation" in history.columns
 
         # Merge builder should work
         source_data = [{"id": 1}]

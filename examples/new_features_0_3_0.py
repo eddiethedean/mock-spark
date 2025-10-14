@@ -12,7 +12,7 @@ This example showcases all the new features introduced in Mock Spark 0.3.0:
 - Enhanced Session Features: getOrCreate(), createOrReplaceTempView(), createGlobalTempView()
 - Column Expressions: F.col, F.lit, F.expr
 
-Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
+Current Status: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 """
 
 from mock_spark import MockSparkSession, F

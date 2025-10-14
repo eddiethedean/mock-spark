@@ -121,6 +121,8 @@ add_months = F.add_months
 months_between = F.months_between
 date_add = F.date_add
 date_sub = F.date_sub
+date_format = F.date_format
+from_unixtime = F.from_unixtime
 row_number = F.row_number
 rank = F.rank
 dense_rank = F.dense_rank
@@ -222,6 +224,8 @@ __all__ = [
     "months_between",
     "date_add",
     "date_sub",
+    "date_format",
+    "from_unixtime",
     "row_number",
     "rank",
     "dense_rank",

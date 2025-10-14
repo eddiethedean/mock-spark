@@ -42,6 +42,9 @@ Quick Start:
 Author: Odos Matthews
 """
 
+import sys
+from types import ModuleType
+
 from .session import MockSparkSession
 from .session.context import MockSparkContext, MockJVMContext
 from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData
@@ -94,7 +97,7 @@ from .errors import (
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -176,3 +179,23 @@ __all__ = [
 # Add type aliases for PySpark compatibility
 StructType = MockStructType
 StructField = MockStructField
+
+# ==============================================================================
+# DELTA MODULE ALIASING - Support "from delta.tables import DeltaTable"
+# ==============================================================================
+# This allows mock-spark to be used as a drop-in replacement for delta-spark
+# in tests that import DeltaTable from delta.tables
+
+# Create delta module and delta.tables submodule
+delta_module = ModuleType("delta")
+delta_tables_module = ModuleType("delta.tables")
+
+# Export DeltaTable as the main class
+delta_tables_module.DeltaTable = DeltaTable  # type: ignore[attr-defined]
+
+# Set up module hierarchy
+delta_module.tables = delta_tables_module  # type: ignore[attr-defined]
+
+# Register modules in sys.modules
+sys.modules["delta"] = delta_module
+sys.modules["delta.tables"] = delta_tables_module

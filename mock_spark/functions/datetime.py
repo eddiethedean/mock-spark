@@ -361,3 +361,46 @@ class DateTimeFunctions:
             column, "date_sub", days, name=f"date_sub({column.name}, {days})"
         )
         return operation
+
+    @staticmethod
+    def date_format(column: Union[MockColumn, str], format: str) -> MockColumnOperation:
+        """Format date/timestamp as string.
+
+        Args:
+            column: The column to format.
+            format: Date format string (e.g., 'yyyy-MM-dd').
+
+        Returns:
+            MockColumnOperation representing the date_format function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column, "date_format", format, name=f"date_format({column.name}, '{format}')"
+        )
+        return operation
+
+    @staticmethod
+    def from_unixtime(
+        column: Union[MockColumn, str], format: str = "yyyy-MM-dd HH:mm:ss"
+    ) -> MockColumnOperation:
+        """Convert unix timestamp to string.
+
+        Args:
+            column: The column with unix timestamp.
+            format: Date format string (default: 'yyyy-MM-dd HH:mm:ss').
+
+        Returns:
+            MockColumnOperation representing the from_unixtime function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column,
+            "from_unixtime",
+            format,
+            name=f"from_unixtime({column.name}, '{format}')",
+        )
+        return operation

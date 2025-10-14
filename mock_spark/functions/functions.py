@@ -440,6 +440,18 @@ class MockFunctions:
         return DateTimeFunctions.date_sub(column, days)
 
     @staticmethod
+    def date_format(column: Union[MockColumn, str], format: str) -> MockColumnOperation:
+        """Format date/timestamp as string."""
+        return DateTimeFunctions.date_format(column, format)
+
+    @staticmethod
+    def from_unixtime(
+        column: Union[MockColumn, str], format: str = "yyyy-MM-dd HH:mm:ss"
+    ) -> MockColumnOperation:
+        """Convert unix timestamp to string."""
+        return DateTimeFunctions.from_unixtime(column, format)
+
+    @staticmethod
     def nvl(column: Union[MockColumn, str], default_value: Any) -> MockColumnOperation:
         """Return default if null."""
         if isinstance(column, str):

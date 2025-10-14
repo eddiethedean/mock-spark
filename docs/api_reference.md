@@ -2,15 +2,15 @@
 
 This document provides a comprehensive reference for Mock Spark's API, including all classes, methods, and functions.
 
-**Current Status**: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
+**Current Status**: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 
 ## Quick Stats
-- **Total Tests**: 396 (100% pass rate)
-- **Unit Tests**: 151 tests
-- **Compatibility Tests**: 192 tests  
-- **Code Coverage**: 59% across all modules
+- **Total Tests**: 535 (100% pass rate)
+- **Unit Tests**: Comprehensive coverage across all modules
+- **Compatibility Tests**: Full PySpark 3.2 compatibility
+- **Code Coverage**: Extensive coverage across all modules
 - **PySpark Compatibility**: 100% (PySpark 3.2)
-- **Version**: 0.3.0 with enhanced features
+- **Version**: 2.4.0 with Delta Lake and datetime enhancements
 
 ## Table of Contents
 

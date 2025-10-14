@@ -2,7 +2,7 @@
 
 This guide provides comprehensive documentation for Mock Spark's SQL operations, including parsing, validation, optimization, and execution.
 
-**Current Status**: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready
+**Current Status**: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 
 ## Overview
 

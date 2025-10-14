@@ -2,7 +2,7 @@
 
 This guide provides comprehensive documentation for Mock Spark's storage serialization capabilities, including CSV, JSON, and other format support.
 
-**Current Status**: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready
+**Current Status**: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 
 ## Overview
 

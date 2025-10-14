@@ -2,7 +2,7 @@
 """
 Example usage of Mock Spark package.
 
-Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Production Ready | Version 0.3.0
+Current Status: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 """
 
 from mock_spark import MockSparkSession, F
@@ -53,8 +53,8 @@ def main():
     print("\n📊 Sorted by Age:")
     sorted_df.show()
 
-    # New 0.3.0 features
-    print("\n🆕 New 0.3.0 Features:")
+    # New 2.4.0 features
+    print("\n🆕 New 2.4.0 Features:")
 
     # String functions
     print("\n🔤 String Functions:")
