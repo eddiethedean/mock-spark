@@ -7,29 +7,21 @@ with SQLAlchemy for enhanced type safety and maintainability.
 
 import duckdb
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import time
-from sqlalchemy import create_engine, MetaData, Table, Column, insert, inspect
+from sqlalchemy import create_engine, MetaData, Table, insert, inspect
 from sqlalchemy.engine import Engine
 
 from mock_spark.storage.interfaces import IStorageManager, ITable, ISchema
 from mock_spark.storage.models import (
-    MockTableMetadata,
-    MockColumnDefinition,
     StorageMode,
-    DuckDBTableModel,
     StorageOperationResult,
     QueryResult,
-    create_duckdb_engine,
-    create_session,
-    initialize_metadata_tables,
 )
 from mock_spark.spark_types import MockStructType, MockStructField
 from mock_spark.storage.sqlalchemy_helpers import (
     create_table_from_mock_schema,
-    mock_type_to_sqlalchemy,
 )
 
 
@@ -139,7 +131,7 @@ class DuckDBTable(ITable):
             execution_time = (time.time() - start_time) * 1000
 
             # Log operation result
-            result = StorageOperationResult(
+            StorageOperationResult(
                 success=True,
                 rows_affected=len(validated_data),
                 operation_type=f"insert_{mode}",
@@ -149,7 +141,7 @@ class DuckDBTable(ITable):
 
         except Exception as e:
             execution_time = (time.time() - start_time) * 1000
-            result = StorageOperationResult(
+            StorageOperationResult(
                 success=False,
                 rows_affected=0,
                 operation_type=f"insert_{mode}",
@@ -210,7 +202,7 @@ class DuckDBTable(ITable):
             execution_time = (time.time() - start_time) * 1000
 
             # Create query result
-            query_result = QueryResult(
+            QueryResult(
                 data=data,
                 row_count=len(data),
                 column_count=len(columns),
@@ -293,7 +285,7 @@ class DuckDBSchema(ISchema):
                 metadata = MetaData()
                 table_obj = Table(table, metadata, autoload_with=self.engine)
                 table_obj.drop(self.engine, checkfirst=True)
-            except:
+            except:  # noqa: E722
                 pass  # Table doesn't exist
 
         # Remove from metadata
@@ -359,7 +351,7 @@ class DuckDBStorageManager(IStorageManager):
             else:
                 # Disable disk spillover for test isolation
                 self.connection.execute("SET temp_directory=''")
-        except:
+        except:  # noqa: E722
             pass  # Ignore if settings not supported
 
         # Create default schema with SQLAlchemy engine
@@ -369,7 +361,7 @@ class DuckDBStorageManager(IStorageManager):
         try:
             self.connection.install_extension("sqlite")
             self.connection.load_extension("sqlite")
-        except:
+        except:  # noqa: E722
             pass  # Extensions might not be available
 
     def create_schema(self, schema: str) -> None:
@@ -510,7 +502,7 @@ class DuckDBStorageManager(IStorageManager):
             columns = [desc[0] for desc in description] if description else []
             data = [dict(zip(columns, row)) for row in result]
 
-            execution_time = (time.time() - start_time) * 1000
+            (time.time() - start_time) * 1000
 
             return data
 
@@ -526,7 +518,7 @@ class DuckDBStorageManager(IStorageManager):
                     if schema_name != "default":
                         try:
                             self.drop_schema(schema_name)
-                        except:
+                        except:  # noqa: E722
                             pass
 
                 # Close the connection
@@ -544,14 +536,14 @@ class DuckDBStorageManager(IStorageManager):
                 if os.path.exists(self._temp_dir):
                     shutil.rmtree(self._temp_dir, ignore_errors=True)
                 self._temp_dir = None
-            except:
+            except:  # noqa: E722
                 pass  # Ignore cleanup errors
 
     def __del__(self) -> None:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()
-        except:
+        except:  # noqa: E722
             pass
 
     def __enter__(self) -> "DuckDBStorageManager":

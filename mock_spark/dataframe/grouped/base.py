@@ -9,7 +9,7 @@ from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional
 import statistics
 
 from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
-from ...core.exceptions.analysis import ColumnNotFoundException, AnalysisException
+from ...core.exceptions.analysis import AnalysisException
 
 if TYPE_CHECKING:
     from ..dataframe import MockDataFrame

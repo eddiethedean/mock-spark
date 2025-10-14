@@ -7,7 +7,7 @@ without real PySpark.
 
 import pytest
 import time
-from mock_spark import MockSparkSession, F
+from mock_spark import MockSparkSession
 from mock_spark.error_simulation import MockErrorSimulator, AnalysisException
 from mock_spark.performance_simulation import MockPerformanceSimulator
 from mock_spark.data_generation import (
@@ -143,9 +143,9 @@ class TestPerformanceSimulation:
         perf_simulator.set_slowdown(2.0)
 
         # Test slow operation
-        start_time = time.time()
+        time.time()
         result = perf_simulator.simulate_slow_operation(lambda: "test")
-        end_time = time.time()
+        time.time()
 
         assert result == "test"
         # Note: Actual timing may vary, but we're testing the interface

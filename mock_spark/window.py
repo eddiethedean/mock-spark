@@ -30,7 +30,7 @@ Example:
 """
 
 import sys
-from typing import List, Optional, Union, Tuple, TYPE_CHECKING, Type
+from typing import List, Optional, Union, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .functions import MockColumn

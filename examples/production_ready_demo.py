@@ -18,7 +18,6 @@ from mock_spark import (
     F,
     StringType,
     IntegerType,
-    LongType,
     DoubleType,
     BooleanType,
     DateType,
@@ -127,9 +126,9 @@ def main():
         .otherwise(F.lit("Junior"))
         .alias("level"),
         F.coalesce(F.col("salary"), F.lit(0.0)).alias("safe_salary"),
-    ).filter((F.col("age") > 20) & (F.col("is_active") == True) & (F.col("salary") > 50000))
+    ).filter((F.col("age") > 20) & (F.col("is_active")) & (F.col("salary") > 50000))
 
-    print(f"✓ Complex filtering applied")
+    print("✓ Complex filtering applied")
     print(f"✓ Filtered rows: {filtered_df.count()}")
 
     # Window functions demonstration
@@ -297,12 +296,12 @@ def main():
     # Final statistics
     print_section("Final Statistics")
 
-    print(f"✓ Total DataFrames created: 8+")
-    print(f"✓ Total operations performed: 50+")
-    print(f"✓ Data types tested: 15+")
-    print(f"✓ Functions tested: 30+")
-    print(f"✓ Error scenarios tested: 2")
-    print(f"✓ Performance scenarios tested: 1")
+    print("✓ Total DataFrames created: 8+")
+    print("✓ Total operations performed: 50+")
+    print("✓ Data types tested: 15+")
+    print("✓ Functions tested: 30+")
+    print("✓ Error scenarios tested: 2")
+    print("✓ Performance scenarios tested: 1")
 
     # Cleanup
     spark.stop()

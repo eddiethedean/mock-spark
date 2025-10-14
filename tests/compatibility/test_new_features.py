@@ -5,7 +5,6 @@ This module tests all the new functionality that has been added to ensure
 it works exactly like PySpark and doesn't regress.
 """
 
-import pytest
 from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 

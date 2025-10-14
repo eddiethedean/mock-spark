@@ -1,4 +1,3 @@
-from typing import Any, Dict
 
 from tests.compatibility.utils.comparison import compare_dataframes
 

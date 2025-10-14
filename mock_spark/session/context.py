@@ -21,8 +21,7 @@ Example:
     MyApp
 """
 
-from typing import Any, Optional
-from ..core.interfaces.session import ISparkContext
+from typing import Any
 
 
 class MockJVMFunctions:

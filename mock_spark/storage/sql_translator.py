@@ -5,12 +5,11 @@ This module provides functionality to parse Spark SQL queries and convert them
 to SQLAlchemy statements, eliminating the need for raw SQL execution.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 import sqlglot
 from sqlglot import exp
 from sqlalchemy import (
     Table,
-    Column,
     MetaData,
     select,
     insert,
@@ -30,7 +29,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Select, Insert, Update, Delete
 from sqlalchemy.sql.elements import ColumnElement
-from .spark_function_mapper import get_sqlalchemy_function, is_supported_function
+from .spark_function_mapper import get_sqlalchemy_function
 
 
 class SQLTranslationError(Exception):

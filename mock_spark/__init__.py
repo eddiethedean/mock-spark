@@ -34,11 +34,10 @@ Quick Start:
     >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name"))).show()
-    +--- MockDataFrame: 2 rows ---+
-     upper(name)
-    ------------
-           ALICE
-             BOB
+    MockDataFrame[2 rows, 1 columns]
+    upper(name)
+    ALICE
+    BOB
 
 Author: Odos Matthews
 """
@@ -78,27 +77,24 @@ from .errors import (
     PySparkRuntimeError,
     IllegalArgumentException,
 )
-from .error_simulation import (
-    MockErrorSimulator,
-    MockErrorSimulatorBuilder,
-    create_table_not_found_simulator,
-    create_data_too_large_simulator,
-    create_sql_error_simulator,
-)
-from .performance_simulation import (
-    MockPerformanceSimulator,
-    MockPerformanceSimulatorBuilder,
-    performance_simulation,
-    create_slow_simulator,
-    create_memory_limited_simulator,
-    create_high_performance_simulator,
-)
 
-# Data generation utilities available via:
-#   from mock_spark.data_generation import MockDataGenerator, create_test_data, ...
-# Not exported in main __all__ - use explicit import when needed
+# ==============================================================================
+# TESTING UTILITIES - AVAILABLE VIA EXPLICIT IMPORT
+# ==============================================================================
+# These utilities are NOT imported here to keep the main namespace clean.
+# Import them explicitly when needed:
+#
+#   from mock_spark.error_simulation import MockErrorSimulator
+#   from mock_spark.performance_simulation import MockPerformanceSimulator
+#   from mock_spark.data_generation import create_test_data
+#
+# Available modules:
+#   - mock_spark.error_simulation - Error injection for testing
+#   - mock_spark.performance_simulation - Performance testing utilities
+#   - mock_spark.data_generation - Test data generation
+# ==============================================================================
 
-__version__ = "2.1.1"
+__version__ = "2.2.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -176,21 +172,6 @@ __all__ = [
     "IllegalArgumentException",  # Illegal argument exception
 ]
 
-# ==============================================================================
-# TESTING UTILITIES - OPTIONAL HELPERS
-# ==============================================================================
-# These utilities help with testing but are NOT part of PySpark's API.
-# Import them explicitly when needed:
-#
-#   from mock_spark.error_simulation import MockErrorSimulator
-#   from mock_spark.performance_simulation import MockPerformanceSimulator
-#   from mock_spark.data_generation import create_test_data
-#
-# Available modules:
-#   - mock_spark.error_simulation - Error injection for testing
-#   - mock_spark.performance_simulation - Performance testing utilities
-#   - mock_spark.data_generation - Test data generation
-# ==============================================================================
 
 # Add type aliases for PySpark compatibility
 StructType = MockStructType

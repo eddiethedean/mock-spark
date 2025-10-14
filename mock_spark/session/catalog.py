@@ -21,8 +21,7 @@ Example:
     [MockDatabase(name='test_db')]
 """
 
-from typing import Any, Dict, List, Optional
-from ..core.interfaces.session import ICatalog
+from typing import Any, List, Optional
 from ..core.interfaces.storage import IStorageManager
 from ..core.exceptions.analysis import AnalysisException
 from ..core.exceptions.validation import IllegalArgumentException

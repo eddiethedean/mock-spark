@@ -425,8 +425,6 @@ class TestMockableMethods:
 
     def test_mock_createDataFrame_functionality(self, mock_environment):
         """Test mock_createDataFrame functionality."""
-        import pytest
-        from mock_spark.errors import AnalysisException
 
         mock_spark = mock_environment["session"]
 
@@ -456,7 +454,6 @@ class TestMockableMethods:
 
     def test_mock_table_functionality(self, mock_environment):
         """Test mock_table functionality."""
-        import pytest
 
         mock_spark = mock_environment["session"]
 
@@ -482,7 +479,6 @@ class TestMockableMethods:
 
     def test_mock_sql_functionality(self, mock_environment):
         """Test mock_sql functionality."""
-        import pytest
         from mock_spark.errors import AnalysisException
 
         mock_spark = mock_environment["session"]

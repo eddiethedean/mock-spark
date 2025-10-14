@@ -26,7 +26,7 @@ Example:
     ...     spark.table("nonexistent.table")
 """
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 from .errors import AnalysisException, PySparkValueError
 
 

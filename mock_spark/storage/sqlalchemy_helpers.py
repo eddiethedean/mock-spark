@@ -34,27 +34,7 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
     Returns:
         SQLAlchemy type class
     """
-    # Import MockSpark types (avoid circular import)
-    try:
-        from mock_spark.spark_types import (
-            StringType,
-            IntegerType,
-            LongType,
-            DoubleType,
-            FloatType,
-            BooleanType,
-            DateType,
-            TimestampType,
-            BinaryType,
-            DecimalType,
-            ShortType,
-            ByteType,
-        )
-    except ImportError:
-        # Fallback if types can't be imported
-        return String
-
-    # Type mapping
+    # Type mapping from MockSpark type names to SQLAlchemy types
     type_mapping = {
         "StringType": String,
         "IntegerType": Integer,
@@ -86,24 +66,19 @@ def sqlalchemy_type_to_mock(sqlalchemy_type: Any) -> Any:
     Returns:
         MockSpark type instance
     """
-    try:
-        from mock_spark.spark_types import (
-            StringType,
-            IntegerType,
-            LongType,
-            DoubleType,
-            BooleanType,
-            DateType,
-            TimestampType,
-            BinaryType,
-            DecimalType,
-        )
-    except ImportError:
-        from mock_spark.spark_types import StringType
+    from mock_spark.spark_types import (
+        StringType,
+        IntegerType,
+        LongType,
+        DoubleType,
+        BooleanType,
+        DateType,
+        TimestampType,
+        BinaryType,
+        DecimalType,
+    )
 
-        return StringType()
-
-    # Reverse type mapping
+    # Reverse type mapping from SQLAlchemy type names to MockSpark types
     type_mapping = {
         "String": StringType,
         "VARCHAR": StringType,

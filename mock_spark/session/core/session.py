@@ -7,7 +7,7 @@ maintaining compatibility with PySpark's SparkSession interface.
 
 from typing import Any, Dict, List, Optional, Union, cast
 from ...core.interfaces.session import ISession
-from ...core.interfaces.dataframe import IDataFrame, IDataFrameReader
+from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.storage import IStorageManager
 from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
@@ -21,11 +21,6 @@ from ...spark_types import (
     MockStructType,
     MockStructField,
     StringType,
-    LongType,
-    DoubleType,
-    BooleanType,
-    ArrayType,
-    MapType,
 )
 
 
@@ -89,7 +84,6 @@ class MockSparkSession:
         else:
             self.storage = storage_backend
         from typing import cast
-        from ...core.interfaces.storage import IStorageManager
 
         self._catalog = MockCatalog(cast(IStorageManager, self.storage))
         self.sparkContext = MockSparkContext(app_name)
@@ -184,7 +178,7 @@ class MockSparkSession:
     def _real_createDataFrame(
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[MockStructType, List[str]]] = None,
+        schema: Optional[Union[MockStructType, List[str], str]] = None,
     ) -> "MockDataFrame":
         """Create a DataFrame from data.
 
@@ -205,6 +199,11 @@ class MockSparkSession:
         """
         if not isinstance(data, list):
             raise IllegalArgumentException("Data must be a list of dictionaries or tuples")
+
+        # Handle DDL schema strings
+        if isinstance(schema, str):
+            from ...core.ddl_parser import parse_ddl_schema
+            schema = parse_ddl_schema(schema)
 
         # Handle list of column names as schema
         if isinstance(schema, list):
@@ -530,6 +529,6 @@ class MockSparkSession:
 
 
 # Set the builder attribute on MockSparkSession
-from .builder import MockSparkSessionBuilder
+from .builder import MockSparkSessionBuilder  # noqa: E402
 
 MockSparkSession.builder = MockSparkSessionBuilder()

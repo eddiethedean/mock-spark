@@ -13,9 +13,7 @@ def create_dataframe_from_schema_string(session, schema_string, row_count=10):
         DateType,
         TimestampType,
     )
-    from typing import List, Dict, Any
     import random
-    import string
     from datetime import datetime, timedelta
 
     def generate_date():

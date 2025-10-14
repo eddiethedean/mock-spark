@@ -136,6 +136,7 @@ __all__ = [
     "MockColumn",
     "MockColumnOperation",
     "MockLiteral",
+    "ExpressionFunctions",
     "MockAggregateFunction",
     "MockCaseWhen",
     "MockWindowFunction",

@@ -2,7 +2,6 @@
 Compatibility tests for column functions between mock_spark and PySpark.
 """
 
-import pytest
 from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 

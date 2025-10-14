@@ -7,7 +7,7 @@ def test_benchmarking_api_runs_and_returns_results():
     # Mock run
     mock = MockSparkSession("bench")
     mock_df = mock.createDataFrame(base)
-    res = mock.benchmark_operation("mock_filter", lambda: mock_df.filter(F.col("id") > 1))
+    mock.benchmark_operation("mock_filter", lambda: mock_df.filter(F.col("id") > 1))
     mock_stats = mock.get_benchmark_results().get("mock_filter")
     assert mock_stats is not None
     assert mock_stats["duration_s"] >= 0

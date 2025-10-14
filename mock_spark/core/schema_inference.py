@@ -88,7 +88,7 @@ class SchemaInferenceEngine:
             # Check for type conflicts across rows (PySpark raises TypeError)
             for value in values_for_key[1:]:
                 inferred_type = SchemaInferenceEngine._infer_type(value)
-                if type(field_type) != type(inferred_type):
+                if type(field_type) is not type(inferred_type):
                     # Type conflict - cannot merge
                     raise TypeError(
                         f"field {key}: Can not merge type {type(field_type).__name__} "

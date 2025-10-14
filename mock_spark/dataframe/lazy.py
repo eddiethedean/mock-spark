@@ -5,7 +5,7 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, Tuple, Union, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame
@@ -117,7 +117,7 @@ class LazyEvaluationEngine:
 
                             try:
                                 row_dict[field.name] = ast.literal_eval(value)
-                            except:
+                            except:  # noqa: E722
                                 # If parsing fails, split manually
                                 row_dict[field.name] = value[1:-1].split(",")
                         elif value.startswith("{") and value.endswith("}"):

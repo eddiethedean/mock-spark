@@ -4,7 +4,6 @@ Complex Integration Scenarios Compatibility Tests
 Tests for complex real-world scenarios combining multiple operations and features.
 """
 
-import pytest
 from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 
@@ -500,5 +499,5 @@ class TestCrossFeatureIntegration:
 
 
 # Import required modules
-from mock_spark.session import MockSparkSession
-from pyspark.sql import SparkSession
+from mock_spark.session import MockSparkSession  # noqa: E402
+from pyspark.sql import SparkSession  # noqa: E402

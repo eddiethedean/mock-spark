@@ -5,7 +5,6 @@ Run with: python exploration/delta_time_travel.py > exploration/outputs/delta_ti
 """
 
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 import tempfile
 import shutil
 import time

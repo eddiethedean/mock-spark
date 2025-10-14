@@ -19,7 +19,6 @@ from mock_spark.spark_types import (
     IntegerType,
     ArrayType,
     MapType,
-    NullType,
 )
 
 
@@ -37,7 +36,7 @@ class TestBasicTypeDetection:
         assert isinstance(
             value_field.dataType, LongType
         ), f"Expected LongType, got {type(value_field.dataType).__name__}"
-        assert value_field.nullable == True, "All inferred fields should be nullable"
+        assert value_field.nullable, "All inferred fields should be nullable"
 
     def test_detect_float_as_double(self, spark):
         """Test that floats are inferred as DoubleType."""
@@ -49,7 +48,7 @@ class TestBasicTypeDetection:
         assert isinstance(
             value_field.dataType, DoubleType
         ), f"Expected DoubleType, got {type(value_field.dataType).__name__}"
-        assert value_field.nullable == True
+        assert value_field.nullable
 
     def test_detect_string(self, spark):
         """Test string inference."""
@@ -60,7 +59,7 @@ class TestBasicTypeDetection:
         assert isinstance(
             value_field.dataType, StringType
         ), f"Expected StringType, got {type(value_field.dataType).__name__}"
-        assert value_field.nullable == True
+        assert value_field.nullable
 
     def test_detect_boolean(self, spark):
         """Test boolean inference."""
@@ -71,7 +70,7 @@ class TestBasicTypeDetection:
         assert isinstance(
             value_field.dataType, BooleanType
         ), f"Expected BooleanType, got {type(value_field.dataType).__name__}"
-        assert value_field.nullable == True
+        assert value_field.nullable
 
     def test_all_nulls_raises_error(self, spark):
         """Test that all-null columns raise ValueError (matching PySpark 3.2.4)."""
@@ -79,7 +78,7 @@ class TestBasicTypeDetection:
 
         # PySpark 3.2.4 raises: ValueError: Some of types cannot be determined after inferring
         with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
 
 class TestMultipleRows:
@@ -98,7 +97,7 @@ class TestMultipleRows:
         assert len(df.schema.fields) == 2
         for field in df.schema.fields:
             assert isinstance(field.dataType, LongType)
-            assert field.nullable == True
+            assert field.nullable
 
     def test_consistent_mixed_types(self, spark):
         """Test inference with multiple consistent types."""
@@ -119,7 +118,7 @@ class TestMultipleRows:
 
         # All should be nullable
         for field in df.schema.fields:
-            assert field.nullable == True
+            assert field.nullable
 
     def test_with_some_nulls(self, spark):
         """Test that nulls in some rows don't change type inference."""
@@ -135,7 +134,7 @@ class TestMultipleRows:
         assert isinstance(
             fields_by_name["value"].dataType, LongType
         ), "Should infer from non-null values"
-        assert fields_by_name["value"].nullable == True
+        assert fields_by_name["value"].nullable
 
 
 class TestTypeConflicts:
@@ -150,7 +149,7 @@ class TestTypeConflicts:
 
         # PySpark raises: TypeError: Can not merge type LongType and DoubleType
         with pytest.raises(TypeError, match="Can not merge|cannot merge|incompatible"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
     def test_numeric_string_conflict_raises_error(self, spark):
         """Test that mixing numeric and string raises TypeError."""
@@ -160,7 +159,7 @@ class TestTypeConflicts:
         ]
 
         with pytest.raises(TypeError, match="Can not merge|cannot merge|incompatible"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
     def test_boolean_int_conflict_raises_error(self, spark):
         """Test that mixing boolean and int raises TypeError."""
@@ -171,7 +170,7 @@ class TestTypeConflicts:
 
         # Note: In Python, True == 1, but PySpark treats them as different types
         with pytest.raises(TypeError, match="Can not merge|cannot merge|incompatible"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
 
 class TestArrayInference:
@@ -190,7 +189,7 @@ class TestArrayInference:
         assert isinstance(
             tags_field.dataType.element_type, StringType
         ), "Elements should be StringType"
-        assert tags_field.nullable == True
+        assert tags_field.nullable
 
     def test_array_of_integers(self, spark):
         """Test ArrayType(LongType) inference."""
@@ -257,7 +256,7 @@ class TestMissingKeys:
 
         # All should be nullable (since rows don't all have all keys)
         for field in df.schema.fields:
-            assert field.nullable == True, f"Field {field.name} should be nullable"
+            assert field.nullable, f"Field {field.name} should be nullable"
 
     def test_types_inferred_from_available_values(self, spark):
         """Test that types are inferred from rows that have the values."""
@@ -439,7 +438,7 @@ class TestInferenceWithOperations:
         assert result.count() == 2
 
 
-class TestColumnOrdering:
+class TestColumnOrderingPySpark:
     """Test column ordering matches PySpark."""
 
     def test_alphabetical_ordering(self, spark):
@@ -473,7 +472,7 @@ class TestNoneValueHandling:
 
         # This raises ValueError in both PySpark 3.2.4 and mock-spark
         with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
     def test_mixed_none_and_values(self, spark):
         """Test inference with some None values."""
@@ -519,7 +518,7 @@ class TestNoneValueHandling:
 
         # This raises ValueError because col1, col2, col3 are all None
         with pytest.raises(ValueError, match="cannot be determined"):
-            df = spark.createDataFrame(data)
+            spark.createDataFrame(data)
 
     def test_none_with_dict_metadata(self, spark):
         """Test real-world case from SparkForge: metadata field with None values."""
@@ -613,7 +612,7 @@ class TestSparseMissingData:
 
         # All fields should be nullable
         for field in df.schema.fields:
-            assert field.nullable == True, f"Sparse field {field.name} should be nullable"
+            assert field.nullable, f"Sparse field {field.name} should be nullable"
 
     def test_type_from_first_occurrence(self, spark):
         """Test that type is inferred from first occurrence of key."""

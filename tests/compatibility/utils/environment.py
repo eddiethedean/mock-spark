@@ -5,7 +5,7 @@ Environment setup utilities for compatibility testing.
 import os
 import tempfile
 import shutil
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from contextlib import contextmanager
 
 
@@ -187,11 +187,10 @@ def get_environment_config(env_type: str) -> Dict[str, Any]:
 
 def import_environment_modules(env_type: str) -> Dict[str, Any]:
     """Import modules for the specified environment."""
-    config = get_environment_config(env_type)
+    get_environment_config(env_type)
     modules = {}
 
     if env_type == "mock":
-        import mock_spark
         from mock_spark import MockSparkSession
         from mock_spark import functions as mock_functions
         from mock_spark import spark_types as mock_types
@@ -202,7 +201,6 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
         modules["session"] = MockSparkSession("compatibility-test")
 
     elif env_type == "pyspark":
-        import pyspark
         from pyspark import SparkContext
         from pyspark.sql import SparkSession
         from pyspark.sql import functions as pyspark_functions

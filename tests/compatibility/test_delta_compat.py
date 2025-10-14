@@ -106,7 +106,6 @@ def mock_env():
 def pyspark_env():
     """Real PySpark environment with Delta (isolated per test function)."""
     from pyspark import SparkContext
-    from pyspark.sql import SparkSession
     import tempfile
     import shutil
     import uuid

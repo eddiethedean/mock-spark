@@ -6,7 +6,6 @@ grouping operations, maintaining compatibility with PySpark's GroupedData interf
 """
 
 from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
-import itertools
 
 from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
 from .base import MockGroupedData

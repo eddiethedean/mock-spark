@@ -7,13 +7,6 @@ These tests verify window function functionality without real PySpark.
 import pytest
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
-from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
-    StringType,
-    IntegerType,
-    DoubleType,
-)
 
 
 @pytest.mark.fast

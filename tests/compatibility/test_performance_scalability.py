@@ -4,9 +4,7 @@ Performance and Scalability Compatibility Tests
 Tests for performance characteristics, memory usage, and scalability.
 """
 
-import pytest
 import time
-from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 
 class TestPerformanceCharacteristics:
@@ -365,5 +363,5 @@ class TestConcurrentOperations:
 
 
 # Import MockSparkSession for performance tests
-from mock_spark.session import MockSparkSession
-from pyspark.sql import SparkSession
+from mock_spark.session import MockSparkSession  # noqa: E402
+from pyspark.sql import SparkSession  # noqa: E402

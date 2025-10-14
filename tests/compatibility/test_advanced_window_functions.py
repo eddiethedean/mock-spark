@@ -4,7 +4,6 @@ Advanced Window Functions Compatibility Tests
 Tests for comprehensive window function support including rank, dense_rank, lag, lead, etc.
 """
 
-import pytest
 from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 

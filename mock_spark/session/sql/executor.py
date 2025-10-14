@@ -118,11 +118,6 @@ class MockSQLExecutor:
             from ...dataframe import MockDataFrame
             from ...spark_types import (
                 MockStructType,
-                MockStructField,
-                StringType,
-                LongType,
-                DoubleType,
-                BooleanType,
             )
 
             # For now, create a simple DataFrame with one row
@@ -161,7 +156,7 @@ class MockSQLExecutor:
         where_conditions = components.get("where_conditions", [])
         if where_conditions:
             # Simple WHERE condition handling
-            condition = where_conditions[0]
+            where_conditions[0]
             # This is a mock implementation - real implementation would parse conditions
             pass
 
@@ -173,7 +168,7 @@ class MockSQLExecutor:
         # Apply GROUP BY
         group_by_columns = components.get("group_by_columns", [])
         if group_by_columns:
-            grouped_df = df.groupBy(*group_by_columns)
+            df.groupBy(*group_by_columns)
             # For now, convert grouped data back to DataFrame
             # In a real implementation, this would depend on the aggregation functions
             df = MockDataFrame([], MockStructType([]))
@@ -386,10 +381,6 @@ class MockSQLExecutor:
                 from ...dataframe import MockDataFrame
                 from ...spark_types import (
                     MockStructType,
-                    MockStructField,
-                    IntegerType,
-                    StringType,
-                    TimestampType,
                 )
                 from typing import cast
                 from ...core.interfaces.dataframe import IDataFrame
@@ -443,8 +434,8 @@ class MockSQLExecutor:
         target_table = ast.components.get("target_table", "")
         source_table = ast.components.get("source_table", "")
         on_condition = ast.components.get("on_condition", "")
-        target_alias = ast.components.get("target_alias")
-        source_alias = ast.components.get("source_alias")
+        ast.components.get("target_alias")
+        ast.components.get("source_alias")
         when_matched = ast.components.get("when_matched", [])
         when_not_matched = ast.components.get("when_not_matched", [])
 
@@ -457,7 +448,7 @@ class MockSQLExecutor:
         # Get target and source data
         target_df = self.session.table(target_table)
         target_data = target_df.collect()
-        target_data_dict = {id(row): row.asDict() for row in target_data}
+        {id(row): row.asDict() for row in target_data}
 
         source_df = self.session.table(source_table)
         source_data = source_df.collect()
@@ -545,14 +536,13 @@ class MockSQLExecutor:
                     for clause in when_not_matched:
                         if clause["action"] == "INSERT":
                             # Parse: (id, name, score) VALUES (s.id, s.name, s.score)
-                            insert_clause = clause["insert_clause"]
+                            clause["insert_clause"]
 
                             # Simple parsing: just insert all source columns
                             # In production, would parse the column list and values
                             updated_rows.append(source_dict.copy())
 
         # Write merged data back to target table
-        from ...spark_types import MockRow
 
         self.session.storage.drop_table(target_schema, target_name)  # type: ignore[attr-defined]
         self.session.storage.create_table(target_schema, target_name, target_df.schema.fields)  # type: ignore[attr-defined]

@@ -5,10 +5,8 @@ These tests verify that Mock Spark's lazy evaluation behavior matches PySpark ex
 """
 
 import pytest
-from unittest.mock import patch
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
-from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
 
 
 class TestLazyEvaluationCompatibility:

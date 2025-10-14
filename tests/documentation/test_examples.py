@@ -6,7 +6,6 @@ Ensures documentation examples work correctly and produce expected outputs.
 
 import pytest
 import subprocess
-import os
 from pathlib import Path
 
 

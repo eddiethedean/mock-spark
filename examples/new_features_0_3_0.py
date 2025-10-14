@@ -245,8 +245,8 @@ def main():
     # repartition and coalesce
     print("✓ repartition and coalesce:")
     repartitioned = df.repartition(2)
-    coalesced = repartitioned.coalesce(1)
-    print(f"Original partitions: 1, Repartitioned: 2, Coalesced: 1")
+    repartitioned.coalesce(1)
+    print("Original partitions: 1, Repartitioned: 2, Coalesced: 1")
 
     # 7. Enhanced Session Features
     print("\n🔧 Enhanced Session Features:")
