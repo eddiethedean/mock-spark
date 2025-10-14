@@ -5,8 +5,6 @@ This module provides an adapter layer between the standalone spark-ddl-parser
 package and mock-spark's internal type system.
 """
 
-from typing import cast
-
 from spark_ddl_parser import parse_ddl_schema as parse_ddl
 from spark_ddl_parser.types import (
     StructType,
