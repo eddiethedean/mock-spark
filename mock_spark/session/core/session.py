@@ -184,7 +184,7 @@ class MockSparkSession:
     def _real_createDataFrame(
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[MockStructType, List[str]]] = None,
+        schema: Optional[Union[MockStructType, List[str], str]] = None,
     ) -> "MockDataFrame":
         """Create a DataFrame from data.
 
@@ -205,6 +205,11 @@ class MockSparkSession:
         """
         if not isinstance(data, list):
             raise IllegalArgumentException("Data must be a list of dictionaries or tuples")
+
+        # Handle DDL schema strings
+        if isinstance(schema, str):
+            from ...core.ddl_parser import parse_ddl_schema
+            schema = parse_ddl_schema(schema)
 
         # Handle list of column names as schema
         if isinstance(schema, list):
