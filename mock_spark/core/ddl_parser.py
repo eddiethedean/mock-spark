@@ -86,6 +86,9 @@ def parse_ddl_schema(ddl_string: str) -> MockStructType:
     if not ddl_string or not ddl_string.strip():
         return MockStructType([])
     
+    # Normalize whitespace: replace tabs, newlines, carriage returns with spaces
+    ddl_string = ddl_string.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
+    
     # Remove leading/trailing whitespace and "struct<" wrapper if present
     ddl_string = ddl_string.strip()
     if ddl_string.startswith("struct<"):
