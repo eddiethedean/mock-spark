@@ -22,7 +22,7 @@ class TestSessionCleanup:
 
         # Create some data
         data = [{"id": 1, "name": "test"}]
-        df = session.createDataFrame(data)
+        session.createDataFrame(data)
 
         # Stop the session
         session.stop()
@@ -43,7 +43,7 @@ class TestSessionCleanup:
 
         # Second session should not see first session's data
         with pytest.raises(Exception):
-            df2 = session2.table("test_table")
+            session2.table("test_table")
 
         # Clean up
         session1.stop()
@@ -55,7 +55,7 @@ class TestSessionCleanup:
 
         with MockSparkSession("test_context") as session:
             data = [{"id": 1, "name": "test"}]
-            df = session.createDataFrame(data)
+            session.createDataFrame(data)
             storage_ref = weakref.ref(session.storage)
 
         # Force garbage collection
@@ -76,7 +76,7 @@ class TestSessionCleanup:
             _ = df.count()  # Trigger some operations
 
         # Memory usage should be tracked
-        initial_memory = session.get_memory_usage()
+        session.get_memory_usage()
 
         # Stop should clear cache
         session.stop()
@@ -152,7 +152,7 @@ class TestDuckDBStorageManagerCleanup:
             ).fetchone()
             # If we get here, the setting exists and should be empty
             assert result[0] == "", "temp_directory should be empty to prevent disk spillover"
-        except:
+        except:  # noqa: E722
             # Setting might not be available in all DuckDB versions, that's okay
             pass
 
@@ -341,7 +341,7 @@ class TestConcurrentSessions:
         try:
             # Do some work
             data = [{"id": 1, "name": "test"}]
-            df = session.createDataFrame(data)
+            session.createDataFrame(data)
 
             # Cause an error
             raise ValueError("Simulated error")
@@ -373,7 +373,7 @@ class TestMemoryManagement:
         assert result < 5000
 
         # Get memory usage before cleanup
-        memory_before = session.get_memory_usage()
+        session.get_memory_usage()
 
         # Clear cache
         session.clear_cache()
@@ -388,7 +388,7 @@ class TestMemoryManagement:
         """Test that repeated operations don't accumulate memory indefinitely."""
         session = MockSparkSession("test_repeated")
 
-        initial_memory = session.get_memory_usage()
+        session.get_memory_usage()
 
         # Perform many operations
         for i in range(100):
@@ -401,7 +401,7 @@ class TestMemoryManagement:
                 session.clear_cache()
 
         # Final memory should not be excessive
-        final_memory = session.get_memory_usage()
+        session.get_memory_usage()
 
         # Memory might be non-zero but should be manageable
         # (this is just checking we don't have runaway memory growth)
@@ -422,7 +422,7 @@ class TestConfigurableMemoryAndSpillover:
                 "SELECT current_setting('temp_directory')"
             ).fetchone()
             assert result[0] == "", "Default should disable temp directory"
-        except:
+        except:  # noqa: E722
             pass  # Setting might not be available
 
         session.stop()

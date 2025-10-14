@@ -5,14 +5,9 @@ Tests sophisticated combinations of nested types and complex structures
 to ensure the parser handles all PySpark DDL features correctly.
 """
 
-import pytest
 from mock_spark.core.ddl_parser import parse_ddl_schema
 from mock_spark.spark_types import (
     MockStructType,
-    StringType,
-    IntegerType,
-    LongType,
-    DoubleType,
     ArrayType,
     MapType,
 )
@@ -88,15 +83,15 @@ class TestDDLParserComplex:
 
     # ==================== Structs in Arrays in Maps ====================
     
-    def test_map_of_array_of_struct(self):
-        """Test map of array of struct."""
+    def test_map_of_array_of_struct_v1(self):
+        """Test map of array of struct (variant 1)."""
         schema = parse_ddl_schema(
             "users map<string,array<struct<id:long,name:string,age:int>>>"
         )
         assert len(schema.fields) == 1
 
-    def test_array_of_map_of_struct(self):
-        """Test array of map of struct."""
+    def test_array_of_map_of_struct_v1(self):
+        """Test array of map of struct (variant 1)."""
         schema = parse_ddl_schema(
             "data array<map<string,struct<id:long,name:string>>>"
         )
@@ -236,15 +231,15 @@ class TestDDLParserComplex:
 
     # ==================== Structs in Maps in Arrays ====================
     
-    def test_array_of_map_of_struct(self):
-        """Test array of map of struct."""
+    def test_array_of_map_of_struct_v2(self):
+        """Test array of map of struct (variant 2)."""
         schema = parse_ddl_schema(
             "data array<map<string,struct<id:long,name:string,age:int>>>"
         )
         assert len(schema.fields) == 1
 
-    def test_map_of_array_of_struct(self):
-        """Test map of array of struct."""
+    def test_map_of_array_of_struct_v2(self):
+        """Test map of array of struct (variant 2)."""
         schema = parse_ddl_schema(
             "data map<string,array<struct<id:long,name:string,age:int>>>"
         )
@@ -496,6 +491,7 @@ class TestDDLParserComplex:
             "array<"
             "struct<"
             "level5:string"
+            ">"
             ">"
             ">"
             ">"

@@ -6,7 +6,7 @@ extracted from dataframe/export.py to centralize backend logic.
 """
 
 from typing import Any, Optional, TYPE_CHECKING
-from sqlalchemy import create_engine, MetaData, insert
+from sqlalchemy import MetaData, insert
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame

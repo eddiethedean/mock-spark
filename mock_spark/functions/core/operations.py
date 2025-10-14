@@ -5,7 +5,7 @@ This module provides arithmetic, comparison, and logical operations
 for MockColumn and MockColumnOperation classes.
 """
 
-from typing import Any, Union
+from typing import Any
 from .column import MockColumn, MockColumnOperation
 
 

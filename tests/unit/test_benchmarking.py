@@ -12,7 +12,7 @@ def test_benchmark_operation_records_results():
         )  # fallback
 
     # Use a simple lambda over DataFrame to keep interface consistent
-    result = spark.benchmark_operation(
+    spark.benchmark_operation(
         "filter_ge_2", lambda: df.filter(df.functions.col("x")) if hasattr(df, "functions") else df
     )
 

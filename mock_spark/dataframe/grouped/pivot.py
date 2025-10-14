@@ -5,7 +5,7 @@ This module provides pivot grouped data functionality for pivot table
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional
+from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
 
 from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
 

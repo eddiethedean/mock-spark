@@ -7,7 +7,7 @@ maintaining compatibility with PySpark's SparkSession interface.
 
 from typing import Any, Dict, List, Optional, Union, cast
 from ...core.interfaces.session import ISession
-from ...core.interfaces.dataframe import IDataFrame, IDataFrameReader
+from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.storage import IStorageManager
 from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
@@ -21,11 +21,6 @@ from ...spark_types import (
     MockStructType,
     MockStructField,
     StringType,
-    LongType,
-    DoubleType,
-    BooleanType,
-    ArrayType,
-    MapType,
 )
 
 
@@ -89,7 +84,6 @@ class MockSparkSession:
         else:
             self.storage = storage_backend
         from typing import cast
-        from ...core.interfaces.storage import IStorageManager
 
         self._catalog = MockCatalog(cast(IStorageManager, self.storage))
         self.sparkContext = MockSparkContext(app_name)
@@ -535,6 +529,6 @@ class MockSparkSession:
 
 
 # Set the builder attribute on MockSparkSession
-from .builder import MockSparkSessionBuilder
+from .builder import MockSparkSessionBuilder  # noqa: E402
 
 MockSparkSession.builder = MockSparkSessionBuilder()

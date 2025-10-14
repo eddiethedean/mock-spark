@@ -4,8 +4,7 @@ Session and Context Management Compatibility Tests
 Tests for SparkSession, SparkContext, and related management functionality.
 """
 
-import pytest
-from mock_spark.session import MockSparkSession, MockSparkContext
+from mock_spark.session import MockSparkSession
 
 
 class TestSessionManagement:

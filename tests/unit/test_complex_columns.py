@@ -27,7 +27,7 @@ class TestComplexColumns:
         df = spark.createDataFrame(data)
 
         # Filter with AND: value > 100 AND active = True
-        result = df.filter((F.col("value") > 100) & (F.col("active") == True))
+        result = df.filter((F.col("value") > 100) & (F.col("active")))
 
         # id=1: (100 > 100) & True = False & True = False
         # id=2: (200 > 100) & False = True & False = False
@@ -37,7 +37,7 @@ class TestComplexColumns:
         row = result.collect()[0]
         assert row["id"] == 3
         assert row["value"] == 150
-        assert row["active"] == True
+        assert row["active"]
 
         spark.stop()
 

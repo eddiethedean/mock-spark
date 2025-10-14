@@ -83,13 +83,12 @@ else:
         UserWarning,
     )
 
-import pytest
-from typing import Dict, Any, List
-from tests.compatibility.utils.environment import (
+import pytest  # noqa: E402
+from tests.compatibility.utils.environment import (  # noqa: E402
     import_environment_modules,
     cleanup_environment,
 )
-from tests.compatibility.utils.fixtures import get_test_dataframes_dict
+from tests.compatibility.utils.fixtures import get_test_dataframes_dict  # noqa: E402
 
 
 @pytest.fixture(scope="session")

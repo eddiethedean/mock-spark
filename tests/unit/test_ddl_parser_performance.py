@@ -5,11 +5,12 @@ Tests that the parser scales properly with large schemas and
 deeply nested structures.
 """
 
-import pytest
 import time
+import pytest
 from mock_spark.core.ddl_parser import parse_ddl_schema
 
 
+@pytest.mark.performance
 class TestDDLParserPerformance:
     """Performance tests for DDL parser."""
 

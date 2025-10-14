@@ -6,9 +6,8 @@ providing database-agnostic query building that works with any SQLAlchemy backen
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
-from sqlalchemy import select, Table, Column, MetaData, and_, or_, func, literal
-from sqlalchemy.sql import Select, CompoundSelect
-from sqlalchemy.sql.elements import BinaryExpression, UnaryExpression
+from sqlalchemy import select, Table, and_, or_, func, literal
+from sqlalchemy.sql import Select
 
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
 from ..spark_types import MockStructType
@@ -143,19 +142,19 @@ class SQLAlchemyQueryBuilder:
 
         # Map operations to SQLAlchemy operators
         operation_map = {
-            ">": lambda l, r: l > r,
-            "<": lambda l, r: l < r,
-            ">=": lambda l, r: l >= r,
-            "<=": lambda l, r: l <= r,
-            "==": lambda l, r: l == r,
-            "!=": lambda l, r: l != r,
-            "+": lambda l, r: l + r,
-            "-": lambda l, r: l - r,
-            "*": lambda l, r: l * r,
-            "/": lambda l, r: l / r,
-            "%": lambda l, r: l % r,
-            "&": lambda l, r: and_(l, r),
-            "|": lambda l, r: or_(l, r),
+            ">": lambda left, right: left > right,
+            "<": lambda left, right: left < right,
+            ">=": lambda left, right: left >= right,
+            "<=": lambda left, right: left <= right,
+            "==": lambda left, right: left == right,
+            "!=": lambda left, right: left != right,
+            "+": lambda left, right: left + right,
+            "-": lambda left, right: left - right,
+            "*": lambda left, right: left * right,
+            "/": lambda left, right: left / right,
+            "%": lambda left, right: left % right,
+            "&": lambda left, right: and_(left, right),
+            "|": lambda left, right: or_(left, right),
         }
 
         operation_func = operation_map.get(op.operation)

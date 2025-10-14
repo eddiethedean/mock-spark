@@ -13,9 +13,6 @@ from mock_spark.spark_types import (
     StringType,
     LongType,
     IntegerType,
-    BooleanType,
-    ArrayType,
-    MapType,
 )
 
 
@@ -95,7 +92,7 @@ class TestDDLIntegration:
         df1 = spark.createDataFrame(data, schema="id long, name string, age int")
         
         # Create DataFrame with StructType schema
-        from mock_spark.spark_types import MockStructType, MockStructField
+        from mock_spark.spark_types import MockStructType
         schema = MockStructType([
             MockStructField("id", LongType()),
             MockStructField("name", StringType()),
@@ -164,7 +161,7 @@ class TestDDLIntegration:
     def test_to_pandas(self):
         """Test toPandas operation with DDL schema."""
         try:
-            import pandas as pd
+            import pandas as pd  # noqa: F401
         except ImportError:
             pytest.skip("pandas not installed")
         
@@ -193,7 +190,7 @@ class TestDDLIntegration:
             schema="id long, name string, age int, active boolean"
         )
         
-        result = df.filter(F.col("active") == True).select("name", "age")
+        result = df.filter(F.col("active")).select("name", "age")
         
         assert result.count() == 2
         assert result.columns == ["name", "age"]

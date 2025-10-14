@@ -7,7 +7,6 @@ from tests.compatibility.utils.comparison import (
     assert_dataframes_equal,
     assert_schemas_equal,
     compare_dataframes,
-    compare_schemas,
 )
 
 

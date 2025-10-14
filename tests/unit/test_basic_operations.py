@@ -82,7 +82,7 @@ class TestBasicOperations:
         assert result.count() == 1
 
         # Filter by boolean
-        result = df.filter(F.col("active") == True)
+        result = df.filter(F.col("active"))
         assert result.count() == 3
 
     def test_with_column(self, spark, sample_data):

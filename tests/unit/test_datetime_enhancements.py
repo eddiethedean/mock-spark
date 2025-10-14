@@ -8,7 +8,6 @@ Based on exploration/datetime_functions.py findings:
 - Functions work in withColumn chains and before groupBy/agg
 """
 
-import pytest
 from mock_spark import MockSparkSession
 import mock_spark.functions as F
 

@@ -3,7 +3,6 @@ Test data fixtures for compatibility testing.
 """
 
 from typing import List, Dict, Any
-import pandas as pd
 
 
 def get_simple_test_data() -> List[Dict[str, Any]]:

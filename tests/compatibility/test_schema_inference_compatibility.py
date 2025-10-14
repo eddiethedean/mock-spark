@@ -92,7 +92,7 @@ class TestNullHandling:
 
         # Verify nullable is True
         value_field = mock_df.schema.fields[1]  # 'value' field
-        assert value_field.nullable == True, "Field with nulls should be nullable"
+        assert value_field.nullable, "Field with nulls should be nullable"
 
         assert_dataframes_equal(mock_df, pyspark_df)
 

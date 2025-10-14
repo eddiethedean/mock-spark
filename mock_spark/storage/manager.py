@@ -4,7 +4,7 @@ Storage manager module.
 This module provides a unified storage manager that can use different backends.
 """
 
-from typing import List, Dict, Any, Optional, Union, Type
+from typing import List, Dict, Any, Optional, Union
 from .interfaces import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager

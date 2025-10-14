@@ -7,10 +7,6 @@ Tests for proper error handling, edge cases, and exception compatibility.
 import pytest
 from mock_spark.core.exceptions import (
     AnalysisException,
-    IllegalArgumentException,
-    PySparkValueError,
-    PySparkTypeError,
-    PySparkRuntimeError,
 )
 
 
@@ -47,8 +43,8 @@ class TestErrorHandling:
         """Test invalid filter condition error handling."""
         try:
             # Test filter with non-existent column
-            mock_result = mock_dataframe.filter("invalid_column > 10")
-            pyspark_result = pyspark_dataframe.filter("invalid_column > 10")
+            mock_dataframe.filter("invalid_column > 10")
+            pyspark_dataframe.filter("invalid_column > 10")
             # Both should handle this gracefully or raise appropriate errors
         except Exception:
             # If exceptions are raised, they should be similar types

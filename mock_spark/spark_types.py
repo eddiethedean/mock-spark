@@ -490,7 +490,7 @@ class MockRow:
                     if not hasattr(other, key) or getattr(other, key) != value:
                         return False
                 return True
-            except:
+            except:  # noqa: E722
                 return False
         else:
             return False

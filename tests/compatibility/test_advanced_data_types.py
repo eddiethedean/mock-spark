@@ -4,7 +4,6 @@ Advanced Data Types Compatibility Tests
 Tests for complex data types like ArrayType, MapType, StructType, and advanced SQL functions.
 """
 
-import pytest
 from tests.compatibility.utils.comparison import assert_dataframes_equal
 
 

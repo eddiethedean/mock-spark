@@ -5,21 +5,17 @@ Tests unusual but valid DDL schema strings to ensure the parser
 handles various edge cases robustly.
 """
 
-import pytest
 from mock_spark.core.ddl_parser import parse_ddl_schema
 from mock_spark.spark_types import (
     MockStructType,
-    MockStructField,
     StringType,
     IntegerType,
     LongType,
-    DoubleType,
     BooleanType,
     DateType,
     TimestampType,
     DecimalType,
     BinaryType,
-    FloatType,
     ShortType,
     ByteType,
     ArrayType,

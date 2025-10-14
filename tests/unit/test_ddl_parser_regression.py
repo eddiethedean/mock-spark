@@ -363,6 +363,6 @@ class TestDDLParserRegression:
         
         assert len(schema.fields) == 2
         # All fields should be nullable by default (PySpark behavior)
-        assert schema.fields[0].nullable == True
-        assert schema.fields[1].nullable == True
+        assert schema.fields[0].nullable
+        assert schema.fields[1].nullable
 

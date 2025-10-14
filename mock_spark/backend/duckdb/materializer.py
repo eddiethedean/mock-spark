@@ -4,8 +4,6 @@ DuckDB-based materialization for lazy evaluation.
 This module provides DuckDB-specific optimizations on top of the generic SQLAlchemy materializer.
 """
 
-from typing import Any, Dict, List, Tuple
-from mock_spark.spark_types import MockStructType, MockRow
 from .query_executor import SQLAlchemyMaterializer
 
 
@@ -39,7 +37,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
             else:
                 # Disable disk spillover for test isolation
                 raw_conn.execute("SET temp_directory=''")
-        except:
+        except:  # noqa: E722
             pass  # Ignore if settings not supported
 
     def close(self) -> None:
@@ -53,7 +51,7 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
                 if os.path.exists(self._temp_dir):
                     shutil.rmtree(self._temp_dir, ignore_errors=True)
                 self._temp_dir = None
-            except:
+            except:  # noqa: E722
                 pass  # Ignore cleanup errors
 
         # Call parent close to dispose engine
@@ -63,5 +61,5 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()
-        except:
+        except:  # noqa: E722
             pass

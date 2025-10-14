@@ -6,7 +6,6 @@ Run with: python exploration/complex_columns.py > exploration/outputs/complex_co
 
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
-from pyspark.sql.column import Column
 import tempfile
 import shutil
 

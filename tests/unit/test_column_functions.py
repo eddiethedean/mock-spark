@@ -6,14 +6,6 @@ These tests verify all column functions work correctly without real PySpark.
 
 import pytest
 from mock_spark import MockSparkSession, F
-from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
-    StringType,
-    IntegerType,
-    DoubleType,
-    BooleanType,
-)
 
 
 @pytest.mark.fast
@@ -187,15 +179,15 @@ class TestColumnFunctions:
         df = spark.createDataFrame(sample_data)
 
         # AND operation
-        result = df.filter((F.col("age") > 25) & (F.col("active") == True))
+        result = df.filter((F.col("age") > 25) & (F.col("active")))
         assert result.count() == 2
 
         # OR operation
-        result = df.filter((F.col("age") < 30) | (F.col("active") == False))
+        result = df.filter((F.col("age") < 30) | (~F.col("active")))
         assert result.count() == 3
 
         # NOT operation
-        result = df.filter(~(F.col("active") == False))
+        result = df.filter(~(~F.col("active")))
         assert result.count() == 3
 
     def test_comparison_operations(self, spark, sample_data):
@@ -211,11 +203,11 @@ class TestColumnFunctions:
         assert result.count() == 3
 
         # Equal
-        result = df.filter(F.col("active") == True)
+        result = df.filter(F.col("active"))
         assert result.count() == 3
 
         # Not equal
-        result = df.filter(F.col("active") != True)
+        result = df.filter(~F.col("active"))
         assert result.count() == 1
 
     def test_null_handling(self, spark):

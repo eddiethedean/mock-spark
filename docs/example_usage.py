@@ -6,7 +6,6 @@ Current Status: 396 tests passing (100% pass rate) | 59% code coverage | Product
 """
 
 from mock_spark import MockSparkSession, F
-from mock_spark.spark_types import StringType, IntegerType
 
 
 def main():

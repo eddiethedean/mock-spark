@@ -38,20 +38,17 @@ from ..spark_types import (
     StringType,
     LongType,
     DoubleType,
-    BooleanType,
     IntegerType,
 )
-from ..functions import MockColumn, MockColumnOperation, F, MockLiteral
+from ..functions import MockColumn, MockColumnOperation, MockLiteral
 from ..storage import MemoryStorageManager
 from .grouped import (
     MockGroupedData,
     MockRollupGroupedData,
     MockCubeGroupedData,
-    MockPivotGroupedData,
 )
 from .rdd import MockRDD
 from ..core.exceptions import (
-    AnalysisException,
     IllegalArgumentException,
     PySparkValueError,
 )
@@ -333,10 +330,6 @@ class MockDataFrame:
         from ..spark_types import (
             MockStructType,
             MockStructField,
-            StringType,
-            LongType,
-            DoubleType,
-            IntegerType,
         )
 
         fields_map = {f.name: f for f in self._schema.fields}
@@ -415,7 +408,6 @@ class MockDataFrame:
             >>> df.select("*")
             >>> df.select(F.col("name"), F.col("age") * 2)
         """
-        from ..spark_types import LongType
 
         if not columns:
             return self
@@ -1234,7 +1226,6 @@ class MockDataFrame:
     ) -> "MockDataFrame":
         """Handle aggregation select operations."""
         from ..functions import MockAggregateFunction
-        from ..spark_types import LongType, DoubleType
 
         result_row: Dict[str, Any] = {}
         new_fields = []
@@ -1489,7 +1480,6 @@ class MockDataFrame:
         new_fields = [field for field in self.schema.fields if field.name != col_name]
 
         # Determine the correct type for the new column
-        from ..spark_types import StringType, LongType, DoubleType, IntegerType
 
         if isinstance(col, (MockColumn, MockColumnOperation)):
             # For arithmetic operations, determine type based on the operation
@@ -1779,7 +1769,6 @@ class MockDataFrame:
         from ..spark_types import (
             MockStructType,
             MockStructField,
-            StringType,
             MockDataType,
         )
 
@@ -2649,7 +2638,7 @@ class MockDataFrame:
                             return dt.date()
                         elif hasattr(value, "date"):
                             return value.date()
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("to_timestamp("):
@@ -2666,7 +2655,7 @@ class MockDataFrame:
                     try:
                         if isinstance(value, str):
                             return datetime.fromisoformat(value.replace("Z", "+00:00"))
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("hour("):
@@ -2685,7 +2674,7 @@ class MockDataFrame:
                             return dt.hour
                         elif hasattr(value, "hour"):
                             return value.hour
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("day("):
@@ -2704,7 +2693,7 @@ class MockDataFrame:
                             return dt.day
                         elif hasattr(value, "day"):
                             return value.day
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("month("):
@@ -2723,7 +2712,7 @@ class MockDataFrame:
                             return dt.month
                         elif hasattr(value, "month"):
                             return value.month
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("year("):
@@ -2742,7 +2731,7 @@ class MockDataFrame:
                             return dt.year
                         elif hasattr(value, "year"):
                             return value.year
-                    except:
+                    except:  # noqa: E722
                         return None
             return None
         elif col_name.startswith("regexp_replace("):
@@ -3372,7 +3361,7 @@ class MockDataFrame:
         import json
 
         json_rows = [{"value": json.dumps(row)} for row in self.data]
-        from ..spark_types import MockStructType, MockStructField, StringType
+        from ..spark_types import MockStructType, MockStructField
 
         schema = MockStructType([MockStructField("value", StringType())])
         return MockDataFrame(json_rows, schema, self.storage)
@@ -3566,7 +3555,7 @@ class MockDataFrame:
             result_data.append(stats_row)
 
         # Create result schema
-        from ..spark_types import MockStructType, MockStructField, StringType
+        from ..spark_types import MockStructType, MockStructField
 
         result_schema = MockStructType(
             [
@@ -3654,7 +3643,7 @@ class MockDataFrame:
             result_data.append(stats_row)
 
         # Create result schema
-        from ..spark_types import MockStructType, MockStructField, StringType
+        from ..spark_types import MockStructType, MockStructField
 
         result_fields = [MockStructField("summary", StringType())]
         for stat in stats:

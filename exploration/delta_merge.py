@@ -5,7 +5,6 @@ Run with: python exploration/delta_merge.py > exploration/outputs/delta_merge_ou
 """
 
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 import tempfile
 import shutil
 

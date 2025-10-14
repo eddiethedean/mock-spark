@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "2.1.1"
+version = "2.2.0"
 description = "Lightning-fast PySpark testing without JVM - 10x faster with 100% API compatibility"
 readme = "README.md"
 license = {text = "MIT"}
@@ -167,4 +167,5 @@ markers = [
     "compatibility: marks tests as compatibility tests with real PySpark",
     "fast: marks tests as fast unit tests without PySpark",
     "delta: marks tests that require Delta Lake JARs (run serially for isolation)",
+    "performance: marks tests that measure performance (run serially for stable timing)",
 ]

@@ -7,7 +7,7 @@ and execution capabilities for complex DataFrame operations.
 
 # mypy: disable-error-code="arg-type"
 
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Tuple
 from sqlalchemy import (
     create_engine,
     select,
@@ -16,7 +16,6 @@ from sqlalchemy import (
     asc,
     and_,
     or_,
-    over,
     MetaData,
     Table,
     Column,
@@ -30,16 +29,9 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import Select
 from mock_spark.spark_types import (
     MockStructType,
-    MockStructField,
     MockRow,
-    StringType,
-    LongType,
-    DoubleType,
-    IntegerType,
-    BooleanType,
 )
 from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
 
@@ -831,7 +823,7 @@ class SQLAlchemyMaterializer:
                 # Handle F.col("column_name") case
                 # Check for wildcard first
                 if col.name == "*":
-                    print(f"DEBUG: Handling wildcard!")
+                    print("DEBUG: Handling wildcard!")
                     # Select all columns from source table
                     for column in source_table_obj.columns:
                         select_columns.append(column)
@@ -1263,7 +1255,7 @@ class SQLAlchemyMaterializer:
 
                     try:
                         new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
-                    except:
+                    except:  # noqa: E722
                         # Fallback to String if ARRAY not supported
                         new_columns.append(Column(col.name, String, primary_key=False))
                 else:
@@ -1648,7 +1640,7 @@ class SQLAlchemyMaterializer:
 
         # Build SQLAlchemy order by expressions
         order_expressions = []
-        available_columns = [c.name for c in source_table_obj.columns]
+        [c.name for c in source_table_obj.columns]
         # print(f"DEBUG: Available columns in {source_table}: {available_columns}")
         # print(f"DEBUG: Order by columns: {[col.name if hasattr(col, 'name') else str(col) for col in columns]}")
 
@@ -2363,5 +2355,5 @@ class SQLAlchemyMaterializer:
         """Cleanup on deletion to prevent resource leaks."""
         try:
             self.close()
-        except:
+        except:  # noqa: E722
             pass

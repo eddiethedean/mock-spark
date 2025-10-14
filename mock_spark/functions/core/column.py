@@ -5,7 +5,7 @@ This module provides the MockColumn class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, List, Union, Optional, TYPE_CHECKING
+from typing import Any, List, Optional, TYPE_CHECKING
 from ...spark_types import MockDataType, StringType
 from ...core.interfaces.functions import IColumn
 

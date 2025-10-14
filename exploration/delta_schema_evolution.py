@@ -5,7 +5,6 @@ Run with: python exploration/delta_schema_evolution.py > exploration/outputs/del
 """
 
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 import tempfile
 import shutil
 

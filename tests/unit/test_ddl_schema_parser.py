@@ -9,7 +9,6 @@ import pytest
 from mock_spark.core.ddl_parser import parse_ddl_schema
 from mock_spark.spark_types import (
     MockStructType,
-    MockStructField,
     StringType,
     IntegerType,
     LongType,
@@ -258,17 +257,17 @@ class TestDDLSchemaParser:
 
     def test_invalid_array_type(self):
         """Test that invalid array type raises error."""
-        with pytest.raises(ValueError, match="Invalid array type"):
+        with pytest.raises(ValueError, match="Unbalanced angle brackets"):
             parse_ddl_schema("tags array<string")
 
     def test_invalid_map_type(self):
         """Test that invalid map type raises error."""
-        with pytest.raises(ValueError, match="Invalid map type"):
+        with pytest.raises(ValueError, match="Unbalanced angle brackets"):
             parse_ddl_schema("metadata map<string,string")
 
     def test_invalid_struct_type(self):
         """Test that invalid struct type raises error."""
-        with pytest.raises(ValueError, match="Invalid struct type"):
+        with pytest.raises(ValueError, match="Unbalanced angle brackets"):
             parse_ddl_schema("address struct<street:string,city:string")
 
     def test_invalid_field_definition(self):

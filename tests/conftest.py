@@ -30,7 +30,7 @@ def mock_spark_session():
     # Explicitly clean up
     try:
         session.stop()
-    except:
+    except:  # noqa: E722
         pass
     gc.collect()
 
@@ -47,6 +47,6 @@ def isolated_session():
     yield session
     try:
         session.stop()
-    except:
+    except:  # noqa: E722
         pass
     gc.collect()

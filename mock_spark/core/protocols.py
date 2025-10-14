@@ -5,7 +5,7 @@ This module defines structural typing protocols (PEP 544) for better
 type safety and clearer contracts without tight coupling.
 """
 
-from typing import Protocol, Any, Optional, runtime_checkable
+from typing import Protocol, Any, runtime_checkable
 
 
 @runtime_checkable

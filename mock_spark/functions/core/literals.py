@@ -5,13 +5,12 @@ This module provides MockLiteral class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Optional, TYPE_CHECKING, Union, List
+from typing import Any, Optional, TYPE_CHECKING
 from ...spark_types import MockDataType, StringType
 from ...core.interfaces.functions import IColumn
 
 if TYPE_CHECKING:
     from .operations import MockColumnOperation
-    from .column import MockColumn
 
 
 class MockLiteral(IColumn):

@@ -3,9 +3,7 @@ Basic compatibility tests to identify discrepancies between mock_spark and PySpa
 This test focuses on the most fundamental operations to identify key differences.
 """
 
-import pytest
 import pandas as pd
-from typing import Dict, Any, List
 
 
 class TestBasicCompatibility:
@@ -243,7 +241,7 @@ class TestBasicCompatibility:
 
         spark = MockSparkSession("test-app")
         data = [{"age": 25}, {"age": 30}]
-        df = spark.createDataFrame(data)
+        spark.createDataFrame(data)
 
         # Test column operations
         col = F.col("age")
@@ -314,7 +312,7 @@ class TestBasicCompatibility:
 
     def test_dataframe_collect_behavior(self):
         """Test DataFrame collect behavior."""
-        from mock_spark import MockSparkSession, F
+        from mock_spark import MockSparkSession
 
         spark = MockSparkSession("test-app")
         data = [

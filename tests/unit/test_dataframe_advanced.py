@@ -348,7 +348,7 @@ class TestDataFrameAdvancedOperations:
         assert len(df.schema.fields) == 4
         assert df.schema.fields[0].name == "id"
         assert df.schema.fields[0].dataType == IntegerType()
-        assert df.schema.fields[0].nullable == False
+        assert not df.schema.fields[0].nullable
 
         # Test operations with explicit schema
         result = df.select(

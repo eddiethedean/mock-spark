@@ -5,20 +5,7 @@ Tests with DDL strings from real-world PySpark usage patterns,
 AWS Glue, Databricks, and common data engineering scenarios.
 """
 
-import pytest
 from mock_spark.core.ddl_parser import parse_ddl_schema
-from mock_spark.spark_types import (
-    MockStructType,
-    StringType,
-    IntegerType,
-    LongType,
-    DoubleType,
-    BooleanType,
-    DateType,
-    TimestampType,
-    ArrayType,
-    MapType,
-)
 
 
 class TestDDLParserRealWorld:
@@ -276,7 +263,7 @@ class TestDDLParserRealWorld:
             "pagination:struct<page:int,per_page:int,total:int>"
             ">, errors array<string>"
         )
-        assert len(schema.fields) == 3
+        assert len(schema.fields) == 4
 
     # ==================== Document Store Schemas ====================
     

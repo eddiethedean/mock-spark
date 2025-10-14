@@ -3,7 +3,7 @@ Comparison utilities for validating mock_spark behavior against PySpark.
 """
 
 import pandas as pd
-from typing import Any, Dict, List, Optional, Union, Tuple, Callable
+from typing import Any, Dict, Callable
 import numpy as np
 
 
@@ -169,7 +169,7 @@ def compare_dataframes(
                         try:
                             first_val = mock_non_null.iloc[0]
                             is_complex_data = isinstance(first_val, (list, dict))
-                        except:
+                        except:  # noqa: E722
                             pass
 
                     if is_complex_data:
@@ -236,7 +236,7 @@ def compare_dataframes(
                                     result["errors"].append(
                                         f"Values differ in column '{col}' (numeric fallback)"
                                     )
-                            except:
+                            except:  # noqa: E722
                                 result["equivalent"] = False
                                 result["errors"].append(
                                     f"Error comparing numeric column '{col}': {str(numeric_e)}"
@@ -257,7 +257,7 @@ def compare_dataframes(
                                     result["errors"].append(
                                         f"Values differ in column '{col}' (string fallback)"
                                     )
-                            except:
+                            except:  # noqa: E722
                                 result["equivalent"] = False
                                 result["errors"].append(
                                     f"Error comparing string column '{col}': {str(string_e)}"
@@ -506,7 +506,7 @@ def compare_error_behavior(
 
     # Test mock function
     try:
-        mock_result = mock_func(*args, **kwargs)
+        mock_func(*args, **kwargs)
         result["mock_error"] = None
     except Exception as e:
         result["mock_error"] = {
@@ -517,7 +517,7 @@ def compare_error_behavior(
 
     # Test PySpark function
     try:
-        pyspark_result = pyspark_func(*args, **kwargs)
+        pyspark_func(*args, **kwargs)
         result["pyspark_error"] = None
     except Exception as e:
         result["pyspark_error"] = {

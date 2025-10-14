@@ -13,7 +13,7 @@ Example:
 """
 
 import re
-from typing import List, Tuple, Optional
+from typing import List
 from ..spark_types import (
     MockStructType,
     MockStructField,
@@ -95,17 +95,114 @@ def parse_ddl_schema(ddl_string: str) -> MockStructType:
         ddl_string = ddl_string[7:]
         if ddl_string.endswith(">"):
             ddl_string = ddl_string[:-1]
+        else:
+            raise ValueError(f"Invalid struct type: struct<{ddl_string}>")
     
-    fields = []
+    # Validate comma usage (run before bracket validation)
+    _validate_comma_usage(ddl_string)
+    
+    # Validate brackets before splitting fields
+    # This catches errors like "tags array<string>>" (extra >)
+    _validate_balanced_brackets(ddl_string)
     
     # Split by comma, but be careful with nested structs, arrays, and maps
     field_strings = _split_ddl_fields(ddl_string)
     
+    # Validate no empty fields
+    if not field_strings:
+        raise ValueError("Invalid field definition: empty schema")
+    
+    fields = []
+    
     for field_str in field_strings:
+        if not field_str.strip():
+            raise ValueError("Invalid field definition: empty field")
         field = _parse_field(field_str.strip())
         fields.append(field)
     
     return MockStructType(fields)
+
+
+def _validate_balanced_brackets(s: str) -> None:
+    """Validate that brackets and parentheses are balanced.
+    
+    Args:
+        s: String to validate
+    
+    Raises:
+        ValueError: If brackets or parentheses are unbalanced
+    """
+    angle_depth = 0
+    paren_depth = 0
+    
+    for char in s:
+        if char == "<":
+            angle_depth += 1
+        elif char == ">":
+            angle_depth -= 1
+            if angle_depth < 0:
+                raise ValueError("Unbalanced angle brackets: extra '>'")
+        elif char == "(":
+            paren_depth += 1
+        elif char == ")":
+            paren_depth -= 1
+            if paren_depth < 0:
+                raise ValueError("Unbalanced parentheses: extra ')'")
+    
+    if angle_depth > 0:
+        raise ValueError("Unbalanced angle brackets: missing '>'")
+    if paren_depth > 0:
+        raise ValueError("Unbalanced parentheses: missing ')'")
+
+
+def _validate_comma_usage(s: str) -> None:
+    """Validate comma usage in DDL string.
+    
+    Checks for:
+    - Comma at start
+    - Double commas
+    - Trailing comma
+    
+    Args:
+        s: String to validate
+    
+    Raises:
+        ValueError: If comma usage is invalid
+    """
+    if not s:
+        return
+    
+    # Check for comma at start
+    if s.strip().startswith(","):
+        raise ValueError("Invalid field definition: comma at start")
+    
+    # Check for trailing comma
+    if s.strip().endswith(","):
+        raise ValueError("Invalid field definition: trailing comma")
+    
+    # Check for double commas (outside of brackets/parens)
+    angle_depth = 0
+    paren_depth = 0
+    i = 0
+    
+    while i < len(s) - 1:
+        char = s[i]
+        next_char = s[i + 1]
+        
+        if char == "<":
+            angle_depth += 1
+        elif char == ">":
+            angle_depth -= 1
+        elif char == "(":
+            paren_depth += 1
+        elif char == ")":
+            paren_depth -= 1
+        elif char == "," and angle_depth == 0 and paren_depth == 0:
+            # Check if next non-whitespace character is also a comma
+            if next_char == ",":
+                raise ValueError("Invalid field definition: double comma")
+        
+        i += 1
 
 
 def _split_ddl_fields(ddl_string: str) -> List[str]:
@@ -170,6 +267,9 @@ def _parse_field(field_str: str) -> MockStructField:
     Raises:
         ValueError: If field definition is invalid
     """
+    if not field_str or not field_str.strip():
+        raise ValueError(f"Invalid field definition: {field_str}")
+    
     # Handle both formats: "name type" and "name:type"
     # Check if there's a colon at the top level (not inside brackets/parens)
     has_colon_at_top_level = False
@@ -243,6 +343,14 @@ def _parse_field(field_str: str) -> MockStructField:
     name = name.strip()
     type_str = type_str.strip()
     
+    # Validate name is not empty or whitespace-only
+    if not name or name.isspace():
+        raise ValueError(f"Invalid field definition: {field_str}")
+    
+    # Validate type is not empty
+    if not type_str:
+        raise ValueError(f"Invalid field definition: {field_str}")
+    
     # Parse the data type
     data_type = _parse_type(type_str)
     
@@ -271,6 +379,9 @@ def _parse_type(type_str: str) -> MockDataType:
     """
     type_str = type_str.strip()
     
+    if not type_str:
+        raise ValueError("Invalid type: empty type string")
+    
     # Handle decimal with precision and scale (check before struct)
     if type_str.startswith("decimal"):
         match = re.match(r"decimal\((\d+),(\d+)\)", type_str)
@@ -279,13 +390,18 @@ def _parse_type(type_str: str) -> MockDataType:
             scale = int(match.group(2))
             return DecimalType(precision=precision, scale=scale)
         else:
+            # Check for incomplete decimal
+            if "(" in type_str and not type_str.endswith(")"):
+                raise ValueError(f"Invalid decimal type: {type_str}")
             return DecimalType()  # Default decimal
     
     # Handle arrays
     if type_str.startswith("array<"):
         if not type_str.endswith(">"):
             raise ValueError(f"Invalid array type: {type_str}")
-        element_type_str = type_str[6:-1]
+        element_type_str = type_str[6:-1].strip()
+        if not element_type_str:
+            raise ValueError(f"Invalid array type: {type_str}")
         element_type = _parse_type(element_type_str)
         return ArrayType(element_type)
     
@@ -293,18 +409,23 @@ def _parse_type(type_str: str) -> MockDataType:
     if type_str.startswith("map<"):
         if not type_str.endswith(">"):
             raise ValueError(f"Invalid map type: {type_str}")
-        map_content = type_str[4:-1]
+        map_content = type_str[4:-1].strip()
+        if not map_content:
+            raise ValueError(f"Invalid map type: {type_str}")
         
         # Split key and value types
         comma_pos = _find_map_comma(map_content)
         if comma_pos == -1:
             raise ValueError(f"Invalid map type: {type_str}")
         
-        key_type_str = map_content[:comma_pos]
-        value_type_str = map_content[comma_pos + 1:]
+        key_type_str = map_content[:comma_pos].strip()
+        value_type_str = map_content[comma_pos + 1:].strip()
         
-        key_type = _parse_type(key_type_str.strip())
-        value_type = _parse_type(value_type_str.strip())
+        if not key_type_str or not value_type_str:
+            raise ValueError(f"Invalid map type: {type_str}")
+        
+        key_type = _parse_type(key_type_str)
+        value_type = _parse_type(value_type_str)
         
         return MapType(key_type, value_type)
     
@@ -312,14 +433,32 @@ def _parse_type(type_str: str) -> MockDataType:
     if type_str.startswith("struct<"):
         if not type_str.endswith(">"):
             raise ValueError(f"Invalid struct type: {type_str}")
-        struct_content = type_str[7:-1]
-        struct_schema = parse_ddl_schema(struct_content)
-        return struct_schema
+        struct_content = type_str[7:-1].strip()
+        if not struct_content:
+            raise ValueError(f"Invalid struct type: {type_str}")
+        
+        # Check if struct content is a nested struct (no field name)
+        if struct_content.startswith("struct<"):
+            # This is a nested struct without a field name
+            # Parse it as a type
+            nested_type = _parse_type(struct_content)
+            # Create a wrapper struct with a single field
+            return MockStructType([MockStructField(name="", dataType=nested_type, nullable=True)])
+        else:
+            # Normal struct with fields
+            struct_schema = parse_ddl_schema(struct_content)
+            return struct_schema
     
     # Handle simple types
     type_lower = type_str.lower()
     if type_lower in TYPE_MAPPING:
         return TYPE_MAPPING[type_lower]()
+    
+    # If we get here, the type is not recognized
+    # Check if it contains spaces (indicating missing comma)
+    # But allow spaces in complex types (struct<>, array<>, map<>)
+    if ' ' in type_str and not any(type_str.startswith(prefix) for prefix in ['struct<', 'array<', 'map<']):
+        raise ValueError(f"Invalid field definition: {type_str}")
     
     # Default to string if type not recognized
     return StringType()

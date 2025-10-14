@@ -5,7 +5,6 @@ Run with: python exploration/delta_basic_write.py > exploration/outputs/delta_ba
 """
 
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 import tempfile
 import shutil
 

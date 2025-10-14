@@ -146,7 +146,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "day", name=f"day({column.name})")
-        name = f"day({column.name})"
         return operation
 
     @staticmethod
@@ -163,7 +162,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "month", name=f"month({column.name})")
-        name = f"month({column.name})"
         return operation
 
     @staticmethod
@@ -180,7 +178,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "year", name=f"year({column.name})")
-        name = f"year({column.name})"
         return operation
 
     @staticmethod
@@ -197,7 +194,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "dayofweek", name=f"dayofweek({column.name})")
-        name = f"dayofweek({column.name})"
         return operation
 
     @staticmethod
@@ -214,7 +210,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "dayofyear", name=f"dayofyear({column.name})")
-        name = f"dayofyear({column.name})"
         return operation
 
     @staticmethod
@@ -231,7 +226,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "weekofyear", name=f"weekofyear({column.name})")
-        name = f"weekofyear({column.name})"
         return operation
 
     @staticmethod
@@ -248,7 +242,6 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "quarter", name=f"quarter({column.name})")
-        name = f"quarter({column.name})"
         return operation
 
     @staticmethod

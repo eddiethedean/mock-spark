@@ -10,7 +10,6 @@ Based on exploration/delta_merge.py findings:
 - Condition can be complex (multiple columns, AND/OR)
 """
 
-import pytest
 from mock_spark import MockSparkSession
 
 

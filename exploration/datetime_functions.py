@@ -141,7 +141,6 @@ try:
     print("TEST 6: hour() on timestamp column (not string)")
     print("=" * 80)
 
-    from pyspark.sql.types import TimestampType
     import datetime
 
     data4 = [
