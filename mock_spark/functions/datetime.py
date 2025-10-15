@@ -404,3 +404,69 @@ class DateTimeFunctions:
             name=f"from_unixtime({column.name}, '{format}')",
         )
         return operation
+
+    @staticmethod
+    def timestampadd(
+        unit: str, quantity: Union[int, MockColumn], timestamp: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Add time units to a timestamp.
+
+        Args:
+            unit: Time unit (YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND).
+            quantity: Number of units to add (can be column or integer).
+            timestamp: Timestamp column or literal.
+
+        Returns:
+            MockColumnOperation representing the timestampadd function.
+
+        Example:
+            >>> df.select(F.timestampadd("DAY", 7, F.col("created_at")))
+            >>> df.select(F.timestampadd("HOUR", F.col("offset"), "2024-01-01"))
+        """
+        if isinstance(timestamp, str):
+            timestamp = MockColumn(timestamp)
+
+        # Handle quantity as column or literal
+        if isinstance(quantity, MockColumn):
+            quantity_str = quantity.name
+        else:
+            quantity_str = str(quantity)
+
+        operation = MockColumnOperation(
+            timestamp,
+            "timestampadd",
+            (unit, quantity),
+            name=f"timestampadd('{unit}', {quantity_str}, {timestamp.name})",
+        )
+        return operation
+
+    @staticmethod
+    def timestampdiff(
+        unit: str, start: Union[str, MockColumn], end: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Calculate difference between two timestamps.
+
+        Args:
+            unit: Time unit (YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND).
+            start: Start timestamp column or literal.
+            end: End timestamp column or literal.
+
+        Returns:
+            MockColumnOperation representing the timestampdiff function.
+
+        Example:
+            >>> df.select(F.timestampdiff("DAY", F.col("start_date"), F.col("end_date")))
+            >>> df.select(F.timestampdiff("HOUR", "2024-01-01", F.col("end_time")))
+        """
+        if isinstance(start, str):
+            start = MockColumn(start)
+        if isinstance(end, str):
+            end = MockColumn(end)
+
+        operation = MockColumnOperation(
+            start,
+            "timestampdiff",
+            (unit, end),
+            name=f"timestampdiff('{unit}', {start.name}, {end.name})",
+        )
+        return operation

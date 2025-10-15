@@ -29,7 +29,7 @@ Example:
            ALICE | alice@company.com
 """
 
-from typing import Union, Optional
+from typing import Any, Union, Optional
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 
 
@@ -320,4 +320,125 @@ class StringFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(column, "unbase64", name=f"unbase64({column.name})")
+        return operation
+
+    @staticmethod
+    def regexp_extract_all(
+        column: Union[MockColumn, str], pattern: str, idx: int = 0
+    ) -> MockColumnOperation:
+        """Extract all matches of a regex pattern.
+
+        Args:
+            column: The column to extract from.
+            pattern: The regex pattern to match.
+            idx: Group index to extract (default: 0 for entire match).
+
+        Returns:
+            MockColumnOperation representing the regexp_extract_all function.
+
+        Example:
+            >>> df.select(F.regexp_extract_all(F.col("text"), r"\d+", 0))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column,
+            "regexp_extract_all",
+            (pattern, idx),
+            name=f"regexp_extract_all({column.name}, '{pattern}', {idx})",
+        )
+        return operation
+
+    @staticmethod
+    def array_join(
+        column: Union[MockColumn, str],
+        delimiter: str,
+        null_replacement: Optional[str] = None,
+    ) -> MockColumnOperation:
+        """Join array elements with a delimiter.
+
+        Args:
+            column: The array column to join.
+            delimiter: The delimiter to use for joining.
+            null_replacement: Optional string to replace nulls with.
+
+        Returns:
+            MockColumnOperation representing the array_join function.
+
+        Example:
+            >>> df.select(F.array_join(F.col("tags"), ", "))
+            >>> df.select(F.array_join(F.col("tags"), "|", "N/A"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        if null_replacement is not None:
+            name = f"array_join({column.name}, '{delimiter}', '{null_replacement}')"
+            args: Any = (delimiter, null_replacement)
+        else:
+            name = f"array_join({column.name}, '{delimiter}')"
+            args = (delimiter, None)
+
+        operation = MockColumnOperation(column, "array_join", args, name=name)
+        return operation
+
+    @staticmethod
+    def repeat(column: Union[MockColumn, str], n: int) -> MockColumnOperation:
+        """Repeat a string N times.
+
+        Args:
+            column: The column to repeat.
+            n: Number of times to repeat.
+
+        Returns:
+            MockColumnOperation representing the repeat function.
+
+        Example:
+            >>> df.select(F.repeat(F.col("text"), 3))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(
+            column, "repeat", n, name=f"repeat({column.name}, {n})"
+        )
+        return operation
+
+    @staticmethod
+    def initcap(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Capitalize first letter of each word.
+
+        Args:
+            column: The column to capitalize.
+
+        Returns:
+            MockColumnOperation representing the initcap function.
+
+        Example:
+            >>> df.select(F.initcap(F.col("name")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "initcap", name=f"initcap({column.name})")
+        return operation
+
+    @staticmethod
+    def soundex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Soundex encoding for phonetic matching.
+
+        Args:
+            column: The column to encode.
+
+        Returns:
+            MockColumnOperation representing the soundex function.
+
+        Example:
+            >>> df.select(F.soundex(F.col("name")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "soundex", name=f"soundex({column.name})")
         return operation

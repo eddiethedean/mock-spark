@@ -71,6 +71,11 @@ translate = F.translate
 ascii = F.ascii
 base64 = F.base64
 unbase64 = F.unbase64
+regexp_extract_all = F.regexp_extract_all
+array_join = F.array_join
+repeat = F.repeat
+initcap = F.initcap
+soundex = F.soundex
 abs = F.abs
 round = F.round
 ceil = F.ceil
@@ -123,6 +128,8 @@ date_add = F.date_add
 date_sub = F.date_sub
 date_format = F.date_format
 from_unixtime = F.from_unixtime
+timestampadd = F.timestampadd
+timestampdiff = F.timestampdiff
 row_number = F.row_number
 rank = F.rank
 dense_rank = F.dense_rank
@@ -174,6 +181,11 @@ __all__ = [
     "ascii",
     "base64",
     "unbase64",
+    "regexp_extract_all",
+    "array_join",
+    "repeat",
+    "initcap",
+    "soundex",
     "abs",
     "round",
     "ceil",
@@ -226,6 +238,8 @@ __all__ = [
     "date_sub",
     "date_format",
     "from_unixtime",
+    "timestampadd",
+    "timestampdiff",
     "row_number",
     "rank",
     "dense_rank",

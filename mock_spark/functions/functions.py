@@ -137,6 +137,37 @@ class MockFunctions:
         """Decode a base64-encoded string."""
         return StringFunctions.unbase64(column)
 
+    @staticmethod
+    def regexp_extract_all(
+        column: Union[MockColumn, str], pattern: str, idx: int = 0
+    ) -> MockColumnOperation:
+        """Extract all matches of a regex pattern."""
+        return StringFunctions.regexp_extract_all(column, pattern, idx)
+
+    @staticmethod
+    def array_join(
+        column: Union[MockColumn, str],
+        delimiter: str,
+        null_replacement: Optional[str] = None,
+    ) -> MockColumnOperation:
+        """Join array elements with a delimiter."""
+        return StringFunctions.array_join(column, delimiter, null_replacement)
+
+    @staticmethod
+    def repeat(column: Union[MockColumn, str], n: int) -> MockColumnOperation:
+        """Repeat a string N times."""
+        return StringFunctions.repeat(column, n)
+
+    @staticmethod
+    def initcap(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Capitalize first letter of each word."""
+        return StringFunctions.initcap(column)
+
+    @staticmethod
+    def soundex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Soundex encoding for phonetic matching."""
+        return StringFunctions.soundex(column)
+
     # Math functions
     @staticmethod
     def abs(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -450,6 +481,20 @@ class MockFunctions:
     ) -> MockColumnOperation:
         """Convert unix timestamp to string."""
         return DateTimeFunctions.from_unixtime(column, format)
+
+    @staticmethod
+    def timestampadd(
+        unit: str, quantity: Union[int, MockColumn], timestamp: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Add time units to a timestamp."""
+        return DateTimeFunctions.timestampadd(unit, quantity, timestamp)
+
+    @staticmethod
+    def timestampdiff(
+        unit: str, start: Union[str, MockColumn], end: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Calculate difference between two timestamps."""
+        return DateTimeFunctions.timestampdiff(unit, start, end)
 
     @staticmethod
     def nvl(column: Union[MockColumn, str], default_value: Any) -> MockColumnOperation:

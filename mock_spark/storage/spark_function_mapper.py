@@ -50,6 +50,10 @@ STRING_FUNCTIONS: Dict[str, str] = {
     "locate": "locate",
     "lpad": "lpad",
     "rpad": "rpad",
+    "regexp_extract_all": "regexp_extract_all",
+    "array_join": "array_to_string",  # DuckDB uses array_to_string
+    "initcap": "initcap",
+    "soundex": "soundex",
 }
 
 # Date/Time Functions
@@ -76,6 +80,8 @@ DATETIME_FUNCTIONS: Dict[str, str] = {
     "unix_timestamp": "unix_timestamp",
     "to_date": "to_date",
     "to_timestamp": "to_timestamp",
+    "timestampadd": "dateadd",  # DuckDB uses dateadd
+    "timestampdiff": "datediff",  # DuckDB uses datediff
 }
 
 # Math Functions
