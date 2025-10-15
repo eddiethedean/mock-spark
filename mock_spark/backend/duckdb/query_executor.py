@@ -112,6 +112,22 @@ class SQLAlchemyMaterializer:
                     columns.append(Column(key, Float))
                 elif isinstance(value, bool):
                     columns.append(Column(key, Boolean))
+                elif isinstance(value, list):
+                    # For arrays, use DuckDB's native array type
+                    # Use raw SQL type for now since SQLAlchemy doesn't have good array support
+                    from sqlalchemy import ARRAY, VARCHAR
+                    columns.append(Column(key, ARRAY(VARCHAR)))
+                elif isinstance(value, dict):
+                    # For maps, use DuckDB MAP type
+                    from sqlalchemy.dialects.postgresql import HSTORE
+                    # DuckDB doesn't have direct MAP in SQLAlchemy, use raw SQL type
+                    from sqlalchemy.types import TypeDecorator, String as StringType
+                    
+                    class MapType(TypeDecorator):
+                        impl = StringType
+                        cache_ok = True
+                    
+                    columns.append(Column(key, MapType()))
                 else:
                     columns.append(Column(key, String))
 
@@ -559,6 +575,13 @@ class SQLAlchemyMaterializer:
                                 "coalesce": "coalesce",
                                 "isnull": "isnull",  # Handled by special_functions with IS NULL syntax
                                 "isnan": "isnan",
+                                # Array functions - DuckDB uses list_ prefix
+                                "array_distinct": "list_distinct",
+                                "array_intersect": "list_intersect",
+                                "array_union": "list_concat",  # DuckDB uses concat for union
+                                "array_except": "list_except",
+                                "array_position": "list_position",
+                                "array_remove": "array_remove",  # Will need custom handling
                                 # Add more mappings as needed
                             }
 
@@ -586,6 +609,12 @@ class SQLAlchemyMaterializer:
                                 "array_join": "array_join",  # Special handling below
                                 "regexp_extract_all": "regexp_extract_all",  # Special handling below
                                 "repeat": "repeat",  # Needs parameter handling
+                                "array_distinct": "array_distinct",  # Special handling below
+                                "array_intersect": "array_intersect",  # Special handling below
+                                "array_union": "array_union",  # Special handling below
+                                "array_except": "array_except",  # Special handling below
+                                "array_position": "array_position",  # Special handling below
+                                "array_remove": "array_remove",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -609,6 +638,19 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "soundex":
                                 # DuckDB doesn't have soundex, just return original
                                 func_expr = source_column
+                            elif col.function_name == "array_distinct" and (not hasattr(col, "value") or col.value is None):
+                                # array_distinct without parameters - cast to array if needed
+                                special_sql = f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "map_keys" and (not hasattr(col, "value") or col.value is None):
+                                # map_keys(map) - DuckDB: MAP_KEYS(map)
+                                # Convert dict to map if needed
+                                special_sql = f"MAP_KEYS({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "map_values" and (not hasattr(col, "value") or col.value is None):
+                                # map_values(map) - DuckDB: MAP_VALUES(map)
+                                special_sql = f"MAP_VALUES({column_expr})"
+                                func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
                                 # Check if this is a special function that needs custom SQL generation
@@ -773,6 +815,52 @@ class SQLAlchemyMaterializer:
                                         # DuckDB: REPEAT(string, n)
                                         n = col.value if not isinstance(col.value, tuple) else col.value[0]
                                         special_sql = f"REPEAT({column_expr}, {n})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_distinct":
+                                        # array_distinct(array) -> list_distinct(array)
+                                        special_sql = f"LIST_DISTINCT({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_intersect":
+                                        # array_intersect(array1, array2) -> list_intersect(array1, array2)
+                                        if isinstance(col.value, MockColumn):
+                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        else:
+                                            array2 = str(col.value)
+                                        special_sql = f"LIST_INTERSECT(CAST({column_expr} AS VARCHAR[]), {array2})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_union":
+                                        # array_union(array1, array2) -> list_concat + list_distinct
+                                        if isinstance(col.value, MockColumn):
+                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        else:
+                                            array2 = str(col.value)
+                                        special_sql = f"LIST_DISTINCT(LIST_CONCAT(CAST({column_expr} AS VARCHAR[]), {array2}))"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_except":
+                                        # array_except(array1, array2) - DuckDB doesn't have list_except
+                                        # Use LIST_FILTER: filter out elements that are in array2
+                                        if isinstance(col.value, MockColumn):
+                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        else:
+                                            array2 = str(col.value)
+                                        special_sql = f"LIST_FILTER(CAST({column_expr} AS VARCHAR[]), x -> NOT LIST_CONTAINS({array2}, x))"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_position":
+                                        # array_position(array, element) -> list_position(array, element)
+                                        if isinstance(col.value, str):
+                                            element = f"'{col.value}'"
+                                        else:
+                                            element = str(col.value)
+                                        special_sql = f"LIST_POSITION(CAST({column_expr} AS VARCHAR[]), {element})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_remove":
+                                        # array_remove(array, element) - DuckDB doesn't have direct remove
+                                        # Use LIST_FILTER: list_filter(array, x -> x != element)
+                                        if isinstance(col.value, str):
+                                            element = f"'{col.value}'"
+                                        else:
+                                            element = str(col.value)
+                                        special_sql = f"LIST_FILTER(CAST({column_expr} AS VARCHAR[]), x -> x != {element})"
                                         func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
