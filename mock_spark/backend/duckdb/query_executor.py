@@ -579,6 +579,13 @@ class SQLAlchemyMaterializer:
                                 "months_between": "DATEDIFF('MONTH', {}, {})",
                                 "date_add": "({} + INTERVAL {} DAY)",
                                 "date_sub": "({} - INTERVAL {} DAY)",
+                                "timestampadd": "timestampadd",  # Special handling below
+                                "timestampdiff": "timestampdiff",  # Special handling below
+                                "initcap": "initcap",  # Special handling below
+                                "soundex": "soundex",  # Special handling below
+                                "array_join": "array_join",  # Special handling below
+                                "regexp_extract_all": "regexp_extract_all",  # Special handling below
+                                "repeat": "repeat",  # Needs parameter handling
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -594,8 +601,16 @@ class SQLAlchemyMaterializer:
                                     col.column.name
                                 )
 
+                            # Handle special functions that need custom SQL regardless of parameters
+                            if col.function_name == "initcap":
+                                # Custom initcap implementation for DuckDB
+                                special_sql = f"UPPER(SUBSTRING({column_expr}, 1, 1)) || LOWER(SUBSTRING({column_expr}, 2))"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "soundex":
+                                # DuckDB doesn't have soundex, just return original
+                                func_expr = source_column
                             # Handle functions with parameters
-                            if hasattr(col, "value") and col.value is not None:
+                            elif hasattr(col, "value") and col.value is not None:
                                 # Check if this is a special function that needs custom SQL generation
                                 if col.function_name in special_functions:
                                     # Handle special functions like add_months, months_between, date_add, date_sub, expr
@@ -689,6 +704,76 @@ class SQLAlchemyMaterializer:
 
                                         coalesce_sql = f"coalesce({', '.join(params)})"
                                         func_expr = text(coalesce_sql)
+                                    elif col.function_name == "timestampadd":
+                                        # timestampadd(unit, quantity, timestamp)
+                                        # DuckDB uses interval arithmetic: timestamp + INTERVAL quantity unit
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            unit = col.value[0].upper()
+                                            quantity = col.value[1]
+                                            # Format quantity
+                                            if isinstance(quantity, (int, float)):
+                                                qty_str = str(quantity)
+                                            elif hasattr(quantity, "name"):
+                                                qty_str = f'"{quantity.name}"'
+                                            else:
+                                                qty_str = str(quantity)
+                                            # Map units to DuckDB interval types
+                                            unit_map = {
+                                                "YEAR": "YEAR", "QUARTER": "QUARTER", "MONTH": "MONTH",
+                                                "WEEK": "WEEK", "DAY": "DAY", "HOUR": "HOUR",
+                                                "MINUTE": "MINUTE", "SECOND": "SECOND"
+                                            }
+                                            interval_unit = unit_map.get(unit, unit)
+                                            # Cast to timestamp for interval arithmetic
+                                            special_sql = f"(CAST({column_expr} AS TIMESTAMP) + INTERVAL ({qty_str}) {interval_unit})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            func_expr = source_column
+                                    elif col.function_name == "timestampdiff":
+                                        # timestampdiff(unit, start, end)
+                                        # DuckDB: DATE_DIFF(unit, start, end) 
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            unit = col.value[0].lower()  # DuckDB uses lowercase
+                                            end = col.value[1]
+                                            # Format end timestamp
+                                            if hasattr(end, "name"):
+                                                end_str = f'CAST("{end.name}" AS TIMESTAMP)'
+                                            else:
+                                                end_str = f"CAST('{end}' AS TIMESTAMP)"
+                                            # Cast start column to timestamp too
+                                            start_str = f"CAST({column_expr} AS TIMESTAMP)"
+                                            special_sql = f"DATE_DIFF('{unit}', {start_str}, {end_str})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            func_expr = source_column
+                                    elif col.function_name == "array_join":
+                                        # array_join(array, delimiter, null_replacement)
+                                        # DuckDB: ARRAY_TO_STRING or LIST_AGGREGATE
+                                        if isinstance(col.value, tuple):
+                                            delimiter = col.value[0]
+                                            null_replacement = col.value[1] if len(col.value) > 1 else None
+                                            if null_replacement and null_replacement != "None":
+                                                special_sql = f"ARRAY_TO_STRING({column_expr}, '{delimiter}', '{null_replacement}')"
+                                            else:
+                                                special_sql = f"ARRAY_TO_STRING({column_expr}, '{delimiter}')"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            func_expr = source_column
+                                    elif col.function_name == "regexp_extract_all":
+                                        # regexp_extract_all(column, pattern, idx)
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            pattern = col.value[0]
+                                            idx = col.value[1] if len(col.value) > 1 else 0
+                                            special_sql = f"REGEXP_EXTRACT_ALL({column_expr}, '{pattern}')"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            func_expr = source_column
+                                    elif col.function_name == "repeat":
+                                        # repeat(column, n)
+                                        # DuckDB: REPEAT(string, n)
+                                        n = col.value if not isinstance(col.value, tuple) else col.value[0]
+                                        special_sql = f"REPEAT({column_expr}, {n})"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):

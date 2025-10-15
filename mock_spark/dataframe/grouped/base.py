@@ -559,8 +559,10 @@ class MockGroupedData:
             # Try to infer schema from result data
             result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
         
+        from ..dataframe import MockDataFrame as MDF
+        
         storage: Any = getattr(self.df, 'storage', None)
-        return MockDataFrame(result_data, result_schema, storage)
+        return MDF(result_data, result_schema, storage)
 
     def transform(self, func: Any) -> "MockDataFrame":
         """Apply a function to each group and return a DataFrame with the same schema.
@@ -634,5 +636,7 @@ class MockGroupedData:
         
         result_schema = infer_schema_from_data(result_rows) if result_rows else df.schema
         
+        from ..dataframe import MockDataFrame as MDF
+        
         storage: Any = getattr(self.df, 'storage', None)
-        return MockDataFrame(result_rows, result_schema, storage)
+        return MDF(result_rows, result_schema, storage)

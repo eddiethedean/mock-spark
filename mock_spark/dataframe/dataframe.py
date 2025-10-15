@@ -3684,7 +3684,7 @@ class MockDataFrame:
         
         def row_iterator() -> Iterator[MockRow]:
             for row_dict in materialized.data:
-                yield MockRow(**row_dict)
+                yield MockRow(row_dict)
         
         # Apply the function
         result_iterator = func(row_iterator())
