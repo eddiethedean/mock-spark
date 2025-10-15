@@ -3652,6 +3652,196 @@ class MockDataFrame:
         result_schema = MockStructType(result_fields)
         return MockDataFrame(result_data, result_schema, self.storage)
 
+    def mapInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
+        """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames.
+        
+        For mock-spark, we treat the entire DataFrame as a single partition.
+        The function receives an iterator yielding pandas DataFrames and should
+        return an iterator yielding pandas DataFrames.
+        
+        Args:
+            func: A function that takes an iterator of pandas DataFrames and returns
+                  an iterator of pandas DataFrames.
+            schema: The schema of the output DataFrame (StructType or DDL string).
+        
+        Returns:
+            MockDataFrame: Result of applying the function.
+        
+        Example:
+            >>> def multiply_by_two(iterator):
+            ...     for pdf in iterator:
+            ...         yield pdf * 2
+            >>> df.mapInPandas(multiply_by_two, schema="value double")
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for mapInPandas. "
+                "Install it with: pip install 'mock-spark[pandas]'"
+            )
+        
+        # Materialize if lazy
+        if self.is_lazy:
+            materialized = self._materialize_if_lazy()
+        else:
+            materialized = self
+        
+        # Convert to pandas DataFrame
+        input_pdf = pd.DataFrame(materialized.data)
+        
+        # Create an iterator that yields the pandas DataFrame
+        def input_iterator() -> Any:
+            yield input_pdf
+        
+        # Apply the function
+        result_iterator = func(input_iterator())
+        
+        # Collect results from the iterator
+        result_pdfs = []
+        for result_pdf in result_iterator:
+            if not isinstance(result_pdf, pd.DataFrame):
+                raise TypeError(
+                    f"Function must yield pandas DataFrames, got {type(result_pdf).__name__}"
+                )
+            result_pdfs.append(result_pdf)
+        
+        # Concatenate all results
+        if result_pdfs:
+            combined_pdf = pd.concat(result_pdfs, ignore_index=True)
+            result_data = combined_pdf.to_dict('records')
+        else:
+            result_data = []
+        
+        # Parse schema
+        from ..spark_types import MockStructType
+        from ..core.schema_inference import infer_schema_from_data
+        
+        result_schema: MockStructType
+        if isinstance(schema, str):
+            # For DDL string, use schema inference from result data
+            # (DDL parsing is complex, so we rely on inference for now)
+            result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+        elif isinstance(schema, MockStructType):
+            result_schema = schema
+        else:
+            # Try to infer schema from result data
+            result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+        
+        return MockDataFrame(result_data, result_schema, self.storage)
+
+    def transform(self, func: Any) -> "MockDataFrame":
+        """Apply a function to transform a DataFrame.
+        
+        This enables functional programming style transformations on DataFrames.
+        
+        Args:
+            func: Function that takes a MockDataFrame and returns a MockDataFrame.
+        
+        Returns:
+            MockDataFrame: The result of applying the function to this DataFrame.
+        
+        Example:
+            >>> def add_id(df):
+            ...     return df.withColumn("id", F.monotonically_increasing_id())
+            >>> df.transform(add_id)
+        """
+        result = func(self)
+        if not isinstance(result, MockDataFrame):
+            raise TypeError(
+                f"Function must return a MockDataFrame, got {type(result).__name__}"
+            )
+        return result
+
+    def unpivot(
+        self,
+        ids: Union[str, List[str]],
+        values: Union[str, List[str]],
+        variableColumnName: str = "variable",
+        valueColumnName: str = "value",
+    ) -> "MockDataFrame":
+        """Unpivot columns into rows (opposite of pivot).
+        
+        Args:
+            ids: Column(s) to keep as identifiers (not unpivoted).
+            values: Column(s) to unpivot into rows.
+            variableColumnName: Name for the column containing variable names.
+            valueColumnName: Name for the column containing values.
+        
+        Returns:
+            MockDataFrame: Unpivoted DataFrame.
+        
+        Example:
+            >>> df.unpivot(
+            ...     ids=["id", "name"],
+            ...     values=["Q1", "Q2", "Q3", "Q4"],
+            ...     variableColumnName="quarter",
+            ...     valueColumnName="sales"
+            ... )
+        """
+        # Materialize if lazy
+        if self.is_lazy:
+            materialized = self._materialize_if_lazy()
+        else:
+            materialized = self
+        
+        # Normalize inputs
+        id_cols = [ids] if isinstance(ids, str) else ids
+        value_cols = [values] if isinstance(values, str) else values
+        
+        # Validate columns exist
+        all_cols = set(materialized.columns)
+        for col in id_cols:
+            if col not in all_cols:
+                raise AnalysisException(
+                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                )
+        for col in value_cols:
+            if col not in all_cols:
+                raise AnalysisException(
+                    f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
+                )
+        
+        # Create unpivoted data
+        unpivoted_data = []
+        for row in materialized.data:
+            # For each row, create multiple rows (one per value column)
+            for value_col in value_cols:
+                new_row = {}
+                # Add id columns
+                for id_col in id_cols:
+                    new_row[id_col] = row.get(id_col)
+                # Add variable and value
+                new_row[variableColumnName] = value_col
+                new_row[valueColumnName] = row.get(value_col)
+                unpivoted_data.append(new_row)
+        
+        # Infer schema for unpivoted DataFrame
+        # ID columns keep their types, variable is string, value type is inferred
+        from ..spark_types import MockStructType, MockStructField, MockDataType
+        
+        fields = []
+        # Add id column fields
+        for id_col in id_cols:
+            for field in materialized.schema.fields:
+                if field.name == id_col:
+                    fields.append(MockStructField(id_col, field.dataType, field.nullable))
+                    break
+        
+        # Add variable column (always string)
+        fields.append(MockStructField(variableColumnName, StringType(), False))
+        
+        # Add value column (infer from first value column's type)
+        value_type: MockDataType = StringType()  # Default to string
+        for field in materialized.schema.fields:
+            if field.name == value_cols[0]:
+                value_type = field.dataType
+                break
+        fields.append(MockStructField(valueColumnName, value_type, True))
+        
+        unpivoted_schema = MockStructType(fields)
+        return MockDataFrame(unpivoted_data, unpivoted_schema, self.storage)
+
     @property
     def write(self) -> "MockDataFrameWriter":
         """Get DataFrame writer (PySpark-compatible property)."""

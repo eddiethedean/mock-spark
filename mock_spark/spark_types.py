@@ -209,6 +209,7 @@ class MockStructField:
     dataType: MockDataType
     nullable: bool = True
     metadata: Optional[Dict[str, Any]] = None
+    default_value: Optional[Any] = None  # PySpark 3.2+ feature
 
     def __post_init__(self) -> None:
         if self.metadata is None:
@@ -225,7 +226,8 @@ class MockStructField:
         )
 
     def __repr__(self) -> str:
-        return f"MockStructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable})"
+        default_str = f", default_value={self.default_value!r}" if self.default_value is not None else ""
+        return f"MockStructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable}{default_str})"
 
 
 class StructType(MockDataType):
