@@ -145,17 +145,17 @@ WINDOW_FUNCTIONS: Dict[str, str] = {
 ARRAY_FUNCTIONS: Dict[str, str] = {
     "array": "array",
     "array_contains": "array_contains",
-    "array_distinct": "array_distinct",
-    "array_except": "array_except",
-    "array_intersect": "array_intersect",
+    "array_distinct": "list_distinct",  # DuckDB uses list_distinct
+    "array_except": "list_except",  # DuckDB uses list_except  
+    "array_intersect": "list_intersect",  # DuckDB uses list_intersect
     "array_join": "array_join",
     "array_max": "array_max",
     "array_min": "array_min",
-    "array_position": "array_position",
-    "array_remove": "array_remove",
+    "array_position": "list_position",  # DuckDB uses list_position
+    "array_remove": "list_filter",  # DuckDB doesn't have direct remove, use filter
     "array_repeat": "array_repeat",
-    "array_sort": "array_sort",
-    "array_union": "array_union",
+    "array_sort": "list_sort",  # DuckDB uses list_sort
+    "array_union": "list_concat",  # DuckDB uses list_concat for union
     "arrays_overlap": "arrays_overlap",
     "arrays_zip": "arrays_zip",
     "flatten": "flatten",
