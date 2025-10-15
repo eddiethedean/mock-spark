@@ -23,6 +23,7 @@ except ImportError:
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
+from mock_spark.dataframe import MockDataFrame
 
 
 @pytest.mark.compatibility
