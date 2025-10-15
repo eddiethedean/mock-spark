@@ -50,6 +50,10 @@ STRING_FUNCTIONS: Dict[str, str] = {
     "locate": "locate",
     "lpad": "lpad",
     "rpad": "rpad",
+    "regexp_extract_all": "regexp_extract_all",
+    "array_join": "array_to_string",  # DuckDB uses array_to_string
+    "initcap": "initcap",
+    "soundex": "soundex",
 }
 
 # Date/Time Functions
@@ -76,6 +80,8 @@ DATETIME_FUNCTIONS: Dict[str, str] = {
     "unix_timestamp": "unix_timestamp",
     "to_date": "to_date",
     "to_timestamp": "to_timestamp",
+    "timestampadd": "dateadd",  # DuckDB uses dateadd
+    "timestampdiff": "datediff",  # DuckDB uses datediff
 }
 
 # Math Functions
@@ -139,22 +145,31 @@ WINDOW_FUNCTIONS: Dict[str, str] = {
 ARRAY_FUNCTIONS: Dict[str, str] = {
     "array": "array",
     "array_contains": "array_contains",
-    "array_distinct": "array_distinct",
-    "array_except": "array_except",
-    "array_intersect": "array_intersect",
+    "array_distinct": "list_distinct",  # DuckDB uses list_distinct
+    "array_except": "list_except",  # DuckDB uses list_except  
+    "array_intersect": "list_intersect",  # DuckDB uses list_intersect
     "array_join": "array_join",
     "array_max": "array_max",
     "array_min": "array_min",
-    "array_position": "array_position",
-    "array_remove": "array_remove",
+    "array_position": "list_position",  # DuckDB uses list_position
+    "array_remove": "list_filter",  # DuckDB doesn't have direct remove, use filter
     "array_repeat": "array_repeat",
-    "array_sort": "array_sort",
-    "array_union": "array_union",
+    "array_sort": "list_sort",  # DuckDB uses list_sort
+    "array_union": "list_concat",  # DuckDB uses list_concat for union
     "arrays_overlap": "arrays_overlap",
     "arrays_zip": "arrays_zip",
     "flatten": "flatten",
     "size": "size",
     "sort_array": "sort_array",
+}
+
+# Map Functions
+MAP_FUNCTIONS: Dict[str, str] = {
+    "map_keys": "map_keys",
+    "map_values": "map_values",
+    "map_entries": "map_entries",
+    "map_concat": "map_concat",
+    "map_from_arrays": "map_from_arrays",
 }
 
 # JSON Functions
@@ -202,6 +217,7 @@ ALL_FUNCTIONS: Dict[str, str] = {
     **CONDITIONAL_FUNCTIONS,
     **WINDOW_FUNCTIONS,
     **ARRAY_FUNCTIONS,
+    **MAP_FUNCTIONS,
     **JSON_FUNCTIONS,
     **CONVERSION_FUNCTIONS,
     **MISC_FUNCTIONS,

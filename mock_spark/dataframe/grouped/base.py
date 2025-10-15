@@ -478,3 +478,161 @@ class MockGroupedData:
             values.sort()  # Sort for consistent ordering
 
         return MockPivotGroupedData(self.df, self.group_columns, pivot_col, values)
+
+    def applyInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
+        """Apply a Python native function to each group using pandas DataFrames.
+        
+        The function should take a pandas DataFrame and return a pandas DataFrame.
+        For each group, the group data is passed as a pandas DataFrame to the function
+        and the returned pandas DataFrame is used to construct the output rows.
+        
+        Args:
+            func: A function that takes a pandas DataFrame and returns a pandas DataFrame.
+            schema: The schema of the output DataFrame (StructType or DDL string).
+        
+        Returns:
+            MockDataFrame: Result of applying the function to each group.
+        
+        Example:
+            >>> def normalize(pdf):
+            ...     pdf['normalized'] = (pdf['value'] - pdf['value'].mean()) / pdf['value'].std()
+            ...     return pdf
+            >>> df.groupBy("category").applyInPandas(normalize, schema="category string, value double, normalized double")
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for applyInPandas. "
+                "Install it with: pip install 'mock-spark[pandas]'"
+            )
+        
+        # Materialize DataFrame if lazy
+        if self.df.is_lazy:
+            df = self.df._materialize_if_lazy()
+        else:
+            df = self.df
+        
+        # Group data by group columns
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        for row in df.data:
+            group_key = tuple(row.get(col) for col in self.group_columns)
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
+        
+        # Apply function to each group
+        result_pdfs = []
+        for group_rows in groups.values():
+            # Convert group to pandas DataFrame
+            group_pdf = pd.DataFrame(group_rows)
+            
+            # Apply function
+            result_pdf = func(group_pdf)
+            
+            if not isinstance(result_pdf, pd.DataFrame):
+                raise TypeError(
+                    f"Function must return a pandas DataFrame, got {type(result_pdf).__name__}"
+                )
+            
+            result_pdfs.append(result_pdf)
+        
+        # Concatenate all results
+        if result_pdfs:
+            combined_pdf = pd.concat(result_pdfs, ignore_index=True)
+            result_data = combined_pdf.to_dict('records')
+        else:
+            result_data = []
+        
+        # Parse schema
+        from ...spark_types import MockStructType, MockStructField
+        from ...core.schema_inference import infer_schema_from_data
+        
+        result_schema: MockStructType
+        if isinstance(schema, str):
+            # For DDL string, use schema inference from result data
+            # (DDL parsing is complex, so we rely on inference for now)
+            result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
+        elif isinstance(schema, MockStructType):
+            result_schema = schema
+        else:
+            # Try to infer schema from result data
+            result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
+        
+        storage: Any = getattr(self.df, 'storage', None)
+        return MockDataFrame(result_data, result_schema, storage)
+
+    def transform(self, func: Any) -> "MockDataFrame":
+        """Apply a function to each group and return a DataFrame with the same schema.
+        
+        This is similar to applyInPandas but preserves the original schema.
+        The function should take a pandas DataFrame and return a pandas DataFrame
+        with the same columns (though it may add computed columns).
+        
+        Args:
+            func: A function that takes a pandas DataFrame and returns a pandas DataFrame.
+        
+        Returns:
+            MockDataFrame: Result of applying the function to each group.
+        
+        Example:
+            >>> def add_group_stats(pdf):
+            ...     pdf['group_mean'] = pdf['value'].mean()
+            ...     pdf['group_std'] = pdf['value'].std()
+            ...     return pdf
+            >>> df.groupBy("category").transform(add_group_stats)
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas is required for transform. "
+                "Install it with: pip install 'mock-spark[pandas]'"
+            )
+        
+        # Materialize DataFrame if lazy
+        if self.df.is_lazy:
+            df = self.df._materialize_if_lazy()
+        else:
+            df = self.df
+        
+        # Group data by group columns
+        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        group_indices: Dict[Any, List[int]] = {}  # Track original indices
+        
+        for idx, row in enumerate(df.data):
+            group_key = tuple(row.get(col) for col in self.group_columns)
+            if group_key not in groups:
+                groups[group_key] = []
+                group_indices[group_key] = []
+            groups[group_key].append(row)
+            group_indices[group_key].append(idx)
+        
+        # Apply function to each group and preserve order
+        result_rows: List[Dict[str, Any]] = [{}] * len(df.data)
+        
+        for group_key, group_rows in groups.items():
+            # Convert group to pandas DataFrame
+            group_pdf = pd.DataFrame(group_rows)
+            
+            # Apply function
+            transformed_pdf = func(group_pdf)
+            
+            if not isinstance(transformed_pdf, pd.DataFrame):
+                raise TypeError(
+                    f"Function must return a pandas DataFrame, got {type(transformed_pdf).__name__}"
+                )
+            
+            # Put transformed rows back in their original positions
+            transformed_rows = transformed_pdf.to_dict('records')
+            for idx, transformed_row in zip(group_indices[group_key], transformed_rows):
+                result_rows[idx] = transformed_row
+        
+        # Use the same schema as the original DataFrame
+        # (or extend it if new columns were added)
+        from ...core.schema_inference import infer_schema_from_data
+        
+        result_schema = infer_schema_from_data(result_rows) if result_rows else df.schema
+        
+        storage: Any = getattr(self.df, 'storage', None)
+        return MockDataFrame(result_rows, result_schema, storage)

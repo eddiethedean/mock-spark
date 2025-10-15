@@ -44,6 +44,8 @@ from .string import StringFunctions
 from .math import MathFunctions
 from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
+from .array import ArrayFunctions
+from .map import MapFunctions
 
 # Create module-level aliases for backward compatibility
 col = F.col
@@ -71,6 +73,11 @@ translate = F.translate
 ascii = F.ascii
 base64 = F.base64
 unbase64 = F.unbase64
+regexp_extract_all = F.regexp_extract_all
+array_join = F.array_join
+repeat = F.repeat
+initcap = F.initcap
+soundex = F.soundex
 abs = F.abs
 round = F.round
 ceil = F.ceil
@@ -123,6 +130,8 @@ date_add = F.date_add
 date_sub = F.date_sub
 date_format = F.date_format
 from_unixtime = F.from_unixtime
+timestampadd = F.timestampadd
+timestampdiff = F.timestampdiff
 row_number = F.row_number
 rank = F.rank
 dense_rank = F.dense_rank
@@ -133,6 +142,17 @@ ntile = F.ntile
 cume_dist = F.cume_dist
 percent_rank = F.percent_rank
 desc = F.desc
+array_distinct = F.array_distinct
+array_intersect = F.array_intersect
+array_union = F.array_union
+array_except = F.array_except
+array_position = F.array_position
+array_remove = F.array_remove
+map_keys = F.map_keys
+map_values = F.map_values
+map_entries = F.map_entries
+map_concat = F.map_concat
+map_from_arrays = F.map_from_arrays
 
 __all__ = [
     "MockColumn",
@@ -148,6 +168,8 @@ __all__ = [
     "MathFunctions",
     "AggregateFunctions",
     "DateTimeFunctions",
+    "ArrayFunctions",
+    "MapFunctions",
     # Module-level function aliases
     "col",
     "lit",
@@ -174,6 +196,11 @@ __all__ = [
     "ascii",
     "base64",
     "unbase64",
+    "regexp_extract_all",
+    "array_join",
+    "repeat",
+    "initcap",
+    "soundex",
     "abs",
     "round",
     "ceil",
@@ -226,6 +253,8 @@ __all__ = [
     "date_sub",
     "date_format",
     "from_unixtime",
+    "timestampadd",
+    "timestampdiff",
     "row_number",
     "rank",
     "dense_rank",
@@ -236,4 +265,15 @@ __all__ = [
     "cume_dist",
     "percent_rank",
     "desc",
+    "array_distinct",
+    "array_intersect",
+    "array_union",
+    "array_except",
+    "array_position",
+    "array_remove",
+    "map_keys",
+    "map_values",
+    "map_entries",
+    "map_concat",
+    "map_from_arrays",
 ]

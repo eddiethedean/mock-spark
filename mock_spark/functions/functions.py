@@ -36,6 +36,8 @@ from .string import StringFunctions
 from .math import MathFunctions
 from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
+from .array import ArrayFunctions
+from .map import MapFunctions
 
 
 class MockFunctions:
@@ -136,6 +138,37 @@ class MockFunctions:
     def unbase64(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Decode a base64-encoded string."""
         return StringFunctions.unbase64(column)
+
+    @staticmethod
+    def regexp_extract_all(
+        column: Union[MockColumn, str], pattern: str, idx: int = 0
+    ) -> MockColumnOperation:
+        """Extract all matches of a regex pattern."""
+        return StringFunctions.regexp_extract_all(column, pattern, idx)
+
+    @staticmethod
+    def array_join(
+        column: Union[MockColumn, str],
+        delimiter: str,
+        null_replacement: Optional[str] = None,
+    ) -> MockColumnOperation:
+        """Join array elements with a delimiter."""
+        return StringFunctions.array_join(column, delimiter, null_replacement)
+
+    @staticmethod
+    def repeat(column: Union[MockColumn, str], n: int) -> MockColumnOperation:
+        """Repeat a string N times."""
+        return StringFunctions.repeat(column, n)
+
+    @staticmethod
+    def initcap(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Capitalize first letter of each word."""
+        return StringFunctions.initcap(column)
+
+    @staticmethod
+    def soundex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Soundex encoding for phonetic matching."""
+        return StringFunctions.soundex(column)
 
     # Math functions
     @staticmethod
@@ -452,6 +485,20 @@ class MockFunctions:
         return DateTimeFunctions.from_unixtime(column, format)
 
     @staticmethod
+    def timestampadd(
+        unit: str, quantity: Union[int, MockColumn], timestamp: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Add time units to a timestamp."""
+        return DateTimeFunctions.timestampadd(unit, quantity, timestamp)
+
+    @staticmethod
+    def timestampdiff(
+        unit: str, start: Union[str, MockColumn], end: Union[str, MockColumn]
+    ) -> MockColumnOperation:
+        """Calculate difference between two timestamps."""
+        return DateTimeFunctions.timestampdiff(unit, start, end)
+
+    @staticmethod
     def nvl(column: Union[MockColumn, str], default_value: Any) -> MockColumnOperation:
         """Return default if null."""
         if isinstance(column, str):
@@ -589,6 +636,71 @@ class MockFunctions:
         operation = MockColumnOperation(column, "desc", None, name=f"{column.name} DESC")
         operation.function_name = "desc"
         return operation
+
+    # Array functions
+    @staticmethod
+    def array_distinct(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Remove duplicate elements from array."""
+        return ArrayFunctions.array_distinct(column)
+
+    @staticmethod
+    def array_intersect(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Intersection of two arrays."""
+        return ArrayFunctions.array_intersect(column1, column2)
+
+    @staticmethod
+    def array_union(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Union of two arrays."""
+        return ArrayFunctions.array_union(column1, column2)
+
+    @staticmethod
+    def array_except(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Elements in first array but not second."""
+        return ArrayFunctions.array_except(column1, column2)
+
+    @staticmethod
+    def array_position(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+        """Position of element in array."""
+        return ArrayFunctions.array_position(column, value)
+
+    @staticmethod
+    def array_remove(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+        """Remove all occurrences of element from array."""
+        return ArrayFunctions.array_remove(column, value)
+
+    # Map functions
+    @staticmethod
+    def map_keys(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get all keys from map."""
+        return MapFunctions.map_keys(column)
+
+    @staticmethod
+    def map_values(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get all values from map."""
+        return MapFunctions.map_values(column)
+
+    @staticmethod
+    def map_entries(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get key-value pairs as array of structs."""
+        return MapFunctions.map_entries(column)
+
+    @staticmethod
+    def map_concat(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Concatenate multiple maps."""
+        return MapFunctions.map_concat(*columns)
+
+    @staticmethod
+    def map_from_arrays(
+        keys: Union[MockColumn, str], values: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Create map from key and value arrays."""
+        return MapFunctions.map_from_arrays(keys, values)
 
 
 # Create the F namespace instance

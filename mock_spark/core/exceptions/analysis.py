@@ -5,7 +5,7 @@ This module provides exception classes for analysis-related errors,
 including SQL parsing, query analysis, and schema validation errors.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, List
 from .base import MockSparkException
 
 
@@ -18,13 +18,23 @@ class AnalysisException(MockSparkException):
     Args:
         message: Error message describing the analysis error.
         stackTrace: Optional stack trace information.
+        error_code: Optional error code for programmatic handling.
+        context: Optional context information (table name, query, etc).
 
     Example:
-        >>> raise AnalysisException("Column 'unknown' does not exist")
+        >>> raise AnalysisException("Column 'unknown' does not exist", error_code="COLUMN_NOT_FOUND")
     """
 
-    def __init__(self, message: str, stackTrace: Optional[Any] = None):
+    def __init__(
+        self,
+        message: str,
+        stackTrace: Optional[Any] = None,
+        error_code: Optional[str] = None,
+        context: Optional[dict] = None,
+    ):
         super().__init__(message, stackTrace)
+        self.error_code = error_code
+        self.context = context or {}
 
 
 class ParseException(AnalysisException):
@@ -71,23 +81,90 @@ class ColumnNotFoundException(AnalysisException):
 
     Args:
         column_name: Name of the column that was not found.
+        available_columns: List of available column names.
+        table_name: Optional table name for context.
         message: Optional custom error message.
         stackTrace: Optional stack trace information.
 
     Example:
-        >>> raise ColumnNotFoundException("unknown_column")
+        >>> raise ColumnNotFoundException("unknown_column", available_columns=["id", "name"])
     """
 
     def __init__(
         self,
         column_name: str,
+        available_columns: Optional[List[str]] = None,
+        table_name: Optional[str] = None,
         message: Optional[str] = None,
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
+            # Build enhanced error message
             message = f"Column '{column_name}' does not exist"
-        super().__init__(message, stackTrace)
+            
+            if table_name:
+                message += f" in table '{table_name}'"
+            
+            if available_columns:
+                message += f". Available columns: {', '.join(available_columns)}"
+                
+                # Add suggestion if there's a similar column name
+                suggestions = self._find_similar_columns(column_name, available_columns)
+                if suggestions:
+                    if len(suggestions) == 1:
+                        message += f". Did you mean '{suggestions[0]}'?"
+                    else:
+                        suggestions_str = ', '.join(f"'{s}'" for s in suggestions)
+                        message += f". Did you mean one of: {suggestions_str}?"
+        
+        context = {"table_name": table_name, "available_columns": available_columns}
+        super().__init__(message, stackTrace, error_code="COLUMN_NOT_FOUND", context=context)
         self.column_name = column_name
+        self.available_columns = available_columns or []
+        self.table_name = table_name
+    
+    @staticmethod
+    def _find_similar_columns(target: str, columns: List[str], max_suggestions: int = 3) -> List[str]:
+        """Find similar column names using Levenshtein-like similarity."""
+        def similarity_score(s1: str, s2: str) -> float:
+            """Simple similarity score based on character overlap (0-1)."""
+            s1_lower = s1.lower()
+            s2_lower = s2.lower()
+            
+            # Exact case-insensitive match
+            if s1_lower == s2_lower:
+                return 1.0
+            
+            # Check if one contains the other
+            if s1_lower in s2_lower or s2_lower in s1_lower:
+                return 0.8
+            
+            # Character overlap score
+            s1_set = set(s1_lower)
+            s2_set = set(s2_lower)
+            if not s1_set or not s2_set:
+                return 0.0
+            
+            intersection = len(s1_set & s2_set)
+            union = len(s1_set | s2_set)
+            return intersection / union if union > 0 else 0.0
+        
+        # Score each column and filter by threshold
+        scored_columns = [
+            (col, similarity_score(target, col))
+            for col in columns
+        ]
+        
+        # Filter columns with score > 0.5 and sort by score
+        similar = [
+            col for col, score in scored_columns
+            if score > 0.5
+        ]
+        
+        # Sort by similarity score (descending)
+        similar.sort(key=lambda col: similarity_score(target, col), reverse=True)
+        
+        return similar[:max_suggestions]
 
 
 class TableNotFoundException(AnalysisException):
@@ -98,23 +175,37 @@ class TableNotFoundException(AnalysisException):
 
     Args:
         table_name: Name of the table that was not found.
+        available_tables: Optional list of available table names.
+        database_name: Optional database name for context.
         message: Optional custom error message.
         stackTrace: Optional stack trace information.
 
     Example:
-        >>> raise TableNotFoundException("unknown_table")
+        >>> raise TableNotFoundException("unknown_table", available_tables=["users", "orders"])
     """
 
     def __init__(
         self,
         table_name: str,
+        available_tables: Optional[List[str]] = None,
+        database_name: Optional[str] = None,
         message: Optional[str] = None,
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Table '{table_name}' does not exist"
-        super().__init__(message, stackTrace)
+            
+            if database_name:
+                message += f" in database '{database_name}'"
+            
+            if available_tables:
+                message += f". Available tables: {', '.join(available_tables)}"
+        
+        context = {"database_name": database_name, "available_tables": available_tables}
+        super().__init__(message, stackTrace, error_code="TABLE_NOT_FOUND", context=context)
         self.table_name = table_name
+        self.available_tables = available_tables or []
+        self.database_name = database_name
 
 
 class DatabaseNotFoundException(AnalysisException):
@@ -153,22 +244,37 @@ class TypeMismatchException(AnalysisException):
     Args:
         expected_type: Expected data type.
         actual_type: Actual data type.
+        column_name: Optional column name for context.
+        operation: Optional operation name for context.
         message: Optional custom error message.
         stackTrace: Optional stack trace information.
 
     Example:
-        >>> raise TypeMismatchException("string", "integer")
+        >>> raise TypeMismatchException("string", "integer", column_name="age")
     """
 
     def __init__(
         self,
         expected_type: str,
         actual_type: str,
+        column_name: Optional[str] = None,
+        operation: Optional[str] = None,
         message: Optional[str] = None,
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
             message = f"Type mismatch: expected {expected_type}, got {actual_type}"
-        super().__init__(message, stackTrace)
+            
+            if column_name:
+                message += f" for column '{column_name}'"
+            
+            if operation:
+                message += f" in operation '{operation}'"
+        
+        context = {"expected_type": expected_type, "actual_type": actual_type, 
+                   "column_name": column_name, "operation": operation}
+        super().__init__(message, stackTrace, error_code="TYPE_MISMATCH", context=context)
         self.expected_type = expected_type
         self.actual_type = actual_type
+        self.column_name = column_name
+        self.operation = operation
