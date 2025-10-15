@@ -44,6 +44,8 @@ from .string import StringFunctions
 from .math import MathFunctions
 from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
+from .array import ArrayFunctions
+from .map import MapFunctions
 
 # Create module-level aliases for backward compatibility
 col = F.col
@@ -140,6 +142,17 @@ ntile = F.ntile
 cume_dist = F.cume_dist
 percent_rank = F.percent_rank
 desc = F.desc
+array_distinct = F.array_distinct
+array_intersect = F.array_intersect
+array_union = F.array_union
+array_except = F.array_except
+array_position = F.array_position
+array_remove = F.array_remove
+map_keys = F.map_keys
+map_values = F.map_values
+map_entries = F.map_entries
+map_concat = F.map_concat
+map_from_arrays = F.map_from_arrays
 
 __all__ = [
     "MockColumn",
@@ -155,6 +168,8 @@ __all__ = [
     "MathFunctions",
     "AggregateFunctions",
     "DateTimeFunctions",
+    "ArrayFunctions",
+    "MapFunctions",
     # Module-level function aliases
     "col",
     "lit",
@@ -250,4 +265,15 @@ __all__ = [
     "cume_dist",
     "percent_rank",
     "desc",
+    "array_distinct",
+    "array_intersect",
+    "array_union",
+    "array_except",
+    "array_position",
+    "array_remove",
+    "map_keys",
+    "map_values",
+    "map_entries",
+    "map_concat",
+    "map_from_arrays",
 ]

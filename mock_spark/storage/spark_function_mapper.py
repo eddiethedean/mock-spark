@@ -163,6 +163,15 @@ ARRAY_FUNCTIONS: Dict[str, str] = {
     "sort_array": "sort_array",
 }
 
+# Map Functions
+MAP_FUNCTIONS: Dict[str, str] = {
+    "map_keys": "map_keys",
+    "map_values": "map_values",
+    "map_entries": "map_entries",
+    "map_concat": "map_concat",
+    "map_from_arrays": "map_from_arrays",
+}
+
 # JSON Functions
 JSON_FUNCTIONS: Dict[str, str] = {
     "get_json_object": "json_extract",
@@ -208,6 +217,7 @@ ALL_FUNCTIONS: Dict[str, str] = {
     **CONDITIONAL_FUNCTIONS,
     **WINDOW_FUNCTIONS,
     **ARRAY_FUNCTIONS,
+    **MAP_FUNCTIONS,
     **JSON_FUNCTIONS,
     **CONVERSION_FUNCTIONS,
     **MISC_FUNCTIONS,

@@ -194,10 +194,28 @@ class SQLToSQLAlchemyTranslator:
         group_by = ast.find(exp.Group)
         if group_by:
             group_cols = []
-            for expr in group_by.expressions:
-                col = self._translate_expression(expr, table)
-                group_cols.append(col)
-            stmt = stmt.group_by(*group_cols)
+            # Check for GROUP BY ALL
+            if len(group_by.expressions) == 1:
+                expr_str = str(group_by.expressions[0]).strip().upper()
+                if expr_str == "ALL":
+                    # GROUP BY ALL: auto-detect non-aggregated columns
+                    # For simplicity, group by all non-aggregate selected columns
+                    for i, sel_expr in enumerate(ast.expressions):
+                        # Skip aggregate functions
+                        if not isinstance(sel_expr, (exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max)):
+                            col = self._translate_expression(sel_expr, table)
+                            group_cols.append(col)
+                else:
+                    for expr in group_by.expressions:
+                        col = self._translate_expression(expr, table)
+                        group_cols.append(col)
+            else:
+                for expr in group_by.expressions:
+                    col = self._translate_expression(expr, table)
+                    group_cols.append(col)
+            
+            if group_cols:
+                stmt = stmt.group_by(*group_cols)
 
         # Add HAVING
         having = ast.find(exp.Having)
@@ -209,14 +227,35 @@ class SQLToSQLAlchemyTranslator:
         order_by = ast.find(exp.Order)
         if order_by:
             order_cols = []
-            for ordered in order_by.expressions:
-                col = self._translate_expression(ordered.this, table)
-                if isinstance(ordered, exp.Ordered) and ordered.args.get("desc"):
-                    col = desc(col)
+            # Check for ORDER BY ALL
+            if len(order_by.expressions) == 1:
+                expr_str = str(order_by.expressions[0]).strip().upper()
+                # Remove DESC if present
+                expr_str_clean = expr_str.replace(" DESC", "").replace(" ASC", "").strip()
+                if expr_str_clean == "ALL":
+                    # ORDER BY ALL: order by all selected columns
+                    for sel_expr in ast.expressions:
+                        col = self._translate_expression(sel_expr, table)
+                        order_cols.append(asc(col))
                 else:
-                    col = asc(col)
-                order_cols.append(col)
-            stmt = stmt.order_by(*order_cols)
+                    for ordered in order_by.expressions:
+                        col = self._translate_expression(ordered.this, table)
+                        if isinstance(ordered, exp.Ordered) and ordered.args.get("desc"):
+                            col = desc(col)
+                        else:
+                            col = asc(col)
+                        order_cols.append(col)
+            else:
+                for ordered in order_by.expressions:
+                    col = self._translate_expression(ordered.this, table)
+                    if isinstance(ordered, exp.Ordered) and ordered.args.get("desc"):
+                        col = desc(col)
+                    else:
+                        col = asc(col)
+                    order_cols.append(col)
+            
+            if order_cols:
+                stmt = stmt.order_by(*order_cols)
 
         # Add LIMIT
         limit_exp = ast.find(exp.Limit)

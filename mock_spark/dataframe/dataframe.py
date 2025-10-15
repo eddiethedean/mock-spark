@@ -3652,6 +3652,61 @@ class MockDataFrame:
         result_schema = MockStructType(result_fields)
         return MockDataFrame(result_data, result_schema, self.storage)
 
+    def mapPartitions(self, func: Any, preservesPartitioning: bool = False) -> "MockDataFrame":
+        """Apply a function to each partition of the DataFrame.
+        
+        For mock-spark, we treat the entire DataFrame as a single partition.
+        The function receives an iterator of Row objects and should return
+        an iterator of Row objects.
+        
+        Args:
+            func: A function that takes an iterator of Rows and returns an iterator of Rows.
+            preservesPartitioning: Whether the function preserves partitioning (unused in mock-spark).
+        
+        Returns:
+            MockDataFrame: Result of applying the function.
+        
+        Example:
+            >>> def add_index(iterator):
+            ...     for i, row in enumerate(iterator):
+            ...         yield MockRow(id=row.id, name=row.name, index=i)
+            >>> df.mapPartitions(add_index)
+        """
+        # Materialize if lazy
+        if self.is_lazy:
+            materialized = self._materialize_if_lazy()
+        else:
+            materialized = self
+        
+        # Convert data to Row objects
+        from ..spark_types import MockRow
+        from typing import Iterator
+        
+        def row_iterator() -> Iterator[MockRow]:
+            for row_dict in materialized.data:
+                yield MockRow(**row_dict)
+        
+        # Apply the function
+        result_iterator = func(row_iterator())
+        
+        # Collect results
+        result_data = []
+        for result_row in result_iterator:
+            if isinstance(result_row, MockRow):
+                result_data.append(result_row.asDict())
+            elif isinstance(result_row, dict):
+                result_data.append(result_row)
+            else:
+                # Try to convert to dict
+                result_data.append(dict(result_row))
+        
+        # Infer schema from result data
+        from ..core.schema_inference import infer_schema_from_data
+        
+        result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+        
+        return MockDataFrame(result_data, result_schema, self.storage)
+
     def mapInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
         """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames.
         
@@ -3691,7 +3746,9 @@ class MockDataFrame:
         input_pdf = pd.DataFrame(materialized.data)
         
         # Create an iterator that yields the pandas DataFrame
-        def input_iterator() -> Any:
+        from typing import Iterator
+        
+        def input_iterator() -> Iterator[Any]:
             yield input_pdf
         
         # Apply the function

@@ -36,6 +36,8 @@ from .string import StringFunctions
 from .math import MathFunctions
 from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
+from .array import ArrayFunctions
+from .map import MapFunctions
 
 
 class MockFunctions:
@@ -634,6 +636,71 @@ class MockFunctions:
         operation = MockColumnOperation(column, "desc", None, name=f"{column.name} DESC")
         operation.function_name = "desc"
         return operation
+
+    # Array functions
+    @staticmethod
+    def array_distinct(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Remove duplicate elements from array."""
+        return ArrayFunctions.array_distinct(column)
+
+    @staticmethod
+    def array_intersect(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Intersection of two arrays."""
+        return ArrayFunctions.array_intersect(column1, column2)
+
+    @staticmethod
+    def array_union(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Union of two arrays."""
+        return ArrayFunctions.array_union(column1, column2)
+
+    @staticmethod
+    def array_except(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Elements in first array but not second."""
+        return ArrayFunctions.array_except(column1, column2)
+
+    @staticmethod
+    def array_position(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+        """Position of element in array."""
+        return ArrayFunctions.array_position(column, value)
+
+    @staticmethod
+    def array_remove(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+        """Remove all occurrences of element from array."""
+        return ArrayFunctions.array_remove(column, value)
+
+    # Map functions
+    @staticmethod
+    def map_keys(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get all keys from map."""
+        return MapFunctions.map_keys(column)
+
+    @staticmethod
+    def map_values(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get all values from map."""
+        return MapFunctions.map_values(column)
+
+    @staticmethod
+    def map_entries(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get key-value pairs as array of structs."""
+        return MapFunctions.map_entries(column)
+
+    @staticmethod
+    def map_concat(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Concatenate multiple maps."""
+        return MapFunctions.map_concat(*columns)
+
+    @staticmethod
+    def map_from_arrays(
+        keys: Union[MockColumn, str], values: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Create map from key and value arrays."""
+        return MapFunctions.map_from_arrays(keys, values)
 
 
 # Create the F namespace instance

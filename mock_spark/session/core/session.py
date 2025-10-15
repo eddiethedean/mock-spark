@@ -5,7 +5,7 @@ This module provides the core MockSparkSession class for session management,
 maintaining compatibility with PySpark's SparkSession interface.
 """
 
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, Tuple, cast
 from ...core.interfaces.session import ISession
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.storage import IStorageManager
@@ -317,23 +317,105 @@ class MockSparkSession:
     # NOTE: Validation and coercion logic extracted to DataValidator
     # See: mock_spark/core/data_validation.py
 
-    def sql(self, query: str) -> IDataFrame:
-        """Execute SQL query (mockable version)."""
-        return self._sql_impl(query)
+    def sql(self, query: str, *args: Any, **kwargs: Any) -> IDataFrame:
+        """Execute SQL query with optional parameters (mockable version).
+        
+        Args:
+            query: SQL query string with optional placeholders.
+            *args: Positional parameters for ? placeholders.
+            **kwargs: Named parameters for :name placeholders.
+        
+        Returns:
+            DataFrame with query results.
+            
+        Example:
+            >>> spark.sql("SELECT * FROM users WHERE age > ?", 18)
+            >>> spark.sql("SELECT * FROM users WHERE age > :min_age", min_age=18)
+        """
+        return self._sql_impl(query, *args, **kwargs)
 
-    def _real_sql(self, query: str) -> IDataFrame:
-        """Execute SQL query.
+    def _real_sql(self, query: str, *args: Any, **kwargs: Any) -> IDataFrame:
+        """Execute SQL query with optional parameters.
 
         Args:
-            query: SQL query string.
+            query: SQL query string with optional placeholders.
+            *args: Positional parameters for ? placeholders.
+            **kwargs: Named parameters for :name placeholders.
 
         Returns:
             DataFrame with query results.
 
         Example:
-            >>> df = spark.sql("SELECT * FROM users WHERE age > 18")
+            >>> df = spark.sql("SELECT * FROM users WHERE age > ?", 18)
+            >>> df = spark.sql("SELECT * FROM users WHERE name = :name", name="Alice")
         """
+        # Process parameters if provided
+        if args or kwargs:
+            query = self._bind_parameters(query, args, kwargs)
+        
         return self._sql_executor.execute(query)
+    
+    def _bind_parameters(self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> str:
+        """Bind parameters to SQL query safely.
+        
+        Args:
+            query: SQL query with placeholders.
+            args: Positional parameters.
+            kwargs: Named parameters.
+        
+        Returns:
+            Query with parameters bound.
+        """
+        import re
+        
+        # Handle positional parameters (?)
+        if args:
+            # Count placeholders
+            placeholder_count = query.count('?')
+            if len(args) != placeholder_count:
+                raise ValueError(
+                    f"Number of parameters ({len(args)}) does not match "
+                    f"number of placeholders ({placeholder_count})"
+                )
+            
+            # Replace each ? with the corresponding parameter
+            result = query
+            for arg in args:
+                result = result.replace('?', self._format_param(arg), 1)
+            query = result
+        
+        # Handle named parameters (:name)
+        if kwargs:
+            for name, value in kwargs.items():
+                placeholder = f":{name}"
+                if placeholder not in query:
+                    raise ValueError(f"Parameter '{name}' not found in query")
+                query = query.replace(placeholder, self._format_param(value))
+        
+        return query
+    
+    def _format_param(self, value: Any) -> str:
+        """Format a parameter value for SQL safely.
+        
+        Args:
+            value: Parameter value.
+        
+        Returns:
+            Formatted parameter string.
+        """
+        if value is None:
+            return "NULL"
+        elif isinstance(value, str):
+            # Escape single quotes for SQL safety
+            escaped = value.replace("'", "''")
+            return f"'{escaped}'"
+        elif isinstance(value, bool):
+            return "TRUE" if value else "FALSE"
+        elif isinstance(value, (int, float)):
+            return str(value)
+        else:
+            # Default to string representation
+            return f"'{str(value)}'"
 
     def table(self, table_name: str) -> IDataFrame:
         """Get table as DataFrame (mockable version)."""
