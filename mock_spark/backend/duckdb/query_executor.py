@@ -1004,7 +1004,7 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_intersect":
                                         # array_intersect(array1, array2) -> list_intersect(array1, array2)
-                                        if isinstance(col.value, MockColumn):
+                                        if hasattr(col.value, 'name'):
                                             array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
                                         else:
                                             array2 = str(col.value)
@@ -1012,7 +1012,7 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_union":
                                         # array_union(array1, array2) -> list_concat + list_distinct
-                                        if isinstance(col.value, MockColumn):
+                                        if hasattr(col.value, 'name'):
                                             array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
                                         else:
                                             array2 = str(col.value)
@@ -1021,7 +1021,7 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "array_except":
                                         # array_except(array1, array2) - DuckDB doesn't have list_except
                                         # Use LIST_FILTER: filter out elements that are in array2
-                                        if isinstance(col.value, MockColumn):
+                                        if hasattr(col.value, 'name'):
                                             array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
                                         else:
                                             array2 = str(col.value)
@@ -1150,7 +1150,10 @@ class SQLAlchemyMaterializer:
                                                     body_part = re.sub(rf'\b{x_name}\b', 's[1]', body_part)
                                                     body_part = re.sub(rf'\b{y_name}\b', 's[2]', body_part)
                                                     modified_lambda = f"s -> {body_part}"
-                                                    special_sql = f"LIST_TRANSFORM(LIST_ZIP({column_expr}, {array2_expr}), {modified_lambda})"
+                                                    # Filter out NULLs from mismatched array lengths before transform
+                                                    # LIST_ZIP pads with NULL when lengths differ, but PySpark stops at shorter length
+                                                    zipped = f"LIST_FILTER(LIST_ZIP({column_expr}, {array2_expr}), s -> s[1] IS NOT NULL AND s[2] IS NOT NULL)"
+                                                    special_sql = f"LIST_TRANSFORM({zipped}, {modified_lambda})"
                                                 else:
                                                     # Single param lambda - just use it as is
                                                     lambda_sql = lambda_expr.to_duckdb_lambda()
