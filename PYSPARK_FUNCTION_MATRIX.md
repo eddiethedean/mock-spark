@@ -39,7 +39,7 @@ Total functions cataloged: 455
 | `Tuple` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `Type` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `Union` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `UserDefinedFunction` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `UserDefinedFunction` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `UserDefinedTableFunction` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `ValuesView` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `abs` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -300,7 +300,7 @@ Total functions cataloged: 455
 | `octet_length` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `overlay` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `overload` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `pandas_udf` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `pandas_udf` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `parse_url` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `percent_rank` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `percentile` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -510,8 +510,8 @@ Total methods cataloged: 94
 | `fillna` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `filter` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `first` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `foreach` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `foreachPartition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `foreach` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `foreachPartition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `freqItems` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `groupBy` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `groupby` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -521,10 +521,10 @@ Total methods cataloged: 94
 | `intersect` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `intersectAll` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `isEmpty` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| `isLocal` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `isLocal` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `join` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `limit` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `localCheckpoint` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `localCheckpoint` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `mapInArrow` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `mapInPandas` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `melt` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
@@ -537,7 +537,7 @@ Total methods cataloged: 94
 | `randomSplit` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `registerTempTable` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `repartition` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `repartitionByRange` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `repartitionByRange` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `replace` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `rollup` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sameSemantics` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -548,7 +548,7 @@ Total methods cataloged: 94
 | `semanticHash` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `show` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sort` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `sortWithinPartitions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sortWithinPartitions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `subtract` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `summary` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `tail` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -556,7 +556,7 @@ Total methods cataloged: 94
 | `to` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `toDF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `toJSON` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `toLocalIterator` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `toLocalIterator` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `toPandas` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `to_koalas` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `to_pandas_on_spark` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -572,7 +572,7 @@ Total methods cataloged: 94
 | `withColumns` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `withColumnsRenamed` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `withMetadata` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `withWatermark` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `withWatermark` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `writeTo` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ## Summary Statistics
@@ -583,4 +583,4 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 271 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 289 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 451 functions, 94 DataFrame methods
-- **Mock-Spark**: 120 functions (+7), 70 DataFrame methods (+3)
+- **Mock-Spark**: 121 functions, 78 DataFrame methods

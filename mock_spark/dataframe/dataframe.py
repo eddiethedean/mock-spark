@@ -4486,6 +4486,115 @@ class MockDataFrame:
             result = result.withColumnRenamed(old_name, new_name)
         return result
 
+    def foreach(self, f: Any) -> None:
+        """Apply function to each row (action, all PySpark versions).
+        
+        Args:
+            f: Function to apply to each Row
+        """
+        for row in self.collect():
+            f(row)
+
+    def foreachPartition(self, f: Any) -> None:
+        """Apply function to each partition (action, all PySpark versions).
+        
+        Args:
+            f: Function to apply to each partition Iterator[Row]
+        """
+        # Mock implementation: treat entire dataset as single partition
+        f(iter(self.collect()))
+
+    def repartitionByRange(
+        self,
+        numPartitions: Union[int, str, "MockColumn"],
+        *cols: Union[str, "MockColumn"]
+    ) -> "MockDataFrame":
+        """Repartition by range of column values (all PySpark versions).
+        
+        Args:
+            numPartitions: Number of partitions or first column if string/Column
+            *cols: Columns to partition by
+            
+        Returns:
+            New DataFrame repartitioned by range (mock: sorted)
+        """
+        # For mock purposes, sort by columns to simulate range partitioning
+        if isinstance(numPartitions, int):
+            return self.orderBy(*cols)
+        else:
+            # numPartitions is actually the first column
+            return self.orderBy(numPartitions, *cols)
+
+    def sortWithinPartitions(
+        self,
+        *cols: Union[str, "MockColumn"],
+        **kwargs: Any
+    ) -> "MockDataFrame":
+        """Sort within partitions (all PySpark versions).
+        
+        Args:
+            *cols: Columns to sort by
+            **kwargs: Additional arguments (ascending, etc.)
+            
+        Returns:
+            New DataFrame sorted within partitions (mock: equivalent to orderBy)
+        """
+        # For mock purposes, treat as regular sort since we have single partition
+        return self.orderBy(*cols, **kwargs)
+
+    def toLocalIterator(self, prefetchPartitions: bool = False) -> Any:
+        """Return iterator over rows (all PySpark versions).
+        
+        Args:
+            prefetchPartitions: Whether to prefetch partitions (ignored in mock)
+            
+        Returns:
+            Iterator over Row objects
+        """
+        return iter(self.collect())
+
+    def localCheckpoint(self, eager: bool = True) -> "MockDataFrame":
+        """Local checkpoint to truncate lineage (all PySpark versions).
+        
+        Args:
+            eager: Whether to checkpoint eagerly
+            
+        Returns:
+            Same DataFrame with truncated lineage
+        """
+        if eager:
+            # Force materialization
+            _ = len(self.data)
+        return self
+
+    def isLocal(self) -> bool:
+        """Check if running in local mode (all PySpark versions).
+        
+        Returns:
+            True if running in local mode (mock: always True)
+        """
+        return True
+
+    def withWatermark(
+        self,
+        eventTime: str,
+        delayThreshold: str
+    ) -> "MockDataFrame":
+        """Define watermark for streaming (all PySpark versions).
+        
+        Args:
+            eventTime: Column name for event time
+            delayThreshold: Delay threshold (e.g., "1 hour")
+            
+        Returns:
+            DataFrame with watermark defined (mock: returns self unchanged)
+        """
+        # In mock implementation, watermarks don't affect behavior
+        # Store for potential future use
+        self._watermark_col = eventTime  # type: ignore
+        self._watermark_delay = delayThreshold  # type: ignore
+        return self
+
     @property
     def write(self) -> "MockDataFrameWriter":
         """Get DataFrame writer (PySpark-compatible property)."""

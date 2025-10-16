@@ -46,6 +46,7 @@ from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
+from .udf import UserDefinedFunction
 
 # Note: Module-level function aliases are NOT defined here.
 # All function access is handled by __getattr__ at the end of this file.
@@ -375,6 +376,9 @@ __all__ = [
     "bitwiseNOT",
     "toDegrees",
     "toRadians",
+    # Phase 1: High-priority missing features
+    "pandas_udf",
+    "UserDefinedFunction",
 ]
 
 from typing import Any  # noqa: E402
@@ -428,7 +432,7 @@ _CLASS_EXPORTS = {
     "MockColumn", "MockColumnOperation", "MockLiteral", "ExpressionFunctions",
     "MockAggregateFunction", "MockCaseWhen", "MockWindowFunction", "MockFunctions",
     "F", "StringFunctions", "MathFunctions", "AggregateFunctions",
-    "DateTimeFunctions", "ArrayFunctions", "MapFunctions"
+    "DateTimeFunctions", "ArrayFunctions", "MapFunctions", "UserDefinedFunction"
 }
 
 # Add ALL functions to module namespace unconditionally

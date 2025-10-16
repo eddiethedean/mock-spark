@@ -1759,6 +1759,62 @@ class MockFunctions:
             return udf_wrapper(f)
 
     @staticmethod
+    def pandas_udf(
+        f: Optional[Any] = None,
+        returnType: Any = None,
+        functionType: Any = None
+    ) -> Any:
+        """Create a Pandas UDF (vectorized UDF) (all PySpark versions).
+        
+        Pandas UDFs are user-defined functions that execute vectorized operations
+        using Pandas Series/DataFrame, providing better performance than row-at-a-time UDFs.
+        
+        Args:
+            f: Python function to wrap OR return type (if used as decorator)
+            returnType: Return type of the function (defaults to StringType)
+            functionType: Type of Pandas UDF (optional, for compatibility)
+            
+        Returns:
+            Wrapped function that can be used in DataFrame operations
+            
+        Example:
+            >>> from mock_spark import MockSparkSession, F
+            >>> from mock_spark.spark_types import IntegerType
+            >>> spark = MockSparkSession("test")
+            >>> @F.pandas_udf(IntegerType())
+            >>> def multiply_by_two(s):
+            ...     return s * 2
+            >>> df = spark.createDataFrame([{"value": 5}])
+            >>> df.select(multiply_by_two("value").alias("doubled")).show()
+        """
+        from mock_spark.spark_types import StringType
+        from mock_spark.functions.udf import UserDefinedFunction
+
+        # Handle different call patterns:
+        # 1. @pandas_udf(IntegerType()) - f is the type, returnType is None
+        # 2. @pandas_udf(returnType=IntegerType()) - f is None, returnType is the type
+        # 3. pandas_udf(lambda x: x, IntegerType()) - f is function, returnType is the type
+        
+        # Check if first argument is a data type (not a function)
+        if f is not None and not callable(f):
+            # f is actually the return type
+            actual_returnType = f
+            f = None
+        else:
+            actual_returnType = returnType if returnType is not None else StringType()
+
+        def pandas_udf_wrapper(func: Callable) -> UserDefinedFunction:
+            """Wrap function to create UserDefinedFunction with Pandas eval type."""
+            udf_obj = UserDefinedFunction(func, actual_returnType, evalType="PANDAS")
+            return udf_obj
+
+        # Support decorator pattern: @pandas_udf or pandas_udf(lambda x: x)
+        if f is None:
+            return pandas_udf_wrapper
+        else:
+            return pandas_udf_wrapper(f)
+
+    @staticmethod
     def window(
         timeColumn: Union[MockColumn, str],
         windowDuration: str,
