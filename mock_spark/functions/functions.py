@@ -829,6 +829,43 @@ class MockFunctions:
         """Transform map values with function."""
         return MapFunctions.transform_values(column, function)
 
+    # Struct functions (PySpark 3.2+)
+    @staticmethod
+    def struct(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Create a struct column from given columns."""
+        if not cols:
+            raise ValueError("struct requires at least one column")
+        
+        # Use first column as base
+        base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        
+        return MockColumnOperation(
+            base_col,
+            "struct",
+            value=cols[1:] if len(cols) > 1 else None,
+            name=f"struct(...)",
+        )
+
+    @staticmethod
+    def named_struct(*cols: Any) -> MockColumnOperation:
+        """Create a struct column with named fields.
+        
+        Args:
+            *cols: Alternating field names (strings) and column values.
+        """
+        if len(cols) < 2 or len(cols) % 2 != 0:
+            raise ValueError("named_struct requires alternating field names and values")
+        
+        # Use first value column as base (skip first name)
+        base_col = cols[1] if isinstance(cols[1], MockColumn) else MockColumn(str(cols[1]))
+        
+        return MockColumnOperation(
+            base_col,
+            "named_struct",
+            value=cols,
+            name=f"named_struct(...)",
+        )
+
 
 # Create the F namespace instance
 F = MockFunctions()

@@ -724,6 +724,8 @@ class SQLAlchemyMaterializer:
                                 "map_filter": "map_filter",  # Higher-order function - special handling below
                                 "transform_keys": "transform_keys",  # Higher-order function - special handling below
                                 "transform_values": "transform_values",  # Higher-order function - special handling below
+                                "struct": "struct",  # Special handling below
+                                "named_struct": "named_struct",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -1283,6 +1285,40 @@ class SQLAlchemyMaterializer:
                                             func_expr = text(special_sql)
                                         else:
                                             raise ValueError(f"{col.function_name} requires a lambda function")
+                                    elif col.function_name == "struct":
+                                        # struct(col1, col2, ...) -> {col1, col2, ...} or STRUCT_PACK
+                                        from mock_spark.functions.base import MockColumn
+                                        cols = [column_expr]
+                                        if isinstance(col.value, (tuple, list)):
+                                            for c in col.value:
+                                                if isinstance(c, MockColumn):
+                                                    cols.append(f'"{c.name}"')
+                                                elif hasattr(c, 'name'):
+                                                    cols.append(f'"{c.name}"')
+                                                else:
+                                                    cols.append(str(c))
+                                        special_sql = f"STRUCT_PACK({', '.join(cols)})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "named_struct":
+                                        # named_struct(name1, col1, name2, col2, ...) -> {name1: col1, name2: col2}
+                                        from mock_spark.functions.base import MockColumn
+                                        if isinstance(col.value, (tuple, list)):
+                                            pairs = []
+                                            for i in range(0, len(col.value), 2):
+                                                if i+1 < len(col.value):
+                                                    field_name = col.value[i]
+                                                    field_val = col.value[i+1]
+                                                    if isinstance(field_val, MockColumn):
+                                                        val_sql = f'"{field_val.name}"'
+                                                    elif hasattr(field_val, 'name'):
+                                                        val_sql = f'"{field_val.name}"'
+                                                    else:
+                                                        val_sql = str(field_val)
+                                                    pairs.append(f"{field_name}: {val_sql}")
+                                            special_sql = f"{{{', '.join(pairs)}}}"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("named_struct requires field name-value pairs")
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
