@@ -21,8 +21,8 @@ Example:
     >>> df.select(F.map_keys(F.col("properties"))).show()
 """
 
-from typing import Union
-from mock_spark.functions.base import MockColumn, MockColumnOperation
+from typing import Union, Callable, Any
+from mock_spark.functions.base import MockColumn, MockColumnOperation, MockLambdaExpression
 
 
 class MapFunctions:
@@ -134,5 +134,170 @@ class MapFunctions:
             "map_from_arrays",
             values,
             name=f"map_from_arrays({keys.name}, {values.name})",
+        )
+
+    # Advanced Map Functions (PySpark 3.2+)
+
+    @staticmethod
+    def create_map(*cols: Union[MockColumn, str, Any]) -> MockColumnOperation:
+        """Create a map from key-value pairs.
+
+        Args:
+            *cols: Alternating key-value columns/literals.
+
+        Returns:
+            MockColumnOperation representing the create_map function.
+
+        Example:
+            >>> df.select(F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")))
+        """
+        if len(cols) < 2 or len(cols) % 2 != 0:
+            raise ValueError("create_map requires an even number of arguments (key-value pairs)")
+
+        # Use first column as base, store rest as value
+        base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        
+        return MockColumnOperation(
+            base_col,
+            "create_map",
+            value=cols[1:],
+            name=f"create_map(...)",
+        )
+
+    @staticmethod
+    def map_contains_key(column: Union[MockColumn, str], key: Any) -> MockColumnOperation:
+        """Check if map contains a specific key.
+
+        Args:
+            column: The map column.
+            key: The key to check for.
+
+        Returns:
+            MockColumnOperation representing the map_contains_key function.
+
+        Example:
+            >>> df.select(F.map_contains_key(F.col("map"), "key"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "map_contains_key", key, name=f"map_contains_key({column.name}, {key!r})"
+        )
+
+    @staticmethod
+    def map_from_entries(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert array of key-value structs to map.
+
+        Args:
+            column: Array column containing structs with 'key' and 'value' fields.
+
+        Returns:
+            MockColumnOperation representing the map_from_entries function.
+
+        Example:
+            >>> df.select(F.map_from_entries(F.col("entries")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "map_from_entries", name=f"map_from_entries({column.name})"
+        )
+
+    @staticmethod
+    def map_filter(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], bool]
+    ) -> MockColumnOperation:
+        """Filter map entries based on key-value predicate.
+
+        This is a higher-order function that filters map entries using
+        the provided lambda function.
+
+        Args:
+            column: The map column to filter.
+            function: Lambda function (key, value) -> bool that returns True for entries to keep.
+
+        Returns:
+            MockColumnOperation representing the map_filter function.
+
+        Example:
+            >>> df.select(F.map_filter(F.col("map"), lambda k, v: v > 10))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "map_filter",
+            value=lambda_expr,
+            name=f"map_filter({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def transform_keys(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], Any]
+    ) -> MockColumnOperation:
+        """Transform map keys using a function.
+
+        This is a higher-order function that transforms map keys using
+        the provided lambda function.
+
+        Args:
+            column: The map column.
+            function: Lambda function (key, value) -> new_key to transform keys.
+
+        Returns:
+            MockColumnOperation representing the transform_keys function.
+
+        Example:
+            >>> df.select(F.transform_keys(F.col("map"), lambda k, v: F.upper(k)))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "transform_keys",
+            value=lambda_expr,
+            name=f"transform_keys({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def transform_values(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], Any]
+    ) -> MockColumnOperation:
+        """Transform map values using a function.
+
+        This is a higher-order function that transforms map values using
+        the provided lambda function.
+
+        Args:
+            column: The map column.
+            function: Lambda function (key, value) -> new_value to transform values.
+
+        Returns:
+            MockColumnOperation representing the transform_values function.
+
+        Example:
+            >>> df.select(F.transform_values(F.col("map"), lambda k, v: v * 2))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "transform_values",
+            value=lambda_expr,
+            name=f"transform_values({column.name}, <lambda>)",
         )
 

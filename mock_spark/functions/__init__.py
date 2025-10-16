@@ -168,6 +168,12 @@ map_values = F.map_values
 map_entries = F.map_entries
 map_concat = F.map_concat
 map_from_arrays = F.map_from_arrays
+create_map = F.create_map
+map_contains_key = F.map_contains_key
+map_from_entries = F.map_from_entries
+map_filter = F.map_filter
+transform_keys = F.transform_keys
+transform_values = F.transform_values
 
 __all__ = [
     "MockColumn",
@@ -306,4 +312,10 @@ __all__ = [
     "map_entries",
     "map_concat",
     "map_from_arrays",
+    "create_map",
+    "map_contains_key",
+    "map_from_entries",
+    "map_filter",
+    "transform_keys",
+    "transform_values",
 ]
