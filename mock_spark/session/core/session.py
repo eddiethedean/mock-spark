@@ -366,8 +366,6 @@ class MockSparkSession:
         Returns:
             Query with parameters bound.
         """
-        import re
-        
         # Handle positional parameters (?)
         if args:
             # Count placeholders

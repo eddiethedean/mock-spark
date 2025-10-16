@@ -545,7 +545,7 @@ class MockGroupedData:
             result_data = []
         
         # Parse schema
-        from ...spark_types import MockStructType, MockStructField
+        from ...spark_types import MockStructType
         from ...core.schema_inference import infer_schema_from_data
         
         result_schema: MockStructType

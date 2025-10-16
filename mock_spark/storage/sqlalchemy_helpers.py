@@ -51,7 +51,7 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
             impl = String
             cache_ok = True
             
-            def __init__(self):
+            def __init__(self) -> None:
                 super().__init__()
                 self.is_duckdb_map = True  # Marker attribute
         

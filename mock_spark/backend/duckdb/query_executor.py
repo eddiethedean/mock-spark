@@ -170,7 +170,7 @@ class SQLAlchemyMaterializer:
         with Session(self.engine) as session:
             for row_data in data:
                 # Convert row data to values for insert, handling special types
-                insert_values = {}
+                insert_values: Dict[str, Any] = {}
                 for col in columns:
                     value = row_data[col.name]
                     
@@ -867,7 +867,7 @@ class SQLAlchemyMaterializer:
                                         # regexp_extract_all(column, pattern, idx)
                                         if isinstance(col.value, tuple) and len(col.value) >= 2:
                                             pattern = col.value[0]
-                                            idx = col.value[1] if len(col.value) > 1 else 0
+                                            # idx parameter not used in DuckDB implementation
                                             special_sql = f"REGEXP_EXTRACT_ALL({column_expr}, '{pattern}')"
                                             func_expr = text(special_sql)
                                         else:
