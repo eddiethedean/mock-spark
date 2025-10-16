@@ -71,13 +71,18 @@ test = [
     "delta-spark>=2.0.0,<2.2.0",  # Delta Lake compatible with PySpark 3.2.x
 ]
 # PySpark version compatibility modes
-# Install with `pip install mock-spark[pyspark-3-1]` to match PySpark 3.1 API
-pyspark-3-0 = []  # PySpark 3.0 API compatibility
-pyspark-3-1 = []  # PySpark 3.1 API compatibility
-pyspark-3-2 = []  # PySpark 3.2 API compatibility
-pyspark-3-3 = []  # PySpark 3.3 API compatibility
-pyspark-3-4 = []  # PySpark 3.4 API compatibility
-pyspark-3-5 = []  # PySpark 3.5 API compatibility
+# Note: These extras are markers for documentation purposes.
+# To enable version-specific APIs, set the environment variable:
+#   export MOCK_SPARK_PYSPARK_VERSION=3.0
+# Or in Python before importing:
+#   from mock_spark._version_compat import set_pyspark_version
+#   set_pyspark_version('3.0')
+pyspark-3-0 = []  # PySpark 3.0 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.0)
+pyspark-3-1 = []  # PySpark 3.1 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.1)
+pyspark-3-2 = []  # PySpark 3.2 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.2)
+pyspark-3-3 = []  # PySpark 3.3 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.3)
+pyspark-3-4 = []  # PySpark 3.4 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.4)
+pyspark-3-5 = []  # PySpark 3.5 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.5)
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/mock-spark"
