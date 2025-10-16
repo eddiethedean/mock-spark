@@ -1,21 +1,22 @@
 # PySpark Feature Gap Analysis Report
 
 **Generated:** 2025-10-16  
-**Mock-Spark Version:** 2.6.0  
+**Mock-Spark Version:** 2.7.0  
 **PySpark Versions Analyzed:** 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0  
 
 ---
 
 ## Executive Summary
 
-This report identifies PySpark features from versions 3.0-3.5 that are currently missing in mock-spark. Mock-spark provides excellent coverage of core DataFrame operations and SQL functions, with **100% PySpark 3.2 API compatibility** achieved in v2.6.0, but lacks some advanced features and less commonly used functions from across all versions.
+This report identifies PySpark features from versions 3.0-3.5 that are currently missing in mock-spark. Mock-spark provides excellent coverage of core DataFrame operations and SQL functions, with **100% PySpark 3.2 API compatibility** achieved in v2.6.0 and **comprehensive PySpark 3.0/3.1 support** in v2.7.0.
 
 ### Key Findings
 
-- **Total Feature Gaps Identified:** 28 (includes 9 new gaps from PySpark 3.0/3.1 analysis)
+- **Total Feature Gaps Identified:** 16 (down from 28 after v2.7.0 implementation)
 - **High Priority:** 2 features (specialized operations)
-- **Medium Priority:** 7 features (advanced features with moderate usage)
-- **Low Priority:** 19 features (specialized, infrastructure, or rarely-used features)
+- **Medium Priority:** 1 feature (overlay function - future release)
+- **Low Priority:** 13 features (specialized, infrastructure, or rarely-used features)
+- **✅ Implemented in v2.7.0:** 13 new functions (PySpark 3.0/3.1 features)
 - **✅ Implemented in v2.6.0:** 16 major features (46 new functions)
 - **✅ Already Compatible:** 4 infrastructure/ecosystem features (type hints, PyPI, etc.)
 
@@ -656,14 +657,15 @@ These features would enhance mock-spark but are less critical:
 These features are specialized, rarely used, or out of scope:
 
 **PySpark 3.0/3.1 Functions:**
-1. **Hyperbolic Math Functions** (acosh, asinh, atanh) - Rarely used
-2. **overlay()** - String manipulation (uncommon)
-3. **make_date()** - Date construction
-4. **version()** - Version checking
-5. **Boolean Aggregates** (bool_and, bool_or, every, some) - Specialized
-6. **count_if()** - Can be simulated with count(when())
-7. **any_value()** - Non-deterministic aggregate
-8. **Testing API** (pyspark.testing) - Mock-spark is itself a testing tool
+1. ~~**Hyperbolic Math Functions** (acosh, asinh, atanh)~~ - ✅ **Implemented in v2.7.0**
+2. **overlay()** - String manipulation (complex SQL syntax - future release)
+3. ~~**make_date()**~~ - ✅ **Implemented in v2.7.0**
+4. ~~**version()**~~ - ✅ **Implemented in v2.7.0**
+5. ~~**Boolean Aggregates** (bool_and, bool_or, every, some)~~ - ✅ **Implemented in v2.7.0**
+6. ~~**max_by / min_by**~~ - ✅ **Implemented in v2.7.0**
+7. ~~**count_if()**~~ - ✅ **Implemented in v2.7.0**
+8. ~~**any_value()**~~ - ✅ **Implemented in v2.7.0**
+9. **Testing API** (pyspark.testing) - Mock-spark is itself a testing tool
 
 **Infrastructure/Out of Scope:**
 9. **Streaming Features** - Out of scope for testing focus
