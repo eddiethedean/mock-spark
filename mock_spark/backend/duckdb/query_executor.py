@@ -709,6 +709,15 @@ class SQLAlchemyMaterializer:
                                 "forall": "forall",  # Higher-order function - special handling below
                                 "aggregate": "aggregate",  # Higher-order function - special handling below
                                 "zip_with": "zip_with",  # Higher-order function - special handling below
+                                "array_compact": "array_compact",  # Special handling below
+                                "slice": "slice",  # Special handling below
+                                "element_at": "element_at",  # Special handling below
+                                "array_append": "array_append",  # Special handling below
+                                "array_prepend": "array_prepend",  # Special handling below
+                                "array_insert": "array_insert",  # Special handling below
+                                "array_size": "array_size",  # Special handling below
+                                "array_sort": "array_sort",  # Special handling below
+                                "arrays_overlap": "arrays_overlap",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -744,6 +753,18 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "map_values" and (not hasattr(col, "value") or col.value is None):
                                 # map_values(map) - DuckDB: MAP_VALUES(map)
                                 special_sql = f"MAP_VALUES({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array_compact" and (not hasattr(col, "value") or col.value is None):
+                                # array_compact(array) -> LIST_FILTER(array, x -> x IS NOT NULL)
+                                special_sql = f"LIST_FILTER({column_expr}, x -> x IS NOT NULL)"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array_size" and (not hasattr(col, "value") or col.value is None):
+                                # array_size(array) -> LEN(array)
+                                special_sql = f"LEN({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array_sort" and (not hasattr(col, "value") or col.value is None):
+                                # array_sort(array) -> LIST_SORT(array)
+                                special_sql = f"LIST_SORT({column_expr})"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1072,6 +1093,81 @@ class SQLAlchemyMaterializer:
                                                 raise ValueError("zip_with requires a lambda function")
                                         else:
                                             raise ValueError("zip_with requires array2 and lambda function")
+                                    elif col.function_name == "array_compact":
+                                        # array_compact(array) -> LIST_FILTER(array, x -> x IS NOT NULL)
+                                        special_sql = f"LIST_FILTER({column_expr}, x -> x IS NOT NULL)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "slice":
+                                        # slice(array, start, length) -> LIST_SLICE(array, start, start+length-1)
+                                        # PySpark uses 1-based indexing
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            start_pos = col.value[0]
+                                            length = col.value[1]
+                                            # DuckDB LIST_SLICE is 1-based like Spark
+                                            end_pos = start_pos + length - 1
+                                            special_sql = f"LIST_SLICE({column_expr}, {start_pos}, {end_pos})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("slice requires start and length")
+                                    elif col.function_name == "element_at":
+                                        # element_at(array, index) -> array[index]
+                                        # PySpark uses 1-based indexing, DuckDB uses 1-based too
+                                        # Negative indices count from end
+                                        index = col.value
+                                        special_sql = f"LIST_EXTRACT({column_expr}, {index})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_append":
+                                        # array_append(array, element) -> LIST_CONCAT(array, [element])
+                                        # DuckDB doesn't have LIST_APPEND
+                                        element = col.value
+                                        if isinstance(element, str):
+                                            element_sql = f"'{element}'"
+                                        else:
+                                            element_sql = str(element)
+                                        special_sql = f"LIST_CONCAT({column_expr}, [{element_sql}])"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_prepend":
+                                        # array_prepend(array, element) -> LIST_CONCAT([element], array)
+                                        # DuckDB doesn't have LIST_PREPEND
+                                        element = col.value
+                                        if isinstance(element, str):
+                                            element_sql = f"'{element}'"
+                                        else:
+                                            element_sql = str(element)
+                                        special_sql = f"LIST_CONCAT([{element_sql}], {column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_insert":
+                                        # array_insert(array, pos, value) -> custom SQL with slicing
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            pos = col.value[0]
+                                            value = col.value[1]
+                                            # DuckDB: slice before + [value] + slice after
+                                            if isinstance(value, str):
+                                                value_sql = f"'{value}'"
+                                            else:
+                                                value_sql = str(value)
+                                            # LIST_CONCAT(LIST_SLICE(arr, 1, pos-1), [value], LIST_SLICE(arr, pos, len))
+                                            special_sql = f"LIST_CONCAT(LIST_SLICE({column_expr}, 1, {pos}-1), [{value_sql}], LIST_SLICE({column_expr}, {pos}, LEN({column_expr})))"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("array_insert requires pos and value")
+                                    elif col.function_name == "array_size":
+                                        # array_size(array) -> LEN(array) or LIST_LENGTH(array)
+                                        special_sql = f"LEN({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "array_sort":
+                                        # array_sort(array) -> LIST_SORT(array)
+                                        special_sql = f"LIST_SORT({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "arrays_overlap":
+                                        # arrays_overlap(arr1, arr2) -> LEN(LIST_INTERSECT(arr1, arr2)) > 0
+                                        from mock_spark.functions.base import MockColumn
+                                        if isinstance(col.value, MockColumn):
+                                            array2_expr = f'"{col.value.name}"'
+                                        else:
+                                            array2_expr = str(col.value)
+                                        special_sql = f"LEN(LIST_INTERSECT({column_expr}, {array2_expr})) > 0"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1200,7 +1296,7 @@ class SQLAlchemyMaterializer:
                         elif col.function_name in ["exists", "forall"]:
                             # exists and forall return boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove"]:
+                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort"]:
                             # Array functions return arrays - try to infer element type from source
                             from sqlalchemy import ARRAY
                             source_col = source_table_obj.columns.get(col.column.name)
@@ -1210,6 +1306,22 @@ class SQLAlchemyMaterializer:
                             else:
                                 # Default to VARCHAR array
                                 new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                        elif col.function_name == "element_at":
+                            # element_at returns scalar element - infer from array element type
+                            from sqlalchemy import ARRAY
+                            source_col = source_table_obj.columns.get(col.column.name)
+                            if source_col is not None and isinstance(source_col.type, ARRAY):
+                                # Return element type from array
+                                new_columns.append(Column(col.name, source_col.type.item_type, primary_key=False))
+                            else:
+                                # Default to String
+                                new_columns.append(Column(col.name, String, primary_key=False))
+                        elif col.function_name in ["array_size"]:
+                            # array_size returns integer
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name == "arrays_overlap":
+                            # arrays_overlap returns boolean
+                            new_columns.append(Column(col.name, Boolean, primary_key=False))
                         elif col.function_name == "aggregate":
                             # aggregate returns scalar - infer from initial value or default to Integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
