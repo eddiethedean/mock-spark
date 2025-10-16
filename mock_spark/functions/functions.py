@@ -352,6 +352,46 @@ class MockFunctions:
         """Sample covariance between two columns."""
         return AggregateFunctions.covar_samp(column1, column2)
 
+    @staticmethod
+    def bool_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate AND (PySpark 3.1+)."""
+        return AggregateFunctions.bool_and(column)
+
+    @staticmethod
+    def bool_or(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate OR (PySpark 3.1+)."""
+        return AggregateFunctions.bool_or(column)
+
+    @staticmethod
+    def every(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Alias for bool_and (PySpark 3.1+)."""
+        return AggregateFunctions.every(column)
+
+    @staticmethod
+    def some(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Alias for bool_or (PySpark 3.1+)."""
+        return AggregateFunctions.some(column)
+
+    @staticmethod
+    def max_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Value with max of ord column (PySpark 3.1+)."""
+        return AggregateFunctions.max_by(column, ord)
+
+    @staticmethod
+    def min_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Value with min of ord column (PySpark 3.1+)."""
+        return AggregateFunctions.min_by(column, ord)
+
+    @staticmethod
+    def count_if(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Count where condition is true (PySpark 3.1+)."""
+        return AggregateFunctions.count_if(column)
+
+    @staticmethod
+    def any_value(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Return any non-null value (PySpark 3.1+)."""
+        return AggregateFunctions.any_value(column)
+
     # Datetime functions
     @staticmethod
     def current_timestamp() -> MockColumnOperation:

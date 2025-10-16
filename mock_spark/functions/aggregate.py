@@ -35,7 +35,7 @@ Example:
 
 from typing import Union
 from mock_spark.functions.base import MockAggregateFunction, MockColumn
-from mock_spark.spark_types import LongType, DoubleType
+from mock_spark.spark_types import LongType, DoubleType, BooleanType, StringType, IntegerType
 
 
 class AggregateFunctions:
@@ -255,3 +255,111 @@ class AggregateFunctions:
             MockAggregateFunction representing the covar_samp function.
         """
         return MockAggregateFunction(column1, "covar_samp", DoubleType())
+
+    @staticmethod
+    def bool_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate AND - returns true if all values are true (PySpark 3.1+).
+
+        Args:
+            column: Column containing boolean values.
+
+        Returns:
+            MockAggregateFunction representing the bool_and function.
+        """
+        return MockAggregateFunction(column, "bool_and", BooleanType())
+
+    @staticmethod
+    def bool_or(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate OR - returns true if any value is true (PySpark 3.1+).
+
+        Args:
+            column: Column containing boolean values.
+
+        Returns:
+            MockAggregateFunction representing the bool_or function.
+        """
+        return MockAggregateFunction(column, "bool_or", BooleanType())
+
+    @staticmethod
+    def every(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Alias for bool_and (PySpark 3.1+).
+
+        Args:
+            column: Column containing boolean values.
+
+        Returns:
+            MockAggregateFunction representing the every function.
+        """
+        return MockAggregateFunction(column, "bool_and", BooleanType())
+
+    @staticmethod
+    def some(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Alias for bool_or (PySpark 3.1+).
+
+        Args:
+            column: Column containing boolean values.
+
+        Returns:
+            MockAggregateFunction representing the some function.
+        """
+        return MockAggregateFunction(column, "bool_or", BooleanType())
+
+    @staticmethod
+    def max_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Return value associated with the maximum of ord column (PySpark 3.1+).
+
+        Args:
+            column: Column to return value from.
+            ord: Column to find maximum of.
+
+        Returns:
+            MockAggregateFunction representing the max_by function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+        # Store ord column in value for handler
+        col_func = MockAggregateFunction(column, "max_by", StringType())
+        col_func.ord_column = ord
+        return col_func
+
+    @staticmethod
+    def min_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Return value associated with the minimum of ord column (PySpark 3.1+).
+
+        Args:
+            column: Column to return value from.
+            ord: Column to find minimum of.
+
+        Returns:
+            MockAggregateFunction representing the min_by function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+        # Store ord column in value for handler
+        col_func = MockAggregateFunction(column, "min_by", StringType())
+        col_func.ord_column = ord
+        return col_func
+
+    @staticmethod
+    def count_if(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Count rows where condition is true (PySpark 3.1+).
+
+        Args:
+            column: Boolean column or condition.
+
+        Returns:
+            MockAggregateFunction representing the count_if function.
+        """
+        return MockAggregateFunction(column, "count_if", IntegerType())
+
+    @staticmethod
+    def any_value(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Return any non-null value (non-deterministic) (PySpark 3.1+).
+
+        Args:
+            column: Column to return value from.
+
+        Returns:
+            MockAggregateFunction representing the any_value function.
+        """
+        return MockAggregateFunction(column, "any_value", StringType())
