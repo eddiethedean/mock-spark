@@ -104,8 +104,14 @@ class SQLAlchemyMaterializer:
 
         # Create table using SQLAlchemy Table approach
         columns = []
+        has_map_columns = False
+        map_column_names = []
+        
         if data:
             for key, value in data[0].items():
+                # Debug type detection
+                # print(f"DEBUG: Column {key}, value type: {type(value)}, value: {value}")
+                
                 if isinstance(value, int):
                     columns.append(Column(key, Integer))
                 elif isinstance(value, float):
@@ -114,41 +120,97 @@ class SQLAlchemyMaterializer:
                     columns.append(Column(key, Boolean))
                 elif isinstance(value, list):
                     # For arrays, use DuckDB's native array type
-                    # Use raw SQL type for now since SQLAlchemy doesn't have good array support
                     from sqlalchemy import ARRAY, VARCHAR
                     columns.append(Column(key, ARRAY(VARCHAR)))
                 elif isinstance(value, dict):
-                    # For maps, use DuckDB MAP type
-                    from sqlalchemy.dialects.postgresql import HSTORE
-                    # DuckDB doesn't have direct MAP in SQLAlchemy, use raw SQL type
-                    from sqlalchemy.types import TypeDecorator, String as StringType
-                    
-                    class MapType(TypeDecorator):
-                        impl = StringType
-                        cache_ok = True
-                    
-                    columns.append(Column(key, MapType()))
+                    # For maps, mark for raw SQL handling
+                    has_map_columns = True
+                    map_column_names.append(key)
+                    # print(f"DEBUG: Found MAP column: {key}")
+                    columns.append(Column(key, String))  # Placeholder
                 else:
                     columns.append(Column(key, String))
 
-        # Create table using SQLAlchemy Table
-        table = Table(table_name, self.metadata, *columns)
-        table.create(self.engine, checkfirst=True)
-        self._created_tables[table_name] = table
+        # Create table - use raw SQL for MAP columns
+        if has_map_columns:
+            # Build CREATE TABLE with proper MAP types using raw SQL
+            from sqlalchemy import ARRAY
+            # print(f"DEBUG: Creating table {table_name} with MAP columns: {map_column_names}")
+            
+            col_defs = []
+            for col in columns:
+                if col.name in map_column_names:
+                    col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
+                elif type(col.type).__name__ == 'ARRAY':
+                    col_defs.append(f'"{col.name}" VARCHAR[]')
+                elif isinstance(col.type, Integer):
+                    col_defs.append(f'"{col.name}" INTEGER')
+                elif isinstance(col.type, Float) or isinstance(col.type, Double):
+                    col_defs.append(f'"{col.name}" DOUBLE')
+                elif isinstance(col.type, Boolean):
+                    col_defs.append(f'"{col.name}" BOOLEAN')
+                else:
+                    col_defs.append(f'"{col.name}" VARCHAR')
+            
+            create_sql = f"CREATE TABLE {table_name} ({', '.join(col_defs)})"
+            with Session(self.engine) as session:
+                session.execute(text(create_sql))
+                session.commit()
+            
+            # Register table in metadata manually
+            table = Table(table_name, self.metadata, *columns, extend_existing=True)
+            self._created_tables[table_name] = table
+        else:
+            # Normal table creation
+            table = Table(table_name, self.metadata, *columns)
+            table.create(self.engine, checkfirst=True)
+            self._created_tables[table_name] = table
 
-        # Insert data using raw SQL
+        # Insert data using raw SQL - handle dict/list conversion for DuckDB
         with Session(self.engine) as session:
             for row_data in data:
-                # Convert row data to values for insert
-                values = []
+                # Convert row data to values for insert, handling special types
+                insert_values = {}
                 for col in columns:
-                    values.append(row_data[col.name])
+                    value = row_data[col.name]
+                    
+                    # Convert Python dict to DuckDB MAP
+                    if isinstance(value, dict):
+                        # Convert dict to MAP syntax: MAP(['keys'], ['values'])
+                        if value:
+                            keys = list(value.keys())
+                            vals = list(value.values())
+                            # Create MAP using raw SQL
+                            map_sql = f"MAP({keys!r}, {vals!r})"
+                            insert_values[col.name] = text(map_sql)
+                        else:
+                            insert_values[col.name] = None
+                    else:
+                        insert_values[col.name] = value
 
-                # Insert using raw SQL
-                insert_stmt = table.insert().values(
-                    dict(zip([col.name for col in columns], values))
-                )
-                session.execute(insert_stmt)
+                # Insert using parameterized values for non-MAP columns
+                # and raw SQL for MAP columns
+                if any(isinstance(v, type(text(""))) for v in insert_values.values()):
+                    # Has MAP columns - use raw SQL
+                    col_names = []
+                    col_values = []
+                    for col_name, col_value in insert_values.items():
+                        col_names.append(f'"{col_name}"')
+                        if hasattr(col_value, 'text'):  # TextClause
+                            col_values.append(col_value.text)
+                        elif isinstance(col_value, str):
+                            col_values.append(f"'{col_value}'")
+                        elif col_value is None:
+                            col_values.append("NULL")
+                        else:
+                            col_values.append(str(col_value))
+                    
+                    raw_sql = f"INSERT INTO {table_name} ({', '.join(col_names)}) VALUES ({', '.join(col_values)})"
+                    session.execute(text(raw_sql))
+                else:
+                    # Normal insert
+                    insert_stmt = table.insert().values(insert_values)
+                    session.execute(insert_stmt)
             session.commit()
 
     def _apply_filter(self, source_table: str, target_table: str, condition: Any) -> None:
@@ -966,17 +1028,20 @@ class SQLAlchemyMaterializer:
                                     func_expr = text(f"{duckdb_function_name}({column_expr})")
 
                         # Handle labeling more carefully to avoid NotImplementedError
+                        # Sanitize column name for SQL alias (remove problematic characters)
+                        safe_alias = col.name.replace("(", "_").replace(")", "_").replace(" ", "_").replace(",", "_")
+                        
                         try:
-                            select_columns.append(func_expr.label(col.name))
+                            select_columns.append(func_expr.label(safe_alias))
                         except (NotImplementedError, AttributeError):
                             # For expressions that don't support .label() or .alias(),
                             # create a raw SQL expression with AS clause
                             if hasattr(func_expr, "text"):
                                 # For TextClause objects, create a new text expression with alias
-                                select_columns.append(text(f"({func_expr.text}) AS {col.name}"))
+                                select_columns.append(text(f"({func_expr.text}) AS {safe_alias}"))
                             else:
                                 # Fallback: try to convert to string and wrap in parentheses
-                                select_columns.append(text(f"({str(func_expr)}) AS {col.name}"))
+                                select_columns.append(text(f"({str(func_expr)}) AS {safe_alias}"))
                         # Infer column type based on function
                         if col.function_name in ["length", "abs", "ceil", "floor"]:
                             new_columns.append(Column(col.name, Integer, primary_key=False))

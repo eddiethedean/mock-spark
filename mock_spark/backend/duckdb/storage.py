@@ -95,6 +95,12 @@ class DuckDBTable(ITable):
             return "DATE"
         elif "Timestamp" in type_name:
             return "TIMESTAMP"
+        elif "ArrayType" in type_name or "Array" in type_name:
+            # For arrays, use VARCHAR[] for simplicity
+            return "VARCHAR[]"
+        elif "MapType" in type_name or "Map" in type_name:
+            # For maps, use MAP(VARCHAR, VARCHAR)
+            return "MAP(VARCHAR, VARCHAR)"
         else:
             return "VARCHAR"
 
@@ -121,9 +127,45 @@ class DuckDBTable(ITable):
 
             # Type-safe insertion using SQLAlchemy bulk insert
             if self.sqlalchemy_table is not None:
-                # Use SQLAlchemy bulk insert for better performance
-                with self.engine.begin() as conn:
-                    conn.execute(insert(self.sqlalchemy_table), validated_data)
+                # Check if we have MAP columns that need special handling
+                has_map_columns = any(
+                    "MapType" in type(field.dataType).__name__ for field in self.schema.fields
+                )
+                
+                if has_map_columns:
+                    # Use raw SQL for MAP insertion
+                    from sqlalchemy import text
+                    
+                    for row in validated_data:
+                        col_names = []
+                        col_values = []
+                        
+                        for field in self.schema.fields:
+                            col_names.append(f'"{field.name}"')
+                            value = row.get(field.name)
+                            
+                            # Convert dict to DuckDB MAP format
+                            if isinstance(value, dict) and value:
+                                keys = list(value.keys())
+                                vals = list(value.values())
+                                # Use DuckDB MAP syntax
+                                col_values.append(f"MAP({keys!r}, {vals!r})")
+                            elif value is None:
+                                col_values.append("NULL")
+                            elif isinstance(value, str):
+                                col_values.append(f"'{value}'")
+                            elif isinstance(value, list):
+                                col_values.append(f"{value!r}")
+                            else:
+                                col_values.append(str(value))
+                        
+                        insert_sql = f"INSERT INTO {self.name} ({', '.join(col_names)}) VALUES ({', '.join(col_values)})"
+                        with self.engine.begin() as conn:
+                            conn.execute(text(insert_sql))
+                else:
+                    # Use SQLAlchemy bulk insert for better performance
+                    with self.engine.begin() as conn:
+                        conn.execute(insert(self.sqlalchemy_table), validated_data)
 
             # Update metadata with type safety
             self._update_row_count(len(validated_data))
