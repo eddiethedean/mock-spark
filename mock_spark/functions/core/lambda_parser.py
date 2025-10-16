@@ -20,7 +20,7 @@ Example:
 
 import ast
 import inspect
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 
 class LambdaTranslationError(Exception):

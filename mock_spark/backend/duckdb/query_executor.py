@@ -1444,22 +1444,22 @@ class SQLAlchemyMaterializer:
                                                                "xpath_short", "xpath_float", "xpath_double"]:
                                         # XPath extraction - simplified: return NULL
                                         # Real implementation would parse XML and extract values
-                                        xpath = col.value
+                                        # xpath = col.value  # Currently unused in simplified implementation
                                         special_sql = "NULL"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath_boolean":
                                         # XPath boolean - simplified: return FALSE
-                                        xpath = col.value
+                                        # xpath = col.value  # Currently unused in simplified implementation
                                         special_sql = "FALSE"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath":
                                         # XPath array - simplified: return empty array
-                                        xpath = col.value
+                                        # xpath = col.value  # Currently unused in simplified implementation
                                         special_sql = "[]"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "from_xml":
                                         # from_xml(xml, schema) - simplified: return NULL
-                                        schema = col.value
+                                        # schema = col.value  # Currently unused in simplified implementation
                                         special_sql = "NULL"
                                         func_expr = text(special_sql)
                                     else:
@@ -1661,7 +1661,6 @@ class SQLAlchemyMaterializer:
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
                         elif col.function_name in ["create_map", "map_filter", "transform_keys", "transform_values"]:
                             # Map functions return maps - default to MAP(VARCHAR, VARCHAR)
-                            from sqlalchemy.dialects.postgresql import HSTORE
                             # DuckDB doesn't have a direct SQLAlchemy type for MAP, use String
                             new_columns.append(Column(col.name, String, primary_key=False))
                         elif col.function_name == "map_from_entries":

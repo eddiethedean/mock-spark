@@ -46,7 +46,6 @@ from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
-from .bitwise import BitwiseFunctions
 
 # Create module-level aliases for backward compatibility
 col = F.col

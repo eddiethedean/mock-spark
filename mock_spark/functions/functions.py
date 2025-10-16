@@ -845,7 +845,7 @@ class MockFunctions:
             base_col,
             "struct",
             value=cols[1:] if len(cols) > 1 else None,
-            name=f"struct(...)",
+            name="struct(...)",
         )
 
     @staticmethod
@@ -865,7 +865,7 @@ class MockFunctions:
             base_col,
             "named_struct",
             value=cols,
-            name=f"named_struct(...)",
+            name="named_struct(...)",
         )
 
     # Bitwise functions (PySpark 3.2+)

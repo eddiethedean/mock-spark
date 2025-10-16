@@ -161,7 +161,7 @@ class MapFunctions:
             base_col,
             "create_map",
             value=cols[1:],
-            name=f"create_map(...)",
+            name="create_map(...)",
         )
 
     @staticmethod
