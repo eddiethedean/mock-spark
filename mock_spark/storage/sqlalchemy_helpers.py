@@ -40,9 +40,15 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
     # Get type name
     type_name = type(mock_type).__name__
     
-    # Handle ArrayType
+    # Handle ArrayType with element type
     if "ArrayType" in type_name or "Array" in type_name:
-        return ARRAY(VARCHAR)
+        # Check if the array has an element type specified
+        if hasattr(mock_type, "elementType"):
+            element_sql_type = mock_type_to_sqlalchemy(mock_type.elementType)
+            return ARRAY(element_sql_type)
+        else:
+            # Fallback to VARCHAR for untyped arrays
+            return ARRAY(VARCHAR)
     
     # Handle MapType - use custom type that will be handled with raw SQL
     if "MapType" in type_name or "Map" in type_name:
