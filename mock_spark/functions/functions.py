@@ -798,6 +798,37 @@ class MockFunctions:
         """Create map from key and value arrays."""
         return MapFunctions.map_from_arrays(keys, values)
 
+    # Advanced map functions (PySpark 3.2+)
+    @staticmethod
+    def create_map(*cols: Union[MockColumn, str, Any]) -> MockColumnOperation:
+        """Create map from key-value pairs."""
+        return MapFunctions.create_map(*cols)
+
+    @staticmethod
+    def map_contains_key(column: Union[MockColumn, str], key: Any) -> MockColumnOperation:
+        """Check if map contains key."""
+        return MapFunctions.map_contains_key(column, key)
+
+    @staticmethod
+    def map_from_entries(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert array of structs to map."""
+        return MapFunctions.map_from_entries(column)
+
+    @staticmethod
+    def map_filter(column: Union[MockColumn, str], function: Callable[[Any, Any], bool]) -> MockColumnOperation:
+        """Filter map entries with predicate."""
+        return MapFunctions.map_filter(column, function)
+
+    @staticmethod
+    def transform_keys(column: Union[MockColumn, str], function: Callable[[Any, Any], Any]) -> MockColumnOperation:
+        """Transform map keys with function."""
+        return MapFunctions.transform_keys(column, function)
+
+    @staticmethod
+    def transform_values(column: Union[MockColumn, str], function: Callable[[Any, Any], Any]) -> MockColumnOperation:
+        """Transform map values with function."""
+        return MapFunctions.transform_values(column, function)
+
 
 # Create the F namespace instance
 F = MockFunctions()

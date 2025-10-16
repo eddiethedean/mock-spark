@@ -718,6 +718,12 @@ class SQLAlchemyMaterializer:
                                 "array_size": "array_size",  # Special handling below
                                 "array_sort": "array_sort",  # Special handling below
                                 "arrays_overlap": "arrays_overlap",  # Special handling below
+                                "create_map": "create_map",  # Special handling below
+                                "map_contains_key": "map_contains_key",  # Special handling below
+                                "map_from_entries": "map_from_entries",  # Special handling below
+                                "map_filter": "map_filter",  # Higher-order function - special handling below
+                                "transform_keys": "transform_keys",  # Higher-order function - special handling below
+                                "transform_values": "transform_values",  # Higher-order function - special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -765,6 +771,10 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "array_sort" and (not hasattr(col, "value") or col.value is None):
                                 # array_sort(array) -> LIST_SORT(array)
                                 special_sql = f"LIST_SORT({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "map_from_entries" and (not hasattr(col, "value") or col.value is None):
+                                # map_from_entries(array) -> MAP_FROM_ENTRIES(array)
+                                special_sql = f"MAP_FROM_ENTRIES({column_expr})"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1168,6 +1178,111 @@ class SQLAlchemyMaterializer:
                                             array2_expr = str(col.value)
                                         special_sql = f"LEN(LIST_INTERSECT({column_expr}, {array2_expr})) > 0"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "create_map":
+                                        # create_map(k1, v1, k2, v2, ...) -> MAP([k1, k2, ...], [v1, v2, ...])
+                                        # col.value contains alternating key-value columns
+                                        from mock_spark.functions.base import MockColumn, MockLiteral
+                                        if isinstance(col.value, (tuple, list)):
+                                            # Build keys and values arrays
+                                            keys = [column_expr]
+                                            values = []
+                                            for i, arg in enumerate(col.value):
+                                                if i % 2 == 0:
+                                                    # Even index = value for previous key
+                                                    if isinstance(arg, MockColumn):
+                                                        values.append(f'"{arg.name}"')
+                                                    elif isinstance(arg, MockLiteral):
+                                                        if isinstance(arg.value, str):
+                                                            values.append(f"'{arg.value}'")
+                                                        else:
+                                                            values.append(str(arg.value))
+                                                    elif isinstance(arg, str):
+                                                        values.append(f"'{arg}'")
+                                                    else:
+                                                        values.append(str(arg))
+                                                else:
+                                                    # Odd index = key
+                                                    if isinstance(arg, MockColumn):
+                                                        keys.append(f'"{arg.name}"')
+                                                    elif isinstance(arg, MockLiteral):
+                                                        if isinstance(arg.value, str):
+                                                            keys.append(f"'{arg.value}'")
+                                                        else:
+                                                            keys.append(str(arg.value))
+                                                    elif isinstance(arg, str):
+                                                        keys.append(f"'{arg}'")
+                                                    else:
+                                                        keys.append(str(arg))
+                                            keys_array = f"[{', '.join(keys)}]"
+                                            values_array = f"[{', '.join(values)}]"
+                                            special_sql = f"MAP({keys_array}, {values_array})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("create_map requires key-value pairs")
+                                    elif col.function_name == "map_contains_key":
+                                        # map_contains_key(map, key) -> MAP_EXTRACT(map, key) IS NOT NULL
+                                        key = col.value
+                                        if isinstance(key, str):
+                                            key_sql = f"'{key}'"
+                                        else:
+                                            key_sql = str(key)
+                                        special_sql = f"(MAP_EXTRACT({column_expr}, {key_sql}) IS NOT NULL)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name in ["map_filter", "transform_keys", "transform_values"]:
+                                        # Higher-order map functions with lambdas
+                                        # These are complex - DuckDB doesn't have native map lambda functions
+                                        # We'll need to convert map to entries, transform, convert back
+                                        from mock_spark.functions.base import MockLambdaExpression
+                                        if isinstance(col.value, MockLambdaExpression):
+                                            lambda_sql = col.value.to_duckdb_lambda()
+                                            
+                                            if col.function_name == "map_filter":
+                                                # map_filter: Convert to entries, filter, convert back
+                                                # MAP_FROM_ENTRIES(LIST_FILTER(MAP_ENTRIES(map), e -> lambda(e.key, e.value)))
+                                                param_names = col.value.get_param_names()
+                                                if len(param_names) == 2:
+                                                    k_name = param_names[0]
+                                                    v_name = param_names[1]
+                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    import re
+                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
+                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
+                                                    modified_lambda = f"e -> {body_part}"
+                                                    special_sql = f"MAP_FROM_ENTRIES(LIST_FILTER(MAP_ENTRIES({column_expr}), {modified_lambda}))"
+                                                else:
+                                                    raise ValueError("map_filter requires 2-parameter lambda")
+                                            elif col.function_name == "transform_keys":
+                                                # transform_keys: Convert entries, transform keys, convert back
+                                                # MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES(map), e -> {key: lambda(e.key, e.value), value: e.value}))
+                                                param_names = col.value.get_param_names()
+                                                if len(param_names) == 2:
+                                                    k_name = param_names[0]
+                                                    v_name = param_names[1]
+                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    import re
+                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
+                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
+                                                    modified_lambda = f"e -> {{key: {body_part}, value: e.value}}"
+                                                    special_sql = f"MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES({column_expr}), {modified_lambda}))"
+                                                else:
+                                                    raise ValueError("transform_keys requires 2-parameter lambda")
+                                            elif col.function_name == "transform_values":
+                                                # transform_values: Convert entries, transform values, convert back
+                                                param_names = col.value.get_param_names()
+                                                if len(param_names) == 2:
+                                                    k_name = param_names[0]
+                                                    v_name = param_names[1]
+                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    import re
+                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
+                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
+                                                    modified_lambda = f"e -> {{key: e.key, value: {body_part}}}"
+                                                    special_sql = f"MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES({column_expr}), {modified_lambda}))"
+                                                else:
+                                                    raise ValueError("transform_values requires 2-parameter lambda")
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError(f"{col.function_name} requires a lambda function")
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1322,6 +1437,17 @@ class SQLAlchemyMaterializer:
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name == "map_contains_key":
+                            # map_contains_key returns boolean
+                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name in ["create_map", "map_filter", "transform_keys", "transform_values"]:
+                            # Map functions return maps - default to MAP(VARCHAR, VARCHAR)
+                            from sqlalchemy.dialects.postgresql import HSTORE
+                            # DuckDB doesn't have a direct SQLAlchemy type for MAP, use String
+                            new_columns.append(Column(col.name, String, primary_key=False))
+                        elif col.function_name == "map_from_entries":
+                            # map_from_entries returns map
+                            new_columns.append(Column(col.name, String, primary_key=False))
                         elif col.function_name == "aggregate":
                             # aggregate returns scalar - infer from initial value or default to Integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
@@ -2354,6 +2480,18 @@ class SQLAlchemyMaterializer:
                                 result_dict[column.name] = value
                         else:
                             result_dict[column.name] = value
+                    elif isinstance(column.type, String) and isinstance(value, str) and value.startswith('{') and value.endswith('}'):
+                        # Map columns returned as strings like "{a=1, b=2}" - parse to dict
+                        try:
+                            import ast
+                            # Try to parse as dict literal
+                            result_dict[column.name] = ast.literal_eval(value)
+                        except (ValueError, SyntaxError):
+                            # If that fails, leave as string
+                            result_dict[column.name] = value
+                    elif isinstance(value, dict):
+                        # Already a dict (map)
+                        result_dict[column.name] = value
                     elif isinstance(column.type, Integer) and value is not None:
                         try:
                             result_dict[column.name] = int(value)
