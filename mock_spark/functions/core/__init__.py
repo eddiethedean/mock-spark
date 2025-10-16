@@ -16,6 +16,7 @@ from .operations import (
     ConditionalOperations,
     WindowOperations,
 )
+from .lambda_parser import MockLambdaExpression, LambdaParser, LambdaTranslationError
 
 __all__ = [
     "MockColumn",
@@ -28,4 +29,7 @@ __all__ = [
     "TypeOperations",
     "ConditionalOperations",
     "WindowOperations",
+    "MockLambdaExpression",
+    "LambdaParser",
+    "LambdaTranslationError",
 ]

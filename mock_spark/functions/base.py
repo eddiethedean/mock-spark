@@ -11,12 +11,21 @@ from mock_spark.spark_types import MockDataType, StringType
 # Import core classes from their canonical locations
 from .core.column import MockColumn, MockColumnOperation
 from .core.literals import MockLiteral
+from .core.lambda_parser import MockLambdaExpression, LambdaParser, LambdaTranslationError
 
 if TYPE_CHECKING:
     from .window_execution import MockWindowFunction
 
 # Re-export for backward compatibility
-__all__ = ["MockColumn", "MockColumnOperation", "MockLiteral", "MockAggregateFunction"]
+__all__ = [
+    "MockColumn",
+    "MockColumnOperation",
+    "MockLiteral",
+    "MockAggregateFunction",
+    "MockLambdaExpression",
+    "LambdaParser",
+    "LambdaTranslationError",
+]
 
 
 class MockAggregateFunction:
