@@ -327,3 +327,201 @@ class MathFunctions:
         """
         column = MockColumn(col) if isinstance(col, str) else col
         return MockColumnOperation(column, "atanh", name=f"atanh({column.name})")
+
+    @staticmethod
+    def acos(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse cosine (arc cosine).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the acos function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "acos", name=f"acos({column.name})")
+
+    @staticmethod
+    def asin(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse sine (arc sine).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the asin function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "asin", name=f"asin({column.name})")
+
+    @staticmethod
+    def atan(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse tangent (arc tangent).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the atan function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "atan", name=f"atan({column.name})")
+
+    @staticmethod
+    def cosh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hyperbolic cosine.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the cosh function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "cosh", name=f"cosh({column.name})")
+
+    @staticmethod
+    def sinh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hyperbolic sine.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the sinh function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "sinh", name=f"sinh({column.name})")
+
+    @staticmethod
+    def tanh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hyperbolic tangent.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the tanh function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "tanh", name=f"tanh({column.name})")
+
+    @staticmethod
+    def degrees(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert radians to degrees.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the degrees function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "degrees", name=f"degrees({column.name})")
+
+    @staticmethod
+    def radians(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert degrees to radians.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the radians function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "radians", name=f"radians({column.name})")
+
+    @staticmethod
+    def cbrt(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute cube root.
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the cbrt function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "cbrt", name=f"cbrt({column.name})")
+
+    @staticmethod
+    def factorial(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute factorial.
+
+        Args:
+            col: Column or column name (non-negative integers).
+
+        Returns:
+            MockColumnOperation representing the factorial function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "factorial", name=f"factorial({column.name})")
+
+    @staticmethod
+    def rand(seed: Optional[int] = None) -> MockColumnOperation:
+        """Generate a random column with i.i.d. samples from U[0.0, 1.0].
+
+        Args:
+            seed: Random seed (optional).
+
+        Returns:
+            MockColumnOperation representing the rand function.
+        """
+        from mock_spark.functions.core.literals import MockLiteral
+        return MockColumnOperation(
+            MockLiteral(0),
+            "rand",
+            value=seed,
+            name=f"rand({seed})" if seed is not None else "rand()"
+        )
+
+    @staticmethod
+    def randn(seed: Optional[int] = None) -> MockColumnOperation:
+        """Generate a random column with i.i.d. samples from standard normal distribution.
+
+        Args:
+            seed: Random seed (optional).
+
+        Returns:
+            MockColumnOperation representing the randn function.
+        """
+        from mock_spark.functions.core.literals import MockLiteral
+        return MockColumnOperation(
+            MockLiteral(0),
+            "randn",
+            value=seed,
+            name=f"randn({seed})" if seed is not None else "randn()"
+        )
+
+    @staticmethod
+    def rint(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Round to nearest integer using banker's rounding (half to even).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the rint function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "rint", name=f"rint({column.name})")
+
+    @staticmethod
+    def bround(col: Union[MockColumn, str], scale: int = 0) -> MockColumnOperation:
+        """Round using HALF_EVEN rounding mode (banker's rounding).
+
+        Args:
+            col: Column or column name.
+            scale: Number of decimal places (default 0).
+
+        Returns:
+            MockColumnOperation representing the bround function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(
+            column,
+            "bround",
+            value=scale,
+            name=f"bround({column.name}, {scale})"
+        )

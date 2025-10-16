@@ -506,6 +506,262 @@ class StringFunctions:
         return MockColumnOperation(url, "url_decode", name=f"url_decode({url.name})")
 
     @staticmethod
+    def concat_ws(sep: str, *cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Concatenate multiple columns with a separator.
+
+        Args:
+            sep: Separator string
+            *cols: Columns to concatenate
+
+        Returns:
+            MockColumnOperation representing concat_ws
+
+        Example:
+            >>> df.select(F.concat_ws("-", F.col("first"), F.col("last")))
+        """
+        columns = []
+        for col in cols:
+            if isinstance(col, str):
+                columns.append(MockColumn(col))
+            else:
+                columns.append(col)
+
+        return MockColumnOperation(
+            columns[0] if columns else MockColumn(""),
+            "concat_ws",
+            value=(sep, columns[1:] if len(columns) > 1 else []),
+            name=f"concat_ws({sep}, ...)"
+        )
+
+    @staticmethod
+    def regexp_extract(
+        column: Union[MockColumn, str],
+        pattern: str,
+        idx: int = 0
+    ) -> MockColumnOperation:
+        """Extract a specific group matched by a regex pattern.
+
+        Args:
+            column: Input column
+            pattern: Regular expression pattern
+            idx: Group index to extract (default 0)
+
+        Returns:
+            MockColumnOperation representing regexp_extract
+
+        Example:
+            >>> df.select(F.regexp_extract(F.col("email"), r"(.+)@(.+)", 1))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "regexp_extract",
+            value=(pattern, idx),
+            name=f"regexp_extract({column.name}, {pattern}, {idx})"
+        )
+
+    @staticmethod
+    def substring_index(
+        column: Union[MockColumn, str],
+        delim: str,
+        count: int
+    ) -> MockColumnOperation:
+        """Returns substring before/after count occurrences of delimiter.
+
+        Args:
+            column: Input string column
+            delim: Delimiter string
+            count: Number of delimiters (positive for left, negative for right)
+
+        Returns:
+            MockColumnOperation representing substring_index
+
+        Example:
+            >>> df.select(F.substring_index(F.col("path"), "/", 2))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "substring_index",
+            value=(delim, count),
+            name=f"substring_index({column.name}, {delim}, {count})"
+        )
+
+    @staticmethod
+    def format_number(
+        column: Union[MockColumn, str],
+        d: int
+    ) -> MockColumnOperation:
+        """Format number with d decimal places and thousands separator.
+
+        Args:
+            column: Numeric column
+            d: Number of decimal places
+
+        Returns:
+            MockColumnOperation representing format_number
+
+        Example:
+            >>> df.select(F.format_number(F.col("amount"), 2))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "format_number",
+            value=d,
+            name=f"format_number({column.name}, {d})"
+        )
+
+    @staticmethod
+    def instr(
+        column: Union[MockColumn, str],
+        substr: str
+    ) -> MockColumnOperation:
+        """Locate the position of the first occurrence of substr (1-indexed).
+
+        Args:
+            column: Input string column
+            substr: Substring to locate
+
+        Returns:
+            MockColumnOperation representing instr
+
+        Example:
+            >>> df.select(F.instr(F.col("text"), "spark"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "instr",
+            value=substr,
+            name=f"instr({column.name}, {substr})"
+        )
+
+    @staticmethod
+    def locate(
+        substr: str,
+        column: Union[MockColumn, str],
+        pos: int = 1
+    ) -> MockColumnOperation:
+        """Locate the position of substr starting from pos (1-indexed).
+
+        Args:
+            substr: Substring to locate
+            column: Input string column
+            pos: Starting position (default 1)
+
+        Returns:
+            MockColumnOperation representing locate
+
+        Example:
+            >>> df.select(F.locate("spark", F.col("text"), 1))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "locate",
+            value=(substr, pos),
+            name=f"locate({substr}, {column.name}, {pos})"
+        )
+
+    @staticmethod
+    def lpad(
+        column: Union[MockColumn, str],
+        len: int,
+        pad: str
+    ) -> MockColumnOperation:
+        """Left-pad string column to length len with pad string.
+
+        Args:
+            column: Input string column
+            len: Target length
+            pad: Padding string
+
+        Returns:
+            MockColumnOperation representing lpad
+
+        Example:
+            >>> df.select(F.lpad(F.col("id"), 5, "0"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "lpad",
+            value=(len, pad),
+            name=f"lpad({column.name}, {len}, {pad})"
+        )
+
+    @staticmethod
+    def rpad(
+        column: Union[MockColumn, str],
+        len: int,
+        pad: str
+    ) -> MockColumnOperation:
+        """Right-pad string column to length len with pad string.
+
+        Args:
+            column: Input string column
+            len: Target length
+            pad: Padding string
+
+        Returns:
+            MockColumnOperation representing rpad
+
+        Example:
+            >>> df.select(F.rpad(F.col("id"), 5, "0"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "rpad",
+            value=(len, pad),
+            name=f"rpad({column.name}, {len}, {pad})"
+        )
+
+    @staticmethod
+    def levenshtein(
+        left: Union[MockColumn, str],
+        right: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Compute Levenshtein distance between two strings.
+
+        Args:
+            left: First string column
+            right: Second string column
+
+        Returns:
+            MockColumnOperation representing levenshtein
+
+        Example:
+            >>> df.select(F.levenshtein(F.col("word1"), F.col("word2")))
+        """
+        if isinstance(left, str):
+            left = MockColumn(left)
+        if isinstance(right, str):
+            right = MockColumn(right)
+
+        return MockColumnOperation(
+            left,
+            "levenshtein",
+            value=right,
+            name=f"levenshtein({left.name}, {right.name})"
+        )
+
+    @staticmethod
     def overlay(
         src: Union[MockColumn, str],
         replace: Union[MockColumn, str],

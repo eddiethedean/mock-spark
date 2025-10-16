@@ -163,6 +163,59 @@ class MockFunctions:
         return StringFunctions.repeat(column, n)
 
     @staticmethod
+    def concat_ws(sep: str, *cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Concatenate multiple columns with separator."""
+        return StringFunctions.concat_ws(sep, *cols)
+
+    @staticmethod
+    def regexp_extract(
+        column: Union[MockColumn, str], pattern: str, idx: int = 0
+    ) -> MockColumnOperation:
+        """Extract specific group matched by regex."""
+        return StringFunctions.regexp_extract(column, pattern, idx)
+
+    @staticmethod
+    def substring_index(
+        column: Union[MockColumn, str], delim: str, count: int
+    ) -> MockColumnOperation:
+        """Returns substring before/after count occurrences of delimiter."""
+        return StringFunctions.substring_index(column, delim, count)
+
+    @staticmethod
+    def format_number(column: Union[MockColumn, str], d: int) -> MockColumnOperation:
+        """Format number with d decimal places and thousands separator."""
+        return StringFunctions.format_number(column, d)
+
+    @staticmethod
+    def instr(column: Union[MockColumn, str], substr: str) -> MockColumnOperation:
+        """Locate position of first occurrence of substr."""
+        return StringFunctions.instr(column, substr)
+
+    @staticmethod
+    def locate(
+        substr: str, column: Union[MockColumn, str], pos: int = 1
+    ) -> MockColumnOperation:
+        """Locate position of substr starting from pos."""
+        return StringFunctions.locate(substr, column, pos)
+
+    @staticmethod
+    def lpad(column: Union[MockColumn, str], len: int, pad: str) -> MockColumnOperation:
+        """Left-pad string to length len with pad string."""
+        return StringFunctions.lpad(column, len, pad)
+
+    @staticmethod
+    def rpad(column: Union[MockColumn, str], len: int, pad: str) -> MockColumnOperation:
+        """Right-pad string to length len with pad string."""
+        return StringFunctions.rpad(column, len, pad)
+
+    @staticmethod
+    def levenshtein(
+        left: Union[MockColumn, str], right: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Compute Levenshtein distance between two strings."""
+        return StringFunctions.levenshtein(left, right)
+
+    @staticmethod
     def initcap(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Capitalize first letter of each word."""
         return StringFunctions.initcap(column)
@@ -244,6 +297,76 @@ class MockFunctions:
     def atanh(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Inverse hyperbolic tangent (PySpark 3.0+)."""
         return MathFunctions.atanh(column)
+
+    @staticmethod
+    def acos(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse cosine (arc cosine)."""
+        return MathFunctions.acos(column)
+
+    @staticmethod
+    def asin(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse sine (arc sine)."""
+        return MathFunctions.asin(column)
+
+    @staticmethod
+    def atan(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse tangent (arc tangent)."""
+        return MathFunctions.atan(column)
+
+    @staticmethod
+    def cosh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Hyperbolic cosine."""
+        return MathFunctions.cosh(column)
+
+    @staticmethod
+    def sinh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Hyperbolic sine."""
+        return MathFunctions.sinh(column)
+
+    @staticmethod
+    def tanh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Hyperbolic tangent."""
+        return MathFunctions.tanh(column)
+
+    @staticmethod
+    def degrees(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert radians to degrees."""
+        return MathFunctions.degrees(column)
+
+    @staticmethod
+    def radians(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert degrees to radians."""
+        return MathFunctions.radians(column)
+
+    @staticmethod
+    def cbrt(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Cube root."""
+        return MathFunctions.cbrt(column)
+
+    @staticmethod
+    def factorial(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Factorial of non-negative integer."""
+        return MathFunctions.factorial(column)
+
+    @staticmethod
+    def rand(seed: Optional[int] = None) -> MockColumnOperation:
+        """Generate random column with uniform distribution [0.0, 1.0]."""
+        return MathFunctions.rand(seed)
+
+    @staticmethod
+    def randn(seed: Optional[int] = None) -> MockColumnOperation:
+        """Generate random column with standard normal distribution."""
+        return MathFunctions.randn(seed)
+
+    @staticmethod
+    def rint(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Round to nearest integer using banker's rounding."""
+        return MathFunctions.rint(column)
+
+    @staticmethod
+    def bround(column: Union[MockColumn, str], scale: int = 0) -> MockColumnOperation:
+        """Round using HALF_EVEN rounding mode."""
+        return MathFunctions.bround(column, scale)
 
     @staticmethod
     def sign(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -555,6 +678,39 @@ class MockFunctions:
         return DateTimeFunctions.make_date(year, month, day)
 
     @staticmethod
+    def date_trunc(format: str, timestamp: Union[MockColumn, str]) -> MockColumnOperation:
+        """Truncate timestamp to specified unit."""
+        return DateTimeFunctions.date_trunc(format, timestamp)
+
+    @staticmethod
+    def datediff(end: Union[MockColumn, str], start: Union[MockColumn, str]) -> MockColumnOperation:
+        """Number of days between two dates."""
+        return DateTimeFunctions.datediff(end, start)
+
+    @staticmethod
+    def unix_timestamp(
+        timestamp: Optional[Union[MockColumn, str]] = None,
+        format: str = 'yyyy-MM-dd HH:mm:ss'
+    ) -> MockColumnOperation:
+        """Convert timestamp to Unix timestamp."""
+        return DateTimeFunctions.unix_timestamp(timestamp, format)
+
+    @staticmethod
+    def last_day(date: Union[MockColumn, str]) -> MockColumnOperation:
+        """Last day of the month for given date."""
+        return DateTimeFunctions.last_day(date)
+
+    @staticmethod
+    def next_day(date: Union[MockColumn, str], dayOfWeek: str) -> MockColumnOperation:
+        """First date later than date on specified day of week."""
+        return DateTimeFunctions.next_day(date, dayOfWeek)
+
+    @staticmethod
+    def trunc(date: Union[MockColumn, str], format: str) -> MockColumnOperation:
+        """Truncate date to specified unit."""
+        return DateTimeFunctions.trunc(date, format)
+
+    @staticmethod
     def from_unixtime(
         column: Union[MockColumn, str], format: str = "yyyy-MM-dd HH:mm:ss"
     ) -> MockColumnOperation:
@@ -846,6 +1002,41 @@ class MockFunctions:
     ) -> MockColumnOperation:
         """Check if arrays have common elements."""
         return ArrayFunctions.arrays_overlap(column1, column2)
+
+    @staticmethod
+    def array_contains(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+        """Check if array contains value."""
+        return ArrayFunctions.array_contains(column, value)
+
+    @staticmethod
+    def array_max(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return maximum value from array."""
+        return ArrayFunctions.array_max(column)
+
+    @staticmethod
+    def array_min(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return minimum value from array."""
+        return ArrayFunctions.array_min(column)
+
+    @staticmethod
+    def explode(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns a new row for each element in array or map."""
+        return ArrayFunctions.explode(column)
+
+    @staticmethod
+    def size(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return size of array or map."""
+        return ArrayFunctions.size(column)
+
+    @staticmethod
+    def flatten(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Flatten array of arrays into single array."""
+        return ArrayFunctions.flatten(column)
+
+    @staticmethod
+    def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Reverse array elements."""
+        return ArrayFunctions.reverse(column)
 
     # Map functions
     @staticmethod

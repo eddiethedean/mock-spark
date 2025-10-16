@@ -45,13 +45,20 @@ Author: Odos Matthews
 import sys
 from types import ModuleType
 
-from .session import MockSparkSession
-from .session.context import MockSparkContext, MockJVMContext
-from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData
-from .functions import MockFunctions, MockColumn, MockColumnOperation, F
-from .window import MockWindow, MockWindowSpec
-from .delta import DeltaTable, DeltaMergeBuilder
-from .spark_types import (
+# Initialize PySpark version compatibility
+from mock_spark._version_compat import check_version_from_env, check_version_from_marker
+
+# Check for version compatibility settings
+check_version_from_env()
+check_version_from_marker()
+
+from .session import MockSparkSession  # noqa: E402
+from .session.context import MockSparkContext, MockJVMContext  # noqa: E402
+from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData  # noqa: E402
+from .functions import MockFunctions, MockColumn, MockColumnOperation, F  # noqa: E402
+from .window import MockWindow, MockWindowSpec  # noqa: E402
+from .delta import DeltaTable, DeltaMergeBuilder  # noqa: E402
+from .spark_types import (  # noqa: E402
     MockDataType,
     StringType,
     IntegerType,
@@ -71,8 +78,8 @@ from .spark_types import (
     MockStructType,
     MockStructField,
 )
-from mock_spark.storage import MemoryStorageManager
-from .errors import (
+from mock_spark.storage import MemoryStorageManager  # noqa: E402
+from .errors import (  # noqa: E402
     MockException,
     AnalysisException,
     PySparkValueError,

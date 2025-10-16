@@ -107,6 +107,46 @@ class MockDataFrame:
 
     def __repr__(self) -> str:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
+    
+    def __getattribute__(self, name: str):
+        """
+        Custom attribute access to enforce PySpark version compatibility for DataFrame methods.
+        
+        This intercepts all attribute access and checks if public methods (non-underscore)
+        are available in the current PySpark compatibility mode.
+        
+        Args:
+            name: Name of the attribute/method being accessed
+            
+        Returns:
+            The requested attribute/method
+            
+        Raises:
+            AttributeError: If method not available in current version mode
+        """
+        # Always allow access to private/protected attributes and core attributes
+        if name.startswith('_') or name in ['data', 'schema', 'storage', 'is_lazy']:
+            return super().__getattribute__(name)
+        
+        # For public methods, check version compatibility
+        try:
+            attr = super().__getattribute__(name)
+            
+            # Only check callable methods (not properties/data)
+            if callable(attr):
+                from mock_spark._version_compat import is_available, get_pyspark_version
+                
+                if not is_available(name, 'dataframe_method'):
+                    version = get_pyspark_version()
+                    raise AttributeError(
+                        f"'DataFrame' object has no attribute '{name}' "
+                        f"(PySpark {version} compatibility mode)"
+                    )
+            
+            return attr
+        except AttributeError:
+            # Re-raise if attribute truly doesn't exist
+            raise
 
     def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a clean table format.

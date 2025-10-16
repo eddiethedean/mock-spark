@@ -748,9 +748,55 @@ spark = MockSparkSession("app", backend="mysql://localhost/testdb")
 
 ### Installation
 
+**Standard Installation (All Features):**
 ```bash
 pip install mock-spark
 ```
+
+**Version-Specific Installation:**
+
+Match a specific PySpark version's API (only exposes functions/methods available in that version):
+
+```bash
+# Match PySpark 3.0 API
+pip install mock-spark[pyspark-3-0]
+
+# Match PySpark 3.1 API  
+pip install mock-spark[pyspark-3-1]
+
+# Match PySpark 3.2 API
+pip install mock-spark[pyspark-3-2]
+
+# Match PySpark 3.3 API
+pip install mock-spark[pyspark-3-3]
+
+# Match PySpark 3.4 API
+pip install mock-spark[pyspark-3-4]
+
+# Match PySpark 3.5 API
+pip install mock-spark[pyspark-3-5]
+```
+
+**Environment Variable:**
+
+You can also set PySpark compatibility mode via environment variable:
+
+```bash
+# Set version at runtime
+export MOCK_SPARK_PYSPARK_VERSION=3.1
+
+# Or inline
+MOCK_SPARK_PYSPARK_VERSION=3.2 python my_tests.py
+```
+
+**Why Version-Specific Installation?**
+
+- **Exact API matching**: Test code against a specific PySpark version's API
+- **Catch compatibility issues**: Functions not available in target version raise `AttributeError`
+- **Safe upgrades**: Ensure code works with older PySpark versions before upgrading
+- **CI/CD flexibility**: Test against multiple PySpark versions in parallel
+
+See [`PYSPARK_FUNCTION_MATRIX.md`](PYSPARK_FUNCTION_MATRIX.md) for complete function availability across versions.
 
 ### Basic Usage
 

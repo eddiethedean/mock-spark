@@ -608,3 +608,153 @@ class DateTimeFunctions:
             value=(month, day),
             name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})"
         )
+
+    @staticmethod
+    def date_trunc(format: str, timestamp: Union[MockColumn, str]) -> MockColumnOperation:
+        """Truncate timestamp to specified unit (year, month, day, hour, etc.).
+
+        Args:
+            format: Truncation unit ('year', 'month', 'day', 'hour', 'minute', 'second')
+            timestamp: Timestamp column to truncate
+
+        Returns:
+            MockColumnOperation representing the date_trunc function
+
+        Example:
+            >>> df.select(F.date_trunc('month', F.col('timestamp')))
+        """
+        if isinstance(timestamp, str):
+            timestamp = MockColumn(timestamp)
+
+        return MockColumnOperation(
+            timestamp,
+            "date_trunc",
+            value=format,
+            name=f"date_trunc({format}, {timestamp.name})"
+        )
+
+    @staticmethod
+    def datediff(end: Union[MockColumn, str], start: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns number of days between two dates.
+
+        Args:
+            end: End date column
+            start: Start date column
+
+        Returns:
+            MockColumnOperation representing the datediff function
+
+        Example:
+            >>> df.select(F.datediff(F.col('end_date'), F.col('start_date')))
+        """
+        if isinstance(end, str):
+            end = MockColumn(end)
+        if isinstance(start, str):
+            start = MockColumn(start)
+
+        return MockColumnOperation(
+            end,
+            "datediff",
+            value=start,
+            name=f"datediff({end.name}, {start.name})"
+        )
+
+    @staticmethod
+    def unix_timestamp(
+        timestamp: Optional[Union[MockColumn, str]] = None,
+        format: str = 'yyyy-MM-dd HH:mm:ss'
+    ) -> MockColumnOperation:
+        """Convert timestamp string to Unix timestamp (seconds since epoch).
+
+        Args:
+            timestamp: Timestamp column (optional, defaults to current timestamp)
+            format: Date/time format string
+
+        Returns:
+            MockColumnOperation representing the unix_timestamp function
+
+        Example:
+            >>> df.select(F.unix_timestamp(F.col('timestamp'), 'yyyy-MM-dd'))
+        """
+        if timestamp is None:
+            from mock_spark.functions.core.literals import MockLiteral
+            timestamp = MockLiteral("current_timestamp")
+        elif isinstance(timestamp, str):
+            timestamp = MockColumn(timestamp)
+
+        return MockColumnOperation(
+            timestamp,
+            "unix_timestamp",
+            value=format,
+            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})"
+        )
+
+    @staticmethod
+    def last_day(date: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns the last day of the month for a given date.
+
+        Args:
+            date: Date column
+
+        Returns:
+            MockColumnOperation representing the last_day function
+
+        Example:
+            >>> df.select(F.last_day(F.col('date')))
+        """
+        if isinstance(date, str):
+            date = MockColumn(date)
+
+        return MockColumnOperation(
+            date,
+            "last_day",
+            name=f"last_day({date.name})"
+        )
+
+    @staticmethod
+    def next_day(date: Union[MockColumn, str], dayOfWeek: str) -> MockColumnOperation:
+        """Returns the first date which is later than the value of the date column that is on the specified day of the week.
+
+        Args:
+            date: Date column
+            dayOfWeek: Day of week string (e.g., 'Mon', 'Monday')
+
+        Returns:
+            MockColumnOperation representing the next_day function
+
+        Example:
+            >>> df.select(F.next_day(F.col('date'), 'Monday'))
+        """
+        if isinstance(date, str):
+            date = MockColumn(date)
+
+        return MockColumnOperation(
+            date,
+            "next_day",
+            value=dayOfWeek,
+            name=f"next_day({date.name}, {dayOfWeek})"
+        )
+
+    @staticmethod
+    def trunc(date: Union[MockColumn, str], format: str) -> MockColumnOperation:
+        """Truncate date to specified unit (year, month, etc.).
+
+        Args:
+            date: Date column
+            format: Truncation format ('year', 'yyyy', 'yy', 'month', 'mon', 'mm')
+
+        Returns:
+            MockColumnOperation representing the trunc function
+
+        Example:
+            >>> df.select(F.trunc(F.col('date'), 'year'))
+        """
+        if isinstance(date, str):
+            date = MockColumn(date)
+
+        return MockColumnOperation(
+            date,
+            "trunc",
+            value=format,
+            name=f"trunc({date.name}, {format})"
+        )

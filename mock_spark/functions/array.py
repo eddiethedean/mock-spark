@@ -555,6 +555,149 @@ class ArrayFunctions:
         )
 
     @staticmethod
+    def array_contains(
+        column: Union[MockColumn, str], value: Any
+    ) -> MockColumnOperation:
+        """Check if array contains a specific value.
+
+        Args:
+            column: The array column to search.
+            value: The value to search for.
+
+        Returns:
+            MockColumnOperation representing the array_contains function.
+
+        Example:
+            >>> df.select(F.array_contains(F.col("tags"), "spark"))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_contains", value=value, name=f"array_contains({column.name}, {value})"
+        )
+
+    @staticmethod
+    def array_max(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return maximum value from array.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the array_max function.
+
+        Example:
+            >>> df.select(F.array_max(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_max", name=f"array_max({column.name})"
+        )
+
+    @staticmethod
+    def array_min(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return minimum value from array.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the array_min function.
+
+        Example:
+            >>> df.select(F.array_min(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_min", name=f"array_min({column.name})"
+        )
+
+    @staticmethod
+    def explode(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns a new row for each element in the given array or map.
+
+        Args:
+            column: The array or map column.
+
+        Returns:
+            MockColumnOperation representing the explode function.
+
+        Example:
+            >>> df.select(F.explode(F.col("tags")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "explode", name=f"explode({column.name})"
+        )
+
+    @staticmethod
+    def size(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return the size (length) of an array or map.
+
+        Args:
+            column: The array or map column.
+
+        Returns:
+            MockColumnOperation representing the size function.
+
+        Example:
+            >>> df.select(F.size(F.col("tags")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "size", name=f"size({column.name})"
+        )
+
+    @staticmethod
+    def flatten(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Flatten array of arrays into a single array.
+
+        Args:
+            column: The array column containing nested arrays.
+
+        Returns:
+            MockColumnOperation representing the flatten function.
+
+        Example:
+            >>> df.select(F.flatten(F.col("nested_arrays")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "flatten", name=f"flatten({column.name})"
+        )
+
+    @staticmethod
+    def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Reverse the elements of an array.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the reverse function.
+
+        Example:
+            >>> df.select(F.reverse(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "reverse", name=f"reverse({column.name})"
+        )
+
+    @staticmethod
     def arrays_overlap(
         column1: Union[MockColumn, str], column2: Union[MockColumn, str]
     ) -> MockColumnOperation:

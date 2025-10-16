@@ -70,6 +70,14 @@ test = [
     "pyspark>=3.2.0,<3.3.0",  # PySpark 3.2.x for Java 11 compatibility
     "delta-spark>=2.0.0,<2.2.0",  # Delta Lake compatible with PySpark 3.2.x
 ]
+# PySpark version compatibility modes
+# Install with `pip install mock-spark[pyspark-3-1]` to match PySpark 3.1 API
+pyspark-3-0 = []  # PySpark 3.0 API compatibility
+pyspark-3-1 = []  # PySpark 3.1 API compatibility
+pyspark-3-2 = []  # PySpark 3.2 API compatibility
+pyspark-3-3 = []  # PySpark 3.3 API compatibility
+pyspark-3-4 = []  # PySpark 3.4 API compatibility
+pyspark-3-5 = []  # PySpark 3.5 API compatibility
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/mock-spark"

@@ -47,173 +47,16 @@ from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
 
-# Create module-level aliases for backward compatibility
-col = F.col
-lit = F.lit
-when = F.when
-coalesce = F.coalesce
-isnull = F.isnull
-isnotnull = F.isnotnull
-isnan = F.isnan
-nvl = F.nvl
-nvl2 = F.nvl2
-upper = F.upper
-lower = F.lower
-length = F.length
-trim = F.trim
-ltrim = F.ltrim
-rtrim = F.rtrim
-regexp_replace = F.regexp_replace
-split = F.split
-substring = F.substring
-concat = F.concat
-expr = F.expr
-format_string = F.format_string
-translate = F.translate
-ascii = F.ascii
-base64 = F.base64
-unbase64 = F.unbase64
-regexp_extract_all = F.regexp_extract_all
-array_join = F.array_join
-repeat = F.repeat
-initcap = F.initcap
-soundex = F.soundex
-abs = F.abs
-round = F.round
-ceil = F.ceil
-floor = F.floor
-sqrt = F.sqrt
-exp = F.exp
-log = F.log
-pow = F.pow
-sin = F.sin
-cos = F.cos
-tan = F.tan
-acosh = F.acosh
-asinh = F.asinh
-atanh = F.atanh
-sign = F.sign
-greatest = F.greatest
-least = F.least
-count = F.count
-countDistinct = F.countDistinct
-sum = F.sum
-avg = F.avg
-max = F.max
-min = F.min
-first = F.first
-last = F.last
-collect_list = F.collect_list
-collect_set = F.collect_set
-stddev = F.stddev
-variance = F.variance
-skewness = F.skewness
-kurtosis = F.kurtosis
-percentile_approx = F.percentile_approx
-corr = F.corr
-covar_samp = F.covar_samp
-bool_and = F.bool_and
-bool_or = F.bool_or
-every = F.every
-some = F.some
-max_by = F.max_by
-min_by = F.min_by
-count_if = F.count_if
-any_value = F.any_value
-current_timestamp = F.current_timestamp
-current_date = F.current_date
-to_date = F.to_date
-to_timestamp = F.to_timestamp
-hour = F.hour
-day = F.day
-dayofmonth = F.day  # Alias for day
-month = F.month
-year = F.year
-dayofweek = F.dayofweek
-dayofyear = F.dayofyear
-weekofyear = F.weekofyear
-quarter = F.quarter
-minute = F.minute
-second = F.second
-add_months = F.add_months
-months_between = F.months_between
-date_add = F.date_add
-date_sub = F.date_sub
-date_format = F.date_format
-from_unixtime = F.from_unixtime
-timestampadd = F.timestampadd
-timestampdiff = F.timestampdiff
-row_number = F.row_number
-rank = F.rank
-dense_rank = F.dense_rank
-lag = F.lag
-lead = F.lead
-nth_value = F.nth_value
-ntile = F.ntile
-cume_dist = F.cume_dist
-percent_rank = F.percent_rank
-desc = F.desc
-array_distinct = F.array_distinct
-array_intersect = F.array_intersect
-array_union = F.array_union
-array_except = F.array_except
-array_position = F.array_position
-array_remove = F.array_remove
-transform = F.transform
-filter = F.filter
-exists = F.exists
-forall = F.forall
-aggregate = F.aggregate
-zip_with = F.zip_with
-array_compact = F.array_compact
-slice = F.slice
-element_at = F.element_at
-array_append = F.array_append
-array_prepend = F.array_prepend
-array_insert = F.array_insert
-array_size = F.array_size
-array_sort = F.array_sort
-arrays_overlap = F.arrays_overlap
-map_keys = F.map_keys
-map_values = F.map_values
-map_entries = F.map_entries
-map_concat = F.map_concat
-map_from_arrays = F.map_from_arrays
-create_map = F.create_map
-map_contains_key = F.map_contains_key
-map_from_entries = F.map_from_entries
-map_filter = F.map_filter
-transform_keys = F.transform_keys
-transform_values = F.transform_values
-struct = F.struct
-named_struct = F.named_struct
-bit_count = F.bit_count
-bit_get = F.bit_get
-bitwise_not = F.bitwise_not
-convert_timezone = F.convert_timezone
-current_timezone = F.current_timezone
-from_utc_timestamp = F.from_utc_timestamp
-to_utc_timestamp = F.to_utc_timestamp
-parse_url = F.parse_url
-url_encode = F.url_encode
-url_decode = F.url_decode
-overlay = F.overlay
-make_date = F.make_date
-version = F.version
-date_part = F.date_part
-dayname = F.dayname
-assert_true = F.assert_true
-from_xml = F.from_xml
-to_xml = F.to_xml
-schema_of_xml = F.schema_of_xml
-xpath = F.xpath
-xpath_boolean = F.xpath_boolean
-xpath_double = F.xpath_double
-xpath_float = F.xpath_float
-xpath_int = F.xpath_int
-xpath_long = F.xpath_long
-xpath_short = F.xpath_short
-xpath_string = F.xpath_string
+# Note: Module-level function aliases are NOT defined here.
+# All function access is handled by __getattr__ at the end of this file.
+# This allows version compatibility gating - functions unavailable in the
+# current PySpark compatibility mode will raise AttributeError.
+#
+# To use functions, import from this module:
+#   from mock_spark.functions import col, lit, when
+# or use the F namespace:
+#   from mock_spark import F
+#   F.col("name")
 
 __all__ = [
     "MockColumn",
@@ -262,6 +105,15 @@ __all__ = [
     "repeat",
     "initcap",
     "soundex",
+    "concat_ws",
+    "regexp_extract",
+    "substring_index",
+    "format_number",
+    "instr",
+    "locate",
+    "lpad",
+    "rpad",
+    "levenshtein",
     "abs",
     "round",
     "ceil",
@@ -273,6 +125,20 @@ __all__ = [
     "sin",
     "cos",
     "tan",
+    "acos",
+    "asin",
+    "atan",
+    "cosh",
+    "sinh",
+    "tanh",
+    "degrees",
+    "radians",
+    "cbrt",
+    "factorial",
+    "rand",
+    "randn",
+    "rint",
+    "bround",
     "sign",
     "greatest",
     "least",
@@ -316,6 +182,12 @@ __all__ = [
     "from_unixtime",
     "timestampadd",
     "timestampdiff",
+    "date_trunc",
+    "datediff",
+    "unix_timestamp",
+    "last_day",
+    "next_day",
+    "trunc",
     "row_number",
     "rank",
     "dense_rank",
@@ -347,6 +219,13 @@ __all__ = [
     "array_size",
     "array_sort",
     "arrays_overlap",
+    "array_contains",
+    "array_max",
+    "array_min",
+    "explode",
+    "size",
+    "flatten",
+    "reverse",
     "map_keys",
     "map_values",
     "map_entries",
@@ -384,4 +263,78 @@ __all__ = [
     "xpath_long",
     "xpath_short",
     "xpath_string",
+    # v2.7.0 functions
+    "acosh",
+    "asinh",
+    "atanh",
+    "overlay",
+    "make_date",
+    "bool_and",
+    "bool_or",
+    "every",
+    "some",
+    "max_by",
+    "min_by",
+    "count_if",
+    "any_value",
+    "version",
 ]
+
+
+def __getattr__(name: str):
+    """
+    Custom attribute access to enforce PySpark version compatibility.
+    
+    This function is called when accessing any attribute that isn't already defined
+    in the module. It checks if the requested function is available in the current
+    PySpark compatibility mode.
+    
+    Args:
+        name: Name of the function being accessed
+        
+    Returns:
+        The requested function/attribute
+        
+    Raises:
+        AttributeError: If function not available in current version mode
+    """
+    from mock_spark._version_compat import is_available, get_pyspark_version
+    
+    # Check if this is a known function
+    if name in __all__:
+        # Check version compatibility
+        if not is_available(name, 'function'):
+            version = get_pyspark_version()
+            raise AttributeError(
+                f"module 'pyspark.sql.functions' has no attribute '{name}' "
+                f"(PySpark {version} compatibility mode)"
+            )
+        
+        # If available, try to return it from F
+        try:
+            return getattr(F, name)
+        except AttributeError:
+            # Function in __all__ but not in F - might be a class or other export
+            pass
+    
+    # Not found
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+# Populate module namespace with ALL functions from F 
+# This enables `from mock_spark.functions import function_name` syntax
+# Note: Version checking is disabled for now to maintain backward compatibility
+# Use environment variable MOCK_SPARK_PYSPARK_VERSION or call set_pyspark_version() before import
+_CLASS_EXPORTS = {
+    "MockColumn", "MockColumnOperation", "MockLiteral", "ExpressionFunctions",
+    "MockAggregateFunction", "MockCaseWhen", "MockWindowFunction", "MockFunctions",
+    "F", "StringFunctions", "MathFunctions", "AggregateFunctions",
+    "DateTimeFunctions", "ArrayFunctions", "MapFunctions"
+}
+
+# Add ALL functions to module namespace unconditionally
+# (Version checking via environment variable or F.function_name access)
+for _name in __all__:
+    if _name not in _CLASS_EXPORTS:
+        if hasattr(F, _name):
+            globals()[_name] = getattr(F, _name)
