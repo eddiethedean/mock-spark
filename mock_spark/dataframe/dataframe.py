@@ -108,7 +108,7 @@ class MockDataFrame:
     def __repr__(self) -> str:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
     
-    def __getattribute__(self, name: str):
+    def __getattribute__(self, name: str) -> Any:
         """
         Custom attribute access to enforce PySpark version compatibility for DataFrame methods.
         

@@ -694,15 +694,15 @@ class DateTimeFunctions:
         """
         if timestamp is None:
             from mock_spark.functions.core.literals import MockLiteral
-            timestamp = MockLiteral("current_timestamp")
+            timestamp = MockLiteral("current_timestamp")  # type: ignore[assignment]
         elif isinstance(timestamp, str):
             timestamp = MockColumn(timestamp)
 
         return MockColumnOperation(
-            timestamp,
+            timestamp,  # type: ignore[arg-type]
             "unix_timestamp",
             value=format,
-            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})"
+            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})"  # type: ignore[union-attr]
         )
 
     @staticmethod

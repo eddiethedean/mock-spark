@@ -388,15 +388,15 @@ class MockGroupedData:
         elif func_name == "covar_pop":
             # covar_pop(col1, col2) - population covariance
             # Get both columns
-            if hasattr(expr, 'ord_column'):
-                col2_name = expr.ord_column.name if hasattr(expr.ord_column, 'name') else str(expr.ord_column)
+            if hasattr(expr, 'ord_column') and expr.ord_column is not None:
+                col2_name = expr.ord_column.name if hasattr(expr.ord_column, 'name') else str(expr.ord_column)  # type: ignore[union-attr]
                 values1 = [row.get(col_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
                 values2 = [row.get(col2_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
                 
                 if len(values1) > 0 and len(values2) > 0:
-                    mean1 = statistics.mean(values1)
-                    mean2 = statistics.mean(values2)
-                    covar = sum((x1 - mean1) * (x2 - mean2) for x1, x2 in zip(values1, values2)) / len(values1)
+                    mean1 = statistics.mean(values1)  # type: ignore[arg-type,type-var]
+                    mean2 = statistics.mean(values2)  # type: ignore[arg-type,type-var]
+                    covar = sum((x1 - mean1) * (x2 - mean2) for x1, x2 in zip(values1, values2)) / len(values1)  # type: ignore[operator]
                     result_key = alias_name if alias_name else f"covar_pop({col_name}, {col2_name})"
                     return result_key, covar
                 else:

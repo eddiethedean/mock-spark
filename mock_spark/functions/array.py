@@ -820,7 +820,7 @@ class ArrayFunctions:
             start = MockColumn(start)
         elif isinstance(start, int):
             from mock_spark.functions.core.literals import MockLiteral
-            start = MockLiteral(start)
+            start = MockLiteral(start)  # type: ignore[assignment]
 
         return MockColumnOperation(
             start,  # type: ignore[arg-type]

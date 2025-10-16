@@ -332,8 +332,10 @@ __all__ = [
     "grouping_id",
 ]
 
+from typing import Any  # noqa: E402
 
-def __getattr__(name: str):
+
+def __getattr__(name: str) -> Any:
     """
     Custom attribute access to enforce PySpark version compatibility.
     
