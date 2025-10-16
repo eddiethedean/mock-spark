@@ -180,6 +180,10 @@ named_struct = F.named_struct
 bit_count = F.bit_count
 bit_get = F.bit_get
 bitwise_not = F.bitwise_not
+convert_timezone = F.convert_timezone
+current_timezone = F.current_timezone
+from_utc_timestamp = F.from_utc_timestamp
+to_utc_timestamp = F.to_utc_timestamp
 
 __all__ = [
     "MockColumn",
@@ -329,4 +333,8 @@ __all__ = [
     "bit_count",
     "bit_get",
     "bitwise_not",
+    "convert_timezone",
+    "current_timezone",
+    "from_utc_timestamp",
+    "to_utc_timestamp",
 ]

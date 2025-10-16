@@ -24,6 +24,7 @@ from sqlalchemy import (
     Float,
     Double,
     Boolean,
+    DateTime,
     literal,
     insert,
     text,
@@ -729,6 +730,10 @@ class SQLAlchemyMaterializer:
                                 "bit_count": "bit_count",  # Special handling below
                                 "bit_get": "bit_get",  # Special handling below
                                 "bitwise_not": "bitwise_not",  # Special handling below
+                                "convert_timezone": "convert_timezone",  # Special handling below
+                                "current_timezone": "current_timezone",  # Special handling below
+                                "from_utc_timestamp": "from_utc_timestamp",  # Special handling below
+                                "to_utc_timestamp": "to_utc_timestamp",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -1116,6 +1121,11 @@ class SQLAlchemyMaterializer:
                                                 raise ValueError("zip_with requires a lambda function")
                                         else:
                                             raise ValueError("zip_with requires array2 and lambda function")
+                                    elif col.function_name == "current_timezone":
+                                        # current_timezone() -> current_setting('TIMEZONE')
+                                        # This function doesn't use the column, ignore column_expr
+                                        special_sql = "current_setting('TIMEZONE')"
+                                        func_expr = text(special_sql)
                                     elif col.function_name == "array_compact":
                                         # array_compact(array) -> LIST_FILTER(array, x -> x IS NOT NULL)
                                         special_sql = f"LIST_FILTER({column_expr}, x -> x IS NOT NULL)"
@@ -1336,6 +1346,27 @@ class SQLAlchemyMaterializer:
                                         pos = col.value
                                         special_sql = f"(({column_expr} >> {pos}) & 1)"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "convert_timezone":
+                                        # convert_timezone(sourceTz, targetTz, sourceTs)
+                                        # value is tuple (sourceTz, targetTz, sourceTs)
+                                        source_tz, target_tz, source_ts = col.value
+                                        if hasattr(source_ts, 'name'):
+                                            ts_expr = source_ts.name
+                                        else:
+                                            ts_expr = f"'{source_ts}'"
+                                        # Cast to TIMESTAMP explicitly for DuckDB
+                                        special_sql = f"timezone('{target_tz}', timezone('{source_tz}', {ts_expr}::TIMESTAMP))"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "from_utc_timestamp":
+                                        # from_utc_timestamp(ts, tz) -> timezone(tz, ts::TIMESTAMP)
+                                        tz = col.value
+                                        special_sql = f"timezone('{tz}', {column_expr}::TIMESTAMP)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "to_utc_timestamp":
+                                        # to_utc_timestamp(ts, tz) -> timezone('UTC', timezone(tz, ts::TIMESTAMP))
+                                        tz = col.value
+                                        special_sql = f"timezone('UTC', timezone('{tz}', {column_expr}::TIMESTAMP))"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1487,6 +1518,12 @@ class SQLAlchemyMaterializer:
                         elif col.function_name in ["array_size", "bit_count", "bit_get", "bitwise_not"]:
                             # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name in ["convert_timezone", "from_utc_timestamp", "to_utc_timestamp"]:
+                            # Timezone functions return timestamps
+                            new_columns.append(Column(col.name, DateTime, primary_key=False))
+                        elif col.function_name == "current_timezone":
+                            # current_timezone returns string
+                            new_columns.append(Column(col.name, String, primary_key=False))
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))

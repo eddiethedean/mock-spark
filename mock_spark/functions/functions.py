@@ -883,6 +883,27 @@ class MockFunctions:
         """Bitwise NOT."""
         return BitwiseFunctions.bitwise_not(column)
 
+    # Timezone functions (PySpark 3.2+)
+    @staticmethod
+    def convert_timezone(sourceTz: str, targetTz: str, sourceTs: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert timestamp between timezones."""
+        return DateTimeFunctions.convert_timezone(sourceTz, targetTz, sourceTs)
+
+    @staticmethod
+    def current_timezone() -> MockColumnOperation:
+        """Get current timezone."""
+        return DateTimeFunctions.current_timezone()
+
+    @staticmethod
+    def from_utc_timestamp(ts: Union[MockColumn, str], tz: str) -> MockColumnOperation:
+        """Convert UTC timestamp to timezone."""
+        return DateTimeFunctions.from_utc_timestamp(ts, tz)
+
+    @staticmethod
+    def to_utc_timestamp(ts: Union[MockColumn, str], tz: str) -> MockColumnOperation:
+        """Convert timestamp to UTC."""
+        return DateTimeFunctions.to_utc_timestamp(ts, tz)
+
 
 # Create the F namespace instance
 F = MockFunctions()

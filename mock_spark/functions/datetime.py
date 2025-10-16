@@ -470,3 +470,62 @@ class DateTimeFunctions:
             name=f"timestampdiff('{unit}', {start.name}, {end.name})",
         )
         return operation
+
+    # Timezone Functions (PySpark 3.2+)
+
+    @staticmethod
+    def convert_timezone(
+        sourceTz: str, targetTz: str, sourceTs: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Convert timestamp from source to target timezone."""
+        if isinstance(sourceTs, str):
+            sourceTs = MockColumn(sourceTs)
+        
+        return MockColumnOperation(
+            sourceTs,
+            "convert_timezone",
+            (sourceTz, targetTz, sourceTs),
+            name=f"convert_timezone('{sourceTz}', '{targetTz}', {sourceTs.name})",
+        )
+
+    @staticmethod
+    def current_timezone() -> MockColumnOperation:
+        """Get current timezone."""
+        # Create a literal for functions without column input
+        from mock_spark.functions.core.literals import MockLiteral
+        dummy = MockLiteral(1)  # Use literal 1 as dummy input
+        return MockColumnOperation(
+            dummy,
+            "current_timezone",
+            name="current_timezone()",
+        )
+
+    @staticmethod
+    def from_utc_timestamp(
+        ts: Union[MockColumn, str], tz: str
+    ) -> MockColumnOperation:
+        """Convert UTC timestamp to given timezone."""
+        if isinstance(ts, str):
+            ts = MockColumn(ts)
+        
+        return MockColumnOperation(
+            ts,
+            "from_utc_timestamp",
+            tz,
+            name=f"from_utc_timestamp({ts.name}, '{tz}')",
+        )
+
+    @staticmethod
+    def to_utc_timestamp(
+        ts: Union[MockColumn, str], tz: str
+    ) -> MockColumnOperation:
+        """Convert timestamp from given timezone to UTC."""
+        if isinstance(ts, str):
+            ts = MockColumn(ts)
+        
+        return MockColumnOperation(
+            ts,
+            "to_utc_timestamp",
+            tz,
+            name=f"to_utc_timestamp({ts.name}, '{tz}')",
+        )
