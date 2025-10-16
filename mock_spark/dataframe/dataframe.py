@@ -3939,6 +3939,48 @@ class MockDataFrame:
         unpivoted_schema = MockStructType(fields)
         return MockDataFrame(unpivoted_data, unpivoted_schema, self.storage)
 
+    def inputFiles(self) -> List[str]:
+        """Return list of input files for this DataFrame (PySpark 3.1+).
+        
+        Returns:
+            Empty list (mock DataFrames don't have file inputs)
+        """
+        # Mock DataFrames are in-memory, so no input files
+        return []
+
+    def sameSemantics(self, other: "MockDataFrame") -> bool:
+        """Check if this DataFrame has the same semantics as another (PySpark 3.1+).
+        
+        Simplified implementation that checks schema and data equality.
+        
+        Args:
+            other: Another DataFrame to compare
+            
+        Returns:
+            True if semantically equivalent, False otherwise
+        """
+        # Simplified: check if schemas match
+        if len(self.schema.fields) != len(other.schema.fields):
+            return False
+        
+        for f1, f2 in zip(self.schema.fields, other.schema.fields):
+            if f1.name != f2.name or f1.dataType != f2.dataType:
+                return False
+        
+        return True
+
+    def semanticHash(self) -> int:
+        """Return semantic hash of this DataFrame (PySpark 3.1+).
+        
+        Simplified implementation based on schema.
+        
+        Returns:
+            Hash value representing DataFrame semantics
+        """
+        # Create hash from schema
+        schema_str = ",".join([f"{f.name}:{f.dataType}" for f in self.schema.fields])
+        return hash(schema_str)
+
     @property
     def write(self) -> "MockDataFrameWriter":
         """Get DataFrame writer (PySpark-compatible property)."""
