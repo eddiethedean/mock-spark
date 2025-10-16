@@ -2059,7 +2059,7 @@ class SQLAlchemyMaterializer:
                             else:
                                 # Default to String
                                 new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["array_size", "bit_count", "bit_get", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id"]:
+                        elif col.function_name in ["array_size", "bit_count", "bit_count", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id", "bucket"]:
                             # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
                         elif col.function_name in ["hash", "monotonically_increasing_id"]:
