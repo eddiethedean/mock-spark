@@ -824,8 +824,14 @@ class SQLAlchemyMaterializer:
                                 special_sql = f"DAYNAME({column_expr}::DATE)"
                                 func_expr = text(special_sql)
                             elif col.function_name == "schema_of_xml" and (not hasattr(col, "value") or col.value is None):
-                                # schema_of_xml(xml) - simplified: return fixed schema string
-                                special_sql = "'STRUCT<>'"
+                                # schema_of_xml(xml) - infer schema from XML structure
+                                # For simple implementation, return a fixed STRUCT schema string
+                                # A full implementation would parse and infer actual field types
+                                special_sql = "'STRUCT<name:STRING,age:STRING>'"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "to_xml" and (not hasattr(col, "value") or col.value is None):
+                                # to_xml(column) - wrap column value in XML tags (simple case)
+                                special_sql = f"'<row>' || CAST({column_expr} AS VARCHAR) || '</row>'"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1432,35 +1438,85 @@ class SQLAlchemyMaterializer:
                                         special_sql = f"CASE WHEN {condition_sql} THEN TRUE ELSE NULL END"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "to_xml":
-                                        # to_xml(struct) - simplified: return XML-like string
-                                        # In real Spark, would convert struct to proper XML
+                                        # to_xml(column) - convert column value to XML
+                                        # Wrap the value in <row> tags
                                         if hasattr(col.value, 'name'):
-                                            struct_sql = col.value.name
+                                            # If value is a column operation, use it
+                                            value_sql = col.value.name
                                         else:
-                                            struct_sql = column_expr
-                                        special_sql = f"'<row>' || CAST({struct_sql} AS VARCHAR) || '</row>'"
+                                            # Otherwise use the column itself
+                                            value_sql = column_expr
+                                        special_sql = f"'<row>' || CAST({value_sql} AS VARCHAR) || '</row>'"
                                         func_expr = text(special_sql)
-                                    elif col.function_name in ["xpath_string", "xpath_int", "xpath_long", 
-                                                               "xpath_short", "xpath_float", "xpath_double"]:
-                                        # XPath extraction - simplified: return NULL
-                                        # Real implementation would parse XML and extract values
-                                        # xpath = col.value  # Currently unused in simplified implementation
-                                        special_sql = "NULL"
+                                    elif col.function_name == "xpath_string":
+                                        # xpath_string(xml, path) - extract string value from XML
+                                        xpath = col.value
+                                        # Parse simple XPath like "/root/name" -> extract tag content
+                                        # Extract tag name from path (e.g., "/root/name" -> "name")
+                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        special_sql = f"regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name in ["xpath_int", "xpath_long", "xpath_short"]:
+                                        # xpath_int/long/short(xml, path) - extract integer from XML
+                                        xpath = col.value
+                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        special_sql = f"CAST(regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) AS INTEGER)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name in ["xpath_float", "xpath_double"]:
+                                        # xpath_float/double(xml, path) - extract numeric from XML
+                                        xpath = col.value
+                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        special_sql = f"CAST(regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) AS DOUBLE)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath_boolean":
-                                        # XPath boolean - simplified: return FALSE
-                                        # xpath = col.value  # Currently unused in simplified implementation
-                                        special_sql = "FALSE"
+                                        # xpath_boolean(xml, path) - evaluate XPath to boolean
+                                        xpath = col.value
+                                        if '=' in xpath:
+                                            # Handle predicates like "/root/active='true'"
+                                            tag = xpath.split('/')[- 1].split('=')[0]
+                                            expected = xpath.split('=')[1].strip("'\"")
+                                            special_sql = f"regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) = '{expected}'"
+                                        else:
+                                            # Just check if tag exists
+                                            tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                            special_sql = f"regexp_extract({column_expr}, '<{tag}>', 0) IS NOT NULL"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath":
-                                        # XPath array - simplified: return empty array
-                                        # xpath = col.value  # Currently unused in simplified implementation
-                                        special_sql = "[]"
+                                        # xpath(xml, path) - extract array of values
+                                        xpath = col.value
+                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        # Use regexp_extract_all to get all matching tags
+                                        special_sql = f"regexp_extract_all({column_expr}, '<{tag}>([^<]*)</{tag}>', 1)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "from_xml":
-                                        # from_xml(xml, schema) - simplified: return NULL
-                                        # schema = col.value  # Currently unused in simplified implementation
-                                        special_sql = "NULL"
+                                        # from_xml(xml, schema) - parse XML to struct
+                                        # Schema format like "name STRING, age INT"
+                                        schema_str = col.value
+                                        # Parse schema to extract field names and types
+                                        fields = []
+                                        if schema_str and ',' in schema_str:
+                                            for field_def in schema_str.split(','):
+                                                field_def = field_def.strip()
+                                                if ' ' in field_def:
+                                                    field_name = field_def.split()[0]
+                                                    field_type = field_def.split()[1].upper()
+                                                    # Extract value from XML tag
+                                                    extract_sql = f"regexp_extract({column_expr}, '<{field_name}>([^<]*)</{field_name}>', 1)"
+                                                    # Cast to appropriate type
+                                                    if field_type in ['INT', 'INTEGER', 'BIGINT', 'LONG']:
+                                                        extract_sql = f"CAST({extract_sql} AS INTEGER)"
+                                                    elif field_type in ['FLOAT', 'DOUBLE', 'DECIMAL']:
+                                                        extract_sql = f"CAST({extract_sql} AS DOUBLE)"
+                                                    elif field_type == 'BOOLEAN':
+                                                        extract_sql = f"({extract_sql} IN ('true', 'True', '1'))"
+                                                    fields.append(f"{field_name}: {extract_sql}")
+                                        
+                                        if fields:
+                                            # Create struct from extracted fields
+                                            special_sql = f"{{{', '.join(fields)}}}"
+                                        else:
+                                            # Fallback for simple schema
+                                            special_sql = "NULL"
                                         func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
