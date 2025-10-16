@@ -354,6 +354,57 @@ class MockGroupedData:
             values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
             result_key = alias_name if alias_name else f"any_value({col_name})"
             return result_key, values[0] if values else None
+        elif func_name == "mean":
+            # mean(col) - alias for avg
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"mean({col_name})"
+            return result_key, statistics.mean(values) if values else None
+        elif func_name == "approx_count_distinct":
+            # approx_count_distinct(col) - approximate distinct count
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            distinct_count = len(set(values))
+            result_key = alias_name if alias_name else f"approx_count_distinct({col_name})"
+            return result_key, distinct_count
+        elif func_name == "stddev_pop":
+            # stddev_pop(col) - population standard deviation
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"stddev_pop({col_name})"
+            return result_key, statistics.pstdev(values) if len(values) > 0 else None
+        elif func_name == "stddev_samp":
+            # stddev_samp(col) - sample standard deviation
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"stddev_samp({col_name})"
+            return result_key, statistics.stdev(values) if len(values) > 1 else None
+        elif func_name == "var_pop":
+            # var_pop(col) - population variance
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"var_pop({col_name})"
+            return result_key, statistics.pvariance(values) if len(values) > 0 else None
+        elif func_name == "var_samp":
+            # var_samp(col) - sample variance
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"var_samp({col_name})"
+            return result_key, statistics.variance(values) if len(values) > 1 else None
+        elif func_name == "covar_pop":
+            # covar_pop(col1, col2) - population covariance
+            # Get both columns
+            if hasattr(agg_func, 'ord_column'):
+                col2_name = agg_func.ord_column.name if hasattr(agg_func.ord_column, 'name') else str(agg_func.ord_column)
+                values1 = [row.get(col_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
+                values2 = [row.get(col2_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
+                
+                if len(values1) > 0 and len(values2) > 0:
+                    mean1 = statistics.mean(values1)
+                    mean2 = statistics.mean(values2)
+                    covar = sum((x1 - mean1) * (x2 - mean2) for x1, x2 in zip(values1, values2)) / len(values1)
+                    result_key = alias_name if alias_name else f"covar_pop({col_name}, {col2_name})"
+                    return result_key, covar
+                else:
+                    result_key = alias_name if alias_name else f"covar_pop({col_name})"
+                    return result_key, None
+            else:
+                result_key = alias_name if alias_name else f"covar_pop({col_name})"
+                return result_key, None
         else:
             result_key = alias_name if alias_name else f"{func_name}({col_name})"
             return result_key, None

@@ -788,6 +788,21 @@ class SQLAlchemyMaterializer:
                                 "last_day": "last_day",
                                 "next_day": "next_day",  # Special handling below
                                 "trunc": "trunc",  # Special handling below
+                                # Phase 3 functions
+                                "hypot": "hypot",  # Special handling below
+                                "nanvl": "nanvl",  # Special handling below
+                                "signum": "signum",  # Special handling below
+                                "hash": "hash",  # Special handling below
+                                "encode": "encode",  # Special handling below
+                                "decode": "decode",  # Special handling below
+                                "conv": "conv",  # Special handling below
+                                "sequence": "sequence",  # Special handling below
+                                "shuffle": "shuffle",  # Special handling below
+                                "input_file_name": "input_file_name",  # Special handling below
+                                "monotonically_increasing_id": "monotonically_increasing_id",  # Special handling below
+                                "spark_partition_id": "spark_partition_id",  # Special handling below
+                                "grouping": "grouping",  # Special handling below
+                                "grouping_id": "grouping_id",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -898,6 +913,26 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "rint" and (not hasattr(col, "value") or col.value is None):
                                 # rint uses banker's rounding - ROUND in DuckDB
                                 special_sql = f"ROUND({column_expr}, 0)"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "signum" and (not hasattr(col, "value") or col.value is None):
+                                # signum is sign function in DuckDB
+                                special_sql = f"SIGN({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name in ["bin", "hex", "unhex"] and (not hasattr(col, "value") or col.value is None):
+                                # Binary/hex conversion functions
+                                special_sql = f"{col.function_name.upper()}({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "input_file_name" and (not hasattr(col, "value") or col.value is None):
+                                # input_file_name returns empty string in mock
+                                special_sql = "''"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "monotonically_increasing_id" and (not hasattr(col, "value") or col.value is None):
+                                # Generate unique increasing IDs using ROW_NUMBER
+                                special_sql = "ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "spark_partition_id" and (not hasattr(col, "value") or col.value is None):
+                                # Partition ID is always 0 in mock (single partition)
+                                special_sql = "0"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1291,6 +1326,71 @@ class SQLAlchemyMaterializer:
                                         # trunc(date, format) -> DATE_TRUNC(format, CAST(date AS DATE))
                                         format_str = col.value
                                         special_sql = f"DATE_TRUNC('{format_str}', CAST({column_expr} AS DATE))"
+                                        func_expr = text(special_sql)
+                                    # Phase 3 Math functions with parameters
+                                    elif col.function_name == "hypot":
+                                        # hypot(a, b) -> SQRT(a^2 + b^2)
+                                        col2 = col.value
+                                        if hasattr(col2, 'name'):
+                                            col2_expr = f'"{col2.name}"'
+                                        else:
+                                            col2_expr = str(col2)
+                                        special_sql = f"SQRT(POW({column_expr}, 2) + POW({col2_expr}, 2))"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "nanvl":
+                                        # nanvl(col1, col2) -> CASE WHEN col1 IS NaN THEN col2 ELSE col1
+                                        col2 = col.value
+                                        if hasattr(col2, 'name'):
+                                            col2_expr = f'"{col2.name}"'
+                                        else:
+                                            col2_expr = str(col2)
+                                        special_sql = f"CASE WHEN ISNAN({column_expr}) THEN {col2_expr} ELSE {column_expr} END"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "hash":
+                                        # hash(*cols) -> HASH(*cols)
+                                        if col.value:
+                                            other_cols = col.value if isinstance(col.value, list) else [col.value]
+                                            col_exprs = [column_expr] + [f'"{c.name}"' if hasattr(c, 'name') else str(c) for c in other_cols]
+                                            special_sql = f"HASH({', '.join(col_exprs)})"
+                                        else:
+                                            special_sql = f"HASH({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "encode":
+                                        # encode(col, charset) -> ENCODE(col)
+                                        charset = col.value
+                                        special_sql = f"ENCODE({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "decode":
+                                        # decode(col, charset) -> col (simplified)
+                                        charset = col.value
+                                        special_sql = f"CAST({column_expr} AS VARCHAR)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "conv":
+                                        # conv(col, from_base, to_base) - base conversion
+                                        from_base, to_base = col.value
+                                        # DuckDB doesn't have direct base conversion, use workaround
+                                        special_sql = f"TO_BASE({column_expr}, {to_base})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "sequence":
+                                        # sequence(start, stop, step) -> RANGE(start, stop, step)
+                                        stop, step = col.value
+                                        if isinstance(stop, int):
+                                            stop_expr = str(stop)
+                                        elif hasattr(stop, 'name'):
+                                            stop_expr = f'"{stop.name}"'
+                                        else:
+                                            stop_expr = str(stop)
+                                        
+                                        if isinstance(step, int):
+                                            step_expr = str(step)
+                                        else:
+                                            step_expr = "1"
+                                        
+                                        special_sql = f"RANGE({column_expr}, {stop_expr} + 1, {step_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "shuffle":
+                                        # shuffle(array) -> LIST_SORT(array, x -> RANDOM())
+                                        special_sql = f"LIST_SORT({column_expr}, x -> RANDOM())"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "transform":
                                         # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)
@@ -1890,23 +1990,27 @@ class SQLAlchemyMaterializer:
                         # Infer column type based on function
                         if col.function_name in ["length", "abs", "ceil", "floor", "factorial", "instr", "locate"]:
                             new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["round", "sqrt", "acosh", "asinh", "atanh", "acos", "asin", "atan", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "rand", "randn", "rint", "bround", "levenshtein"]:
+                        elif col.function_name in ["round", "sqrt", "acosh", "asinh", "atanh", "acos", "asin", "atan", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "rand", "randn", "rint", "bround", "hypot", "nanvl", "signum"]:
                             new_columns.append(Column(col.name, Float, primary_key=False))
                         elif col.function_name in ["isnull", "isnan", "isnotnull"]:
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
                         elif col.function_name in ["exists", "forall"]:
                             # exists and forall return boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort", "flatten", "reverse"]:
+                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort", "flatten", "reverse", "sequence", "shuffle"]:
                             # Array functions return arrays - try to infer element type from source
                             from sqlalchemy import ARRAY
-                            source_col = source_table_obj.columns.get(col.column.name)
-                            if source_col is not None and isinstance(source_col.type, ARRAY):
-                                # Preserve array element type from source
-                                new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                            if col.function_name == "sequence":
+                                # sequence returns integer array
+                                new_columns.append(Column(col.name, ARRAY(Integer), primary_key=False))
                             else:
-                                # Default to VARCHAR array
-                                new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                                source_col = source_table_obj.columns.get(col.column.name) if hasattr(col.column, 'name') else None
+                                if source_col is not None and isinstance(source_col.type, ARRAY):
+                                    # Preserve array element type from source
+                                    new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                                else:
+                                    # Default to VARCHAR array
+                                    new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
                         elif col.function_name in ["array_max", "array_min"]:
                             # array_max/min return scalar - infer from array element type
                             from sqlalchemy import ARRAY
@@ -1927,9 +2031,13 @@ class SQLAlchemyMaterializer:
                             else:
                                 # Default to String
                                 new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["array_size", "bit_count", "bit_get", "bitwise_not", "size", "datediff", "unix_timestamp"]:
+                        elif col.function_name in ["array_size", "bit_count", "bit_get", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id"]:
                             # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name in ["hash", "monotonically_increasing_id"]:
+                            # These return big integers (BIGINT)
+                            from sqlalchemy import BigInteger
+                            new_columns.append(Column(col.name, BigInteger, primary_key=False))
                         elif col.function_name == "array_contains":
                             # array_contains returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
@@ -1951,7 +2059,7 @@ class SQLAlchemyMaterializer:
                         elif col.function_name == "current_timezone":
                             # current_timezone returns string
                             new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["parse_url", "url_encode", "url_decode", "dayname", "concat_ws", "regexp_extract", "substring_index", "format_number", "lpad", "rpad"]:
+                        elif col.function_name in ["parse_url", "url_encode", "url_decode", "dayname", "concat_ws", "regexp_extract", "substring_index", "format_number", "lpad", "rpad", "bin", "hex", "unhex", "encode", "decode", "conv", "input_file_name"]:
                             # String functions return strings
                             new_columns.append(Column(col.name, String, primary_key=False))
                         elif col.function_name == "date_part":
