@@ -100,7 +100,7 @@ Total functions cataloged: 455
 | `broadcast` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `bround` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `btrim` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `bucket` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `bucket` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `call_function` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `call_udf` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `cardinality` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
@@ -158,7 +158,7 @@ Total functions cataloged: 455
 | `dayofmonth` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dayofweek` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dayofyear` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `days` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `days` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `decode` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `degrees` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dense_rank` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -208,7 +208,7 @@ Total functions cataloged: 455
 | `hll_union` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `hll_union_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `hour` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `hours` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `hours` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `hypot` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `ifnull` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `ignore_unicode_prefix` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -278,7 +278,7 @@ Total functions cataloged: 455
 | `mode` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `monotonically_increasing_id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `month` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `months` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `months` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `months_between` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `named_struct` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `nanvl` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -311,7 +311,7 @@ Total functions cataloged: 455
 | `product` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `quarter` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `radians` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `raise_error` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `raise_error` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `rand` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `randn` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `rank` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -394,7 +394,7 @@ Total functions cataloged: 455
 | `tanh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `timestamp_micros` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `timestamp_millis` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `timestamp_seconds` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `timestamp_seconds` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `toDegrees` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `toRadians` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `to_binary` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
@@ -465,7 +465,7 @@ Total functions cataloged: 455
 | `xpath_string` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `xxhash64` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `year` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `years` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `years` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `zip_with` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ## DataFrame Methods
@@ -511,7 +511,7 @@ Total methods cataloged: 94
 | `groupby` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `head` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `hint` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `inputFiles` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `inputFiles` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `intersect` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `intersectAll` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `isEmpty` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
@@ -534,12 +534,12 @@ Total methods cataloged: 94
 | `repartitionByRange` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `replace` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `rollup` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `sameSemantics` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sameSemantics` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sample` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sampleBy` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `select` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `selectExpr` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `semanticHash` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `semanticHash` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `show` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sort` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `sortWithinPartitions` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -577,4 +577,4 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 271 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 289 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 451 functions, 94 DataFrame methods
-- **Mock-Spark**: 88 functions, 46 DataFrame methods
+- **Mock-Spark**: 95 functions, 49 DataFrame methods
