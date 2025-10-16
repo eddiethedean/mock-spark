@@ -52,6 +52,8 @@ class MockAggregateFunction:
         self.function_name = function_name
         self.data_type = data_type or StringType()
         self.name = self._generate_name()
+        # Optional attributes for specific functions
+        self.ord_column: Optional[Union[MockColumn, str]] = None  # For max_by, min_by
 
     @property
     def column_name(self) -> str:

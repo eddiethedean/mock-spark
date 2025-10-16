@@ -33,6 +33,7 @@ Example:
 
 from typing import Union, Optional
 from mock_spark.functions.base import MockColumn, MockColumnOperation
+from mock_spark.functions.core.literals import MockLiteral
 
 
 class DateTimeFunctions:
@@ -593,14 +594,17 @@ class DateTimeFunctions:
         Example:
             >>> df.select(F.make_date(F.lit(2024), F.lit(3), F.lit(15)))
         """
+        year_col: Union[MockColumn, MockLiteral]
         if isinstance(year, int):
-            year = MockLiteral(year)
+            year_col = MockLiteral(year)
         elif isinstance(year, str):
-            year = MockColumn(year)
+            year_col = MockColumn(year)
+        else:
+            year_col = year  # type: ignore[assignment]
 
         return MockColumnOperation(
-            year,
+            year_col,  # type: ignore[arg-type]
             "make_date",
             value=(month, day),
-            name=f"make_date({year.name if hasattr(year, 'name') else year})"
+            name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})"
         )

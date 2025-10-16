@@ -404,11 +404,11 @@ class MockFunctions:
         return DateTimeFunctions.current_date()
 
     @staticmethod
-    def version() -> MockColumnOperation:
+    def version() -> MockLiteral:
         """Return Spark version string (PySpark 3.0+).
         
         Returns:
-            MockColumnOperation with mock-spark version
+            MockLiteral with mock-spark version
         """
         from mock_spark import __version__
         # Return mock-spark version as a constant expression

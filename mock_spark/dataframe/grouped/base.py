@@ -294,47 +294,51 @@ class MockGroupedData:
             return result_key, any(values) if values else None
         elif func_name == "max_by":
             # max_by(col, ord) - return col value where ord is maximum
-            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else expr.ord_column
+            if expr.ord_column is None:
+                return alias_name if alias_name else f"max_by({col_name})", None
+            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else str(expr.ord_column)
             if group_rows:
-                max_row = max(group_rows, key=lambda r: r.get(ord_col_name, float('-inf')))
+                max_row = max(group_rows, key=lambda r: r.get(ord_col_name, float('-inf')))  # type: ignore[arg-type]
                 result_key = alias_name if alias_name else f"max_by({col_name})"
                 return result_key, max_row.get(col_name)
             return alias_name if alias_name else f"max_by({col_name})", None
         elif func_name == "min_by":
             # min_by(col, ord) - return col value where ord is minimum
-            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else expr.ord_column
+            if expr.ord_column is None:
+                return alias_name if alias_name else f"min_by({col_name})", None
+            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else str(expr.ord_column)
             if group_rows:
-                min_row = min(group_rows, key=lambda r: r.get(ord_col_name, float('inf')))
+                min_row = min(group_rows, key=lambda r: r.get(ord_col_name, float('inf')))  # type: ignore[arg-type]
                 result_key = alias_name if alias_name else f"min_by({col_name})"
                 return result_key, min_row.get(col_name)
             return alias_name if alias_name else f"min_by({col_name})", None
         elif func_name == "count_if":
             # count_if(condition) - count where condition is true
             # The column might be a condition expression (e.g., col > 20)
-            if hasattr(expr.column, 'operation'):
+            if expr.column is not None and hasattr(expr.column, 'operation'):
                 # This is a condition expression - evaluate it for each row
                 true_count = 0
                 for row in group_rows:
                     # Evaluate the condition expression
-                    cond_expr = expr.column
+                    cond_expr = expr.column  # type: ignore[union-attr]
                     if hasattr(cond_expr, 'column') and hasattr(cond_expr, 'operation') and hasattr(cond_expr, 'value'):
-                        col_val = row.get(cond_expr.column.name if hasattr(cond_expr.column, 'name') else cond_expr.column)
-                        comp_val = cond_expr.value.value if hasattr(cond_expr.value, 'value') else cond_expr.value
+                        col_val = row.get(cond_expr.column.name if hasattr(cond_expr.column, 'name') else cond_expr.column)  # type: ignore[union-attr]
+                        comp_val = cond_expr.value.value if hasattr(cond_expr.value, 'value') else cond_expr.value  # type: ignore[union-attr]
                         
                         # Evaluate the condition based on the operation
-                        if cond_expr.operation == '>':
+                        if cond_expr.operation == '>':  # type: ignore[union-attr]
                             if col_val is not None and col_val > comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '<':
+                        elif cond_expr.operation == '<':  # type: ignore[union-attr]
                             if col_val is not None and col_val < comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '>=':
+                        elif cond_expr.operation == '>=':  # type: ignore[union-attr]
                             if col_val is not None and col_val >= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '<=':
+                        elif cond_expr.operation == '<=':  # type: ignore[union-attr]
                             if col_val is not None and col_val <= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '==':
+                        elif cond_expr.operation == '==':  # type: ignore[union-attr]
                             if col_val is not None and col_val == comp_val:
                                 true_count += 1
                 result_key = alias_name if alias_name else "count_if"
