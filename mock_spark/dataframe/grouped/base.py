@@ -538,11 +538,11 @@ class MockGroupedData:
             result_pdfs.append(result_pdf)
         
         # Concatenate all results
+        result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
-            result_data = combined_pdf.to_dict('records')
-        else:
-            result_data = []
+            # Convert to records and ensure string keys
+            result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
         
         # Parse schema
         from ...spark_types import MockStructType
@@ -628,7 +628,8 @@ class MockGroupedData:
             # Put transformed rows back in their original positions
             transformed_rows = transformed_pdf.to_dict('records')
             for idx, transformed_row in zip(group_indices[group_key], transformed_rows):
-                result_rows[idx] = transformed_row
+                # Convert hashable keys to strings for type safety
+                result_rows[idx] = {str(k): v for k, v in transformed_row.items()}
         
         # Use the same schema as the original DataFrame
         # (or extend it if new columns were added)

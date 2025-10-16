@@ -3764,11 +3764,11 @@ class MockDataFrame:
             result_pdfs.append(result_pdf)
         
         # Concatenate all results
+        result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
-            result_data = combined_pdf.to_dict('records')
-        else:
-            result_data = []
+            # Convert to records and ensure string keys
+            result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
         
         # Parse schema
         from ..spark_types import MockStructType
