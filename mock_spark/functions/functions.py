@@ -297,6 +297,26 @@ class MockFunctions:
         return MathFunctions.log(column, base)
 
     @staticmethod
+    def log10(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Base-10 logarithm (PySpark 3.0+)."""
+        return MathFunctions.log10(column)
+
+    @staticmethod
+    def log2(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Base-2 logarithm (PySpark 3.0+)."""
+        return MathFunctions.log2(column)
+
+    @staticmethod
+    def log1p(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Natural log of (1 + x) (PySpark 3.0+)."""
+        return MathFunctions.log1p(column)
+
+    @staticmethod
+    def expm1(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """exp(x) - 1 (PySpark 3.0+)."""
+        return MathFunctions.expm1(column)
+
+    @staticmethod
     def pow(
         column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]
     ) -> MockColumnOperation:
@@ -347,6 +367,11 @@ class MockFunctions:
     def atan(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Inverse tangent (arc tangent)."""
         return MathFunctions.atan(column)
+
+    @staticmethod
+    def atan2(y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]) -> MockColumnOperation:
+        """2-argument arctangent (PySpark 3.0+)."""
+        return MathFunctions.atan2(y, x)
 
     @staticmethod
     def cosh(column: Union[MockColumn, str]) -> MockColumnOperation:

@@ -840,6 +840,14 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "soundex":
                                 # DuckDB doesn't have soundex, just return original
                                 func_expr = source_column
+                            elif col.function_name == "log1p" and (not hasattr(col, "value") or col.value is None):
+                                # log1p(x) = ln(1 + x) - DuckDB: LN(1 + col)
+                                special_sql = f"LN(1 + {column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "expm1" and (not hasattr(col, "value") or col.value is None):
+                                # expm1(x) = exp(x) - 1 - DuckDB: EXP(col) - 1
+                                special_sql = f"EXP({column_expr}) - 1"
+                                func_expr = text(special_sql)
                             elif col.function_name == "array_distinct" and (not hasattr(col, "value") or col.value is None):
                                 # array_distinct without parameters - cast to array if needed
                                 special_sql = f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
@@ -2061,7 +2069,7 @@ class SQLAlchemyMaterializer:
                         # Infer column type based on function
                         if col.function_name in ["length", "abs", "ceil", "floor", "factorial", "instr", "locate"]:
                             new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["round", "sqrt", "acosh", "asinh", "atanh", "acos", "asin", "atan", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "rand", "randn", "rint", "bround", "hypot", "nanvl", "signum"]:
+                        elif col.function_name in ["round", "sqrt", "log10", "log2", "log1p", "expm1", "acosh", "asinh", "atanh", "acos", "asin", "atan", "atan2", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "rand", "randn", "rint", "bround", "hypot", "nanvl", "signum"]:
                             new_columns.append(Column(col.name, Float, primary_key=False))
                         elif col.function_name in ["isnull", "isnan", "isnotnull"]:
                             new_columns.append(Column(col.name, Boolean, primary_key=False))

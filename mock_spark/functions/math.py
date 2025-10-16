@@ -155,6 +155,82 @@ class MathFunctions:
         return operation
 
     @staticmethod
+    def log10(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get base-10 logarithm (PySpark 3.0+).
+
+        Args:
+            column: The column to get log10 of.
+
+        Returns:
+            MockColumnOperation representing the log10 function.
+
+        Example:
+            >>> df.select(F.log10(F.col("value")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "log10", name=f"log10({column.name})")
+
+    @staticmethod
+    def log2(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get base-2 logarithm (PySpark 3.0+).
+
+        Args:
+            column: The column to get log2 of.
+
+        Returns:
+            MockColumnOperation representing the log2 function.
+
+        Example:
+            >>> df.select(F.log2(F.col("value")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "log2", name=f"log2({column.name})")
+
+    @staticmethod
+    def log1p(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get natural logarithm of (1 + x) (PySpark 3.0+).
+
+        Computes ln(1 + x) accurately for small values of x.
+
+        Args:
+            column: The column to compute log1p of.
+
+        Returns:
+            MockColumnOperation representing the log1p function.
+
+        Example:
+            >>> df.select(F.log1p(F.col("value")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "log1p", name=f"log1p({column.name})")
+
+    @staticmethod
+    def expm1(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get exp(x) - 1 (PySpark 3.0+).
+
+        Computes e^x - 1 accurately for small values of x.
+
+        Args:
+            column: The column to compute expm1 of.
+
+        Returns:
+            MockColumnOperation representing the expm1 function.
+
+        Example:
+            >>> df.select(F.expm1(F.col("value")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "expm1", name=f"expm1({column.name})")
+
+    @staticmethod
     def pow(
         column: Union[MockColumn, str], exponent: Union[MockColumn, float, int]
     ) -> MockColumnOperation:
@@ -366,6 +442,32 @@ class MathFunctions:
         """
         column = MockColumn(col) if isinstance(col, str) else col
         return MockColumnOperation(column, "atan", name=f"atan({column.name})")
+
+    @staticmethod
+    def atan2(y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]) -> MockColumnOperation:
+        """Compute 2-argument arctangent (PySpark 3.0+).
+
+        Returns the angle theta from the conversion of rectangular coordinates (x, y)
+        to polar coordinates (r, theta).
+
+        Args:
+            y: Y coordinate (column or numeric value).
+            x: X coordinate (column or numeric value).
+
+        Returns:
+            MockColumnOperation representing the atan2 function.
+
+        Example:
+            >>> df.select(F.atan2(F.col("y"), F.col("x")))
+            >>> df.select(F.atan2(F.lit(1.0), F.lit(1.0)))  # Returns π/4
+        """
+        if isinstance(y, str):
+            y = MockColumn(y)
+        elif isinstance(y, (int, float)):
+            from mock_spark.functions.core.literals import MockLiteral
+            y = MockLiteral(y)  # type: ignore[assignment]
+        
+        return MockColumnOperation(y, "atan2", x, name=f"atan2({y}, {x})")  # type: ignore[arg-type]
 
     @staticmethod
     def cosh(col: Union[MockColumn, str]) -> MockColumnOperation:
