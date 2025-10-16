@@ -819,6 +819,16 @@ class SQLAlchemyMaterializer:
                                 col.function_name, col.function_name
                             )
 
+                            # Handle raise_error immediately (before column_expr setup)
+                            if col.function_name == "raise_error":
+                                # Extract error message from MockLiteral
+                                if hasattr(col.column, 'value'):
+                                    error_msg = str(col.column.value)
+                                else:
+                                    error_msg = "Error raised"
+                                # Raise exception immediately
+                                raise Exception(f"{error_msg}")
+                            
                             # Check if this function needs type casting
                             column_expr = col.column.name
                             if col.function_name in type_casting_functions:
@@ -951,11 +961,6 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "timestamp_seconds" and (not hasattr(col, "value") or col.value is None):
                                 # timestamp_seconds(col) -> TO_TIMESTAMP(col)
                                 special_sql = f"TO_TIMESTAMP({column_expr})"
-                                func_expr = text(special_sql)
-                            elif col.function_name == "raise_error" and (not hasattr(col, "value") or col.value is None):
-                                # raise_error(msg) -> Error function (will fail at runtime)
-                                # DuckDB doesn't have raise_error, simulate with invalid SQL
-                                special_sql = f"(SELECT CASE WHEN TRUE THEN ERROR('Error: ' || {column_expr}) END)"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
