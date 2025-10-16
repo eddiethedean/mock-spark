@@ -150,6 +150,22 @@ class DateTimeFunctions:
         return operation
 
     @staticmethod
+    def dayofmonth(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract day of month from date/timestamp (alias for day).
+
+        Args:
+            column: The column to extract day from.
+
+        Returns:
+            MockColumnOperation representing the dayofmonth function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "day", name=f"dayofmonth({column.name})")
+        return operation
+
+    @staticmethod
     def month(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract month from date/timestamp.
 

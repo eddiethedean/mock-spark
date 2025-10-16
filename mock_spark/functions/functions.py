@@ -649,6 +649,11 @@ class MockFunctions:
         return DateTimeFunctions.day(column)
 
     @staticmethod
+    def dayofmonth(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract day of month (alias for day)."""
+        return DateTimeFunctions.dayofmonth(column)
+
+    @staticmethod
     def month(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract month."""
         return DateTimeFunctions.month(column)
