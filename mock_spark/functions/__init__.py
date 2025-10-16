@@ -148,6 +148,12 @@ array_union = F.array_union
 array_except = F.array_except
 array_position = F.array_position
 array_remove = F.array_remove
+transform = F.transform
+filter = F.filter
+exists = F.exists
+forall = F.forall
+aggregate = F.aggregate
+zip_with = F.zip_with
 map_keys = F.map_keys
 map_values = F.map_values
 map_entries = F.map_entries
@@ -271,6 +277,12 @@ __all__ = [
     "array_except",
     "array_position",
     "array_remove",
+    "transform",
+    "filter",
+    "exists",
+    "forall",
+    "aggregate",
+    "zip_with",
     "map_keys",
     "map_values",
     "map_entries",

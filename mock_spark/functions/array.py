@@ -20,8 +20,8 @@ Example:
     >>> df.select(F.array_distinct(F.col("tags"))).show()
 """
 
-from typing import Any, Union
-from mock_spark.functions.base import MockColumn, MockColumnOperation
+from typing import Any, Union, Callable, Optional
+from mock_spark.functions.base import MockColumn, MockColumnOperation, MockLambdaExpression
 
 
 class ArrayFunctions:
@@ -171,5 +171,214 @@ class ArrayFunctions:
 
         return MockColumnOperation(
             column, "array_remove", value, name=f"array_remove({column.name}, {value!r})"
+        )
+
+    @staticmethod
+    def transform(
+        column: Union[MockColumn, str], function: Callable[[Any], Any]
+    ) -> MockColumnOperation:
+        """Apply a function to each element in the array.
+
+        This is a higher-order function that transforms each element of an array
+        using the provided lambda function.
+
+        Args:
+            column: The array column to transform.
+            function: Lambda function to apply to each element.
+
+        Returns:
+            MockColumnOperation representing the transform function.
+
+        Example:
+            >>> df.select(F.transform(F.col("numbers"), lambda x: x * 2))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "transform",
+            lambda_expr,
+            name=f"transform({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def filter(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Filter array elements based on a predicate function.
+
+        This is a higher-order function that filters array elements using
+        the provided lambda function.
+
+        Args:
+            column: The array column to filter.
+            function: Lambda function that returns True for elements to keep.
+
+        Returns:
+            MockColumnOperation representing the filter function.
+
+        Example:
+            >>> df.select(F.filter(F.col("numbers"), lambda x: x > 10))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "filter",
+            lambda_expr,
+            name=f"filter({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def exists(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Check if any element in the array satisfies the predicate.
+
+        This is a higher-order function that returns True if at least one
+        element matches the condition.
+
+        Args:
+            column: The array column to check.
+            function: Lambda function predicate.
+
+        Returns:
+            MockColumnOperation representing the exists function.
+
+        Example:
+            >>> df.select(F.exists(F.col("numbers"), lambda x: x > 100))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "exists",
+            lambda_expr,
+            name=f"exists({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def forall(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Check if all elements in the array satisfy the predicate.
+
+        This is a higher-order function that returns True only if all
+        elements match the condition.
+
+        Args:
+            column: The array column to check.
+            function: Lambda function predicate.
+
+        Returns:
+            MockColumnOperation representing the forall function.
+
+        Example:
+            >>> df.select(F.forall(F.col("numbers"), lambda x: x > 0))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "forall",
+            lambda_expr,
+            name=f"forall({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def aggregate(
+        column: Union[MockColumn, str],
+        initial_value: Any,
+        merge: Callable[[Any, Any], Any],
+        finish: Optional[Callable[[Any], Any]] = None,
+    ) -> MockColumnOperation:
+        """Reduce array elements to a single value.
+
+        This is a higher-order function that aggregates array elements
+        using an accumulator pattern.
+
+        Args:
+            column: The array column to aggregate.
+            initial_value: Starting value for the accumulator.
+            merge: Lambda function (acc, x) -> acc that combines accumulator and element.
+            finish: Optional lambda to transform final accumulator value.
+
+        Returns:
+            MockColumnOperation representing the aggregate function.
+
+        Example:
+            >>> df.select(F.aggregate(F.col("nums"), F.lit(0), lambda acc, x: acc + x))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        merge_expr = MockLambdaExpression(merge)
+
+        # Store initial value and lambda data as tuple in value
+        lambda_data = {"merge": merge_expr, "finish": finish}
+        value_tuple = (initial_value, lambda_data)
+
+        return MockColumnOperation(
+            column,
+            "aggregate",
+            value=value_tuple,
+            name=f"aggregate({column.name}, <init>, <lambda>)",
+        )
+
+    @staticmethod
+    def zip_with(
+        left: Union[MockColumn, str],
+        right: Union[MockColumn, str],
+        function: Callable[[Any, Any], Any],
+    ) -> MockColumnOperation:
+        """Merge two arrays element-wise using a function.
+
+        This is a higher-order function that combines elements from two arrays
+        using the provided lambda function.
+
+        Args:
+            left: First array column.
+            right: Second array column.
+            function: Lambda function (x, y) -> result for combining elements.
+
+        Returns:
+            MockColumnOperation representing the zip_with function.
+
+        Example:
+            >>> df.select(F.zip_with(F.col("arr1"), F.col("arr2"), lambda x, y: x + y))
+        """
+        if isinstance(left, str):
+            left = MockColumn(left)
+        if isinstance(right, str):
+            right = MockColumn(right)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        # Store right array and lambda as tuple in value
+        value_tuple = (right, lambda_expr)
+
+        return MockColumnOperation(
+            left,
+            "zip_with",
+            value=value_tuple,
+            name=f"zip_with({left.name}, {right.name}, <lambda>)",
         )
 

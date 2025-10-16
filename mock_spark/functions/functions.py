@@ -26,7 +26,7 @@ Example:
            ALICE |           50
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Callable
 from .core.column import MockColumn, MockColumnOperation
 from .core.literals import MockLiteral
 from .base import MockAggregateFunction
@@ -673,6 +673,54 @@ class MockFunctions:
     def array_remove(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
         """Remove all occurrences of element from array."""
         return ArrayFunctions.array_remove(column, value)
+
+    # Higher-order array functions (PySpark 3.2+)
+    @staticmethod
+    def transform(
+        column: Union[MockColumn, str], function: Callable[[Any], Any]
+    ) -> MockColumnOperation:
+        """Apply function to each array element."""
+        return ArrayFunctions.transform(column, function)
+
+    @staticmethod
+    def filter(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Filter array elements with predicate."""
+        return ArrayFunctions.filter(column, function)
+
+    @staticmethod
+    def exists(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Check if any element satisfies predicate."""
+        return ArrayFunctions.exists(column, function)
+
+    @staticmethod
+    def forall(
+        column: Union[MockColumn, str], function: Callable[[Any], bool]
+    ) -> MockColumnOperation:
+        """Check if all elements satisfy predicate."""
+        return ArrayFunctions.forall(column, function)
+
+    @staticmethod
+    def aggregate(
+        column: Union[MockColumn, str],
+        initial_value: Any,
+        merge: Callable[[Any, Any], Any],
+        finish: Optional[Callable[[Any], Any]] = None,
+    ) -> MockColumnOperation:
+        """Aggregate array elements to single value."""
+        return ArrayFunctions.aggregate(column, initial_value, merge, finish)
+
+    @staticmethod
+    def zip_with(
+        left: Union[MockColumn, str],
+        right: Union[MockColumn, str],
+        function: Callable[[Any, Any], Any],
+    ) -> MockColumnOperation:
+        """Merge two arrays element-wise."""
+        return ArrayFunctions.zip_with(left, right, function)
 
     # Map functions
     @staticmethod

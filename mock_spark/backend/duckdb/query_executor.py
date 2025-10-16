@@ -119,9 +119,22 @@ class SQLAlchemyMaterializer:
                 elif isinstance(value, bool):
                     columns.append(Column(key, Boolean))
                 elif isinstance(value, list):
-                    # For arrays, use DuckDB's native array type
+                    # For arrays, infer element type from first element
                     from sqlalchemy import ARRAY, VARCHAR
-                    columns.append(Column(key, ARRAY(VARCHAR)))
+                    if value and len(value) > 0:
+                        # Infer element type from first non-None element
+                        first_elem = next((elem for elem in value if elem is not None), None)
+                        if isinstance(first_elem, int):
+                            columns.append(Column(key, ARRAY(Integer)))
+                        elif isinstance(first_elem, float):
+                            columns.append(Column(key, ARRAY(Float)))
+                        elif isinstance(first_elem, bool):
+                            columns.append(Column(key, ARRAY(Boolean)))
+                        else:
+                            columns.append(Column(key, ARRAY(VARCHAR)))
+                    else:
+                        # Empty array - default to VARCHAR
+                        columns.append(Column(key, ARRAY(VARCHAR)))
                 elif isinstance(value, dict):
                     # For maps, mark for raw SQL handling
                     has_map_columns = True
@@ -142,7 +155,20 @@ class SQLAlchemyMaterializer:
                 if col.name in map_column_names:
                     col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
                 elif type(col.type).__name__ == 'ARRAY':
-                    col_defs.append(f'"{col.name}" VARCHAR[]')
+                    # Determine array element type
+                    from sqlalchemy import ARRAY
+                    if isinstance(col.type, ARRAY):
+                        elem_type = col.type.item_type
+                        if isinstance(elem_type, Integer):
+                            col_defs.append(f'"{col.name}" INTEGER[]')
+                        elif isinstance(elem_type, Float) or isinstance(elem_type, Double):
+                            col_defs.append(f'"{col.name}" DOUBLE[]')
+                        elif isinstance(elem_type, Boolean):
+                            col_defs.append(f'"{col.name}" BOOLEAN[]')
+                        else:
+                            col_defs.append(f'"{col.name}" VARCHAR[]')
+                    else:
+                        col_defs.append(f'"{col.name}" VARCHAR[]')
                 elif isinstance(col.type, Integer):
                     col_defs.append(f'"{col.name}" INTEGER')
                 elif isinstance(col.type, Float) or isinstance(col.type, Double):
@@ -677,6 +703,12 @@ class SQLAlchemyMaterializer:
                                 "array_except": "array_except",  # Special handling below
                                 "array_position": "array_position",  # Special handling below
                                 "array_remove": "array_remove",  # Special handling below
+                                "transform": "transform",  # Higher-order function - special handling below
+                                "filter": "filter",  # Higher-order function - special handling below
+                                "exists": "exists",  # Higher-order function - special handling below
+                                "forall": "forall",  # Higher-order function - special handling below
+                                "aggregate": "aggregate",  # Higher-order function - special handling below
+                                "zip_with": "zip_with",  # Higher-order function - special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -924,6 +956,122 @@ class SQLAlchemyMaterializer:
                                             element = str(col.value)
                                         special_sql = f"LIST_FILTER(CAST({column_expr} AS VARCHAR[]), x -> x != {element})"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "transform":
+                                        # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)
+                                        from mock_spark.functions.base import MockLambdaExpression
+                                        if isinstance(col.value, MockLambdaExpression):
+                                            lambda_sql = col.value.to_duckdb_lambda()
+                                            # Don't cast - let DuckDB infer array type
+                                            special_sql = f"LIST_TRANSFORM({column_expr}, {lambda_sql})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("transform requires a lambda function")
+                                    elif col.function_name == "filter":
+                                        # filter(array, lambda) -> LIST_FILTER(array, lambda)
+                                        from mock_spark.functions.base import MockLambdaExpression
+                                        if isinstance(col.value, MockLambdaExpression):
+                                            lambda_sql = col.value.to_duckdb_lambda()
+                                            special_sql = f"LIST_FILTER({column_expr}, {lambda_sql})"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("filter requires a lambda function")
+                                    elif col.function_name == "exists":
+                                        # exists(array, lambda) -> LIST_ANY(LIST_FILTER(array, lambda))
+                                        # DuckDB doesn't have LIST_ANY directly, workaround: check if filtered list has length > 0
+                                        from mock_spark.functions.base import MockLambdaExpression
+                                        if isinstance(col.value, MockLambdaExpression):
+                                            lambda_sql = col.value.to_duckdb_lambda()
+                                            special_sql = f"LEN(LIST_FILTER({column_expr}, {lambda_sql})) > 0"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("exists requires a lambda function")
+                                    elif col.function_name == "forall":
+                                        # forall(array, lambda) -> check if all elements satisfy condition
+                                        # Workaround: LEN(LIST_FILTER(array, NOT lambda)) == 0
+                                        # Or: LEN(LIST_FILTER(array, lambda)) == LEN(array)
+                                        from mock_spark.functions.base import MockLambdaExpression
+                                        if isinstance(col.value, MockLambdaExpression):
+                                            lambda_sql = col.value.to_duckdb_lambda()
+                                            # Use approach: LEN(filtered) == LEN(original)
+                                            special_sql = f"(LEN(LIST_FILTER({column_expr}, {lambda_sql})) = LEN({column_expr}))"
+                                            func_expr = text(special_sql)
+                                        else:
+                                            raise ValueError("forall requires a lambda function")
+                                    elif col.function_name == "aggregate":
+                                        # aggregate(array, init, merge, finish) -> LIST_REDUCE or custom
+                                        # DuckDB has LIST_REDUCE but with different signature
+                                        from mock_spark.functions.base import MockLambdaExpression, MockLiteral
+                                        # col.value is initial_value, col.value2 is lambda_data dict
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            initial_value = col.value[0]
+                                            lambda_data = col.value[1]
+                                            
+                                            # Get initial value
+                                            if isinstance(initial_value, MockLiteral):
+                                                init_val = str(initial_value.value)
+                                            else:
+                                                init_val = str(initial_value)
+                                            
+                                            # Get merge lambda
+                                            if isinstance(lambda_data, dict) and "merge" in lambda_data:
+                                                merge_expr = lambda_data["merge"]
+                                                if isinstance(merge_expr, MockLambdaExpression):
+                                                    lambda_sql = merge_expr.to_duckdb_lambda()
+                                                    # DuckDB LIST_REDUCE: list_reduce(list, lambda, initial_value)
+                                                    special_sql = f"LIST_REDUCE({column_expr}, {lambda_sql}, {init_val})"
+                                                    func_expr = text(special_sql)
+                                                else:
+                                                    raise ValueError("aggregate merge must be a lambda function")
+                                            else:
+                                                raise ValueError("aggregate requires merge lambda")
+                                        else:
+                                            raise ValueError("aggregate requires initial value and merge function")
+                                    elif col.function_name == "zip_with":
+                                        # zip_with(array1, array2, lambda) -> Custom SQL with LIST_ZIP
+                                        from mock_spark.functions.base import MockLambdaExpression, MockColumn
+                                        # col.value is tuple of (array2, lambda)
+                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                            array2 = col.value[0]
+                                            lambda_expr = col.value[1]
+                                            
+                                            # Get second array expression
+                                            if isinstance(array2, MockColumn):
+                                                array2_expr = f'"{array2.name}"'
+                                            else:
+                                                array2_expr = str(array2)
+                                            
+                                            # Get lambda
+                                            if isinstance(lambda_expr, MockLambdaExpression):
+                                                # DuckDB LIST_ZIP creates STRUCT(elem1, elem2)
+                                                # We need to transform the 2-arg lambda to access struct fields
+                                                # Original lambda: (x, y) -> (x + y)
+                                                # DuckDB needs: s -> (s.field1 + s.field2) OR s -> (s[1] + s[2])
+                                                param_names = lambda_expr.get_param_names()
+                                                if len(param_names) == 2:
+                                                    # Get the body of the lambda by translating with modified params
+                                                    # We'll use a wrapper lambda that unpacks the struct
+                                                    lambda_sql = lambda_expr.to_duckdb_lambda()
+                                                    # Replace (x, y) -> expr with s -> expr where x becomes s[1] and y becomes s[2]
+                                                    x_name = param_names[0]
+                                                    y_name = param_names[1]
+                                                    # Get the body part after the ->
+                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    # Replace x and y with struct accessors
+                                                    # Use word boundaries to avoid partial replacements
+                                                    import re
+                                                    body_part = re.sub(rf'\b{x_name}\b', 's[1]', body_part)
+                                                    body_part = re.sub(rf'\b{y_name}\b', 's[2]', body_part)
+                                                    modified_lambda = f"s -> {body_part}"
+                                                    special_sql = f"LIST_TRANSFORM(LIST_ZIP({column_expr}, {array2_expr}), {modified_lambda})"
+                                                else:
+                                                    # Single param lambda - just use it as is
+                                                    lambda_sql = lambda_expr.to_duckdb_lambda()
+                                                    special_sql = f"LIST_TRANSFORM(LIST_ZIP({column_expr}, {array2_expr}), {lambda_sql})"
+                                                func_expr = text(special_sql)
+                                            else:
+                                                raise ValueError("zip_with requires a lambda function")
+                                        else:
+                                            raise ValueError("zip_with requires array2 and lambda function")
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1049,6 +1197,30 @@ class SQLAlchemyMaterializer:
                             new_columns.append(Column(col.name, Float, primary_key=False))
                         elif col.function_name in ["isnull", "isnan", "isnotnull"]:
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name in ["exists", "forall"]:
+                            # exists and forall return boolean
+                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove"]:
+                            # Array functions return arrays - try to infer element type from source
+                            from sqlalchemy import ARRAY
+                            source_col = source_table_obj.columns.get(col.column.name)
+                            if source_col is not None and isinstance(source_col.type, ARRAY):
+                                # Preserve array element type from source
+                                new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                            else:
+                                # Default to VARCHAR array
+                                new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                        elif col.function_name == "aggregate":
+                            # aggregate returns scalar - infer from initial value or default to Integer
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name == "zip_with":
+                            # zip_with returns array - try to infer element type
+                            from sqlalchemy import ARRAY
+                            source_col = source_table_obj.columns.get(col.column.name)
+                            if source_col is not None and isinstance(source_col.type, ARRAY):
+                                new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                            else:
+                                new_columns.append(Column(col.name, ARRAY(Integer), primary_key=False))
                         else:
                             new_columns.append(Column(col.name, String, primary_key=False))
                         # print(f"DEBUG: Successfully handled function operation: {col.function_name}")
@@ -2050,7 +2222,27 @@ class SQLAlchemyMaterializer:
                 for i, column in enumerate(table_obj.columns):
                     value = result[i]
                     # Convert value to appropriate type based on column type
-                    if isinstance(column.type, Integer) and value is not None:
+                    from sqlalchemy import ARRAY
+                    # Check for ARRAY type - need to check type name too since ARRAY is complex
+                    is_array_column = (isinstance(column.type, ARRAY) or 
+                                      type(column.type).__name__ == 'ARRAY')
+                    # DEBUG
+                    # print(f"DEBUG _get_table_results: column={column.name}, type={type(column.type).__name__}, is_array={is_array_column}, value_type={type(value)}, value={value}")
+                    if is_array_column and value is not None:
+                        # Array columns might be returned as lists or strings
+                        if isinstance(value, list):
+                            result_dict[column.name] = value
+                        elif isinstance(value, str):
+                            # Parse string representation back to list
+                            # DuckDB sometimes returns arrays as strings like "[1, 2, 3]"
+                            try:
+                                import ast
+                                result_dict[column.name] = ast.literal_eval(value)
+                            except (ValueError, SyntaxError):
+                                result_dict[column.name] = value
+                        else:
+                            result_dict[column.name] = value
+                    elif isinstance(column.type, Integer) and value is not None:
                         try:
                             result_dict[column.name] = int(value)
                         except (ValueError, TypeError):
