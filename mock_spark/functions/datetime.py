@@ -774,3 +774,128 @@ class DateTimeFunctions:
             value=format,
             name=f"trunc({date.name}, {format})"
         )
+
+    @staticmethod
+    def days(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create an interval representing N days (PySpark 3.1+).
+
+        Args:
+            col: Column or integer representing number of days
+
+        Returns:
+            MockColumnOperation representing the days interval
+
+        Example:
+            >>> df.select(F.days(F.lit(5)))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        elif isinstance(col, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            col = MockLiteral(col)  # type: ignore[assignment]
+
+        return MockColumnOperation(
+            col,  # type: ignore[arg-type]
+            "days",
+            name=f"days({col})"
+        )
+
+    @staticmethod
+    def hours(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create an interval representing N hours (PySpark 3.1+).
+
+        Args:
+            col: Column or integer representing number of hours
+
+        Returns:
+            MockColumnOperation representing the hours interval
+
+        Example:
+            >>> df.select(F.hours(F.lit(24)))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        elif isinstance(col, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            col = MockLiteral(col)  # type: ignore[assignment]
+
+        return MockColumnOperation(
+            col,  # type: ignore[arg-type]
+            "hours",
+            name=f"hours({col})"
+        )
+
+    @staticmethod
+    def months(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create an interval representing N months (PySpark 3.1+).
+
+        Args:
+            col: Column or integer representing number of months
+
+        Returns:
+            MockColumnOperation representing the months interval
+
+        Example:
+            >>> df.select(F.months(F.lit(3)))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        elif isinstance(col, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            col = MockLiteral(col)  # type: ignore[assignment]
+
+        return MockColumnOperation(
+            col,  # type: ignore[arg-type]
+            "months",
+            name=f"months({col})"
+        )
+
+    @staticmethod
+    def years(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create an interval representing N years (PySpark 3.1+).
+
+        Args:
+            col: Column or integer representing number of years
+
+        Returns:
+            MockColumnOperation representing the years interval
+
+        Example:
+            >>> df.select(F.years(F.lit(2)))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        elif isinstance(col, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            col = MockLiteral(col)  # type: ignore[assignment]
+
+        return MockColumnOperation(
+            col,  # type: ignore[arg-type]
+            "years",
+            name=f"years({col})"
+        )
+
+    @staticmethod
+    def timestamp_seconds(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Convert seconds since epoch to timestamp (PySpark 3.1+).
+
+        Args:
+            col: Column or integer representing seconds since epoch
+
+        Returns:
+            MockColumnOperation representing the timestamp
+
+        Example:
+            >>> df.select(F.timestamp_seconds(F.col("seconds")))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        elif isinstance(col, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            col = MockLiteral(col)  # type: ignore[assignment]
+
+        return MockColumnOperation(
+            col,  # type: ignore[arg-type]
+            "timestamp_seconds",
+            name=f"timestamp_seconds({col})"
+        )

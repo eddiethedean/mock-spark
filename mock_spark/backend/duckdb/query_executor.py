@@ -803,6 +803,14 @@ class SQLAlchemyMaterializer:
                                 "spark_partition_id": "spark_partition_id",  # Special handling below
                                 "grouping": "grouping",  # Special handling below
                                 "grouping_id": "grouping_id",  # Special handling below
+                                # PySpark 3.1 interval functions
+                                "days": "days",  # Special handling below
+                                "hours": "hours",  # Special handling below
+                                "months": "months",  # Special handling below
+                                "years": "years",  # Special handling below
+                                "bucket": "bucket",  # Special handling below
+                                "raise_error": "raise_error",  # Special handling below
+                                "timestamp_seconds": "timestamp_seconds",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -933,6 +941,21 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "spark_partition_id" and (not hasattr(col, "value") or col.value is None):
                                 # Partition ID is always 0 in mock (single partition)
                                 special_sql = "0"
+                                func_expr = text(special_sql)
+                            # PySpark 3.1 interval functions (no parameters)
+                            elif col.function_name in ["days", "hours", "months", "years"] and (not hasattr(col, "value") or col.value is None):
+                                # Interval functions: days(col) -> INTERVAL '{col} days'
+                                unit = col.function_name.upper()  # DAYS, HOURS, MONTHS, YEARS
+                                special_sql = f"INTERVAL ({column_expr}) {unit}"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "timestamp_seconds" and (not hasattr(col, "value") or col.value is None):
+                                # timestamp_seconds(col) -> TO_TIMESTAMP(col)
+                                special_sql = f"TO_TIMESTAMP({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "raise_error" and (not hasattr(col, "value") or col.value is None):
+                                # raise_error(msg) -> Error function (will fail at runtime)
+                                # DuckDB doesn't have raise_error, simulate with invalid SQL
+                                special_sql = f"(SELECT CASE WHEN TRUE THEN ERROR('Error: ' || {column_expr}) END)"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1391,6 +1414,11 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "shuffle":
                                         # shuffle(array) -> LIST_SORT(array, x -> RANDOM())
                                         special_sql = f"LIST_SORT({column_expr}, x -> RANDOM())"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "bucket":
+                                        # bucket(numBuckets, col) -> HASH(col) % numBuckets
+                                        num_buckets = col.value
+                                        special_sql = f"(HASH({column_expr}) % {num_buckets})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "transform":
                                         # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)

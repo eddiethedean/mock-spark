@@ -803,6 +803,72 @@ class MockFunctions:
         return DateTimeFunctions.trunc(date, format)
 
     @staticmethod
+    def days(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create interval of N days (PySpark 3.1+)."""
+        return DateTimeFunctions.days(col)
+
+    @staticmethod
+    def hours(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create interval of N hours (PySpark 3.1+)."""
+        return DateTimeFunctions.hours(col)
+
+    @staticmethod
+    def months(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create interval of N months (PySpark 3.1+)."""
+        return DateTimeFunctions.months(col)
+
+    @staticmethod
+    def years(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Create interval of N years (PySpark 3.1+)."""
+        return DateTimeFunctions.years(col)
+
+    @staticmethod
+    def timestamp_seconds(col: Union[MockColumn, str, int]) -> MockColumnOperation:
+        """Convert seconds since epoch to timestamp (PySpark 3.1+)."""
+        return DateTimeFunctions.timestamp_seconds(col)
+
+    @staticmethod
+    def bucket(numBuckets: int, col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute bucket for partitioning (PySpark 3.1+).
+
+        Args:
+            numBuckets: Number of buckets
+            col: Column to bucket
+
+        Returns:
+            MockColumnOperation representing the bucket function
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+
+        return MockColumnOperation(
+            col,
+            "bucket",
+            value=numBuckets,
+            name=f"bucket({numBuckets}, {col.name})"
+        )
+
+    @staticmethod
+    def raise_error(msg: Union[MockColumn, str]) -> MockColumnOperation:
+        """Raise an error with the specified message (PySpark 3.1+).
+
+        Args:
+            msg: Error message
+
+        Returns:
+            MockColumnOperation representing the raise_error function
+        """
+        if isinstance(msg, str):
+            from mock_spark.functions.core.literals import MockLiteral
+            msg = MockLiteral(msg)  # type: ignore[assignment]
+        
+        return MockColumnOperation(
+            msg,  # type: ignore[arg-type]
+            "raise_error",
+            name=f"raise_error({msg})"
+        )
+
+    @staticmethod
     def from_unixtime(
         column: Union[MockColumn, str], format: str = "yyyy-MM-dd HH:mm:ss"
     ) -> MockColumnOperation:
