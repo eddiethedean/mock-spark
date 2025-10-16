@@ -142,6 +142,26 @@ class MockFunctions:
         return StringFunctions.unbase64(column)
 
     @staticmethod
+    def md5(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """MD5 hash (PySpark 3.0+)."""
+        return StringFunctions.md5(column)
+
+    @staticmethod
+    def sha1(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """SHA-1 hash (PySpark 3.0+)."""
+        return StringFunctions.sha1(column)
+
+    @staticmethod
+    def sha2(column: Union[MockColumn, str], numBits: int) -> MockColumnOperation:
+        """SHA-2 hash family (PySpark 3.0+)."""
+        return StringFunctions.sha2(column, numBits)
+
+    @staticmethod
+    def crc32(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """CRC32 checksum (PySpark 3.0+)."""
+        return StringFunctions.crc32(column)
+
+    @staticmethod
     def regexp_extract_all(
         column: Union[MockColumn, str], pattern: str, idx: int = 0
     ) -> MockColumnOperation:

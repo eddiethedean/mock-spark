@@ -928,3 +928,84 @@ class StringFunctions:
             value=(from_base, to_base),
             name=f"conv({column.name}, {from_base}, {to_base})"
         )
+
+    @staticmethod
+    def md5(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Calculate MD5 hash of string (PySpark 3.0+).
+
+        Args:
+            column: String column to hash
+
+        Returns:
+            MockColumnOperation representing md5 function (returns 32-char hex string)
+
+        Example:
+            >>> df.select(F.md5(F.col("text")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "md5", name=f"md5({column.name})")
+
+    @staticmethod
+    def sha1(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Calculate SHA-1 hash of string (PySpark 3.0+).
+
+        Args:
+            column: String column to hash
+
+        Returns:
+            MockColumnOperation representing sha1 function (returns 40-char hex string)
+
+        Example:
+            >>> df.select(F.sha1(F.col("text")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "sha1", name=f"sha1({column.name})")
+
+    @staticmethod
+    def sha2(column: Union[MockColumn, str], numBits: int) -> MockColumnOperation:
+        """Calculate SHA-2 family hash (PySpark 3.0+).
+
+        Args:
+            column: String column to hash
+            numBits: Bit length - 224, 256, 384, or 512
+
+        Returns:
+            MockColumnOperation representing sha2 function (returns hex string)
+
+        Example:
+            >>> df.select(F.sha2(F.col("text"), 256))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        if numBits not in [224, 256, 384, 512]:
+            raise ValueError(f"numBits must be 224, 256, 384, or 512, got {numBits}")
+
+        return MockColumnOperation(
+            column,
+            "sha2",
+            value=numBits,
+            name=f"sha2({column.name}, {numBits})"
+        )
+
+    @staticmethod
+    def crc32(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Calculate CRC32 checksum (PySpark 3.0+).
+
+        Args:
+            column: String column to checksum
+
+        Returns:
+            MockColumnOperation representing crc32 function (returns signed 32-bit int)
+
+        Example:
+            >>> df.select(F.crc32(F.col("text")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "crc32", name=f"crc32({column.name})")

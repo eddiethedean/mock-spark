@@ -848,6 +848,30 @@ class SQLAlchemyMaterializer:
                                 # expm1(x) = exp(x) - 1 - DuckDB: EXP(col) - 1
                                 special_sql = f"EXP({column_expr}) - 1"
                                 func_expr = text(special_sql)
+                            elif col.function_name == "md5" and (not hasattr(col, "value") or col.value is None):
+                                # md5(str) - DuckDB: MD5(str)
+                                special_sql = f"MD5({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "sha1" and (not hasattr(col, "value") or col.value is None):
+                                # sha1(str) - DuckDB doesn't have SHA1, use SHA256 as fallback
+                                # TODO: Consider Python fallback for exact SHA1
+                                special_sql = f"SHA256({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "crc32" and (not hasattr(col, "value") or col.value is None):
+                                # crc32(str) - DuckDB doesn't have CRC32
+                                # Use HASH() as approximation, handle NULLs
+                                # CASE WHEN col IS NULL THEN NULL ELSE ABS(HASH(col)) % 2^32 END
+                                special_sql = f"CASE WHEN {column_expr} IS NULL THEN NULL ELSE ABS(HASH({column_expr})) % 4294967296 END"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "sha2" and hasattr(col, "value") and col.value is not None:
+                                # sha2(str, numBits) - DuckDB only has SHA256
+                                # Use SHA256 for all bit lengths as approximation
+                                num_bits = col.value
+                                if num_bits not in [224, 256, 384, 512]:
+                                    raise ValueError(f"sha2: numBits must be 224, 256, 384, or 512")
+                                # DuckDB only has SHA256, use it for all variants
+                                special_sql = f"SHA256({column_expr})"
+                                func_expr = text(special_sql)
                             elif col.function_name == "array_distinct" and (not hasattr(col, "value") or col.value is None):
                                 # array_distinct without parameters - cast to array if needed
                                 special_sql = f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
@@ -2113,7 +2137,7 @@ class SQLAlchemyMaterializer:
                         elif col.function_name in ["array_size", "bit_count", "bit_count", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id"]:
                             # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["hash", "monotonically_increasing_id"]:
+                        elif col.function_name in ["hash", "monotonically_increasing_id", "crc32"]:
                             # These return big integers (BIGINT)
                             from sqlalchemy import BigInteger
                             new_columns.append(Column(col.name, BigInteger, primary_key=False))
