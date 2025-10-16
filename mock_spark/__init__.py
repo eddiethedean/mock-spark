@@ -97,7 +97,7 @@ from .errors import (
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "2.6.0"
+__version__ = "2.7.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
