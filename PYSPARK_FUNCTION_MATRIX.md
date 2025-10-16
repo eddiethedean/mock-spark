@@ -6,6 +6,12 @@
 This matrix shows which functions and DataFrame methods are available in each PySpark version,
 and whether they are implemented in mock-spark.
 
+## Legend
+
+- ✅ = Available and current (or implemented in mock-spark)
+- ⚠️ = Deprecated (available but modern alternative recommended)
+- ❌ = Not available (or not implemented in mock-spark)
+
 ## Functions (pyspark.sql.functions)
 
 Total functions cataloged: 455
@@ -44,7 +50,7 @@ Total functions cataloged: 455
 | `aes_encrypt` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `aggregate` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `any_value` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `approxCountDistinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `approxCountDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `approx_count_distinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `approx_percentile` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -93,7 +99,7 @@ Total functions cataloged: 455
 | `bitmap_construct_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `bitmap_count` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `bitmap_or_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `bitwiseNOT` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `bitwiseNOT` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `bitwise_not` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `bool_and` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `bool_or` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -354,9 +360,9 @@ Total functions cataloged: 455
 | `sha` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `sha1` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `sha2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `shiftLeft` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `shiftRight` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `shiftRightUnsigned` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `shiftLeft` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
+| `shiftRight` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
+| `shiftRightUnsigned` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `shiftleft` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `shiftright` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `shiftrightunsigned` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -388,15 +394,15 @@ Total functions cataloged: 455
 | `substring` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `substring_index` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sum` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `sumDistinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sumDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `sum_distinct` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `tan` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `tanh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `timestamp_micros` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `timestamp_millis` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `timestamp_seconds` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `toDegrees` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `toRadians` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `toDegrees` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
+| `toRadians` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `to_binary` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `to_char` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `to_csv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
