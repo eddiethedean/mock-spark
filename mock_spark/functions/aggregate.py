@@ -363,3 +363,92 @@ class AggregateFunctions:
             MockAggregateFunction representing the any_value function.
         """
         return MockAggregateFunction(column, "any_value", StringType())
+
+    @staticmethod
+    def mean(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate function: returns the mean of the values (alias for avg).
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the mean function.
+        """
+        return MockAggregateFunction(column, "mean", DoubleType())
+
+    @staticmethod
+    def approx_count_distinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns approximate count of distinct elements (alias for approxCountDistinct).
+
+        Args:
+            column: Column to count distinct values.
+
+        Returns:
+            MockAggregateFunction representing the approx_count_distinct function.
+        """
+        return MockAggregateFunction(column, "approx_count_distinct", LongType())
+
+    @staticmethod
+    def stddev_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns population standard deviation.
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the stddev_pop function.
+        """
+        return MockAggregateFunction(column, "stddev_pop", DoubleType())
+
+    @staticmethod
+    def stddev_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns sample standard deviation.
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the stddev_samp function.
+        """
+        return MockAggregateFunction(column, "stddev_samp", DoubleType())
+
+    @staticmethod
+    def var_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns population variance.
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the var_pop function.
+        """
+        return MockAggregateFunction(column, "var_pop", DoubleType())
+
+    @staticmethod
+    def var_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns sample variance.
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the var_samp function.
+        """
+        return MockAggregateFunction(column, "var_samp", DoubleType())
+
+    @staticmethod
+    def covar_pop(column1: Union[MockColumn, str], column2: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns population covariance.
+
+        Args:
+            column1: First numeric column.
+            column2: Second numeric column.
+
+        Returns:
+            MockAggregateFunction representing the covar_pop function.
+        """
+        col1 = MockColumn(column1) if isinstance(column1, str) else column1
+        col2 = MockColumn(column2) if isinstance(column2, str) else column2
+        agg_func = MockAggregateFunction(col1, "covar_pop", DoubleType())
+        agg_func.ord_column = col2  # Store second column for covariance
+        return agg_func

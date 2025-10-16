@@ -725,3 +725,124 @@ class ArrayFunctions:
             name=f"arrays_overlap({column1.name}, {column2.name})",
         )
 
+    @staticmethod
+    def explode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns a new row for each element, including rows with null/empty arrays.
+
+        Args:
+            column: The array or map column.
+
+        Returns:
+            MockColumnOperation representing the explode_outer function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "explode_outer", name=f"explode_outer({column.name})"
+        )
+
+    @staticmethod
+    def posexplode(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns a new row for each element with position in array.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the posexplode function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "posexplode", name=f"posexplode({column.name})"
+        )
+
+    @staticmethod
+    def posexplode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns a new row for each element with position, including null/empty arrays.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the posexplode_outer function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "posexplode_outer", name=f"posexplode_outer({column.name})"
+        )
+
+    @staticmethod
+    def arrays_zip(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Merge arrays into array of structs (alias for array_zip).
+
+        Args:
+            *columns: Array columns to zip together.
+
+        Returns:
+            MockColumnOperation representing the arrays_zip function.
+        """
+        cols = []
+        for col in columns:
+            if isinstance(col, str):
+                cols.append(MockColumn(col))
+            else:
+                cols.append(col)
+
+        return MockColumnOperation(
+            cols[0] if cols else MockColumn(""),
+            "arrays_zip",
+            value=cols[1:] if len(cols) > 1 else [],
+            name="arrays_zip(...)"
+        )
+
+    @staticmethod
+    def sequence(
+        start: Union[MockColumn, str, int],
+        stop: Union[MockColumn, str, int],
+        step: Union[MockColumn, str, int] = 1
+    ) -> MockColumnOperation:
+        """Generate array of integers from start to stop by step.
+
+        Args:
+            start: Starting value
+            stop: Ending value
+            step: Step size (default 1)
+
+        Returns:
+            MockColumnOperation representing the sequence function.
+        """
+        if isinstance(start, str):
+            start = MockColumn(start)
+        elif isinstance(start, int):
+            from mock_spark.functions.core.literals import MockLiteral
+            start = MockLiteral(start)
+
+        return MockColumnOperation(
+            start,  # type: ignore[arg-type]
+            "sequence",
+            value=(stop, step),
+            name=f"sequence({start}, {stop}, {step})"
+        )
+
+    @staticmethod
+    def shuffle(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Randomly shuffle array elements.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the shuffle function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "shuffle", name=f"shuffle({column.name})"
+        )
+

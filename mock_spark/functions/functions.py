@@ -476,6 +476,43 @@ class MockFunctions:
         return AggregateFunctions.covar_samp(column1, column2)
 
     @staticmethod
+    def mean(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Mean of values (alias for avg)."""
+        return AggregateFunctions.mean(column)
+
+    @staticmethod
+    def approx_count_distinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Approximate count of distinct elements."""
+        return AggregateFunctions.approx_count_distinct(column)
+
+    @staticmethod
+    def stddev_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Population standard deviation."""
+        return AggregateFunctions.stddev_pop(column)
+
+    @staticmethod
+    def stddev_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Sample standard deviation."""
+        return AggregateFunctions.stddev_samp(column)
+
+    @staticmethod
+    def var_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Population variance."""
+        return AggregateFunctions.var_pop(column)
+
+    @staticmethod
+    def var_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Sample variance."""
+        return AggregateFunctions.var_samp(column)
+
+    @staticmethod
+    def covar_pop(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
+        """Population covariance."""
+        return AggregateFunctions.covar_pop(column1, column2)
+
+    @staticmethod
     def bool_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Aggregate AND (PySpark 3.1+)."""
         return AggregateFunctions.bool_and(column)
@@ -1038,6 +1075,40 @@ class MockFunctions:
         """Reverse array elements."""
         return ArrayFunctions.reverse(column)
 
+    @staticmethod
+    def explode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Explode array including null/empty arrays."""
+        return ArrayFunctions.explode_outer(column)
+
+    @staticmethod
+    def posexplode(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Explode array with position."""
+        return ArrayFunctions.posexplode(column)
+
+    @staticmethod
+    def posexplode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Explode array with position including null/empty."""
+        return ArrayFunctions.posexplode_outer(column)
+
+    @staticmethod
+    def arrays_zip(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+        """Merge arrays into array of structs."""
+        return ArrayFunctions.arrays_zip(*columns)
+
+    @staticmethod
+    def sequence(
+        start: Union[MockColumn, str, int],
+        stop: Union[MockColumn, str, int],
+        step: Union[MockColumn, str, int] = 1
+    ) -> MockColumnOperation:
+        """Generate array sequence from start to stop."""
+        return ArrayFunctions.sequence(start, stop, step)
+
+    @staticmethod
+    def shuffle(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Randomly shuffle array elements."""
+        return ArrayFunctions.shuffle(column)
+
     # Map functions
     @staticmethod
     def map_keys(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -1268,6 +1339,55 @@ class MockFunctions:
     def xpath_string(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
         """Extract string from XML using XPath."""
         return XMLFunctions.xpath_string(xml, path)
+
+    # JSON/CSV functions
+    @staticmethod
+    def from_json(column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None) -> MockColumnOperation:
+        """Parse JSON string into struct/array."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.from_json(column, schema, options)
+
+    @staticmethod
+    def to_json(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert struct/array to JSON string."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.to_json(column)
+
+    @staticmethod
+    def get_json_object(column: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract JSON object at path."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.get_json_object(column, path)
+
+    @staticmethod
+    def json_tuple(column: Union[MockColumn, str], *fields: str) -> MockColumnOperation:
+        """Extract multiple fields from JSON."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.json_tuple(column, *fields)
+
+    @staticmethod
+    def schema_of_json(json_string: str) -> MockColumnOperation:
+        """Infer schema from JSON string."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.schema_of_json(json_string)
+
+    @staticmethod
+    def from_csv(column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None) -> MockColumnOperation:
+        """Parse CSV string into struct."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.from_csv(column, schema, options)
+
+    @staticmethod
+    def to_csv(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert struct to CSV string."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.to_csv(column)
+
+    @staticmethod
+    def schema_of_csv(csv_string: str) -> MockColumnOperation:
+        """Infer schema from CSV string."""
+        from mock_spark.functions.json_csv import JSONCSVFunctions
+        return JSONCSVFunctions.schema_of_csv(csv_string)
 
 
 # Create the F namespace instance
