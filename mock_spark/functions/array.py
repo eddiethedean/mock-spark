@@ -846,3 +846,91 @@ class ArrayFunctions:
             column, "shuffle", name=f"shuffle({column.name})"
         )
 
+    @staticmethod
+    def array(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Create array from multiple columns (PySpark 3.0+).
+
+        Args:
+            *cols: Variable number of columns to combine into array
+
+        Returns:
+            MockColumnOperation representing the array function.
+
+        Example:
+            >>> df.select(F.array(F.col("a"), F.col("b"), F.col("c")))
+        """
+        if not cols:
+            raise ValueError("array requires at least one column")
+        
+        # Convert all columns
+        converted_cols = []
+        for c in cols:
+            if isinstance(c, str):
+                converted_cols.append(MockColumn(c))
+            else:
+                converted_cols.append(c)
+        
+        # First column is the main column, rest are in value as tuple
+        first_col = converted_cols[0]
+        if len(converted_cols) > 1:
+            rest_cols = tuple(converted_cols[1:])
+        else:
+            rest_cols = ()
+        
+        col_names = ", ".join(c.name if hasattr(c, "name") else str(c) for c in converted_cols)
+        return MockColumnOperation(
+            first_col,
+            "array",
+            value=rest_cols if rest_cols else None,
+            name=f"array({col_names})"
+        )
+
+    @staticmethod
+    def array_repeat(col: Union[MockColumn, str], count: int) -> MockColumnOperation:
+        """Create array by repeating value N times (PySpark 3.0+).
+
+        Args:
+            col: Value to repeat
+            count: Number of repetitions
+
+        Returns:
+            MockColumnOperation representing the array_repeat function.
+
+        Example:
+            >>> df.select(F.array_repeat(F.col("value"), 3))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        
+        return MockColumnOperation(
+            col,
+            "array_repeat",
+            value=count,
+            name=f"array_repeat({col.name}, {count})"
+        )
+
+    @staticmethod
+    def sort_array(col: Union[MockColumn, str], asc: bool = True) -> MockColumnOperation:
+        """Sort array elements (PySpark 3.0+).
+
+        Args:
+            col: Array column to sort
+            asc: Sort ascending if True, descending if False
+
+        Returns:
+            MockColumnOperation representing the sort_array function.
+
+        Example:
+            >>> df.select(F.sort_array(F.col("values"), asc=False))
+        """
+        if isinstance(col, str):
+            col = MockColumn(col)
+        
+        # Use array_sort as internal function name (reuse existing handlers)
+        return MockColumnOperation(
+            col,
+            "array_sort",
+            value=asc,
+            name=f"sort_array({col.name}, {asc})"
+        )
+

@@ -698,6 +698,9 @@ class SQLAlchemyMaterializer:
                                 "array_join": "array_join",  # Special handling below
                                 "regexp_extract_all": "regexp_extract_all",  # Special handling below
                                 "repeat": "repeat",  # Needs parameter handling
+                                "array": "array",  # Special handling below
+                                "array_repeat": "array_repeat",  # Special handling below
+                                "sort_array": "sort_array",  # Special handling below
                                 "array_distinct": "array_distinct",  # Special handling below
                                 "array_intersect": "array_intersect",  # Special handling below
                                 "array_union": "array_union",  # Special handling below
@@ -872,6 +875,23 @@ class SQLAlchemyMaterializer:
                                 # DuckDB only has SHA256, use it for all variants
                                 special_sql = f"SHA256({column_expr})"
                                 func_expr = text(special_sql)
+                            elif col.function_name == "array" and hasattr(col, "value") and col.value is not None:
+                                # array(col1, col2, ...) -> LIST_VALUE(col1, col2, ...)
+                                from mock_spark.functions.base import MockColumn
+                                cols = [column_expr]
+                                if isinstance(col.value, tuple):
+                                    for c in col.value:
+                                        if isinstance(c, MockColumn):
+                                            cols.append(c.name)
+                                        else:
+                                            cols.append(str(c))
+                                col_list = ", ".join(cols)
+                                special_sql = f"LIST_VALUE({col_list})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array" and (not hasattr(col, "value") or col.value is None):
+                                # array(single_col) -> LIST_VALUE(col)
+                                special_sql = f"LIST_VALUE({column_expr})"
+                                func_expr = text(special_sql)
                             elif col.function_name == "array_distinct" and (not hasattr(col, "value") or col.value is None):
                                 # array_distinct without parameters - cast to array if needed
                                 special_sql = f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
@@ -894,8 +914,23 @@ class SQLAlchemyMaterializer:
                                 special_sql = f"LEN({column_expr})"
                                 func_expr = text(special_sql)
                             elif col.function_name == "array_sort" and (not hasattr(col, "value") or col.value is None):
-                                # array_sort(array) -> LIST_SORT(array)
+                                # array_sort(array) -> LIST_SORT(array) ascending
                                 special_sql = f"LIST_SORT({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array_sort" and hasattr(col, "value") and col.value is not None:
+                                # array_sort(array, asc) -> LIST_SORT or LIST_REVERSE_SORT
+                                asc = col.value
+                                if asc:
+                                    special_sql = f"LIST_SORT({column_expr})"
+                                else:
+                                    special_sql = f"LIST_REVERSE_SORT({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "array_repeat" and hasattr(col, "value") and col.value is not None:
+                                # array_repeat(value, count) -> Create array by repeating
+                                count = col.value
+                                # DuckDB doesn't have direct LIST_REPEAT, build array manually
+                                # Use RANGE to generate indices and LIST_TRANSFORM
+                                special_sql = f"LIST_TRANSFORM(RANGE({count}), x -> {column_expr})"
                                 func_expr = text(special_sql)
                             elif col.function_name == "map_from_entries" and (not hasattr(col, "value") or col.value is None):
                                 # map_from_entries(array) -> MAP_FROM_ENTRIES(array)
@@ -2100,7 +2135,7 @@ class SQLAlchemyMaterializer:
                         elif col.function_name in ["exists", "forall"]:
                             # exists and forall return boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort", "flatten", "reverse", "sequence", "shuffle"]:
+                        elif col.function_name in ["array", "array_repeat", "sort_array", "transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort", "flatten", "reverse", "sequence", "shuffle"]:
                             # Array functions return arrays - try to infer element type from source
                             from sqlalchemy import ARRAY
                             if col.function_name == "sequence":

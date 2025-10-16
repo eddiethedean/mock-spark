@@ -1034,6 +1034,21 @@ class MockFunctions:
 
     # Array functions
     @staticmethod
+    def array(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Create array from columns (PySpark 3.0+)."""
+        return ArrayFunctions.array(*cols)
+
+    @staticmethod
+    def array_repeat(col: Union[MockColumn, str], count: int) -> MockColumnOperation:
+        """Repeat value to create array (PySpark 3.0+)."""
+        return ArrayFunctions.array_repeat(col, count)
+
+    @staticmethod
+    def sort_array(col: Union[MockColumn, str], asc: bool = True) -> MockColumnOperation:
+        """Sort array elements (PySpark 3.0+)."""
+        return ArrayFunctions.sort_array(col, asc)
+
+    @staticmethod
     def array_distinct(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Remove duplicate elements from array."""
         return ArrayFunctions.array_distinct(column)
