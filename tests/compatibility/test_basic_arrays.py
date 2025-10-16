@@ -8,15 +8,15 @@ array_insert, array_size, array_sort, and arrays_overlap functions.
 import pytest
 
 try:
-    from pyspark.sql import SparkSession
-    from pyspark.sql import functions as PySparkF
+    from pyspark.sql import SparkSession  # noqa: F401
+    from pyspark.sql import functions as PySparkF  # noqa: F401
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
-from mock_spark.spark_types import MockStructType, MockStructField, ArrayType, IntegerType, StringType
+from mock_spark.spark_types import MockStructType, MockStructField, ArrayType, IntegerType
 
 
 @pytest.mark.fast

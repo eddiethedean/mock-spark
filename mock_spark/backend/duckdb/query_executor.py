@@ -1317,9 +1317,9 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "next_day":
                                         # next_day(date, dayOfWeek) -> complex SQL
-                                        day_of_week = col.value
                                         # Simplified: just add days until we hit the target day
                                         # This is a simplification - full implementation needs day-of-week calculation
+                                        # TODO: Use col.value (day_of_week) for proper calculation
                                         special_sql = f"({column_expr} + INTERVAL '1 day')"  # Placeholder
                                         func_expr = text(special_sql)
                                     elif col.function_name == "trunc":
@@ -1357,12 +1357,12 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "encode":
                                         # encode(col, charset) -> ENCODE(col)
-                                        charset = col.value
+                                        # TODO: Use col.value (charset) for proper charset encoding
                                         special_sql = f"ENCODE({column_expr})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "decode":
                                         # decode(col, charset) -> col (simplified)
-                                        charset = col.value
+                                        # TODO: Use col.value (charset) for proper charset decoding
                                         special_sql = f"CAST({column_expr} AS VARCHAR)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "conv":

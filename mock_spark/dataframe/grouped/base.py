@@ -388,8 +388,8 @@ class MockGroupedData:
         elif func_name == "covar_pop":
             # covar_pop(col1, col2) - population covariance
             # Get both columns
-            if hasattr(agg_func, 'ord_column'):
-                col2_name = agg_func.ord_column.name if hasattr(agg_func.ord_column, 'name') else str(agg_func.ord_column)
+            if hasattr(expr, 'ord_column'):
+                col2_name = expr.ord_column.name if hasattr(expr.ord_column, 'name') else str(expr.ord_column)
                 values1 = [row.get(col_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
                 values2 = [row.get(col2_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
                 

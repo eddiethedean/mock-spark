@@ -5,8 +5,6 @@ behaves identically to real PySpark.
 """
 
 import pytest
-import math
-from decimal import Decimal
 
 # Skip all tests if PySpark is not installed
 pytest.importorskip("pyspark")
@@ -474,8 +472,8 @@ class TestEdgeCasesCompat:
         mock_result = mock_df.agg(F_mock.bool_and(F_mock.col("flag")).alias("result")).collect()
         
         # Both should return False
-        assert real_result[0]["result"] == False
-        assert mock_result[0]["result"] == False
+        assert not real_result[0]["result"]
+        assert not mock_result[0]["result"]
     
     @pytest.mark.skipif(not pyspark_has_function('count_if'), 
                         reason="count_if() added in PySpark 3.5")

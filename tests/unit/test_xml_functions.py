@@ -1,6 +1,5 @@
 """Unit tests for Phase 9: XML Functions."""
 
-import pytest
 from mock_spark.session.session import MockSparkSession
 from mock_spark import functions as F
 

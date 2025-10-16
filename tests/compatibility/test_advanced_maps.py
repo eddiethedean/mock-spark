@@ -8,15 +8,15 @@ transform_keys, and transform_values functions.
 import pytest
 
 try:
-    from pyspark.sql import SparkSession
-    from pyspark.sql import functions as PySparkF
+    from pyspark.sql import SparkSession  # noqa: F401
+    from pyspark.sql import functions as PySparkF  # noqa: F401
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
-from mock_spark.spark_types import MockStructType, MockStructField, MapType, StringType, IntegerType, ArrayType
+from mock_spark.spark_types import MockStructType, MockStructField, MapType, StringType, IntegerType
 
 
 @pytest.mark.fast

@@ -1,6 +1,5 @@
 """Unit tests for aggregate functions from PySpark 3.1."""
 
-import pytest
 from mock_spark import MockSparkSession, F
 
 
@@ -31,11 +30,11 @@ class TestBooleanAggregates:
         
         # Group A: all True
         group_a = [r for r in result if r["group"] == "A"][0]
-        assert group_a["all_true"] == True
+        assert group_a["all_true"]
         
         # Group B: has False
         group_b = [r for r in result if r["group"] == "B"][0]
-        assert group_b["all_true"] == False
+        assert not group_b["all_true"]
     
     def test_bool_or(self):
         """Test bool_or - aggregate OR."""
@@ -53,11 +52,11 @@ class TestBooleanAggregates:
         
         # Group A: all False
         group_a = [r for r in result if r["group"] == "A"][0]
-        assert group_a["any_true"] == False
+        assert not group_a["any_true"]
         
         # Group B: has True
         group_b = [r for r in result if r["group"] == "B"][0]
-        assert group_b["any_true"] == True
+        assert group_b["any_true"]
     
     def test_every_alias(self):
         """Test every - alias for bool_and."""
@@ -65,7 +64,7 @@ class TestBooleanAggregates:
         df = self.spark.createDataFrame(data)
         
         result = df.agg(F.every(F.col("flag")).alias("result")).collect()
-        assert result[0]["result"] == True
+        assert result[0]["result"]
     
     def test_some_alias(self):
         """Test some - alias for bool_or."""
@@ -73,7 +72,7 @@ class TestBooleanAggregates:
         df = self.spark.createDataFrame(data)
         
         result = df.agg(F.some(F.col("flag")).alias("result")).collect()
-        assert result[0]["result"] == True
+        assert result[0]["result"]
 
 
 class TestAdvancedAggregates:

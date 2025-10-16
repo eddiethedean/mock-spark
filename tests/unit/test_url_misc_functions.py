@@ -1,6 +1,5 @@
 """Unit tests for Phase 7 & 8: URL and Miscellaneous Functions."""
 
-import pytest
 from mock_spark.session.session import MockSparkSession
 from mock_spark import functions as F
 

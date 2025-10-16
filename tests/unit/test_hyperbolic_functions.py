@@ -1,6 +1,5 @@
 """Unit tests for hyperbolic math functions (PySpark 3.0)."""
 
-import pytest
 from mock_spark import MockSparkSession, F
 import math
 
