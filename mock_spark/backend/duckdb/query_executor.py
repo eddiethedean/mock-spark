@@ -726,6 +726,9 @@ class SQLAlchemyMaterializer:
                                 "transform_values": "transform_values",  # Higher-order function - special handling below
                                 "struct": "struct",  # Special handling below
                                 "named_struct": "named_struct",  # Special handling below
+                                "bit_count": "bit_count",  # Special handling below
+                                "bit_get": "bit_get",  # Special handling below
+                                "bitwise_not": "bitwise_not",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -777,6 +780,14 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "map_from_entries" and (not hasattr(col, "value") or col.value is None):
                                 # map_from_entries(array) -> MAP_FROM_ENTRIES(array)
                                 special_sql = f"MAP_FROM_ENTRIES({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "bit_count" and (not hasattr(col, "value") or col.value is None):
+                                # bit_count(col) -> BIT_COUNT(col)
+                                special_sql = f"BIT_COUNT({column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "bitwise_not" and (not hasattr(col, "value") or col.value is None):
+                                # bitwise_not(col) -> ~col
+                                special_sql = f"(~{column_expr})"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1319,6 +1330,12 @@ class SQLAlchemyMaterializer:
                                             func_expr = text(special_sql)
                                         else:
                                             raise ValueError("named_struct requires field name-value pairs")
+                                    elif col.function_name == "bit_get":
+                                        # bit_get(col, pos) -> (col >> pos) & 1
+                                        # DuckDB doesn't have BIT_GET, use bit shifting
+                                        pos = col.value
+                                        special_sql = f"(({column_expr} >> {pos}) & 1)"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1467,8 +1484,8 @@ class SQLAlchemyMaterializer:
                             else:
                                 # Default to String
                                 new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["array_size"]:
-                            # array_size returns integer
+                        elif col.function_name in ["array_size", "bit_count", "bit_get", "bitwise_not"]:
+                            # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean

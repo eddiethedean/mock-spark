@@ -46,6 +46,7 @@ from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
+from .bitwise import BitwiseFunctions
 
 # Create module-level aliases for backward compatibility
 col = F.col
@@ -176,6 +177,9 @@ transform_keys = F.transform_keys
 transform_values = F.transform_values
 struct = F.struct
 named_struct = F.named_struct
+bit_count = F.bit_count
+bit_get = F.bit_get
+bitwise_not = F.bitwise_not
 
 __all__ = [
     "MockColumn",
@@ -322,4 +326,7 @@ __all__ = [
     "transform_values",
     "struct",
     "named_struct",
+    "bit_count",
+    "bit_get",
+    "bitwise_not",
 ]
