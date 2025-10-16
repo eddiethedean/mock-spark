@@ -722,6 +722,54 @@ class MockFunctions:
         """Merge two arrays element-wise."""
         return ArrayFunctions.zip_with(left, right, function)
 
+    # Basic array functions (PySpark 3.2+)
+    @staticmethod
+    def array_compact(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Remove null values from array."""
+        return ArrayFunctions.array_compact(column)
+
+    @staticmethod
+    def slice(column: Union[MockColumn, str], start: int, length: int) -> MockColumnOperation:
+        """Extract array slice."""
+        return ArrayFunctions.slice(column, start, length)
+
+    @staticmethod
+    def element_at(column: Union[MockColumn, str], index: int) -> MockColumnOperation:
+        """Get element at index."""
+        return ArrayFunctions.element_at(column, index)
+
+    @staticmethod
+    def array_append(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+        """Append element to array."""
+        return ArrayFunctions.array_append(column, element)
+
+    @staticmethod
+    def array_prepend(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+        """Prepend element to array."""
+        return ArrayFunctions.array_prepend(column, element)
+
+    @staticmethod
+    def array_insert(column: Union[MockColumn, str], pos: int, value: Any) -> MockColumnOperation:
+        """Insert element at position."""
+        return ArrayFunctions.array_insert(column, pos, value)
+
+    @staticmethod
+    def array_size(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get array length."""
+        return ArrayFunctions.array_size(column)
+
+    @staticmethod
+    def array_sort(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort array elements."""
+        return ArrayFunctions.array_sort(column)
+
+    @staticmethod
+    def arrays_overlap(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Check if arrays have common elements."""
+        return ArrayFunctions.arrays_overlap(column1, column2)
+
     # Map functions
     @staticmethod
     def map_keys(column: Union[MockColumn, str]) -> MockColumnOperation:

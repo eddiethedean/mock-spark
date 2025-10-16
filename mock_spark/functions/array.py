@@ -382,3 +382,203 @@ class ArrayFunctions:
             name=f"zip_with({left.name}, {right.name}, <lambda>)",
         )
 
+    # Basic Array Functions (PySpark 3.2+)
+
+    @staticmethod
+    def array_compact(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Remove null values from an array.
+
+        Args:
+            column: The array column to compact.
+
+        Returns:
+            MockColumnOperation representing the array_compact function.
+
+        Example:
+            >>> df.select(F.array_compact(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_compact", name=f"array_compact({column.name})"
+        )
+
+    @staticmethod
+    def slice(column: Union[MockColumn, str], start: int, length: int) -> MockColumnOperation:
+        """Extract array slice starting at position for given length.
+
+        Args:
+            column: The array column.
+            start: Starting position (1-based).
+            length: Number of elements to extract.
+
+        Returns:
+            MockColumnOperation representing the slice function.
+
+        Example:
+            >>> df.select(F.slice(F.col("nums"), 2, 3))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "slice", (start, length), name=f"slice({column.name}, {start}, {length})"
+        )
+
+    @staticmethod
+    def element_at(column: Union[MockColumn, str], index: int) -> MockColumnOperation:
+        """Get element at index (1-based, negative for reverse indexing).
+
+        Args:
+            column: The array column.
+            index: Position to extract (1-based, negative counts from end).
+
+        Returns:
+            MockColumnOperation representing the element_at function.
+
+        Example:
+            >>> df.select(F.element_at(F.col("nums"), 1))  # First element
+            >>> df.select(F.element_at(F.col("nums"), -1))  # Last element
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "element_at", index, name=f"element_at({column.name}, {index})"
+        )
+
+    @staticmethod
+    def array_append(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+        """Append element to end of array.
+
+        Args:
+            column: The array column.
+            element: Element to append.
+
+        Returns:
+            MockColumnOperation representing the array_append function.
+
+        Example:
+            >>> df.select(F.array_append(F.col("nums"), 10))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_append", element, name=f"array_append({column.name}, {element})"
+        )
+
+    @staticmethod
+    def array_prepend(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+        """Prepend element to start of array.
+
+        Args:
+            column: The array column.
+            element: Element to prepend.
+
+        Returns:
+            MockColumnOperation representing the array_prepend function.
+
+        Example:
+            >>> df.select(F.array_prepend(F.col("nums"), 0))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_prepend", element, name=f"array_prepend({column.name}, {element})"
+        )
+
+    @staticmethod
+    def array_insert(
+        column: Union[MockColumn, str], pos: int, value: Any
+    ) -> MockColumnOperation:
+        """Insert element at position in array.
+
+        Args:
+            column: The array column.
+            pos: Position to insert at (1-based).
+            value: Value to insert.
+
+        Returns:
+            MockColumnOperation representing the array_insert function.
+
+        Example:
+            >>> df.select(F.array_insert(F.col("nums"), 2, 99))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_insert", (pos, value), name=f"array_insert({column.name}, {pos}, {value})"
+        )
+
+    @staticmethod
+    def array_size(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get array length.
+
+        Args:
+            column: The array column.
+
+        Returns:
+            MockColumnOperation representing the array_size function.
+
+        Example:
+            >>> df.select(F.array_size(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_size", name=f"array_size({column.name})"
+        )
+
+    @staticmethod
+    def array_sort(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort array elements in ascending order.
+
+        Args:
+            column: The array column to sort.
+
+        Returns:
+            MockColumnOperation representing the array_sort function.
+
+        Example:
+            >>> df.select(F.array_sort(F.col("nums")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column, "array_sort", name=f"array_sort({column.name})"
+        )
+
+    @staticmethod
+    def arrays_overlap(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
+        """Check if two arrays have any common elements.
+
+        Args:
+            column1: First array column.
+            column2: Second array column.
+
+        Returns:
+            MockColumnOperation representing the arrays_overlap function.
+
+        Example:
+            >>> df.select(F.arrays_overlap(F.col("arr1"), F.col("arr2")))
+        """
+        if isinstance(column1, str):
+            column1 = MockColumn(column1)
+        if isinstance(column2, str):
+            column2 = MockColumn(column2)
+
+        return MockColumnOperation(
+            column1,
+            "arrays_overlap",
+            column2,
+            name=f"arrays_overlap({column1.name}, {column2.name})",
+        )
+

@@ -154,6 +154,15 @@ exists = F.exists
 forall = F.forall
 aggregate = F.aggregate
 zip_with = F.zip_with
+array_compact = F.array_compact
+slice = F.slice
+element_at = F.element_at
+array_append = F.array_append
+array_prepend = F.array_prepend
+array_insert = F.array_insert
+array_size = F.array_size
+array_sort = F.array_sort
+arrays_overlap = F.arrays_overlap
 map_keys = F.map_keys
 map_values = F.map_values
 map_entries = F.map_entries
@@ -283,6 +292,15 @@ __all__ = [
     "forall",
     "aggregate",
     "zip_with",
+    "array_compact",
+    "slice",
+    "element_at",
+    "array_append",
+    "array_prepend",
+    "array_insert",
+    "array_size",
+    "array_sort",
+    "arrays_overlap",
     "map_keys",
     "map_values",
     "map_entries",
