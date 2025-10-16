@@ -15,8 +15,7 @@ class TestLambdaParser:
 
     def test_simple_arithmetic_lambda(self):
         """Test simple arithmetic lambda: lambda x: x * 2"""
-        def lambda_func(x):
-            return x * 2
+        lambda_func = lambda x: x * 2  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -24,8 +23,7 @@ class TestLambdaParser:
 
     def test_addition_lambda(self):
         """Test addition lambda: lambda x: x + 10"""
-        def lambda_func(x):
-            return x + 10
+        lambda_func = lambda x: x + 10  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -33,8 +31,7 @@ class TestLambdaParser:
 
     def test_comparison_lambda(self):
         """Test comparison lambda: lambda x: x > 10"""
-        def lambda_func(x):
-            return x > 10
+        lambda_func = lambda x: x > 10  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -42,8 +39,7 @@ class TestLambdaParser:
 
     def test_multiple_comparisons(self):
         """Test multiple comparisons: lambda x: x > 0 and x < 100"""
-        def lambda_func(x):
-            return (x > 0) and (x < 100)
+        lambda_func = lambda x: (x > 0) and (x < 100)  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -54,8 +50,7 @@ class TestLambdaParser:
 
     def test_two_arg_lambda(self):
         """Test two argument lambda: lambda x, y: x + y"""
-        def lambda_func(x, y):
-            return x + y
+        lambda_func = lambda x, y: x + y  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -63,8 +58,7 @@ class TestLambdaParser:
 
     def test_accumulator_lambda(self):
         """Test accumulator lambda: lambda acc, x: acc + x"""
-        def lambda_func(acc, x):
-            return acc + x
+        lambda_func = lambda acc, x: acc + x  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -72,8 +66,7 @@ class TestLambdaParser:
 
     def test_division_lambda(self):
         """Test division: lambda x: x / 2"""
-        def lambda_func(x):
-            return x / 2
+        lambda_func = lambda x: x / 2  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -81,8 +74,7 @@ class TestLambdaParser:
 
     def test_subtraction_lambda(self):
         """Test subtraction: lambda x: x - 5"""
-        def lambda_func(x):
-            return x - 5
+        lambda_func = lambda x: x - 5  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -90,8 +82,7 @@ class TestLambdaParser:
 
     def test_equality_lambda(self):
         """Test equality: lambda x: x == 5"""
-        def lambda_func(x):
-            return x == 5
+        lambda_func = lambda x: x == 5  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -99,8 +90,7 @@ class TestLambdaParser:
 
     def test_inequality_lambda(self):
         """Test inequality: lambda x: x != 5"""
-        def lambda_func(x):
-            return x != 5
+        lambda_func = lambda x: x != 5  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -108,8 +98,7 @@ class TestLambdaParser:
 
     def test_nested_operations(self):
         """Test nested operations: lambda x: (x * 2) + 10"""
-        def lambda_func(x):
-            return (x * 2) + 10
+        lambda_func = lambda x: (x * 2) + 10  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
@@ -119,8 +108,7 @@ class TestLambdaParser:
 
     def test_get_param_names_single(self):
         """Test extracting single parameter name."""
-        def lambda_func(x):
-            return x * 2
+        lambda_func = lambda x: x * 2  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         params = parser.get_param_names()
@@ -128,8 +116,7 @@ class TestLambdaParser:
 
     def test_get_param_names_multiple(self):
         """Test extracting multiple parameter names."""
-        def lambda_func(x, y):
-            return x + y
+        lambda_func = lambda x, y: x + y  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         params = parser.get_param_names()
@@ -141,8 +128,7 @@ class TestMockLambdaExpression:
 
     def test_create_lambda_expression(self):
         """Test creating a MockLambdaExpression."""
-        def lambda_func(x):
-            return x * 2
+        lambda_func = lambda x: x * 2  # noqa: E731
         expr = MockLambdaExpression(lambda_func)
         
         assert expr.lambda_func == lambda_func
@@ -150,8 +136,7 @@ class TestMockLambdaExpression:
 
     def test_lambda_expression_to_duckdb(self):
         """Test converting lambda expression to DuckDB syntax."""
-        def lambda_func(x):
-            return x > 10
+        lambda_func = lambda x: x > 10  # noqa: E731
         expr = MockLambdaExpression(lambda_func)
         
         result = expr.to_duckdb_lambda()
@@ -167,8 +152,7 @@ class TestMockLambdaExpression:
 
     def test_lambda_expression_repr(self):
         """Test string representation."""
-        def lambda_func(x):
-            return x * 2
+        lambda_func = lambda x: x * 2  # noqa: E731
         expr = MockLambdaExpression(lambda_func)
         
         repr_str = repr(expr)
@@ -190,8 +174,7 @@ class TestLambdaIntegration:
 
     def test_lambda_with_literal_values(self):
         """Test lambda with literal numeric values."""
-        def lambda_func(x):
-            return x + 100
+        lambda_func = lambda x: x + 100  # noqa: E731
         parser = LambdaParser(lambda_func)
         
         result = parser.to_duckdb_lambda()
