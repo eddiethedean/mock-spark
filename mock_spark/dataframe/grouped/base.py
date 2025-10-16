@@ -284,6 +284,72 @@ class MockGroupedData:
                     return result_key, 0.0
             else:
                 return result_key, None
+        elif func_name == "bool_and":
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"bool_and({col_name})"
+            return result_key, all(values) if values else None
+        elif func_name == "bool_or":
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"bool_or({col_name})"
+            return result_key, any(values) if values else None
+        elif func_name == "max_by":
+            # max_by(col, ord) - return col value where ord is maximum
+            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else expr.ord_column
+            if group_rows:
+                max_row = max(group_rows, key=lambda r: r.get(ord_col_name, float('-inf')))
+                result_key = alias_name if alias_name else f"max_by({col_name})"
+                return result_key, max_row.get(col_name)
+            return alias_name if alias_name else f"max_by({col_name})", None
+        elif func_name == "min_by":
+            # min_by(col, ord) - return col value where ord is minimum
+            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else expr.ord_column
+            if group_rows:
+                min_row = min(group_rows, key=lambda r: r.get(ord_col_name, float('inf')))
+                result_key = alias_name if alias_name else f"min_by({col_name})"
+                return result_key, min_row.get(col_name)
+            return alias_name if alias_name else f"min_by({col_name})", None
+        elif func_name == "count_if":
+            # count_if(condition) - count where condition is true
+            # The column might be a condition expression (e.g., col > 20)
+            if hasattr(expr.column, 'operation'):
+                # This is a condition expression - evaluate it for each row
+                true_count = 0
+                for row in group_rows:
+                    # Evaluate the condition expression
+                    cond_expr = expr.column
+                    if hasattr(cond_expr, 'column') and hasattr(cond_expr, 'operation') and hasattr(cond_expr, 'value'):
+                        col_val = row.get(cond_expr.column.name if hasattr(cond_expr.column, 'name') else cond_expr.column)
+                        comp_val = cond_expr.value.value if hasattr(cond_expr.value, 'value') else cond_expr.value
+                        
+                        # Evaluate the condition based on the operation
+                        if cond_expr.operation == '>':
+                            if col_val is not None and col_val > comp_val:
+                                true_count += 1
+                        elif cond_expr.operation == '<':
+                            if col_val is not None and col_val < comp_val:
+                                true_count += 1
+                        elif cond_expr.operation == '>=':
+                            if col_val is not None and col_val >= comp_val:
+                                true_count += 1
+                        elif cond_expr.operation == '<=':
+                            if col_val is not None and col_val <= comp_val:
+                                true_count += 1
+                        elif cond_expr.operation == '==':
+                            if col_val is not None and col_val == comp_val:
+                                true_count += 1
+                result_key = alias_name if alias_name else "count_if"
+                return result_key, true_count
+            else:
+                # Simple boolean column
+                values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+                true_count = sum(1 for v in values if v is True or v == 1 or str(v).lower() == 'true')
+                result_key = alias_name if alias_name else f"count_if({col_name})"
+                return result_key, true_count
+        elif func_name == "any_value":
+            # any_value(col) - return any non-null value (non-deterministic)
+            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            result_key = alias_name if alias_name else f"any_value({col_name})"
+            return result_key, values[0] if values else None
         else:
             result_key = alias_name if alias_name else f"{func_name}({col_name})"
             return result_key, None

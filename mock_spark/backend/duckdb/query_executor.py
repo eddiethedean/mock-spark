@@ -1933,13 +1933,41 @@ class SQLAlchemyMaterializer:
                 elif col.function_name == "min":
                     column_name = col.column.name if hasattr(col.column, "name") else col.column
                     select_parts.append(f"MIN({column_name})")
+                elif col.function_name == "bool_and":
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    select_parts.append(f"BOOL_AND({column_name})")
+                elif col.function_name == "bool_or":
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    select_parts.append(f"BOOL_OR({column_name})")
+                elif col.function_name == "max_by":
+                    # max_by(col, ord) -> ARG_MAX(col, ord)
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    ord_column = col.ord_column.name if hasattr(col.ord_column, "name") else col.ord_column
+                    select_parts.append(f"ARG_MAX({column_name}, {ord_column})")
+                elif col.function_name == "min_by":
+                    # min_by(col, ord) -> ARG_MIN(col, ord)
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    ord_column = col.ord_column.name if hasattr(col.ord_column, "name") else col.ord_column
+                    select_parts.append(f"ARG_MIN({column_name}, {ord_column})")
+                elif col.function_name == "count_if":
+                    # count_if(condition) - column is the condition expression
+                    # For now, use COUNT(CASE WHEN ... workaround if needed
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    # DuckDB supports COUNT_IF directly
+                    select_parts.append(f"COUNT_IF({column_name})")
+                elif col.function_name == "any_value":
+                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    # DuckDB supports ANY_VALUE
+                    select_parts.append(f"ANY_VALUE({column_name})")
                 else:
                     column_name = col.column.name if hasattr(col.column, "name") else col.column
                     select_parts.append(f"{col.function_name.upper()}({column_name})")
 
                 # Add appropriate column type
-                if col.function_name in ["count", "countDistinct"]:
+                if col.function_name in ["count", "countDistinct", "count_if"]:
                     new_columns.append(Column(col.name, Integer, primary_key=False))
+                elif col.function_name in ["bool_and", "bool_or"]:
+                    new_columns.append(Column(col.name, Boolean, primary_key=False))
                 elif col.function_name == "sum":
                     # Preserve source column type for SUM
                     if col.column and hasattr(col.column, "name"):
@@ -1979,6 +2007,13 @@ class SQLAlchemyMaterializer:
                         new_columns.append(Column(col.name, source_column.type, primary_key=False))
                     else:
                         new_columns.append(Column(col.name, Integer, primary_key=False))
+                elif col.function_name in ["max_by", "min_by", "any_value"]:
+                    # For max_by/min_by/any_value, use the same type as the value column
+                    if col.column and hasattr(col.column, "name"):
+                        source_column = source_table_obj.c[col.column.name]
+                        new_columns.append(Column(col.name, source_column.type, primary_key=False))
+                    else:
+                        new_columns.append(Column(col.name, String, primary_key=False))
                 else:
                     new_columns.append(Column(col.name, String, primary_key=False))
             elif hasattr(col, "name") and col.name == "*":
