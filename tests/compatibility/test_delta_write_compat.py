@@ -29,6 +29,7 @@ class TestDeltaWriteCompatibility:
     - Or add delta-core JARs to Spark classpath
     """
 
+    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
     def test_delta_write_save_as_table_basic(self, real_spark, mock_spark):
         """Test basic Delta write compatibility."""
         data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
@@ -58,6 +59,7 @@ class TestDeltaWriteCompatibility:
             assert mock_row["id"] == real_row["id"]
             assert mock_row["name"] == real_row["name"]
 
+    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
     def test_delta_write_modes_compatibility(self, real_spark, mock_spark):
         """Test Delta write modes match real PySpark behavior."""
         # Create schemas
@@ -85,6 +87,7 @@ class TestDeltaWriteCompatibility:
         mock_count = mock_spark.table("test.modes").count()
         assert mock_count == real_count == 1
 
+    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
     def test_delta_write_append_compatibility(self, real_spark, mock_spark):
         """Test Delta append mode compatibility."""
         # Create schemas
@@ -114,6 +117,7 @@ class TestDeltaWriteCompatibility:
 
         assert mock_count == real_count == 2
 
+    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
     def test_delta_write_error_mode_raises(self, real_spark, mock_spark):
         """Test that error mode raises exception in both implementations."""
         # Create schemas
@@ -142,6 +146,7 @@ class TestDeltaWriteCompatibility:
                 "test.error"
             )
 
+    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
     def test_delta_write_ignore_mode_compatibility(self, real_spark, mock_spark):
         """Test ignore mode leaves table unchanged in both implementations."""
         # Create schemas
