@@ -58,11 +58,13 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## What's New in 2.7.0
 
-### 🎯 PySpark 3.0 & 3.1 Compatibility - 13 New Functions!
+### 🎯 Extended PySpark Compatibility - 13 New Functions from 3.1, 3.3, and 3.5!
 
-Building on v2.6.0's complete PySpark 3.2 compatibility, **v2.7.0 adds comprehensive support for PySpark 3.0 and 3.1 features**, bringing total compatibility from **PySpark 3.0 through 3.5**!
+Building on v2.6.0's complete PySpark 3.2 compatibility, **v2.7.0 adds functions from PySpark 3.1, 3.3, and 3.5**, bringing forward compatibility and useful utilities!
 
-#### 🧮 Hyperbolic Math Functions (PySpark 3.0)
+**Note:** Version attributions verified by installing and testing PySpark 3.0.3, 3.1.3, 3.2.4, 3.3.4, 3.4.3, and 3.5.2.
+
+#### 🧮 Hyperbolic Math Functions (PySpark 3.1)
 Advanced mathematical operations for data science:
 
 - **acosh()** - Inverse hyperbolic cosine
@@ -78,11 +80,11 @@ df.select(
 )
 ```
 
-#### 📅 Date & Utility Functions (PySpark 3.0)
+#### 📅 Date & Utility Functions (PySpark 3.3 & 3.5)
 Enhanced date construction and metadata:
 
-- **make_date()** - Construct date from year, month, day integers
-- **version()** - Return Spark/mock-spark version string
+- **make_date()** - Construct date from year, month, day integers (PySpark 3.3)
+- **version()** - Return Spark/mock-spark version string (PySpark 3.5)
 
 ```python
 # Build dates from components
@@ -94,7 +96,7 @@ df.withColumn("date", F.make_date(
 df.select(F.version().alias("spark_version"))
 ```
 
-#### ✅ Boolean Aggregate Functions (PySpark 3.1)
+#### ✅ Boolean Aggregate Functions (PySpark 3.5)
 Logical aggregation operations:
 
 - **bool_and()** - Aggregate AND (all values true)
@@ -110,13 +112,13 @@ df.groupBy("category").agg(
 )
 ```
 
-#### 🎯 Advanced Aggregate Functions (PySpark 3.1)
+#### 🎯 Advanced Aggregate Functions (PySpark 3.3 & 3.5)
 Powerful aggregation patterns:
 
-- **max_by()** - Value associated with maximum of another column
-- **min_by()** - Value associated with minimum of another column
-- **count_if()** - Conditional counting with expressions
-- **any_value()** - Return any non-null value (non-deterministic)
+- **max_by()** - Value associated with maximum of another column (PySpark 3.3)
+- **min_by()** - Value associated with minimum of another column (PySpark 3.3)
+- **count_if()** - Conditional counting with expressions (PySpark 3.5)
+- **any_value()** - Return any non-null value (non-deterministic) (PySpark 3.5)
 
 ```python
 # Advanced aggregations
@@ -130,10 +132,11 @@ df.groupBy("department").agg(
 
 ### 📊 v2.7.0 Statistics
 
-- **Total New Functions:** 13 (1 skipped: overlay)
+- **Total New Functions:** 13 (from PySpark 3.1, 3.3, and 3.5)
 - **Test Coverage:** 639 tests (14 new + 625 from v2.6.0)
-- **PySpark Compatibility:** 3.0.x - 3.5.x (complete range)
-- **Feature Parity:** 98-99% across all PySpark 3.x versions
+- **PySpark Compatibility:** Extended through 3.5 (functions from 3.1, 3.3, 3.5)
+- **Feature Parity:** 98-99% across PySpark 3.x versions
+- **Verification:** All version attributions confirmed by installing PySpark 3.0.3 - 3.5.2
 
 ---
 
