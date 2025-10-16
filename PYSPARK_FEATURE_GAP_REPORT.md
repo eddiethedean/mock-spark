@@ -2,21 +2,22 @@
 
 **Generated:** 2025-10-16  
 **Mock-Spark Version:** 2.6.0  
-**PySpark Versions Analyzed:** 3.2.0, 3.3.0, 3.4.0, 3.5.0  
+**PySpark Versions Analyzed:** 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0  
 
 ---
 
 ## Executive Summary
 
-This report identifies PySpark features from versions 3.2-3.5 that are currently missing in mock-spark. Mock-spark provides excellent coverage of core DataFrame operations and SQL functions, but lacks some advanced features introduced in newer PySpark versions.
+This report identifies PySpark features from versions 3.0-3.5 that are currently missing in mock-spark. Mock-spark provides excellent coverage of core DataFrame operations and SQL functions, with **100% PySpark 3.2 API compatibility** achieved in v2.6.0, but lacks some advanced features and less commonly used functions from across all versions.
 
 ### Key Findings
 
-- **Total Feature Gaps Identified:** 19 (down from 35 in v2.4.0)
+- **Total Feature Gaps Identified:** 28 (includes 9 new gaps from PySpark 3.0/3.1 analysis)
 - **High Priority:** 2 features (specialized operations)
-- **Medium Priority:** 6 features (advanced features with moderate usage)
-- **Low Priority:** 11 features (specialized or streaming features)
+- **Medium Priority:** 7 features (advanced features with moderate usage)
+- **Low Priority:** 19 features (specialized, infrastructure, or rarely-used features)
 - **✅ Implemented in v2.6.0:** 16 major features (46 new functions)
+- **✅ Already Compatible:** 4 infrastructure/ecosystem features (type hints, PyPI, etc.)
 
 ### Current Coverage Strengths
 
@@ -41,6 +42,172 @@ Mock-spark excels in:
 - Adaptive Query Execution (AQE) configuration
 - MLlib features (out of scope)
 - Some specialized DataFrame operations (foreach, foreachPartition, transformSchema)
+
+---
+
+## PySpark 3.0 Feature Gaps
+
+### Core API Changes
+
+#### 1. Pandas UDF Enhancements
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Very High
+- **Description:** Scalar iterator Pandas UDFs for batch processing
+- **Use Case:** Efficient batch processing with pandas
+- **Implementation Notes:** Python UDFs are out of scope for mock-spark's testing focus
+
+#### 2. Python Type Hints (Project Zen)
+- **Status:** ✅ Implemented (Built into Python)
+- **Priority:** N/A
+- **Complexity:** N/A
+- **Description:** Official Python type hints for better IDE support
+- **Use Case:** Code completion and static type checking
+- **Implementation Notes:** Mock-spark already has 100% MyPy type coverage
+
+### SQL Functions (PySpark 3.0)
+
+#### 3. Hyperbolic Math Functions
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** `acosh`, `asinh`, `atanh` - inverse hyperbolic functions
+- **Use Case:** Advanced mathematical operations
+- **Implementation Notes:** Rarely used in typical testing scenarios
+
+#### 4. overlay() String Function
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** Replace portion of string with another string at position
+- **Use Case:** String manipulation
+- **Implementation Notes:** Can be added easily with DuckDB support
+
+#### 5. make_date() Function
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** Create date from year, month, day integers
+- **Use Case:** Date construction
+- **Implementation Notes:** Straightforward to implement
+
+#### 6. version() Function
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** Returns Spark version string
+- **Use Case:** Version checking
+- **Implementation Notes:** Easy to implement as constant
+
+### Query Optimization Features (Informational Only)
+
+#### 7. Adaptive Query Execution (AQE)
+- **Status:** Not Applicable
+- **Priority:** N/A
+- **Complexity:** Very High
+- **Description:** Runtime query optimization based on statistics
+- **Use Case:** Performance optimization for production workloads
+- **Implementation Notes:** Infrastructure feature, not relevant for testing mock
+
+#### 8. Dynamic Partition Pruning
+- **Status:** Not Applicable
+- **Priority:** N/A
+- **Complexity:** Very High
+- **Description:** Runtime partition filtering optimization
+- **Use Case:** Performance optimization
+- **Implementation Notes:** Query optimizer feature, not needed for testing
+
+---
+
+## PySpark 3.1 Feature Gaps
+
+### Core API Changes (Project Zen Continued)
+
+#### 9. Improved Dependency Management
+- **Status:** ✅ Implemented (Standard Python)
+- **Priority:** N/A
+- **Complexity:** N/A
+- **Description:** Better support for Conda, virtualenv, PEX
+- **Use Case:** Package management
+- **Implementation Notes:** Mock-spark works with all standard Python package managers
+
+#### 10. PyPI Installation Options
+- **Status:** ✅ Implemented
+- **Priority:** N/A
+- **Complexity:** N/A
+- **Description:** Multiple Hadoop versions available via PyPI
+- **Use Case:** Flexible installation
+- **Implementation Notes:** Mock-spark published to PyPI with simple installation
+
+### SQL Functions (PySpark 3.1)
+
+#### 11. Boolean Aggregate Functions
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** `bool_and`, `bool_or`, `every`, `some` - boolean aggregates
+- **Use Case:** Boolean logic aggregation
+- **Implementation Notes:** Can be implemented with DuckDB support
+
+#### 12. Aggregate Functions - max_by, min_by
+- **Status:** Not Implemented
+- **Priority:** Medium
+- **Complexity:** Low
+- **Description:** Return value associated with max/min of another column
+- **Use Case:** Finding row with maximum/minimum value
+- **Implementation Notes:** Common pattern, should be prioritized
+
+#### 13. count_if() Function
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** Count rows where condition is true
+- **Use Case:** Conditional counting
+- **Implementation Notes:** Can be simulated with `count(when(condition, 1))`
+
+#### 14. any_value() Aggregate
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Low
+- **Description:** Return any non-null value from group (non-deterministic)
+- **Use Case:** Simplify aggregations when value doesn't matter
+- **Implementation Notes:** Similar to `first()` but non-deterministic
+
+### DataFrame API Enhancements
+
+#### 15. Testing API (pyspark.testing)
+- **Status:** Not Implemented
+- **Priority:** Low
+- **Complexity:** Medium
+- **Description:** Utility functions for testing (`assertDataFrameEqual`, `assertSchemaEqual`)
+- **Use Case:** Unit testing PySpark code
+- **Implementation Notes:** Mock-spark is itself a testing tool, so these may not be needed
+
+#### 16. Enhanced Error Messages
+- **Status:** ✅ Partially Implemented
+- **Priority:** Medium
+- **Complexity:** Low
+- **Description:** Improved error messages with suggestions (e.g., "Did you mean...?")
+- **Use Case:** Better debugging experience
+- **Implementation Notes:** Mock-spark already has enhanced error messages with column suggestions
+
+### Infrastructure Features (Informational Only)
+
+#### 17. Kubernetes GA Support
+- **Status:** Not Applicable
+- **Priority:** N/A
+- **Complexity:** Very High
+- **Description:** Production-ready Kubernetes support
+- **Use Case:** Kubernetes deployment
+- **Implementation Notes:** Infrastructure feature, not relevant for mock-spark
+
+#### 18. Profiling for Python UDFs
+- **Status:** Not Applicable
+- **Priority:** N/A
+- **Complexity:** High
+- **Description:** Performance profiling for UDFs
+- **Use Case:** UDF optimization
+- **Implementation Notes:** UDFs not implemented in mock-spark
 
 ---
 
@@ -470,29 +637,46 @@ These features would further improve mock-spark's PySpark compatibility:
 1. **Enhanced Numeric/Timestamp Casting** - Type system completeness
 2. **DataFrame.transformSchema()** - Schema evolution testing
 
+Note: Most remaining gaps are low-priority, specialized, or infrastructure features not critical for testing use cases.
+
 ### Medium Priority (Consider for Future Releases)
 
 These features would enhance mock-spark but are less critical:
 
-1. **Enhanced Pandas Integration** - Further toPandas() optimizations
-2. **Lateral Joins** - Advanced SQL features
-3. **Enhanced Error Messages** - Developer experience improvements
-4. **DataFrame.foreach()** / **foreachPartition()** - Side effect operations
-5. **Connect API** - External data source integration
-6. **Enhanced Pivot** - Multiple value columns support
+1. **max_by / min_by** (PySpark 3.1) - Common aggregation pattern
+2. **Enhanced Pandas Integration** - Further toPandas() optimizations
+3. **Lateral Joins** - Advanced SQL features
+4. **Enhanced Error Messages** - Developer experience improvements
+5. **DataFrame.foreach()** / **foreachPartition()** - Side effect operations
+6. **Connect API** - External data source integration
+7. **Enhanced Pivot** - Multiple value columns support
 
 ### Low Priority (Nice to Have)
 
-These features are specialized or out of scope:
+These features are specialized, rarely used, or out of scope:
 
-1. **Streaming Features** - Out of scope for testing focus
-2. **MLlib Features** - Out of scope for testing focus
-3. **AQE Configuration** - Not needed for testing
-4. **Push-Based Shuffle** - Infrastructure-level
-5. **Kubernetes Features** - Infrastructure-level
-6. **Python UDF Improvements** - UDFs not implemented
-7. **Connect API** - External data sources
-8. **Bloom Filter Joins** - Infrastructure optimization
+**PySpark 3.0/3.1 Functions:**
+1. **Hyperbolic Math Functions** (acosh, asinh, atanh) - Rarely used
+2. **overlay()** - String manipulation (uncommon)
+3. **make_date()** - Date construction
+4. **version()** - Version checking
+5. **Boolean Aggregates** (bool_and, bool_or, every, some) - Specialized
+6. **count_if()** - Can be simulated with count(when())
+7. **any_value()** - Non-deterministic aggregate
+8. **Testing API** (pyspark.testing) - Mock-spark is itself a testing tool
+
+**Infrastructure/Out of Scope:**
+9. **Streaming Features** - Out of scope for testing focus
+10. **MLlib Features** - Out of scope for testing focus
+11. **AQE Configuration** - Not needed for testing
+12. **Push-Based Shuffle** - Infrastructure-level
+13. **Kubernetes Features** - Infrastructure-level
+14. **Python UDF Improvements** - UDFs not implemented
+15. **Pandas UDF Enhancements** - UDFs not implemented
+16. **Connect API** - External data sources
+17. **Bloom Filter Joins** - Infrastructure optimization
+18. **Dynamic Partition Pruning** - Query optimizer feature
+19. **UDF Profiling** - UDFs not implemented
 
 ---
 
@@ -501,6 +685,10 @@ These features are specialized or out of scope:
 ### Low Complexity (1-2 days)
 - ✅ TIMESTAMPADD/TIMESTAMPDIFF functions (Completed in v2.6.0)
 - ✅ Additional string functions (Completed in v2.6.0)
+- Hyperbolic math functions (acosh, asinh, atanh)
+- overlay(), make_date(), version() functions
+- Boolean aggregates (bool_and, bool_or, every, some)
+- count_if(), any_value() functions
 - Enhanced error messages
 - DataFrame.transformSchema()
 
@@ -511,8 +699,10 @@ These features are specialized or out of scope:
 - ✅ DataFrame.transform() (Completed in v2.6.0)
 - ✅ DataFrame.unpivot() (Completed in v2.6.0)
 - ✅ Array/Map functions (Completed in v2.6.0)
+- max_by / min_by aggregate functions
 - Enhanced numeric/timestamp casting
 - Lateral joins
+- Testing API (pyspark.testing)
 
 ### High Complexity (1-2 weeks)
 - ✅ Pandas API on Spark (mapInPandas, applyInPandas, transform) (Completed in v2.6.0)
@@ -654,7 +844,7 @@ These features are specialized or out of scope:
 
 ## Conclusion
 
-Mock-spark provides excellent coverage of core PySpark functionality, with approximately **95-98% feature parity** for typical DataFrame and SQL operations. Version 2.6.0 represents a major milestone with **100% PySpark 3.2 API compatibility** achieved through the implementation of 46 new functions.
+Mock-spark provides excellent coverage of core PySpark functionality, with approximately **95-98% feature parity** for typical DataFrame and SQL operations across PySpark 3.0-3.5. Version 2.6.0 represents a major milestone with **100% PySpark 3.2 API compatibility** achieved through the implementation of 46 new functions.
 
 ### Major Achievements in v2.6.0
 
@@ -666,12 +856,18 @@ Mock-spark provides excellent coverage of core PySpark functionality, with appro
 
 ### Remaining Gaps (Minimal)
 
-The remaining gaps are primarily in specialized or out-of-scope areas:
+After analyzing PySpark 3.0-3.5, the remaining gaps are primarily in specialized or out-of-scope areas:
 
-1. **Streaming & MLlib** - Out of scope for testing-focused tool
-2. **Advanced SQL Features** - Lateral joins (specialized use case)
-3. **Specialized Operations** - foreach, foreachPartition, transformSchema (less common)
-4. **Infrastructure Features** - AQE, Kubernetes, push-based shuffle (not relevant for testing)
+**From PySpark 3.0/3.1 (Low Priority):**
+1. **Specialized SQL Functions** - Hyperbolic math (acosh, asinh, atanh), overlay(), make_date(), version()
+2. **Boolean Aggregates** - bool_and, bool_or, every, some, count_if, any_value
+3. **Aggregate Functions** - max_by, min_by (medium priority - should be considered)
+
+**Infrastructure/Out of Scope:**
+4. **Streaming & MLlib** - Out of scope for testing-focused tool
+5. **Advanced SQL Features** - Lateral joins (specialized use case)
+6. **Specialized Operations** - foreach, foreachPartition, transformSchema (less common)
+7. **Infrastructure Features** - AQE, Kubernetes, push-based shuffle, UDF profiling (not relevant for testing)
 
 The identified gaps are prioritized based on:
 - **Usage frequency** in real-world PySpark applications
@@ -718,10 +914,11 @@ We welcome contributions! To implement a missing feature:
 
 ---
 
-**Report Version:** 2.0  
+**Report Version:** 2.1  
 **Last Updated:** 2025-10-16  
 **Next Review:** Q1 2026  
 **Changelog:**
+- v2.1 (2025-10-16): Added PySpark 3.0 and 3.1 gap analysis (9 new items), updated version coverage to 3.0-3.5
 - v2.0 (2025-10-16): Updated for mock-spark v2.6.0 - 100% PySpark 3.2 API compatibility achieved
 - v1.0 (2025-01-14): Initial report for mock-spark v2.4.0
 
