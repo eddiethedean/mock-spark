@@ -38,6 +38,7 @@ from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
+from .bitwise import BitwiseFunctions
 
 
 class MockFunctions:
@@ -865,6 +866,22 @@ class MockFunctions:
             value=cols,
             name=f"named_struct(...)",
         )
+
+    # Bitwise functions (PySpark 3.2+)
+    @staticmethod
+    def bit_count(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Count set bits."""
+        return BitwiseFunctions.bit_count(column)
+
+    @staticmethod
+    def bit_get(column: Union[MockColumn, str], pos: int) -> MockColumnOperation:
+        """Get bit at position."""
+        return BitwiseFunctions.bit_get(column, pos)
+
+    @staticmethod
+    def bitwise_not(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Bitwise NOT."""
+        return BitwiseFunctions.bitwise_not(column)
 
 
 # Create the F namespace instance
