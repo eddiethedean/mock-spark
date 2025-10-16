@@ -573,3 +573,34 @@ class DateTimeFunctions:
             date = MockColumn(date)
 
         return MockColumnOperation(date, "dayname", name=f"dayname({date.name})")
+
+    @staticmethod
+    def make_date(
+        year: Union[MockColumn, int],
+        month: Union[MockColumn, int],
+        day: Union[MockColumn, int]
+    ) -> MockColumnOperation:
+        """Construct a date from year, month, day integers (PySpark 3.0+).
+
+        Args:
+            year: Year column or integer
+            month: Month column or integer (1-12)
+            day: Day column or integer (1-31)
+
+        Returns:
+            MockColumnOperation representing the make_date function
+
+        Example:
+            >>> df.select(F.make_date(F.lit(2024), F.lit(3), F.lit(15)))
+        """
+        if isinstance(year, int):
+            year = MockLiteral(year)
+        elif isinstance(year, str):
+            year = MockColumn(year)
+
+        return MockColumnOperation(
+            year,
+            "make_date",
+            value=(month, day),
+            name=f"make_date({year.name if hasattr(year, 'name') else year})"
+        )

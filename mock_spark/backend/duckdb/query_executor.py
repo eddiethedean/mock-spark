@@ -1044,6 +1044,41 @@ class SQLAlchemyMaterializer:
                                             element = str(col.value)
                                         special_sql = f"LIST_FILTER(CAST({column_expr} AS VARCHAR[]), x -> x != {element})"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "overlay":
+                                        # overlay(src, replace, pos, len) -> OVERLAY(src PLACING replace FROM pos FOR len)
+                                        replace_str, pos_val, len_val = col.value
+                                        # Extract literal values
+                                        if hasattr(replace_str, 'value'):
+                                            replace_str = f"'{replace_str.value}'"
+                                        elif isinstance(replace_str, str):
+                                            replace_str = f"'{replace_str}'"
+                                        
+                                        if hasattr(pos_val, 'value'):
+                                            pos_val = pos_val.value
+                                        if hasattr(len_val, 'value'):
+                                            len_val = len_val.value
+                                        
+                                        if len_val == -1:
+                                            special_sql = f"OVERLAY({column_expr} PLACING {replace_str} FROM {pos_val})"
+                                        else:
+                                            special_sql = f"OVERLAY({column_expr} PLACING {replace_str} FROM {pos_val} FOR {len_val})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "make_date":
+                                        # make_date(year, month, day) -> MAKE_DATE(year, month, day)
+                                        month_val, day_val = col.value
+                                        # Extract column names or values
+                                        if hasattr(month_val, 'name'):
+                                            month_expr = f'"{month_val.name}"'
+                                        else:
+                                            month_expr = str(month_val)
+                                        
+                                        if hasattr(day_val, 'name'):
+                                            day_expr = f'"{day_val.name}"'
+                                        else:
+                                            day_expr = str(day_val)
+                                        
+                                        special_sql = f"MAKE_DATE({column_expr}, {month_expr}, {day_expr})"
+                                        func_expr = text(special_sql)
                                     elif col.function_name == "transform":
                                         # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)
                                         from mock_spark.functions.base import MockLambdaExpression

@@ -364,6 +364,17 @@ class MockFunctions:
         return DateTimeFunctions.current_date()
 
     @staticmethod
+    def version() -> MockColumnOperation:
+        """Return Spark version string (PySpark 3.0+).
+        
+        Returns:
+            MockColumnOperation with mock-spark version
+        """
+        from mock_spark import __version__
+        # Return mock-spark version as a constant expression
+        return MockLiteral(f"mock-spark-{__version__}")
+
+    @staticmethod
     def to_date(
         column: Union[MockColumn, str], format: Optional[str] = None
     ) -> MockColumnOperation:
@@ -493,6 +504,15 @@ class MockFunctions:
     def date_format(column: Union[MockColumn, str], format: str) -> MockColumnOperation:
         """Format date/timestamp as string."""
         return DateTimeFunctions.date_format(column, format)
+
+    @staticmethod
+    def make_date(
+        year: Union[MockColumn, int],
+        month: Union[MockColumn, int],
+        day: Union[MockColumn, int]
+    ) -> MockColumnOperation:
+        """Construct date from year, month, day (PySpark 3.0+)."""
+        return DateTimeFunctions.make_date(year, month, day)
 
     @staticmethod
     def from_unixtime(
@@ -935,6 +955,16 @@ class MockFunctions:
     def url_decode(url: Union[MockColumn, str]) -> MockColumnOperation:
         """URL-decode string."""
         return StringFunctions.url_decode(url)
+
+    @staticmethod
+    def overlay(
+        src: Union[MockColumn, str],
+        replace: Union[MockColumn, str],
+        pos: Union[MockColumn, int],
+        len: Union[MockColumn, int] = -1
+    ) -> MockColumnOperation:
+        """Replace part of string (PySpark 3.0+)."""
+        return StringFunctions.overlay(src, replace, pos, len)
 
     # Miscellaneous functions (PySpark 3.2+)
     @staticmethod

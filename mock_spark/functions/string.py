@@ -504,3 +504,34 @@ class StringFunctions:
             url = MockColumn(url)
 
         return MockColumnOperation(url, "url_decode", name=f"url_decode({url.name})")
+
+    @staticmethod
+    def overlay(
+        src: Union[MockColumn, str],
+        replace: Union[MockColumn, str],
+        pos: Union[MockColumn, int],
+        len: Union[MockColumn, int] = -1
+    ) -> MockColumnOperation:
+        """Replace part of a string with another string starting at a position (PySpark 3.0+).
+
+        Args:
+            src: Source string column
+            replace: Replacement string
+            pos: Starting position (1-indexed)
+            len: Length to replace (default -1 means to end of string)
+
+        Returns:
+            MockColumnOperation for overlay operation
+
+        Example:
+            >>> df.select(F.overlay(F.col("text"), F.lit("NEW"), F.lit(5), F.lit(3)))
+        """
+        if isinstance(src, str):
+            src = MockColumn(src)
+
+        return MockColumnOperation(
+            src, 
+            "overlay",
+            value=(replace, pos, len),
+            name=f"overlay({src.name})"
+        )
