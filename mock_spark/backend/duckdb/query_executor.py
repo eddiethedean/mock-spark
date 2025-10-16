@@ -804,11 +804,6 @@ class SQLAlchemyMaterializer:
                                 "grouping": "grouping",  # Special handling below
                                 "grouping_id": "grouping_id",  # Special handling below
                                 # PySpark 3.1 interval functions
-                                "days": "days",  # Special handling below
-                                "hours": "hours",  # Special handling below
-                                "months": "months",  # Special handling below
-                                "years": "years",  # Special handling below
-                                "bucket": "bucket",  # Special handling below
                                 "raise_error": "raise_error",  # Special handling below
                                 "timestamp_seconds": "timestamp_seconds",  # Special handling below
                                 "isnull": "({} IS NULL)",
@@ -952,12 +947,7 @@ class SQLAlchemyMaterializer:
                                 # Partition ID is always 0 in mock (single partition)
                                 special_sql = "0"
                                 func_expr = text(special_sql)
-                            # PySpark 3.1 interval functions (no parameters)
-                            elif col.function_name in ["days", "hours", "months", "years"] and (not hasattr(col, "value") or col.value is None):
-                                # Interval functions: days(col) -> INTERVAL '{col} days'
-                                unit = col.function_name.upper()  # DAYS, HOURS, MONTHS, YEARS
-                                special_sql = f"INTERVAL ({column_expr}) {unit}"
-                                func_expr = text(special_sql)
+                            # PySpark 3.1 utility functions (no parameters)
                             elif col.function_name == "timestamp_seconds" and (not hasattr(col, "value") or col.value is None):
                                 # timestamp_seconds(col) -> TO_TIMESTAMP(col)
                                 special_sql = f"TO_TIMESTAMP({column_expr})"
@@ -1419,11 +1409,6 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "shuffle":
                                         # shuffle(array) -> LIST_SORT(array, x -> RANDOM())
                                         special_sql = f"LIST_SORT({column_expr}, x -> RANDOM())"
-                                        func_expr = text(special_sql)
-                                    elif col.function_name == "bucket":
-                                        # bucket(numBuckets, col) -> HASH(col) % numBuckets
-                                        num_buckets = col.value
-                                        special_sql = f"(HASH({column_expr}) % {num_buckets})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "transform":
                                         # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)
@@ -2064,7 +2049,7 @@ class SQLAlchemyMaterializer:
                             else:
                                 # Default to String
                                 new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["array_size", "bit_count", "bit_count", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id", "bucket"]:
+                        elif col.function_name in ["array_size", "bit_count", "bit_count", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id"]:
                             # These functions return integer
                             new_columns.append(Column(col.name, Integer, primary_key=False))
                         elif col.function_name in ["hash", "monotonically_increasing_id"]:

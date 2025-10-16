@@ -100,7 +100,7 @@ Total functions cataloged: 455
 | `broadcast` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `bround` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `btrim` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `bucket` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `bucket` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `call_function` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `call_udf` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `cardinality` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
@@ -158,7 +158,7 @@ Total functions cataloged: 455
 | `dayofmonth` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dayofweek` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dayofyear` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `days` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `days` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `decode` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `degrees` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `dense_rank` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -208,7 +208,7 @@ Total functions cataloged: 455
 | `hll_union` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `hll_union_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `hour` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `hours` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `hours` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `hypot` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `ifnull` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `ignore_unicode_prefix` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -278,7 +278,7 @@ Total functions cataloged: 455
 | `mode` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `monotonically_increasing_id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `month` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `months` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `months` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `months_between` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `named_struct` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `nanvl` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -465,7 +465,7 @@ Total functions cataloged: 455
 | `xpath_string` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `xxhash64` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `year` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `years` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `years` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `zip_with` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ## DataFrame Methods
