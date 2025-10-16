@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -99,16 +99,16 @@ class CompatibilityTester:
         ]
 
         try:
-            result = subprocess.run(
+            _result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            print(f"✓ Image built successfully")
+            print("✓ Image built successfully")
             return True
         except subprocess.CalledProcessError as e:
-            print(f"✗ Image build failed")
+            print("✗ Image build failed")
             print(f"Error: {e.stderr}")
             return False
 
@@ -193,7 +193,7 @@ class CompatibilityTester:
         current = 0
 
         print(f"\n{'='*70}")
-        print(f"Mock-Spark Compatibility Matrix Test (Working Combinations Only)")
+        print("Mock-Spark Compatibility Matrix Test (Working Combinations Only)")
         print(f"{'='*70}")
         print(f"Testing {total_combinations} working combinations")
         print(f"{'='*70}\n")
@@ -278,7 +278,7 @@ class CompatibilityTester:
             lines.append(f"**Duration:** {result.duration:.2f}s  ")
             
             if result.error:
-                lines.append(f"**Error:** ```")
+                lines.append("**Error:** ```")
                 lines.append(result.error)
                 lines.append("```")
             

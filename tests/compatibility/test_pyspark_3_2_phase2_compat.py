@@ -8,22 +8,21 @@ against real PySpark to ensure compatibility.
 import pytest
 
 try:
-    from pyspark.sql import SparkSession
-    from pyspark.sql import functions as PySparkF
-    import pandas as pd
+    from pyspark.sql import SparkSession  # noqa: F401
+    from pyspark.sql import functions as PySparkF  # noqa: F401
+    import pandas as pd  # noqa: F401
     PYSPARK_AVAILABLE = True
     PANDAS_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
     try:
-        import pandas as pd
+        import pandas as pd  # noqa: F401
         PANDAS_AVAILABLE = True
     except ImportError:
         PANDAS_AVAILABLE = False
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
-from mock_spark.dataframe import MockDataFrame
 
 
 @pytest.mark.compatibility

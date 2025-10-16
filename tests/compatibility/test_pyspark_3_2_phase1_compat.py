@@ -8,8 +8,8 @@ against real PySpark to ensure compatibility.
 import pytest
 
 try:
-    from pyspark.sql import SparkSession
-    from pyspark.sql import functions as PySparkF
+    from pyspark.sql import SparkSession  # noqa: F401
+    from pyspark.sql import functions as PySparkF  # noqa: F401
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
@@ -42,7 +42,7 @@ class TestTimestampFunctionsCompat:
     def test_timestampadd_day(self):
         """Test timestampadd with DAY unit."""
         mock_df = self.mock_spark.createDataFrame(self.test_data)
-        real_df = self.real_spark.createDataFrame(self.test_data)
+        _real_df = self.real_spark.createDataFrame(self.test_data)  # For future comparison
         
         # Both should add 7 days
         mock_result = mock_df.select(
@@ -142,7 +142,6 @@ class TestEnhancedErrorMessagesCompat:
     
     def test_column_not_found_has_suggestions(self):
         """Test that ColumnNotFoundException provides helpful suggestions."""
-        from mock_spark.core.exceptions.analysis import ColumnNotFoundException
         
         spark = MockSparkSession("test")
         df = spark.createDataFrame([{"user_id": 1, "user_name": "Alice"}])
