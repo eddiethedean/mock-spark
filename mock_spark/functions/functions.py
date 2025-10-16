@@ -216,6 +216,41 @@ class MockFunctions:
         return StringFunctions.levenshtein(left, right)
 
     @staticmethod
+    def bin(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert to binary string."""
+        return StringFunctions.bin(column)
+
+    @staticmethod
+    def hex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert to hexadecimal string."""
+        return StringFunctions.hex(column)
+
+    @staticmethod
+    def unhex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert hex string to binary."""
+        return StringFunctions.unhex(column)
+
+    @staticmethod
+    def hash(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hash value."""
+        return StringFunctions.hash(*cols)
+
+    @staticmethod
+    def encode(column: Union[MockColumn, str], charset: str) -> MockColumnOperation:
+        """Encode string to binary."""
+        return StringFunctions.encode(column, charset)
+
+    @staticmethod
+    def decode(column: Union[MockColumn, str], charset: str) -> MockColumnOperation:
+        """Decode binary to string."""
+        return StringFunctions.decode(column, charset)
+
+    @staticmethod
+    def conv(column: Union[MockColumn, str], from_base: int, to_base: int) -> MockColumnOperation:
+        """Convert number between bases."""
+        return StringFunctions.conv(column, from_base, to_base)
+
+    @staticmethod
     def initcap(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Capitalize first letter of each word."""
         return StringFunctions.initcap(column)
@@ -372,6 +407,21 @@ class MockFunctions:
     def sign(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sign of number (matches PySpark signum)."""
         return MathFunctions.sign(column)
+
+    @staticmethod
+    def hypot(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hypotenuse."""
+        return MathFunctions.hypot(col1, col2)
+
+    @staticmethod
+    def nanvl(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return col1 if not NaN, else col2."""
+        return MathFunctions.nanvl(col1, col2)
+
+    @staticmethod
+    def signum(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute signum (sign)."""
+        return MathFunctions.signum(column)
 
     @staticmethod
     def greatest(*columns: Union[MockColumn, str]) -> MockColumnOperation:
@@ -1388,6 +1438,80 @@ class MockFunctions:
         """Infer schema from CSV string."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
         return JSONCSVFunctions.schema_of_csv(csv_string)
+
+    # Column ordering functions
+    @staticmethod
+    def asc(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort ascending."""
+        from mock_spark.functions.ordering import OrderingFunctions
+        return OrderingFunctions.asc(column)
+
+    @staticmethod
+    def asc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort ascending, nulls first."""
+        from mock_spark.functions.ordering import OrderingFunctions
+        return OrderingFunctions.asc_nulls_first(column)
+
+    @staticmethod
+    def asc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort ascending, nulls last."""
+        from mock_spark.functions.ordering import OrderingFunctions
+        return OrderingFunctions.asc_nulls_last(column)
+
+    @staticmethod
+    def desc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort descending, nulls first."""
+        from mock_spark.functions.ordering import OrderingFunctions
+        return OrderingFunctions.desc_nulls_first(column)
+
+    @staticmethod
+    def desc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Sort descending, nulls last."""
+        from mock_spark.functions.ordering import OrderingFunctions
+        return OrderingFunctions.desc_nulls_last(column)
+
+    # Metadata/utility functions
+    @staticmethod
+    def input_file_name() -> MockColumnOperation:
+        """Return input file name."""
+        from mock_spark.functions.metadata import MetadataFunctions
+        return MetadataFunctions.input_file_name()
+
+    @staticmethod
+    def monotonically_increasing_id() -> MockColumnOperation:
+        """Generate monotonically increasing ID."""
+        from mock_spark.functions.metadata import MetadataFunctions
+        return MetadataFunctions.monotonically_increasing_id()
+
+    @staticmethod
+    def spark_partition_id() -> MockColumnOperation:
+        """Return partition ID."""
+        from mock_spark.functions.metadata import MetadataFunctions
+        return MetadataFunctions.spark_partition_id()
+
+    @staticmethod
+    def broadcast(df: Any) -> Any:
+        """Mark DataFrame for broadcast (hint)."""
+        from mock_spark.functions.metadata import MetadataFunctions
+        return MetadataFunctions.broadcast(df)
+
+    @staticmethod
+    def column(col_name: str) -> MockColumn:
+        """Create column reference (alias for col)."""
+        from mock_spark.functions.metadata import MetadataFunctions
+        return MetadataFunctions.column(col_name)
+
+    @staticmethod
+    def grouping(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Grouping indicator for CUBE/ROLLUP."""
+        from mock_spark.functions.metadata import GroupingFunctions
+        return GroupingFunctions.grouping(column)
+
+    @staticmethod
+    def grouping_id(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Grouping ID for CUBE/ROLLUP."""
+        from mock_spark.functions.metadata import GroupingFunctions
+        return GroupingFunctions.grouping_id(*cols)
 
 
 # Create the F namespace instance

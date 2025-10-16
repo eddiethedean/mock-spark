@@ -525,3 +525,58 @@ class MathFunctions:
             value=scale,
             name=f"bround({column.name}, {scale})"
         )
+
+    @staticmethod
+    def hypot(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute sqrt(col1^2 + col2^2) (hypotenuse).
+
+        Args:
+            col1: First column
+            col2: Second column
+
+        Returns:
+            MockColumnOperation representing the hypot function.
+        """
+        column1 = MockColumn(col1) if isinstance(col1, str) else col1
+        column2 = MockColumn(col2) if isinstance(col2, str) else col2
+        
+        return MockColumnOperation(
+            column1,
+            "hypot",
+            value=column2,
+            name=f"hypot({column1.name}, {column2.name})"
+        )
+
+    @staticmethod
+    def nanvl(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns col1 if not NaN, or col2 if col1 is NaN.
+
+        Args:
+            col1: First column
+            col2: Second column (replacement for NaN)
+
+        Returns:
+            MockColumnOperation representing the nanvl function.
+        """
+        column1 = MockColumn(col1) if isinstance(col1, str) else col1
+        column2 = MockColumn(col2) if isinstance(col2, str) else col2
+        
+        return MockColumnOperation(
+            column1,
+            "nanvl",
+            value=column2,
+            name=f"nanvl({column1.name}, {column2.name})"
+        )
+
+    @staticmethod
+    def signum(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute the signum function (sign: -1, 0, or 1).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the signum function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "signum", name=f"signum({column.name})")

@@ -791,3 +791,140 @@ class StringFunctions:
             value=(replace, pos, len),
             name=f"overlay({src.name})"
         )
+
+    @staticmethod
+    def bin(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert to binary string representation.
+
+        Args:
+            column: Numeric column
+
+        Returns:
+            MockColumnOperation representing bin
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "bin", name=f"bin({column.name})")
+
+    @staticmethod
+    def hex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert to hexadecimal string.
+
+        Args:
+            column: Column to convert
+
+        Returns:
+            MockColumnOperation representing hex
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "hex", name=f"hex({column.name})")
+
+    @staticmethod
+    def unhex(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert hex string to binary.
+
+        Args:
+            column: Hex string column
+
+        Returns:
+            MockColumnOperation representing unhex
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "unhex", name=f"unhex({column.name})")
+
+    @staticmethod
+    def hash(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute hash value of given columns.
+
+        Args:
+            *cols: Columns to hash
+
+        Returns:
+            MockColumnOperation representing hash
+        """
+        columns = []
+        for col in cols:
+            if isinstance(col, str):
+                columns.append(MockColumn(col))
+            else:
+                columns.append(col)
+
+        return MockColumnOperation(
+            columns[0] if columns else MockColumn(""),
+            "hash",
+            value=columns[1:] if len(columns) > 1 else [],
+            name="hash(...)"
+        )
+
+    @staticmethod
+    def encode(column: Union[MockColumn, str], charset: str) -> MockColumnOperation:
+        """Encode string to binary using charset.
+
+        Args:
+            column: String column
+            charset: Character set (e.g., 'UTF-8')
+
+        Returns:
+            MockColumnOperation representing encode
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "encode",
+            value=charset,
+            name=f"encode({column.name}, {charset})"
+        )
+
+    @staticmethod
+    def decode(column: Union[MockColumn, str], charset: str) -> MockColumnOperation:
+        """Decode binary to string using charset.
+
+        Args:
+            column: Binary column
+            charset: Character set (e.g., 'UTF-8')
+
+        Returns:
+            MockColumnOperation representing decode
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "decode",
+            value=charset,
+            name=f"decode({column.name}, {charset})"
+        )
+
+    @staticmethod
+    def conv(
+        column: Union[MockColumn, str],
+        from_base: int,
+        to_base: int
+    ) -> MockColumnOperation:
+        """Convert number from one base to another.
+
+        Args:
+            column: Number column
+            from_base: Source base (2-36)
+            to_base: Target base (2-36)
+
+        Returns:
+            MockColumnOperation representing conv
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(
+            column,
+            "conv",
+            value=(from_base, to_base),
+            name=f"conv({column.name}, {from_base}, {to_base})"
+        )
