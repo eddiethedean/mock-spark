@@ -109,12 +109,73 @@ class TestPhase2HigherOrderMapFunctions:
     @pytest.mark.skipif(not pyspark_has_function('map_filter'), reason="map_filter() not in this PySpark version")
     def test_map_filter_compat(self, real_spark, mock_spark):
         """Test map_filter() with lambda produces identical results."""
-        pytest.skip("Requires lambda support - deferred")
+        data = [{"properties": {"a": 1, "b": 2, "c": 3}}]
+        
+        real_df = real_spark.createDataFrame(data)
+        real_result = real_df.select(
+            F_real.map_filter(F_real.col("properties"), lambda k, v: v > 1).alias("filtered")
+        ).collect()
+        
+        mock_df = mock_spark.createDataFrame(data)
+        mock_result = mock_df.select(
+            F_mock.map_filter(F_mock.col("properties"), lambda k, v: v > 1).alias("filtered")
+        ).collect()
+        
+        # Both should filter map to only values > 1 (b: 2, c: 3)
+        assert len(real_result) == len(mock_result)
+        # Map comparison (values may differ in representation but should have same keys)
+        real_map = real_result[0]["filtered"]
+        mock_map = mock_result[0]["filtered"]
+        
+        # Convert to dicts for comparison if needed
+        if isinstance(real_map, str):
+            import ast
+            real_map = ast.literal_eval(real_map) if real_map else {}
+        if isinstance(mock_map, str):
+            import ast
+            mock_map = ast.literal_eval(mock_map) if mock_map else {}
+        
+        assert set(real_map.keys()) == set(mock_map.keys())
+        assert all(real_map[k] == mock_map[k] for k in real_map.keys())
     
     @pytest.mark.skipif(not pyspark_has_function('map_zip_with'), reason="map_zip_with() not in this PySpark version")
     def test_map_zip_with_compat(self, real_spark, mock_spark):
         """Test map_zip_with() with lambda produces identical results."""
-        pytest.skip("Requires lambda support - deferred")
+        data = [{"map1": {"a": 1, "b": 2}, "map2": {"a": 10, "b": 20, "c": 30}}]
+        
+        real_df = real_spark.createDataFrame(data)
+        real_result = real_df.select(
+            F_real.map_zip_with(
+                F_real.col("map1"),
+                F_real.col("map2"),
+                lambda k, v1, v2: (v1 if v1 is not None else 0) + (v2 if v2 is not None else 0)
+            ).alias("merged")
+        ).collect()
+        
+        mock_df = mock_spark.createDataFrame(data)
+        mock_result = mock_df.select(
+            F_mock.map_zip_with(
+                F_mock.col("map1"),
+                F_mock.col("map2"),
+                lambda k, v1, v2: (v1 if v1 is not None else 0) + (v2 if v2 is not None else 0)
+            ).alias("merged")
+        ).collect()
+        
+        # Both should merge maps with lambda (a: 11, b: 22, c: 30)
+        assert len(real_result) == len(mock_result)
+        real_map = real_result[0]["merged"]
+        mock_map = mock_result[0]["merged"]
+        
+        # Convert to dicts for comparison if needed
+        if isinstance(real_map, str):
+            import ast
+            real_map = ast.literal_eval(real_map) if real_map else {}
+        if isinstance(mock_map, str):
+            import ast
+            mock_map = ast.literal_eval(mock_map) if mock_map else {}
+        
+        assert set(real_map.keys()) == set(mock_map.keys())
+        assert all(real_map[k] == mock_map[k] for k in real_map.keys())
 
 
 @pytest.mark.skipif(not PYSPARK_AVAILABLE, reason="PySpark not available")

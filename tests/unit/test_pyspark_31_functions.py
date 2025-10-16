@@ -3,6 +3,63 @@
 from mock_spark import MockSparkSession, F
 
 
+class TestMapFunctions:
+    """Test higher-order map functions (PySpark 3.1+)."""
+    
+    def test_map_filter_basic(self):
+        """Test map_filter filters map entries."""
+        spark = MockSparkSession("test")
+        df = spark.createDataFrame([{"properties": {"a": "apple", "b": "banana", "c": "cherry"}}])
+        
+        result = df.select(F.map_filter(F.col("properties"), lambda k, v: k > "a").alias("filtered")).collect()
+        
+        # Should keep only entries with keys > "a" (b, c)
+        filtered_map = result[0]["filtered"]
+        assert isinstance(filtered_map, (dict, str))
+        
+        # Convert string representation to dict if needed
+        if isinstance(filtered_map, str):
+            import ast
+            filtered_map = ast.literal_eval(filtered_map)
+        
+        # Should have b: banana, c: cherry
+        assert len(filtered_map) == 2
+        assert "b" in filtered_map
+        assert "c" in filtered_map
+        assert filtered_map["b"] == "banana"
+        assert filtered_map["c"] == "cherry"
+    
+    def test_map_zip_with_basic(self):
+        """Test map_zip_with merges two maps."""
+        spark = MockSparkSession("test")
+        df = spark.createDataFrame([{
+            "map1": {"a": "x", "b": "y"},
+            "map2": {"a": "1", "b": "2", "c": "3"}
+        }])
+        
+        result = df.select(
+            F.map_zip_with(
+                F.col("map1"),
+                F.col("map2"),
+                lambda k, v1, v2: (v1 if v1 else "") + "_" + (v2 if v2 else "")
+            ).alias("merged")
+        ).collect()
+        
+        merged_map = result[0]["merged"]
+        assert isinstance(merged_map, (dict, str))
+        
+        # Convert string representation to dict if needed
+        if isinstance(merged_map, str):
+            import ast
+            merged_map = ast.literal_eval(merged_map)
+        
+        # Should have a: "x_1", b: "y_2", c: "_3"
+        assert len(merged_map) == 3
+        assert merged_map["a"] == "x_1"
+        assert merged_map["b"] == "y_2"
+        assert merged_map["c"] == "_3"
+
+
 class TestUtilityFunctions:
     """Test utility functions."""
     

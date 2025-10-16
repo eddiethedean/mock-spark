@@ -260,12 +260,12 @@ Total functions cataloged: 455
 | `map_concat` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `map_contains_key` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `map_entries` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `map_filter` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `map_filter` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `map_from_arrays` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `map_from_entries` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `map_keys` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `map_values` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `map_zip_with` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `map_zip_with` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `mask` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `max` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `max_by` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |

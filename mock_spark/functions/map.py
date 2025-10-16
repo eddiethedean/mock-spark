@@ -301,3 +301,73 @@ class MapFunctions:
             name=f"transform_values({column.name}, <lambda>)",
         )
 
+    @staticmethod
+    def map_filter(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], bool]
+    ) -> MockColumnOperation:
+        """Filter map entries using a predicate function (PySpark 3.1+).
+
+        This is a higher-order function that filters map entries based on
+        the provided lambda function.
+
+        Args:
+            column: The map column.
+            function: Lambda function (key, value) -> boolean to filter entries.
+
+        Returns:
+            MockColumnOperation representing the map_filter function.
+
+        Example:
+            >>> df.select(F.map_filter(F.col("map"), lambda k, v: v > 10))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        return MockColumnOperation(
+            column,
+            "map_filter",
+            value=lambda_expr,
+            name=f"map_filter({column.name}, <lambda>)",
+        )
+
+    @staticmethod
+    def map_zip_with(
+        col1: Union[MockColumn, str],
+        col2: Union[MockColumn, str],
+        function: Callable[[Any, Any, Any], Any]
+    ) -> MockColumnOperation:
+        """Merge two maps into a single map using a function (PySpark 3.1+).
+
+        This is a higher-order function that combines two maps by applying
+        the provided lambda function to matching keys.
+
+        Args:
+            col1: The first map column.
+            col2: The second map column.
+            function: Lambda function (key, value1, value2) -> new_value to combine values.
+
+        Returns:
+            MockColumnOperation representing the map_zip_with function.
+
+        Example:
+            >>> df.select(F.map_zip_with(F.col("map1"), F.col("map2"), lambda k, v1, v2: v1 + v2))
+        """
+        if isinstance(col1, str):
+            col1 = MockColumn(col1)
+        if isinstance(col2, str):
+            col2 = MockColumn(col2)
+
+        # Wrap the lambda function
+        lambda_expr = MockLambdaExpression(function)
+
+        # Store col2 as a tuple with the lambda
+        return MockColumnOperation(
+            col1,
+            "map_zip_with",
+            value=(col2, lambda_expr),
+            name=f"map_zip_with({col1.name}, {col2.name}, <lambda>)",
+        )
+

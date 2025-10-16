@@ -723,6 +723,7 @@ class SQLAlchemyMaterializer:
                                 "map_contains_key": "map_contains_key",  # Special handling below
                                 "map_from_entries": "map_from_entries",  # Special handling below
                                 "map_filter": "map_filter",  # Higher-order function - special handling below
+                                "map_zip_with": "map_zip_with",  # Higher-order function - special handling below
                                 "transform_keys": "transform_keys",  # Higher-order function - special handling below
                                 "transform_values": "transform_values",  # Higher-order function - special handling below
                                 "struct": "struct",  # Special handling below
@@ -1714,6 +1715,58 @@ class SQLAlchemyMaterializer:
                                             func_expr = text(special_sql)
                                         else:
                                             raise ValueError(f"{col.function_name} requires a lambda function")
+                                    elif col.function_name == "map_zip_with":
+                                        # map_zip_with(map1, map2, lambda) -> Merge two maps with lambda
+                                        # Extract col2 and lambda from value tuple
+                                        if isinstance(col.value, tuple) and len(col.value) == 2:
+                                            from mock_spark.functions.base import MockColumn, MockLambdaExpression
+                                            col2, lambda_expr = col.value
+                                            
+                                            # Get col2 expression
+                                            if isinstance(col2, MockColumn):
+                                                col2_expr = col2.name
+                                            else:
+                                                col2_expr = str(col2)
+                                            
+                                            if isinstance(lambda_expr, MockLambdaExpression):
+                                                lambda_sql = lambda_expr.to_duckdb_lambda()
+                                                param_names = lambda_expr.get_param_names()
+                                                
+                                                if len(param_names) == 3:
+                                                    k_name = param_names[0]
+                                                    v1_name = param_names[1]
+                                                    v2_name = param_names[2]
+                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    
+                                                    # Build DuckDB SQL:
+                                                    # Get union of all keys, then for each key apply lambda
+                                                    # This is complex in DuckDB, so we'll use a workaround:
+                                                    # MAP_FROM_ENTRIES(
+                                                    #   LIST_TRANSFORM(
+                                                    #     LIST_DISTINCT(
+                                                    #       LIST_CONCAT(MAP_KEYS(map1), MAP_KEYS(map2))
+                                                    #     ),
+                                                    #     k -> {key: k, value: lambda(k, MAP_EXTRACT(map1, k), MAP_EXTRACT(map2, k))}
+                                                    #   )
+                                                    # )
+                                                    import re
+                                                    body_part = re.sub(rf'\b{k_name}\b', 'k', body_part)
+                                                    body_part = re.sub(rf'\b{v1_name}\b', f'MAP_EXTRACT({column_expr}, k)', body_part)
+                                                    body_part = re.sub(rf'\b{v2_name}\b', f'MAP_EXTRACT({col2_expr}, k)', body_part)
+                                                    
+                                                    special_sql = f"""MAP_FROM_ENTRIES(
+                                                        LIST_TRANSFORM(
+                                                            LIST_DISTINCT(LIST_CONCAT(MAP_KEYS({column_expr}), MAP_KEYS({col2_expr}))),
+                                                            k -> {{key: k, value: {body_part}}}
+                                                        )
+                                                    )"""
+                                                    func_expr = text(special_sql)
+                                                else:
+                                                    raise ValueError("map_zip_with requires 3-parameter lambda (key, value1, value2)")
+                                            else:
+                                                raise ValueError("map_zip_with requires a lambda function")
+                                        else:
+                                            raise ValueError("map_zip_with requires col2 and lambda")
                                     elif col.function_name == "struct":
                                         # struct(col1, col2, ...) -> {col1, col2, ...} or STRUCT_PACK
                                         from mock_spark.functions.base import MockColumn
@@ -2117,7 +2170,7 @@ class SQLAlchemyMaterializer:
                         elif col.function_name == "map_contains_key":
                             # map_contains_key returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["create_map", "map_filter", "transform_keys", "transform_values"]:
+                        elif col.function_name in ["create_map", "map_filter", "map_zip_with", "transform_keys", "transform_values"]:
                             # Map functions return maps - default to MAP(VARCHAR, VARCHAR)
                             # DuckDB doesn't have a direct SQLAlchemy type for MAP, use String
                             new_columns.append(Column(col.name, String, primary_key=False))

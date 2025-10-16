@@ -1248,6 +1248,20 @@ class MockFunctions:
         """Transform map values with function."""
         return MapFunctions.transform_values(column, function)
 
+    @staticmethod
+    def map_filter(column: Union[MockColumn, str], function: Callable[[Any, Any], bool]) -> MockColumnOperation:
+        """Filter map entries using predicate function (PySpark 3.1+)."""
+        return MapFunctions.map_filter(column, function)
+
+    @staticmethod
+    def map_zip_with(
+        col1: Union[MockColumn, str],
+        col2: Union[MockColumn, str],
+        function: Callable[[Any, Any, Any], Any]
+    ) -> MockColumnOperation:
+        """Merge two maps using function (PySpark 3.1+)."""
+        return MapFunctions.map_zip_with(col1, col2, function)
+
     # Struct functions (PySpark 3.2+)
     @staticmethod
     def struct(*cols: Union[MockColumn, str]) -> MockColumnOperation:
