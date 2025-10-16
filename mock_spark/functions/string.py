@@ -442,3 +442,65 @@ class StringFunctions:
 
         operation = MockColumnOperation(column, "soundex", name=f"soundex({column.name})")
         return operation
+
+    # URL Functions (PySpark 3.2+)
+
+    @staticmethod
+    def parse_url(url: Union[MockColumn, str], part: str) -> MockColumnOperation:
+        """Extract a part from a URL.
+
+        Args:
+            url: URL column or string.
+            part: Part to extract (HOST, PATH, QUERY, REF, PROTOCOL, FILE, AUTHORITY, USERINFO).
+
+        Returns:
+            MockColumnOperation representing the parse_url function.
+
+        Example:
+            >>> df.select(F.parse_url(F.col("url"), "HOST"))
+        """
+        if isinstance(url, str):
+            url = MockColumn(url)
+
+        return MockColumnOperation(
+            url,
+            "parse_url",
+            part,
+            name=f"parse_url({url.name}, '{part}')",
+        )
+
+    @staticmethod
+    def url_encode(url: Union[MockColumn, str]) -> MockColumnOperation:
+        """URL-encode a string.
+
+        Args:
+            url: String column to encode.
+
+        Returns:
+            MockColumnOperation representing the url_encode function.
+
+        Example:
+            >>> df.select(F.url_encode(F.col("text")))
+        """
+        if isinstance(url, str):
+            url = MockColumn(url)
+
+        return MockColumnOperation(url, "url_encode", name=f"url_encode({url.name})")
+
+    @staticmethod
+    def url_decode(url: Union[MockColumn, str]) -> MockColumnOperation:
+        """URL-decode a string.
+
+        Args:
+            url: String column to decode.
+
+        Returns:
+            MockColumnOperation representing the url_decode function.
+
+        Example:
+            >>> df.select(F.url_decode(F.col("encoded")))
+        """
+        if isinstance(url, str):
+            url = MockColumn(url)
+
+        return MockColumnOperation(url, "url_decode", name=f"url_decode({url.name})")

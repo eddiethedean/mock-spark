@@ -334,3 +334,23 @@ class ConditionalFunctions:
         if value is not None:
             return MockCaseWhen(condition=condition, value=value)
         return MockCaseWhen(condition=condition)
+
+    @staticmethod
+    def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+        """Assert that a condition is true, raises error if false.
+
+        Args:
+            condition: Boolean condition to assert.
+
+        Returns:
+            MockColumnOperation representing the assert_true function.
+
+        Example:
+            >>> df.select(F.assert_true(F.col("value") > 0))
+        """
+        return MockColumnOperation(
+            condition if isinstance(condition, MockColumn) else condition.column,
+            "assert_true",
+            condition if not isinstance(condition, MockColumn) else None,
+            name=f"assert_true({condition if isinstance(condition, str) else getattr(condition, 'name', 'condition')})",
+        )

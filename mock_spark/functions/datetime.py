@@ -529,3 +529,47 @@ class DateTimeFunctions:
             tz,
             name=f"to_utc_timestamp({ts.name}, '{tz}')",
         )
+
+    # Date/Time Part Functions (PySpark 3.2+)
+
+    @staticmethod
+    def date_part(field: str, source: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract a field from a date/timestamp.
+
+        Args:
+            field: Field to extract (YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, etc.).
+            source: Date/timestamp column.
+
+        Returns:
+            MockColumnOperation representing the date_part function.
+
+        Example:
+            >>> df.select(F.date_part("YEAR", F.col("date")))
+        """
+        if isinstance(source, str):
+            source = MockColumn(source)
+
+        return MockColumnOperation(
+            source,
+            "date_part",
+            field,
+            name=f"date_part('{field}', {source.name})",
+        )
+
+    @staticmethod
+    def dayname(date: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get the name of the day of the week.
+
+        Args:
+            date: Date column.
+
+        Returns:
+            MockColumnOperation representing the dayname function.
+
+        Example:
+            >>> df.select(F.dayname(F.col("date")))
+        """
+        if isinstance(date, str):
+            date = MockColumn(date)
+
+        return MockColumnOperation(date, "dayname", name=f"dayname({date.name})")

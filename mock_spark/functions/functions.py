@@ -904,6 +904,38 @@ class MockFunctions:
         """Convert timestamp to UTC."""
         return DateTimeFunctions.to_utc_timestamp(ts, tz)
 
+    # URL functions (PySpark 3.2+)
+    @staticmethod
+    def parse_url(url: Union[MockColumn, str], part: str) -> MockColumnOperation:
+        """Extract part from URL."""
+        return StringFunctions.parse_url(url, part)
+
+    @staticmethod
+    def url_encode(url: Union[MockColumn, str]) -> MockColumnOperation:
+        """URL-encode string."""
+        return StringFunctions.url_encode(url)
+
+    @staticmethod
+    def url_decode(url: Union[MockColumn, str]) -> MockColumnOperation:
+        """URL-decode string."""
+        return StringFunctions.url_decode(url)
+
+    # Miscellaneous functions (PySpark 3.2+)
+    @staticmethod
+    def date_part(field: str, source: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract date/time part."""
+        return DateTimeFunctions.date_part(field, source)
+
+    @staticmethod
+    def dayname(date: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get day of week name."""
+        return DateTimeFunctions.dayname(date)
+
+    @staticmethod
+    def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+        """Assert condition is true."""
+        return ConditionalFunctions.assert_true(condition)
+
 
 # Create the F namespace instance
 F = MockFunctions()

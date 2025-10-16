@@ -184,6 +184,12 @@ convert_timezone = F.convert_timezone
 current_timezone = F.current_timezone
 from_utc_timestamp = F.from_utc_timestamp
 to_utc_timestamp = F.to_utc_timestamp
+parse_url = F.parse_url
+url_encode = F.url_encode
+url_decode = F.url_decode
+date_part = F.date_part
+dayname = F.dayname
+assert_true = F.assert_true
 
 __all__ = [
     "MockColumn",
@@ -337,4 +343,10 @@ __all__ = [
     "current_timezone",
     "from_utc_timestamp",
     "to_utc_timestamp",
+    "parse_url",
+    "url_encode",
+    "url_decode",
+    "date_part",
+    "dayname",
+    "assert_true",
 ]

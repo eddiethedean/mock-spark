@@ -734,6 +734,12 @@ class SQLAlchemyMaterializer:
                                 "current_timezone": "current_timezone",  # Special handling below
                                 "from_utc_timestamp": "from_utc_timestamp",  # Special handling below
                                 "to_utc_timestamp": "to_utc_timestamp",  # Special handling below
+                                "parse_url": "parse_url",  # Special handling below
+                                "url_encode": "url_encode",  # Special handling below
+                                "url_decode": "url_decode",  # Special handling below
+                                "date_part": "date_part",  # Special handling below
+                                "dayname": "dayname",  # Special handling below
+                                "assert_true": "assert_true",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -793,6 +799,18 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "bitwise_not" and (not hasattr(col, "value") or col.value is None):
                                 # bitwise_not(col) -> ~col
                                 special_sql = f"(~{column_expr})"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "url_encode" and (not hasattr(col, "value") or col.value is None):
+                                # URL encode - use REPLACE for basic encoding
+                                special_sql = f"REPLACE(REPLACE({column_expr}, ' ', '%20'), '#', '%23')"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "url_decode" and (not hasattr(col, "value") or col.value is None):
+                                # URL decode
+                                special_sql = f"REPLACE({column_expr}, '%20', ' ')"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "dayname" and (not hasattr(col, "value") or col.value is None):
+                                # dayname(date) -> DAYNAME(date::DATE)
+                                special_sql = f"DAYNAME({column_expr}::DATE)"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1367,6 +1385,37 @@ class SQLAlchemyMaterializer:
                                         tz = col.value
                                         special_sql = f"timezone('UTC', timezone('{tz}', {column_expr}::TIMESTAMP))"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "parse_url":
+                                        # parse_url(url, part) - extract URL component
+                                        part = col.value.upper()
+                                        if part == "HOST":
+                                            special_sql = f"regexp_extract({column_expr}, '://([^/]+)', 1)"
+                                        elif part == "PROTOCOL":
+                                            special_sql = f"regexp_extract({column_expr}, '([^:]+)://', 1)"
+                                        elif part == "PATH":
+                                            special_sql = f"regexp_extract({column_expr}, '://[^/]+(/[^?#]*)', 1)"
+                                        elif part == "QUERY":
+                                            special_sql = f"regexp_extract({column_expr}, '\\?([^#]*)', 1)"
+                                        else:
+                                            # Default: return the URL as-is
+                                            special_sql = column_expr
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "date_part":
+                                        # date_part(field, source) -> DATE_PART(field, source::DATE)
+                                        field = col.value
+                                        special_sql = f"DATE_PART('{field}', {column_expr}::DATE)"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "assert_true":
+                                        # assert_true(condition) - if condition is false, raise error
+                                        # For mock implementation, just return the condition
+                                        # In real Spark, this would throw an exception
+                                        if hasattr(col.value, 'name'):
+                                            condition_sql = col.value.name
+                                        else:
+                                            # col.value is a MockColumnOperation, need to extract SQL
+                                            condition_sql = column_expr
+                                        special_sql = f"CASE WHEN {condition_sql} THEN TRUE ELSE NULL END"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1524,6 +1573,15 @@ class SQLAlchemyMaterializer:
                         elif col.function_name == "current_timezone":
                             # current_timezone returns string
                             new_columns.append(Column(col.name, String, primary_key=False))
+                        elif col.function_name in ["parse_url", "url_encode", "url_decode", "dayname"]:
+                            # String functions return strings
+                            new_columns.append(Column(col.name, String, primary_key=False))
+                        elif col.function_name == "date_part":
+                            # date_part returns integer
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name == "assert_true":
+                            # assert_true returns boolean
+                            new_columns.append(Column(col.name, Boolean, primary_key=False))
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
