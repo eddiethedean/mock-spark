@@ -213,7 +213,7 @@ class SQLToSQLAlchemyTranslator:
                 for expr in group_by.expressions:
                     col = self._translate_expression(expr, table)
                     group_cols.append(col)
-            
+
             if group_cols:
                 stmt = stmt.group_by(*group_cols)
 
@@ -253,7 +253,7 @@ class SQLToSQLAlchemyTranslator:
                     else:
                         col = asc(col)
                     order_cols.append(col)
-            
+
             if order_cols:
                 stmt = stmt.order_by(*order_cols)
 

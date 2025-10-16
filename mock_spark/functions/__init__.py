@@ -330,6 +330,7 @@ __all__ = [
     "hex",
     "unhex",
     "hash",
+    "xxhash64",
     "encode",
     "decode",
     "conv",
@@ -345,6 +346,35 @@ __all__ = [
     "column",
     "grouping",
     "grouping_id",
+    # New functions from implementation plan
+    "char_length",
+    "character_length",
+    "weekday",
+    "extract",
+    "median",
+    "mode",
+    "percentile",
+    "ifnull",
+    "nullif",
+    "array_agg",
+    "cardinality",
+    "cot",
+    "csc",
+    "sec",
+    "e",
+    "pi",
+    "ln",
+    "bit_and",
+    "bit_or",
+    "bit_xor",
+    # Top 10 new features
+    "udf",
+    "window",
+    "approxCountDistinct",
+    "sumDistinct",
+    "bitwiseNOT",
+    "toDegrees",
+    "toRadians",
 ]
 
 from typing import Any  # noqa: E402
@@ -368,7 +398,7 @@ def __getattr__(name: str) -> Any:
         AttributeError: If function not available in current version mode
     """
     from mock_spark._version_compat import is_available, get_pyspark_version
-    
+
     # Check if this is a known function
     if name in __all__:
         # Check version compatibility
@@ -378,19 +408,19 @@ def __getattr__(name: str) -> Any:
                 f"module 'pyspark.sql.functions' has no attribute '{name}' "
                 f"(PySpark {version} compatibility mode)"
             )
-        
+
         # If available, try to return it from F
         try:
             return getattr(F, name)
         except AttributeError:
             # Function in __all__ but not in F - might be a class or other export
             pass
-    
+
     # Not found
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
-# Populate module namespace with ALL functions from F 
+# Populate module namespace with ALL functions from F
 # This enables `from mock_spark.functions import function_name` syntax
 # Note: Version checking is disabled for now to maintain backward compatibility
 # Use environment variable MOCK_SPARK_PYSPARK_VERSION or call set_pyspark_version() before import

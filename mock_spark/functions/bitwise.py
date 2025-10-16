@@ -4,7 +4,11 @@ Bitwise functions for Mock Spark (PySpark 3.2+).
 This module provides bitwise operations on integer columns.
 """
 
-from typing import Union
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mock_spark.functions.base import MockAggregateFunction
+
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 
 
@@ -67,4 +71,80 @@ class BitwiseFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(column, "bitwise_not", name=f"bitwise_not({column.name})")
+
+    # Priority 2: Bitwise Aggregate Functions
+    @staticmethod
+    def bit_and(column: Union[MockColumn, str]) -> "MockAggregateFunction":
+        """Aggregate function - bitwise AND of all values (PySpark 3.5+).
+
+        Args:
+            column: Integer column.
+
+        Returns:
+            MockAggregateFunction representing the bit_and aggregate function.
+
+        Example:
+            >>> df.groupBy("dept").agg(F.bit_and("flags"))
+        """
+        from mock_spark.functions.base import MockAggregateFunction
+        from mock_spark.spark_types import LongType
+
+        return MockAggregateFunction(column, "bit_and", LongType())
+
+    @staticmethod
+    def bit_or(column: Union[MockColumn, str]) -> "MockAggregateFunction":
+        """Aggregate function - bitwise OR of all values (PySpark 3.5+).
+
+        Args:
+            column: Integer column.
+
+        Returns:
+            MockAggregateFunction representing the bit_or aggregate function.
+
+        Example:
+            >>> df.groupBy("dept").agg(F.bit_or("flags"))
+        """
+        from mock_spark.functions.base import MockAggregateFunction
+        from mock_spark.spark_types import LongType
+
+        return MockAggregateFunction(column, "bit_or", LongType())
+
+    @staticmethod
+    def bit_xor(column: Union[MockColumn, str]) -> "MockAggregateFunction":
+        """Aggregate function - bitwise XOR of all values (PySpark 3.5+).
+
+        Args:
+            column: Integer column.
+
+        Returns:
+            MockAggregateFunction representing the bit_xor aggregate function.
+
+        Example:
+            >>> df.groupBy("dept").agg(F.bit_xor("flags"))
+        """
+        from mock_spark.functions.base import MockAggregateFunction
+        from mock_spark.spark_types import LongType
+
+        return MockAggregateFunction(column, "bit_xor", LongType())
+
+    # Deprecated Aliases
+    @staticmethod
+    def bitwiseNOT(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for bitwise_not (all PySpark versions).
+        
+        Use bitwise_not instead.
+        
+        Args:
+            column: Integer column.
+            
+        Returns:
+            MockColumnOperation representing bitwise NOT.
+        """
+        import warnings
+        warnings.warn(
+            "bitwiseNOT is deprecated. Use bitwise_not instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        return BitwiseFunctions.bitwise_not(column)
 

@@ -101,13 +101,13 @@ class ColumnNotFoundException(AnalysisException):
         if message is None:
             # Build enhanced error message
             message = f"Column '{column_name}' does not exist"
-            
+
             if table_name:
                 message += f" in table '{table_name}'"
-            
+
             if available_columns:
                 message += f". Available columns: {', '.join(available_columns)}"
-                
+
                 # Add suggestion if there's a similar column name
                 suggestions = self._find_similar_columns(column_name, available_columns)
                 if suggestions:
@@ -116,13 +116,13 @@ class ColumnNotFoundException(AnalysisException):
                     else:
                         suggestions_str = ', '.join(f"'{s}'" for s in suggestions)
                         message += f". Did you mean one of: {suggestions_str}?"
-        
+
         context = {"table_name": table_name, "available_columns": available_columns}
         super().__init__(message, stackTrace, error_code="COLUMN_NOT_FOUND", context=context)
         self.column_name = column_name
         self.available_columns = available_columns or []
         self.table_name = table_name
-    
+
     @staticmethod
     def _find_similar_columns(target: str, columns: List[str], max_suggestions: int = 3) -> List[str]:
         """Find similar column names using Levenshtein-like similarity."""
@@ -130,40 +130,40 @@ class ColumnNotFoundException(AnalysisException):
             """Simple similarity score based on character overlap (0-1)."""
             s1_lower = s1.lower()
             s2_lower = s2.lower()
-            
+
             # Exact case-insensitive match
             if s1_lower == s2_lower:
                 return 1.0
-            
+
             # Check if one contains the other
             if s1_lower in s2_lower or s2_lower in s1_lower:
                 return 0.8
-            
+
             # Character overlap score
             s1_set = set(s1_lower)
             s2_set = set(s2_lower)
             if not s1_set or not s2_set:
                 return 0.0
-            
+
             intersection = len(s1_set & s2_set)
             union = len(s1_set | s2_set)
             return intersection / union if union > 0 else 0.0
-        
+
         # Score each column and filter by threshold
         scored_columns = [
             (col, similarity_score(target, col))
             for col in columns
         ]
-        
+
         # Filter columns with score > 0.5 and sort by score
         similar = [
             col for col, score in scored_columns
             if score > 0.5
         ]
-        
+
         # Sort by similarity score (descending)
         similar.sort(key=lambda col: similarity_score(target, col), reverse=True)
-        
+
         return similar[:max_suggestions]
 
 
@@ -194,13 +194,13 @@ class TableNotFoundException(AnalysisException):
     ):
         if message is None:
             message = f"Table '{table_name}' does not exist"
-            
+
             if database_name:
                 message += f" in database '{database_name}'"
-            
+
             if available_tables:
                 message += f". Available tables: {', '.join(available_tables)}"
-        
+
         context = {"database_name": database_name, "available_tables": available_tables}
         super().__init__(message, stackTrace, error_code="TABLE_NOT_FOUND", context=context)
         self.table_name = table_name
@@ -264,14 +264,14 @@ class TypeMismatchException(AnalysisException):
     ):
         if message is None:
             message = f"Type mismatch: expected {expected_type}, got {actual_type}"
-            
+
             if column_name:
                 message += f" for column '{column_name}'"
-            
+
             if operation:
                 message += f" in operation '{operation}'"
-        
-        context = {"expected_type": expected_type, "actual_type": actual_type, 
+
+        context = {"expected_type": expected_type, "actual_type": actual_type,
                    "column_name": column_name, "operation": operation}
         super().__init__(message, stackTrace, error_code="TYPE_MISMATCH", context=context)
         self.expected_type = expected_type

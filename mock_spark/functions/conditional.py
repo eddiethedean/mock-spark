@@ -354,3 +354,38 @@ class ConditionalFunctions:
             condition if not isinstance(condition, MockColumn) else None,
             name=f"assert_true({condition if isinstance(condition, str) else getattr(condition, 'name', 'condition')})",
         )
+
+    # Priority 2: Conditional/Null Functions
+    @staticmethod
+    def ifnull(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Alias for coalesce(col1, col2) - Returns col2 if col1 is null (PySpark 3.5+).
+
+        Args:
+            col1: First column.
+            col2: Second column (replacement for null).
+
+        Returns:
+            MockColumnOperation representing the ifnull function.
+        """
+        return ConditionalFunctions.coalesce(col1, col2)
+
+    @staticmethod
+    def nullif(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Returns null if col1 equals col2, otherwise returns col1 (PySpark 3.5+).
+
+        Args:
+            col1: First column.
+            col2: Second column to compare.
+
+        Returns:
+            MockColumnOperation representing the nullif function.
+        """
+        column1 = MockColumn(col1) if isinstance(col1, str) else col1
+        column2 = MockColumn(col2) if isinstance(col2, str) else col2
+
+        return MockColumnOperation(
+            column1,
+            "nullif",
+            value=column2,
+            name=f"nullif({column1.name}, {column2.name})"
+        )

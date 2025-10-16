@@ -85,6 +85,38 @@ class StringFunctions:
         return operation
 
     @staticmethod
+    def char_length(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Alias for length() - Get the character length of a string (PySpark 3.5+).
+
+        Args:
+            column: The column to get length of.
+
+        Returns:
+            MockColumnOperation representing the char_length function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "length", name=f"char_length({column.name})")
+        return operation
+
+    @staticmethod
+    def character_length(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Alias for length() - Get the character length of a string (PySpark 3.5+).
+
+        Args:
+            column: The column to get length of.
+
+        Returns:
+            MockColumnOperation representing the character_length function.
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "length", name=f"character_length({column.name})")
+        return operation
+
+    @staticmethod
     def trim(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Trim whitespace from string.
 
@@ -326,7 +358,7 @@ class StringFunctions:
     def regexp_extract_all(
         column: Union[MockColumn, str], pattern: str, idx: int = 0
     ) -> MockColumnOperation:
-        """Extract all matches of a regex pattern.
+        r"""Extract all matches of a regex pattern.
 
         Args:
             column: The column to extract from.
@@ -786,7 +818,7 @@ class StringFunctions:
             src = MockColumn(src)
 
         return MockColumnOperation(
-            src, 
+            src,
             "overlay",
             value=(replace, pos, len),
             name=f"overlay({src.name})"
@@ -859,6 +891,30 @@ class StringFunctions:
             "hash",
             value=columns[1:] if len(columns) > 1 else [],
             name="hash(...)"
+        )
+
+    @staticmethod
+    def xxhash64(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute xxHash64 value of given columns (all PySpark versions).
+
+        Args:
+            *cols: Columns to hash
+
+        Returns:
+            MockColumnOperation representing xxhash64
+        """
+        columns = []
+        for col in cols:
+            if isinstance(col, str):
+                columns.append(MockColumn(col))
+            else:
+                columns.append(col)
+
+        return MockColumnOperation(
+            columns[0] if columns else MockColumn(""),
+            "xxhash64",
+            value=columns[1:] if len(columns) > 1 else [],
+            name="xxhash64(...)"
         )
 
     @staticmethod

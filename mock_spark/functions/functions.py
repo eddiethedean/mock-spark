@@ -76,6 +76,16 @@ class MockFunctions:
         return StringFunctions.length(column)
 
     @staticmethod
+    def char_length(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get character length (alias for length) (PySpark 3.5+)."""
+        return StringFunctions.char_length(column)
+
+    @staticmethod
+    def character_length(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get character length (alias for length) (PySpark 3.5+)."""
+        return StringFunctions.character_length(column)
+
+    @staticmethod
     def trim(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Trim whitespace."""
         return StringFunctions.trim(column)
@@ -254,6 +264,11 @@ class MockFunctions:
     def hash(*cols: Union[MockColumn, str]) -> MockColumnOperation:
         """Compute hash value."""
         return StringFunctions.hash(*cols)
+
+    @staticmethod
+    def xxhash64(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute xxHash64 value (all PySpark versions)."""
+        return StringFunctions.xxhash64(*cols)
 
     @staticmethod
     def encode(column: Union[MockColumn, str], charset: str) -> MockColumnOperation:
@@ -469,6 +484,36 @@ class MockFunctions:
         return MathFunctions.signum(column)
 
     @staticmethod
+    def cot(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute cotangent (PySpark 3.3+)."""
+        return MathFunctions.cot(column)
+
+    @staticmethod
+    def csc(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute cosecant (PySpark 3.3+)."""
+        return MathFunctions.csc(column)
+
+    @staticmethod
+    def sec(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute secant (PySpark 3.3+)."""
+        return MathFunctions.sec(column)
+
+    @staticmethod
+    def e() -> MockColumnOperation:
+        """Euler's number e (PySpark 3.5+)."""
+        return MathFunctions.e()
+
+    @staticmethod
+    def pi() -> MockColumnOperation:
+        """Pi constant (PySpark 3.5+)."""
+        return MathFunctions.pi()
+
+    @staticmethod
+    def ln(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Natural logarithm (PySpark 3.5+)."""
+        return MathFunctions.ln(column)
+
+    @staticmethod
     def greatest(*columns: Union[MockColumn, str]) -> MockColumnOperation:
         """Greatest value among columns."""
         return MathFunctions.greatest(*columns)
@@ -606,6 +651,21 @@ class MockFunctions:
     ) -> MockAggregateFunction:
         """Population covariance."""
         return AggregateFunctions.covar_pop(column1, column2)
+
+    @staticmethod
+    def median(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Median value (PySpark 3.4+)."""
+        return AggregateFunctions.median(column)
+
+    @staticmethod
+    def mode(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Most frequent value (PySpark 3.4+)."""
+        return AggregateFunctions.mode(column)
+
+    @staticmethod
+    def percentile(column: Union[MockColumn, str], percentage: float) -> MockAggregateFunction:
+        """Exact percentile (PySpark 3.5+)."""
+        return AggregateFunctions.percentile(column, percentage)
 
     @staticmethod
     def bool_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
@@ -853,6 +913,16 @@ class MockFunctions:
         return DateTimeFunctions.timestamp_seconds(col)
 
     @staticmethod
+    def weekday(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Day of week as integer (0=Monday, 6=Sunday) (PySpark 3.5+)."""
+        return DateTimeFunctions.weekday(col)
+
+    @staticmethod
+    def extract(field: str, source: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract field from date/timestamp (PySpark 3.5+)."""
+        return DateTimeFunctions.extract(field, source)
+
+    @staticmethod
     def raise_error(msg: Union[MockColumn, str]) -> MockColumnOperation:
         """Raise an error with the specified message (PySpark 3.1+).
 
@@ -865,7 +935,7 @@ class MockFunctions:
         if isinstance(msg, str):
             from mock_spark.functions.core.literals import MockLiteral
             msg = MockLiteral(msg)  # type: ignore[assignment]
-        
+
         return MockColumnOperation(
             msg,  # type: ignore[arg-type]
             "raise_error",
@@ -1047,6 +1117,16 @@ class MockFunctions:
     def sort_array(col: Union[MockColumn, str], asc: bool = True) -> MockColumnOperation:
         """Sort array elements (PySpark 3.0+)."""
         return ArrayFunctions.sort_array(col, asc)
+
+    @staticmethod
+    def array_agg(col: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Aggregate values into array (PySpark 3.5+)."""
+        return ArrayFunctions.array_agg(col)
+
+    @staticmethod
+    def cardinality(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return size of array or map (PySpark 3.5+)."""
+        return ArrayFunctions.cardinality(col)
 
     @staticmethod
     def array_distinct(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -1323,10 +1403,10 @@ class MockFunctions:
         """Create a struct column from given columns."""
         if not cols:
             raise ValueError("struct requires at least one column")
-        
+
         # Use first column as base
         base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
-        
+
         return MockColumnOperation(
             base_col,
             "struct",
@@ -1343,10 +1423,10 @@ class MockFunctions:
         """
         if len(cols) < 2 or len(cols) % 2 != 0:
             raise ValueError("named_struct requires alternating field names and values")
-        
+
         # Use first value column as base (skip first name)
         base_col = cols[1] if isinstance(cols[1], MockColumn) else MockColumn(str(cols[1]))
-        
+
         return MockColumnOperation(
             base_col,
             "named_struct",
@@ -1369,6 +1449,21 @@ class MockFunctions:
     def bitwise_not(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Bitwise NOT."""
         return BitwiseFunctions.bitwise_not(column)
+
+    @staticmethod
+    def bit_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Bitwise AND aggregate (PySpark 3.5+)."""
+        return BitwiseFunctions.bit_and(column)
+
+    @staticmethod
+    def bit_or(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Bitwise OR aggregate (PySpark 3.5+)."""
+        return BitwiseFunctions.bit_or(column)
+
+    @staticmethod
+    def bit_xor(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Bitwise XOR aggregate (PySpark 3.5+)."""
+        return BitwiseFunctions.bit_xor(column)
 
     # Timezone functions (PySpark 3.2+)
     @staticmethod
@@ -1432,6 +1527,16 @@ class MockFunctions:
     def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
         """Assert condition is true."""
         return ConditionalFunctions.assert_true(condition)
+
+    @staticmethod
+    def ifnull(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return col2 if col1 is null (PySpark 3.5+)."""
+        return ConditionalFunctions.ifnull(col1, col2)
+
+    @staticmethod
+    def nullif(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return null if col1 equals col2 (PySpark 3.5+)."""
+        return ConditionalFunctions.nullif(col1, col2)
 
     # XML functions (PySpark 3.2+)
     @staticmethod
@@ -1611,6 +1716,104 @@ class MockFunctions:
         """Grouping ID for CUBE/ROLLUP."""
         from mock_spark.functions.metadata import GroupingFunctions
         return GroupingFunctions.grouping_id(*cols)
+
+    @staticmethod
+    def udf(f: Optional[Callable] = None, returnType: Any = None) -> Callable:
+        """Create a user-defined function (all PySpark versions).
+        
+        Args:
+            f: Python function to wrap
+            returnType: Return type of the function (defaults to StringType)
+            
+        Returns:
+            Wrapped function that can be used in DataFrame operations
+            
+        Example:
+            >>> from mock_spark import MockSparkSession, F
+            >>> from mock_spark.spark_types import IntegerType
+            >>> spark = MockSparkSession("test")
+            >>> square = F.udf(lambda x: x * x, IntegerType())
+            >>> df = spark.createDataFrame([{"value": 5}])
+            >>> df.select(square("value").alias("squared")).show()
+        """
+        from mock_spark.spark_types import StringType
+
+        if returnType is None:
+            returnType = StringType()
+
+        def udf_wrapper(func: Callable) -> Callable:
+            """Wrap function to create MockColumnOperation."""
+            def apply_udf(col: Union[MockColumn, str]) -> MockColumnOperation:
+                column = MockColumn(col) if isinstance(col, str) else col
+                # Create a UDF operation that stores the function
+                op = MockColumnOperation(column, "udf", name=f"udf({column.name})")
+                op._udf_func = func  # type: ignore
+                op._udf_return_type = returnType  # type: ignore
+                return op
+            return apply_udf
+
+        # Support decorator pattern: @udf or udf(lambda x: x)
+        if f is None:
+            return udf_wrapper
+        else:
+            return udf_wrapper(f)
+
+    @staticmethod
+    def window(
+        timeColumn: Union[MockColumn, str],
+        windowDuration: str,
+        slideDuration: Optional[str] = None,
+        startTime: Optional[str] = None
+    ) -> MockColumnOperation:
+        """Create time-based window for grouping operations (all PySpark versions).
+        
+        Args:
+            timeColumn: Timestamp column to window
+            windowDuration: Duration string (e.g., "10 seconds", "1 minute", "2 hours")
+            slideDuration: Slide duration for sliding windows (defaults to windowDuration)
+            startTime: Offset for window alignment (e.g., "0 seconds")
+            
+        Returns:
+            Column representing window struct with start and end times
+            
+        Example:
+            >>> df.groupBy(F.window("timestamp", "10 minutes")).count()
+            >>> df.groupBy(F.window("timestamp", "10 minutes", "5 minutes")).agg(F.sum("value"))
+        """
+        column = MockColumn(timeColumn) if isinstance(timeColumn, str) else timeColumn
+
+        # Create a window operation
+        op = MockColumnOperation(column, "window", name=f"window({column.name})")
+        op._window_duration = windowDuration  # type: ignore
+        op._window_slide = slideDuration or windowDuration  # type: ignore
+        op._window_start = startTime or "0 seconds"  # type: ignore
+        return op
+
+    # Deprecated Aliases
+    @staticmethod
+    def approxCountDistinct(*cols: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Deprecated alias for approx_count_distinct (all PySpark versions)."""
+        return AggregateFunctions.approxCountDistinct(*cols)
+
+    @staticmethod
+    def sumDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Deprecated alias for sum_distinct (all PySpark versions)."""
+        return AggregateFunctions.sumDistinct(column)
+
+    @staticmethod
+    def bitwiseNOT(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for bitwise_not (all PySpark versions)."""
+        return BitwiseFunctions.bitwiseNOT(column)
+
+    @staticmethod
+    def toDegrees(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for degrees (all PySpark versions)."""
+        return MathFunctions.toDegrees(column)
+
+    @staticmethod
+    def toRadians(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for radians (all PySpark versions)."""
+        return MathFunctions.toRadians(column)
 
 
 # Create the F namespace instance

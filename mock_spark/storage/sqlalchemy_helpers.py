@@ -36,10 +36,10 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
     """
     from sqlalchemy import ARRAY, VARCHAR
     from sqlalchemy.types import TypeDecorator
-    
+
     # Get type name
     type_name = type(mock_type).__name__
-    
+
     # Handle ArrayType with element type
     if "ArrayType" in type_name or "Array" in type_name:
         # Check if the array has an element type specified
@@ -49,20 +49,20 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
         else:
             # Fallback to VARCHAR for untyped arrays
             return ARRAY(VARCHAR)
-    
+
     # Handle MapType - use custom type that will be handled with raw SQL
     if "MapType" in type_name or "Map" in type_name:
         # Return a marker type that we can detect later
         class DuckDBMapType(TypeDecorator):
             impl = String
             cache_ok = True
-            
+
             def __init__(self) -> None:
                 super().__init__()
                 self.is_duckdb_map = True  # Marker attribute
-        
+
         return DuckDBMapType
-    
+
     # Type mapping from MockSpark type names to SQLAlchemy types
     type_mapping = {
         "StringType": String,

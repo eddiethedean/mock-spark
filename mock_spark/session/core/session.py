@@ -352,9 +352,9 @@ class MockSparkSession:
         # Process parameters if provided
         if args or kwargs:
             query = self._bind_parameters(query, args, kwargs)
-        
+
         return self._sql_executor.execute(query)
-    
+
     def _bind_parameters(self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> str:
         """Bind parameters to SQL query safely.
         
@@ -375,13 +375,13 @@ class MockSparkSession:
                     f"Number of parameters ({len(args)}) does not match "
                     f"number of placeholders ({placeholder_count})"
                 )
-            
+
             # Replace each ? with the corresponding parameter
             result = query
             for arg in args:
                 result = result.replace('?', self._format_param(arg), 1)
             query = result
-        
+
         # Handle named parameters (:name)
         if kwargs:
             for name, value in kwargs.items():
@@ -389,9 +389,9 @@ class MockSparkSession:
                 if placeholder not in query:
                     raise ValueError(f"Parameter '{name}' not found in query")
                 query = query.replace(placeholder, self._format_param(value))
-        
+
         return query
-    
+
     def _format_param(self, value: Any) -> str:
         """Format a parameter value for SQL safely.
         

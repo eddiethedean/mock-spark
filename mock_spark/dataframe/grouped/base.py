@@ -324,7 +324,7 @@ class MockGroupedData:
                     if hasattr(cond_expr, 'column') and hasattr(cond_expr, 'operation') and hasattr(cond_expr, 'value'):
                         col_val = row.get(cond_expr.column.name if hasattr(cond_expr.column, 'name') else cond_expr.column)  # type: ignore[union-attr]
                         comp_val = cond_expr.value.value if hasattr(cond_expr.value, 'value') else cond_expr.value  # type: ignore[union-attr]
-                        
+
                         # Evaluate the condition based on the operation
                         if cond_expr.operation == '>':  # type: ignore[union-attr]
                             if col_val is not None and col_val > comp_val:
@@ -392,7 +392,7 @@ class MockGroupedData:
                 col2_name = expr.ord_column.name if hasattr(expr.ord_column, 'name') else str(expr.ord_column)  # type: ignore[union-attr]
                 values1 = [row.get(col_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
                 values2 = [row.get(col2_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
-                
+
                 if len(values1) > 0 and len(values2) > 0:
                     mean1 = statistics.mean(values1)  # type: ignore[arg-type,type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[arg-type,type-var]
@@ -627,13 +627,13 @@ class MockGroupedData:
                 "pandas is required for applyInPandas. "
                 "Install it with: pip install 'mock-spark[pandas]'"
             )
-        
+
         # Materialize DataFrame if lazy
         if self.df.is_lazy:
             df = self.df._materialize_if_lazy()
         else:
             df = self.df
-        
+
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         for row in df.data:
@@ -641,34 +641,34 @@ class MockGroupedData:
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(row)
-        
+
         # Apply function to each group
         result_pdfs = []
         for group_rows in groups.values():
             # Convert group to pandas DataFrame
             group_pdf = pd.DataFrame(group_rows)
-            
+
             # Apply function
             result_pdf = func(group_pdf)
-            
+
             if not isinstance(result_pdf, pd.DataFrame):
                 raise TypeError(
                     f"Function must return a pandas DataFrame, got {type(result_pdf).__name__}"
                 )
-            
+
             result_pdfs.append(result_pdf)
-        
+
         # Concatenate all results
         result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
             result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
-        
+
         # Parse schema
         from ...spark_types import MockStructType
         from ...core.schema_inference import infer_schema_from_data
-        
+
         result_schema: MockStructType
         if isinstance(schema, str):
             # For DDL string, use schema inference from result data
@@ -679,9 +679,9 @@ class MockGroupedData:
         else:
             # Try to infer schema from result data
             result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
-        
+
         from ..dataframe import MockDataFrame as MDF
-        
+
         storage: Any = getattr(self.df, 'storage', None)
         return MDF(result_data, result_schema, storage)
 
@@ -712,17 +712,17 @@ class MockGroupedData:
                 "pandas is required for transform. "
                 "Install it with: pip install 'mock-spark[pandas]'"
             )
-        
+
         # Materialize DataFrame if lazy
         if self.df.is_lazy:
             df = self.df._materialize_if_lazy()
         else:
             df = self.df
-        
+
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
         group_indices: Dict[Any, List[int]] = {}  # Track original indices
-        
+
         for idx, row in enumerate(df.data):
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -730,35 +730,35 @@ class MockGroupedData:
                 group_indices[group_key] = []
             groups[group_key].append(row)
             group_indices[group_key].append(idx)
-        
+
         # Apply function to each group and preserve order
         result_rows: List[Dict[str, Any]] = [{}] * len(df.data)
-        
+
         for group_key, group_rows in groups.items():
             # Convert group to pandas DataFrame
             group_pdf = pd.DataFrame(group_rows)
-            
+
             # Apply function
             transformed_pdf = func(group_pdf)
-            
+
             if not isinstance(transformed_pdf, pd.DataFrame):
                 raise TypeError(
                     f"Function must return a pandas DataFrame, got {type(transformed_pdf).__name__}"
                 )
-            
+
             # Put transformed rows back in their original positions
             transformed_rows = transformed_pdf.to_dict('records')
             for idx, transformed_row in zip(group_indices[group_key], transformed_rows):
                 # Convert hashable keys to strings for type safety
                 result_rows[idx] = {str(k): v for k, v in transformed_row.items()}
-        
+
         # Use the same schema as the original DataFrame
         # (or extend it if new columns were added)
         from ...core.schema_inference import infer_schema_from_data
-        
+
         result_schema = infer_schema_from_data(result_rows) if result_rows else df.schema
-        
+
         from ..dataframe import MockDataFrame as MDF
-        
+
         storage: Any = getattr(self.df, 'storage', None)
         return MDF(result_rows, result_schema, storage)

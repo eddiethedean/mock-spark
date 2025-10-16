@@ -17,7 +17,7 @@ from pathlib import Path
 
 def create_version_marker():
     """Create version compatibility marker file based on installation extras."""
-    
+
     # Find the mock_spark package directory
     try:
         import mock_spark
@@ -25,11 +25,11 @@ def create_version_marker():
     except ImportError:
         print("Warning: mock-spark not yet installed, skipping version marker creation")
         return
-    
+
     # Check sys.argv for which extra was requested
     # During pip install, sys.argv contains the install command args
     install_args = ' '.join(sys.argv)
-    
+
     # Map extras to marker files
     version_extras = {
         'pyspark-3-0': '.pyspark_3_0_compat',
@@ -39,12 +39,12 @@ def create_version_marker():
         'pyspark-3-4': '.pyspark_3_4_compat',
         'pyspark-3-5': '.pyspark_3_5_compat',
     }
-    
+
     # Check environment variable as alternative
     env_version = os.environ.get('MOCK_SPARK_INSTALL_VERSION')
-    
+
     marker_created = False
-    
+
     # Try to detect from environment first
     if env_version:
         for extra, marker_file in version_extras.items():
@@ -55,7 +55,7 @@ def create_version_marker():
                 print(f"   PySpark {env_version.replace('pyspark-', '').replace('-', '.')} API compatibility enabled")
                 marker_created = True
                 break
-    
+
     # Try to detect from install args
     if not marker_created:
         for extra, marker_file in version_extras.items():
@@ -67,7 +67,7 @@ def create_version_marker():
                 print(f"   PySpark {version_str} API compatibility enabled")
                 marker_created = True
                 break
-    
+
     if not marker_created:
         print("ℹ️  No PySpark version extra detected - all features will be available")
         print("   To enable version gating, use: pip install mock-spark[pyspark-3-0]")

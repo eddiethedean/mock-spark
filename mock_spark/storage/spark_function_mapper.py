@@ -146,7 +146,7 @@ ARRAY_FUNCTIONS: Dict[str, str] = {
     "array": "array",
     "array_contains": "array_contains",
     "array_distinct": "list_distinct",  # DuckDB uses list_distinct
-    "array_except": "list_except",  # DuckDB uses list_except  
+    "array_except": "list_except",  # DuckDB uses list_except
     "array_intersect": "list_intersect",  # DuckDB uses list_intersect
     "array_join": "array_join",
     "array_max": "array_max",

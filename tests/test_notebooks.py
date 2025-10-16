@@ -9,11 +9,11 @@ import time
 def test_quickstart():
     """Test quickstart notebook code."""
     print("Testing Quickstart Tutorial...")
-    
+
     # Step 1: Create session
     spark = MockSparkSession("QuickstartTutorial")
     print(f"✅ Session created: {spark.app_name}")
-    
+
     # Step 2: Create DataFrame
     data = [
         {"order_id": 1, "customer": "Alice", "product": "Laptop", "quantity": 1, "price": 1200},
@@ -25,15 +25,15 @@ def test_quickstart():
     df = spark.createDataFrame(data)
     assert df.count() == 5
     print(f"✅ Created DataFrame with {df.count()} orders")
-    
+
     # Step 3: Transformations
     df_with_total = df.withColumn("total", F.col("quantity") * F.col("price"))
     assert df_with_total.count() == 5
-    
+
     high_value_orders = df_with_total.filter(F.col("total") > 500)
     assert high_value_orders.count() == 3
     print(f"✅ Filter works: {high_value_orders.count()} high-value orders")
-    
+
     # Step 4: Aggregations
     customer_revenue = df_with_total.groupBy("customer").agg(
         F.sum("total").alias("total_revenue"),
@@ -41,7 +41,7 @@ def test_quickstart():
     ).orderBy(F.desc("total_revenue"))
     assert customer_revenue.count() == 3
     print(f"✅ Aggregations work: {customer_revenue.count()} customers")
-    
+
     # Step 5: SQL
     df.createOrReplaceTempView("orders")
     result = spark.sql("""
@@ -58,12 +58,12 @@ def test_quickstart():
     # Check SQL works (count may vary based on filter)
     assert result.count() >= 1
     print(f"✅ SQL works: {result.count()} results")
-    
+
     # Step 6: Larger dataset
     customers = ["Alice", "Bob", "Charlie", "Diana", "Eve"]
     products = ["Laptop", "Mouse", "Keyboard", "Monitor", "Headphones"]
     start_date = datetime(2024, 1, 1)
-    
+
     large_data = [
         {
             "order_id": i,
@@ -78,7 +78,7 @@ def test_quickstart():
     large_df = spark.createDataFrame(large_data)
     assert large_df.count() == 100
     print(f"✅ Large dataset created: {large_df.count()} orders")
-    
+
     # Performance test
     start_time = time.time()
     result = (
@@ -92,7 +92,7 @@ def test_quickstart():
     )
     elapsed = time.time() - start_time
     print(f"✅ Performance test: {elapsed:.4f} seconds for {len(result)} results")
-    
+
     spark.stop()
     print("✅ Quickstart tutorial: ALL TESTS PASSED\n")
 
@@ -100,9 +100,9 @@ def test_quickstart():
 def test_dataframe_operations():
     """Test dataframe operations notebook code."""
     print("Testing DataFrame Operations Tutorial...")
-    
+
     spark = MockSparkSession("DataFrameOps")
-    
+
     # Create test data
     employees = [
         {"emp_id": 1, "name": "Alice", "dept_id": 10, "salary": 80000, "city": "NYC"},
@@ -111,49 +111,49 @@ def test_dataframe_operations():
         {"emp_id": 4, "name": "Diana", "dept_id": 30, "salary": 85000, "city": "Chicago"},
         {"emp_id": 5, "name": "Eve", "dept_id": 20, "salary": 95000, "city": "LA"},
     ]
-    
+
     departments = [
         {"dept_id": 10, "dept_name": "Engineering", "budget": 500000},
         {"dept_id": 20, "dept_name": "Sales", "budget": 300000},
         {"dept_id": 30, "dept_name": "Marketing", "budget": 200000},
     ]
-    
+
     emp_df = spark.createDataFrame(employees)
     dept_df = spark.createDataFrame(departments)
-    
+
     # Test select
     result = emp_df.select("name", "salary")
     assert result.count() == 5
     print("✅ Select works")
-    
+
     # Test filter
     high_earners = emp_df.filter(F.col("salary") > 80000)
     assert high_earners.count() == 3
     print("✅ Filter works")
-    
+
     # Test joins
     joined = emp_df.join(dept_df, "dept_id", "inner")
     assert joined.count() == 5
     print("✅ Joins work")
-    
+
     # Test withColumn
     enriched = emp_df.withColumn("salary_k", F.col("salary") / 1000)
     assert "salary_k" in enriched.columns
     print("✅ WithColumn works")
-    
+
     # Test orderBy
     sorted_df = emp_df.orderBy(F.desc("salary"))
     first_row = sorted_df.limit(1).collect()[0]
     assert first_row["name"] == "Eve"
     print("✅ OrderBy works")
-    
+
     # Test distinct
     cities = emp_df.select("city").distinct()
     city_count = cities.count()
     print(f"   Distinct cities: {city_count}")
     assert city_count >= 1  # At least one city
     print("✅ Distinct works")
-    
+
     spark.stop()
     print("✅ DataFrame Operations tutorial: ALL TESTS PASSED\n")
 
@@ -162,15 +162,15 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("TESTING NOTEBOOK CODE")
     print("=" * 70 + "\n")
-    
+
     try:
         test_quickstart()
         test_dataframe_operations()
-        
+
         print("=" * 70)
         print("✅ ALL NOTEBOOK TESTS PASSED!")
         print("=" * 70 + "\n")
-        
+
     except Exception as e:
         print(f"\n❌ TEST FAILED: {e}")
         import traceback

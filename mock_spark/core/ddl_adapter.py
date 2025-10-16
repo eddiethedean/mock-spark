@@ -132,7 +132,7 @@ def _convert_simple_type(simple_type: SimpleType) -> MockDataType:
         "short": ShortType,
         "byte": ByteType,
     }
-    
+
     type_class = type_mapping.get(simple_type.type_name, StringType)
     return type_class()
 

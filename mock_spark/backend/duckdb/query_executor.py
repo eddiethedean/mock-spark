@@ -107,12 +107,12 @@ class SQLAlchemyMaterializer:
         columns = []
         has_map_columns = False
         map_column_names = []
-        
+
         if data:
             for key, value in data[0].items():
                 # Debug type detection
                 # print(f"DEBUG: Column {key}, value type: {type(value)}, value: {value}")
-                
+
                 if isinstance(value, int):
                     columns.append(Column(key, Integer))
                 elif isinstance(value, float):
@@ -150,7 +150,7 @@ class SQLAlchemyMaterializer:
             # Build CREATE TABLE with proper MAP types using raw SQL
             from sqlalchemy import ARRAY
             # print(f"DEBUG: Creating table {table_name} with MAP columns: {map_column_names}")
-            
+
             col_defs = []
             for col in columns:
                 if col.name in map_column_names:
@@ -178,12 +178,12 @@ class SQLAlchemyMaterializer:
                     col_defs.append(f'"{col.name}" BOOLEAN')
                 else:
                     col_defs.append(f'"{col.name}" VARCHAR')
-            
+
             create_sql = f"CREATE TABLE {table_name} ({', '.join(col_defs)})"
             with Session(self.engine) as session:
                 session.execute(text(create_sql))
                 session.commit()
-            
+
             # Register table in metadata manually
             table = Table(table_name, self.metadata, *columns, extend_existing=True)
             self._created_tables[table_name] = table
@@ -200,7 +200,7 @@ class SQLAlchemyMaterializer:
                 insert_values: Dict[str, Any] = {}
                 for col in columns:
                     value = row_data[col.name]
-                    
+
                     # Convert Python dict to DuckDB MAP
                     if isinstance(value, dict):
                         # Convert dict to MAP syntax: MAP(['keys'], ['values'])
@@ -231,7 +231,7 @@ class SQLAlchemyMaterializer:
                             col_values.append("NULL")
                         else:
                             col_values.append(str(col_value))
-                    
+
                     raw_sql = f"INSERT INTO {table_name} ({', '.join(col_names)}) VALUES ({', '.join(col_values)})"
                     session.execute(text(raw_sql))
                 else:
@@ -827,7 +827,7 @@ class SQLAlchemyMaterializer:
                                     error_msg = "Error raised"
                                 # Raise exception immediately
                                 raise Exception(f"{error_msg}")
-                            
+
                             # Check if this function needs type casting
                             column_expr = col.column.name
                             if col.function_name in type_casting_functions:
@@ -1142,7 +1142,7 @@ class SQLAlchemyMaterializer:
                                             func_expr = source_column
                                     elif col.function_name == "timestampdiff":
                                         # timestampdiff(unit, start, end)
-                                        # DuckDB: DATE_DIFF(unit, start, end) 
+                                        # DuckDB: DATE_DIFF(unit, start, end)
                                         if isinstance(col.value, tuple) and len(col.value) >= 2:
                                             unit = col.value[0].lower()  # DuckDB uses lowercase
                                             end = col.value[1]
@@ -1239,12 +1239,12 @@ class SQLAlchemyMaterializer:
                                             replace_str = f"'{replace_str.value}'"
                                         elif isinstance(replace_str, str):
                                             replace_str = f"'{replace_str}'"
-                                        
+
                                         if hasattr(pos_val, 'value'):
                                             pos_val = pos_val.value
                                         if hasattr(len_val, 'value'):
                                             len_val = len_val.value
-                                        
+
                                         if len_val == -1:
                                             special_sql = f"OVERLAY({column_expr} PLACING {replace_str} FROM {pos_val})"
                                         else:
@@ -1258,12 +1258,12 @@ class SQLAlchemyMaterializer:
                                             month_expr = f'"{month_val.name}"'
                                         else:
                                             month_expr = str(month_val)
-                                        
+
                                         if hasattr(day_val, 'name'):
                                             day_expr = f'"{day_val.name}"'
                                         else:
                                             day_expr = str(day_val)
-                                        
+
                                         special_sql = f"MAKE_DATE({column_expr}, {month_expr}, {day_expr})"
                                         func_expr = text(special_sql)
                                     # PySpark 3.0 Array Functions
@@ -1466,12 +1466,12 @@ class SQLAlchemyMaterializer:
                                             stop_expr = f'"{stop.name}"'
                                         else:
                                             stop_expr = str(stop)
-                                        
+
                                         if isinstance(step, int):
                                             step_expr = str(step)
                                         else:
                                             step_expr = "1"
-                                        
+
                                         special_sql = f"RANGE({column_expr}, {stop_expr} + 1, {step_expr})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "shuffle":
@@ -1527,13 +1527,13 @@ class SQLAlchemyMaterializer:
                                         if isinstance(col.value, tuple) and len(col.value) >= 2:
                                             initial_value = col.value[0]
                                             lambda_data = col.value[1]
-                                            
+
                                             # Get initial value
                                             if isinstance(initial_value, MockLiteral):
                                                 init_val = str(initial_value.value)
                                             else:
                                                 init_val = str(initial_value)
-                                            
+
                                             # Get merge lambda
                                             if isinstance(lambda_data, dict) and "merge" in lambda_data:
                                                 merge_expr = lambda_data["merge"]
@@ -1555,13 +1555,13 @@ class SQLAlchemyMaterializer:
                                         if isinstance(col.value, tuple) and len(col.value) >= 2:
                                             array2 = col.value[0]
                                             lambda_expr = col.value[1]
-                                            
+
                                             # Get second array expression
                                             if isinstance(array2, MockColumn):
                                                 array2_expr = f'"{array2.name}"'
                                             else:
                                                 array2_expr = str(array2)
-                                            
+
                                             # Get lambda
                                             if isinstance(lambda_expr, MockLambdaExpression):
                                                 # DuckDB LIST_ZIP creates STRUCT(elem1, elem2)
@@ -1734,7 +1734,7 @@ class SQLAlchemyMaterializer:
                                         from mock_spark.functions.base import MockLambdaExpression
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
-                                            
+
                                             if col.function_name == "map_filter":
                                                 # map_filter: Convert to entries, filter, convert back
                                                 # MAP_FROM_ENTRIES(LIST_FILTER(MAP_ENTRIES(map), e -> lambda(e.key, e.value)))
@@ -1788,23 +1788,23 @@ class SQLAlchemyMaterializer:
                                         if isinstance(col.value, tuple) and len(col.value) == 2:
                                             from mock_spark.functions.base import MockColumn, MockLambdaExpression
                                             col2, lambda_expr = col.value
-                                            
+
                                             # Get col2 expression
                                             if isinstance(col2, MockColumn):
                                                 col2_expr = col2.name
                                             else:
                                                 col2_expr = str(col2)
-                                            
+
                                             if isinstance(lambda_expr, MockLambdaExpression):
                                                 lambda_sql = lambda_expr.to_duckdb_lambda()
                                                 param_names = lambda_expr.get_param_names()
-                                                
+
                                                 if len(param_names) == 3:
                                                     k_name = param_names[0]
                                                     v1_name = param_names[1]
                                                     v2_name = param_names[2]
                                                     body_part = lambda_sql.split(' -> ', 1)[1]
-                                                    
+
                                                     # Build DuckDB SQL:
                                                     # Get union of all keys, then for each key apply lambda
                                                     # This is complex in DuckDB, so we'll use a workaround:
@@ -1820,7 +1820,7 @@ class SQLAlchemyMaterializer:
                                                     body_part = re.sub(rf'\b{k_name}\b', 'k', body_part)
                                                     body_part = re.sub(rf'\b{v1_name}\b', f'MAP_EXTRACT({column_expr}, k)', body_part)
                                                     body_part = re.sub(rf'\b{v2_name}\b', f'MAP_EXTRACT({col2_expr}, k)', body_part)
-                                                    
+
                                                     special_sql = f"""MAP_FROM_ENTRIES(
                                                         LIST_TRANSFORM(
                                                             LIST_DISTINCT(LIST_CONCAT(MAP_KEYS({column_expr}), MAP_KEYS({col2_expr}))),
@@ -1999,7 +1999,7 @@ class SQLAlchemyMaterializer:
                                                     elif field_type == 'BOOLEAN':
                                                         extract_sql = f"({extract_sql} IN ('true', 'True', '1'))"
                                                     fields.append(f"{field_name}: {extract_sql}")
-                                        
+
                                         if fields:
                                             # Create struct from extracted fields
                                             special_sql = f"{{{', '.join(fields)}}}"
@@ -2113,7 +2113,7 @@ class SQLAlchemyMaterializer:
                         # Handle labeling more carefully to avoid NotImplementedError
                         # Sanitize column name for SQL alias (remove problematic characters)
                         safe_alias = col.name.replace("(", "_").replace(")", "_").replace(" ", "_").replace(",", "_")
-                        
+
                         try:
                             select_columns.append(func_expr.label(safe_alias))
                         except (NotImplementedError, AttributeError):
@@ -3293,7 +3293,7 @@ class SQLAlchemyMaterializer:
                     # Convert value to appropriate type based on column type
                     from sqlalchemy import ARRAY
                     # Check for ARRAY type - need to check type name too since ARRAY is complex
-                    is_array_column = (isinstance(column.type, ARRAY) or 
+                    is_array_column = (isinstance(column.type, ARRAY) or
                                       type(column.type).__name__ == 'ARRAY')
                     # DEBUG
                     # print(f"DEBUG _get_table_results: column={column.name}, type={type(column.type).__name__}, is_array={is_array_column}, value_type={type(value)}, value={value}")

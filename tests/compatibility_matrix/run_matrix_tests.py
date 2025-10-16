@@ -50,7 +50,7 @@ class CompatibilityTester:
     def get_python_versions(self) -> List[str]:
         """Get Python versions to test."""
         return ["3.9", "3.10", "3.11", "3.12", "3.13"]
-    
+
     def get_working_combinations(self) -> List[Tuple[str, str, str]]:
         """
         Get only the combinations that passed in the initial test.
@@ -82,7 +82,7 @@ class CompatibilityTester:
     ) -> bool:
         """Build Docker image for specific version combination."""
         image_name = f"mock-spark-test:py{python_version}-spark{pyspark_version}"
-        
+
         print(f"\n{'='*70}")
         print(f"Building image: {image_name}")
         print(f"{'='*70}")
@@ -117,7 +117,7 @@ class CompatibilityTester:
     ) -> TestResult:
         """Run tests in Docker container."""
         image_name = f"mock-spark-test:py{python_version}-spark{pyspark_version}"
-        
+
         print(f"\n{'='*70}")
         print(f"Running tests: Python {python_version} + PySpark {pyspark_version}")
         print(f"{'='*70}")
@@ -139,9 +139,9 @@ class CompatibilityTester:
                 text=True,
                 timeout=300,  # 5 minute timeout
             )
-            
+
             duration = time.time() - start_time
-            
+
             if result.returncode == 0:
                 print(f"✓ Tests passed in {duration:.2f}s")
                 return TestResult(
@@ -237,7 +237,7 @@ class CompatibilityTester:
         lines.append("")
         lines.append("## Summary")
         lines.append("")
-        
+
         passed = sum(1 for r in self.results if r.success)
         failed = len(self.results) - passed
         lines.append(f"- **Total combinations tested:** {len(self.results)}")
@@ -276,12 +276,12 @@ class CompatibilityTester:
             lines.append(f"### Python {result.python_version} + PySpark {result.pyspark_version} (Java {result.java_version})")
             lines.append(f"**Status:** {status}  ")
             lines.append(f"**Duration:** {result.duration:.2f}s  ")
-            
+
             if result.error:
                 lines.append("**Error:** ```")
                 lines.append(result.error)
                 lines.append("```")
-            
+
             lines.append("")
 
         return "\n".join(lines)
@@ -298,9 +298,9 @@ class CompatibilityTester:
 def main():
     """Main entry point."""
     project_root = Path(__file__).parent.parent.parent
-    
+
     tester = CompatibilityTester(project_root)
-    
+
     try:
         tester.run_all_tests()
     except KeyboardInterrupt:
@@ -311,18 +311,18 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-    
+
     # Generate report
     report_path = project_root / "COMPATIBILITY_REPORT.md"
     tester.save_report(report_path)
-    
+
     # Print summary
     passed = sum(1 for r in tester.results if r.success)
     failed = len(tester.results) - passed
     print(f"\n{'='*70}")
     print(f"Test Summary: {passed} passed, {failed} failed out of {len(tester.results)} combinations")
     print(f"{'='*70}\n")
-    
+
     sys.exit(0 if failed == 0 else 1)
 
 

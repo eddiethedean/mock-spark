@@ -466,7 +466,7 @@ class MathFunctions:
         elif isinstance(y, (int, float)):
             from mock_spark.functions.core.literals import MockLiteral
             y = MockLiteral(y)  # type: ignore[assignment]
-        
+
         return MockColumnOperation(y, "atan2", x, name=f"atan2({y}, {x})")  # type: ignore[arg-type]
 
     @staticmethod
@@ -641,7 +641,7 @@ class MathFunctions:
         """
         column1 = MockColumn(col1) if isinstance(col1, str) else col1
         column2 = MockColumn(col2) if isinstance(col2, str) else col2
-        
+
         return MockColumnOperation(
             column1,
             "hypot",
@@ -662,7 +662,7 @@ class MathFunctions:
         """
         column1 = MockColumn(col1) if isinstance(col1, str) else col1
         column2 = MockColumn(col2) if isinstance(col2, str) else col2
-        
+
         return MockColumnOperation(
             column1,
             "nanvl",
@@ -682,3 +682,119 @@ class MathFunctions:
         """
         column = MockColumn(col) if isinstance(col, str) else col
         return MockColumnOperation(column, "signum", name=f"signum({column.name})")
+
+    # Priority 2: New Math Functions (PySpark 3.3+/3.5+)
+    @staticmethod
+    def cot(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute cotangent (PySpark 3.3+).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the cot function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "cot", name=f"cot({column.name})")
+
+    @staticmethod
+    def csc(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute cosecant (PySpark 3.3+).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the csc function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "csc", name=f"csc({column.name})")
+
+    @staticmethod
+    def sec(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute secant (PySpark 3.3+).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the sec function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "sec", name=f"sec({column.name})")
+
+    @staticmethod
+    def e() -> MockColumnOperation:
+        """Return Euler's number e (PySpark 3.5+).
+
+        Returns:
+            MockColumnOperation representing Euler's number constant.
+        """
+        from mock_spark.functions.core.literals import MockLiteral
+        import math
+        return MockColumnOperation(MockLiteral(math.e), "lit", name="E()")
+
+    @staticmethod
+    def pi() -> MockColumnOperation:
+        """Return the value of pi (PySpark 3.5+).
+
+        Returns:
+            MockColumnOperation representing pi constant.
+        """
+        from mock_spark.functions.core.literals import MockLiteral
+        import math
+        return MockColumnOperation(MockLiteral(math.pi), "lit", name="PI()")
+
+    @staticmethod
+    def ln(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute natural logarithm (alias for log) (PySpark 3.5+).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the ln function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "log", name=f"ln({column.name})")
+
+    # Deprecated Aliases
+    @staticmethod
+    def toDegrees(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for degrees (all PySpark versions).
+        
+        Use degrees instead.
+        
+        Args:
+            column: Angle in radians.
+            
+        Returns:
+            MockColumnOperation representing the degrees conversion.
+        """
+        import warnings
+        warnings.warn(
+            "toDegrees is deprecated. Use degrees instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        return MathFunctions.degrees(column)
+
+    @staticmethod
+    def toRadians(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Deprecated alias for radians (all PySpark versions).
+        
+        Use radians instead.
+        
+        Args:
+            column: Angle in degrees.
+            
+        Returns:
+            MockColumnOperation representing the radians conversion.
+        """
+        import warnings
+        warnings.warn(
+            "toRadians is deprecated. Use radians instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        return MathFunctions.radians(column)

@@ -20,7 +20,11 @@ Example:
     >>> df.select(F.array_distinct(F.col("tags"))).show()
 """
 
-from typing import Any, Union, Callable, Optional
+from typing import Any, Union, Callable, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mock_spark.functions.base import MockAggregateFunction
+
 from mock_spark.functions.base import MockColumn, MockColumnOperation, MockLambdaExpression
 
 
@@ -861,7 +865,7 @@ class ArrayFunctions:
         """
         if not cols:
             raise ValueError("array requires at least one column")
-        
+
         # Convert all columns
         converted_cols = []
         for c in cols:
@@ -869,14 +873,14 @@ class ArrayFunctions:
                 converted_cols.append(MockColumn(c))
             else:
                 converted_cols.append(c)
-        
+
         # First column is the main column, rest are in value as tuple
         first_col = converted_cols[0]
         if len(converted_cols) > 1:
             rest_cols = tuple(converted_cols[1:])
         else:
             rest_cols = ()
-        
+
         col_names = ", ".join(c.name if hasattr(c, "name") else str(c) for c in converted_cols)
         return MockColumnOperation(
             first_col,
@@ -901,7 +905,7 @@ class ArrayFunctions:
         """
         if isinstance(col, str):
             col = MockColumn(col)
-        
+
         return MockColumnOperation(
             col,
             "array_repeat",
@@ -925,7 +929,7 @@ class ArrayFunctions:
         """
         if isinstance(col, str):
             col = MockColumn(col)
-        
+
         # Use array_sort as internal function name (reuse existing handlers)
         return MockColumnOperation(
             col,
@@ -933,4 +937,39 @@ class ArrayFunctions:
             value=asc,
             name=f"sort_array({col.name}, {asc})"
         )
+
+    # Priority 2: Additional Array Functions
+    @staticmethod
+    def array_agg(col: Union[MockColumn, str]) -> "MockAggregateFunction":
+        """Aggregate function to collect values into an array (PySpark 3.5+).
+
+        Args:
+            col: Column to aggregate into an array
+
+        Returns:
+            MockAggregateFunction representing the array_agg function.
+
+        Example:
+            >>> df.groupBy("dept").agg(F.array_agg("name"))
+        """
+        from mock_spark.functions.base import MockAggregateFunction
+        from mock_spark.spark_types import ArrayType, StringType
+
+        return MockAggregateFunction(col, "array_agg", ArrayType(StringType()))
+
+    @staticmethod
+    def cardinality(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Return the size of an array or map (PySpark 3.5+).
+
+        Args:
+            col: Array or map column
+
+        Returns:
+            MockColumnOperation representing the cardinality function.
+
+        Example:
+            >>> df.select(F.cardinality(F.col("array_col")))
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "size", name=f"cardinality({column.name})")
 

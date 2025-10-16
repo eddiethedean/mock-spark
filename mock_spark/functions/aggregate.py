@@ -452,3 +452,85 @@ class AggregateFunctions:
         agg_func = MockAggregateFunction(col1, "covar_pop", DoubleType())
         agg_func.ord_column = col2  # Store second column for covariance
         return agg_func
+
+    # Priority 2: Statistical Aggregate Functions
+    @staticmethod
+    def median(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns the median value (PySpark 3.4+).
+
+        Args:
+            column: Numeric column.
+
+        Returns:
+            MockAggregateFunction representing the median function.
+        """
+        return MockAggregateFunction(column, "median", DoubleType())
+
+    @staticmethod
+    def mode(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Returns the most frequent value (mode) (PySpark 3.4+).
+
+        Args:
+            column: Column to find mode of.
+
+        Returns:
+            MockAggregateFunction representing the mode function.
+        """
+        return MockAggregateFunction(column, "mode", StringType())
+
+    @staticmethod
+    def percentile(column: Union[MockColumn, str], percentage: float) -> MockAggregateFunction:
+        """Returns the exact percentile value (PySpark 3.5+).
+
+        Args:
+            column: Numeric column.
+            percentage: Percentile to compute (between 0.0 and 1.0).
+
+        Returns:
+            MockAggregateFunction representing the percentile function.
+        """
+        agg_func = MockAggregateFunction(column, "percentile", DoubleType())
+        agg_func.percentage = percentage  # type: ignore
+        return agg_func
+
+    # Deprecated Aliases
+    @staticmethod
+    def approxCountDistinct(*cols: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Deprecated alias for approx_count_distinct (all PySpark versions).
+        
+        Use approx_count_distinct instead.
+        
+        Args:
+            cols: Columns to count distinct values for.
+            
+        Returns:
+            MockAggregateFunction for approximate distinct count.
+        """
+        import warnings
+        warnings.warn(
+            "approxCountDistinct is deprecated. Use approx_count_distinct instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        return AggregateFunctions.approx_count_distinct(*cols)
+
+    @staticmethod
+    def sumDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+        """Deprecated alias for sum_distinct (PySpark 3.2+).
+        
+        Use sum_distinct instead (or sum(distinct(col)) for earlier versions).
+        
+        Args:
+            column: Numeric column to sum.
+            
+        Returns:
+            MockAggregateFunction for distinct sum.
+        """
+        import warnings
+        warnings.warn(
+            "sumDistinct is deprecated. Use sum with distinct instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        # For mock implementation, create sum_distinct aggregate
+        return MockAggregateFunction(column, "sum_distinct", DoubleType())

@@ -62,15 +62,15 @@ def delta_spark_session():
     try:
         # Import must be done after checking for delta availability
         import os
-        
+
         # Set environment variable BEFORE importing PySpark
         # Using delta-spark 3.2.1 which is compatible with PySpark 3.5.x
         os.environ["PYSPARK_SUBMIT_ARGS"] = (
             "--packages io.delta:delta-spark_2.12:3.2.1 pyspark-shell"
         )
-        
+
         from pyspark.sql import SparkSession
-        
+
         # Create Spark session with Delta Lake extensions and JAR packages
         spark = SparkSession.builder \
             .appName("delta_test_session") \
@@ -82,15 +82,15 @@ def delta_spark_session():
             .config("spark.executor.memory", "1g") \
             .config("spark.sql.warehouse.dir", "/tmp/spark-warehouse") \
             .getOrCreate()
-        
+
         yield spark
-        
+
         # Cleanup
         try:
             spark.stop()
         except:  # noqa: E722
             pass
-            
+
     except Exception as e:
         pytest.skip(f"Delta Lake environment not available: {e}")
 
@@ -104,12 +104,12 @@ def pyspark_env(delta_spark_session):
     """
     import tempfile
     tmpdir = tempfile.mkdtemp()
-    
+
     yield {
         "spark": delta_spark_session,
         "tmpdir": tmpdir
     }
-    
+
     # Cleanup temp directory
     import shutil
     try:

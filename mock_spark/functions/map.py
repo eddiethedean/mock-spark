@@ -156,7 +156,7 @@ class MapFunctions:
 
         # Use first column as base, store rest as value
         base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
-        
+
         return MockColumnOperation(
             base_col,
             "create_map",

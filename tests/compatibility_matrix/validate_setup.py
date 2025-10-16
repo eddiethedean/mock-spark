@@ -47,18 +47,18 @@ def main():
     """Validate setup."""
     project_root = Path(__file__).parent.parent.parent
     compat_dir = project_root / "tests" / "compatibility_matrix"
-    
+
     print("=" * 70)
     print("Mock-Spark Compatibility Testing Setup Validation")
     print("=" * 70)
     print()
-    
+
     all_good = True
-    
+
     # Check required files
     print("Checking required files...")
     print()
-    
+
     files_to_check = [
         (compat_dir / "Dockerfile.template", "Dockerfile template"),
         (compat_dir / "test_runner.sh", "Test runner script"),
@@ -68,13 +68,13 @@ def main():
         (project_root / "run_compatibility_tests.sh", "Convenience wrapper"),
         (project_root / "COMPATIBILITY_TESTING_SETUP.md", "Setup documentation"),
     ]
-    
+
     for path, description in files_to_check:
         if not check_file_exists(path, description):
             all_good = False
-    
+
     print()
-    
+
     # Check Docker
     print("Checking Docker...")
     print()
@@ -84,10 +84,10 @@ def main():
         print()
         print("Note: Docker is required to run compatibility tests.")
         print("Install Docker Desktop from: https://www.docker.com/products/docker-desktop")
-    
+
     print()
     print("=" * 70)
-    
+
     if all_good:
         print("✓ All checks passed! Ready to run compatibility tests.")
         print()

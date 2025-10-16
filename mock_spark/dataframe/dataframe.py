@@ -107,7 +107,7 @@ class MockDataFrame:
 
     def __repr__(self) -> str:
         return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
-    
+
     def __getattribute__(self, name: str) -> Any:
         """
         Custom attribute access to enforce PySpark version compatibility for DataFrame methods.
@@ -127,22 +127,22 @@ class MockDataFrame:
         # Always allow access to private/protected attributes and core attributes
         if name.startswith('_') or name in ['data', 'schema', 'storage', 'is_lazy']:
             return super().__getattribute__(name)
-        
+
         # For public methods, check version compatibility
         try:
             attr = super().__getattribute__(name)
-            
+
             # Only check callable methods (not properties/data)
             if callable(attr):
                 from mock_spark._version_compat import is_available, get_pyspark_version
-                
+
                 if not is_available(name, 'dataframe_method'):
                     version = get_pyspark_version()
                     raise AttributeError(
                         f"'DataFrame' object has no attribute '{name}' "
                         f"(PySpark {version} compatibility mode)"
                     )
-            
+
             return attr
         except AttributeError:
             # Re-raise if attribute truly doesn't exist
@@ -3345,6 +3345,132 @@ class MockDataFrame:
         self.storage.create_table("global_temp", name, schema_obj)
         self.storage.insert_data("global_temp", name, [row for row in data], mode="overwrite")
 
+    def createOrReplaceGlobalTempView(self, name: str) -> None:
+        """Create or replace a global temporary view (all PySpark versions).
+        
+        Unlike createGlobalTempView, this method does not raise an error if the view already exists.
+        
+        Args:
+            name: Name of the global temp view
+            
+        Example:
+            >>> df.createOrReplaceGlobalTempView("my_global_view")
+            >>> spark.sql("SELECT * FROM global_temp.my_global_view")
+        """
+        # Use the global_temp schema to mimic Spark's behavior
+        if not self.storage.schema_exists("global_temp"):
+            self.storage.create_schema("global_temp")
+
+        # Check if table exists and drop it first
+        if self.storage.table_exists("global_temp", name):
+            self.storage.drop_table("global_temp", name)
+
+        # Create the table in global_temp
+        data = self.data
+        schema_obj = self.schema
+        self.storage.create_table("global_temp", name, schema_obj)
+        self.storage.insert_data("global_temp", name, [row for row in data], mode="overwrite")
+
+    def colRegex(self, colName: str) -> MockColumn:
+        """Select columns matching a regex pattern (all PySpark versions).
+        
+        The regex pattern should be wrapped in backticks: `pattern`
+        
+        Args:
+            colName: Regex pattern wrapped in backticks, e.g. "`.*id`"
+            
+        Returns:
+            Column expression that can be used in select()
+            
+        Example:
+            >>> df = spark.createDataFrame([{"user_id": 1, "post_id": 2, "name": "Alice"}])
+            >>> df.select(df.colRegex("`.*id`")).show()  # Selects user_id and post_id
+        """
+        import re
+        from mock_spark.functions.base import MockColumn
+
+        # Extract pattern from backticks
+        pattern = colName.strip()
+        if pattern.startswith("`") and pattern.endswith("`"):
+            pattern = pattern[1:-1]
+
+        # Find matching columns (preserve order from DataFrame)
+        matching_cols = [col for col in self.columns if re.match(pattern, col)]
+
+        if not matching_cols:
+            # Return empty column if no matches (PySpark behavior)
+            return MockColumn("")
+
+        # For simplicity, we return a special marker that select() will handle
+        # In real implementation, this would return a Column that expands to multiple columns
+        result = MockColumn(matching_cols[0])
+        # Store the full list of matching columns as metadata
+        result._regex_matches = matching_cols  # type: ignore
+        return result
+
+    def replace(
+        self,
+        to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
+        value: Optional[Union[int, float, str, List[Any]]] = None,
+        subset: Optional[List[str]] = None
+    ) -> "MockDataFrame":
+        """Replace values in DataFrame (all PySpark versions).
+        
+        Args:
+            to_replace: Value(s) to replace - can be scalar, list, or dict
+            value: Replacement value(s) - required if to_replace is not a dict
+            subset: Optional list of columns to limit replacement to
+            
+        Returns:
+            New DataFrame with replaced values
+            
+        Examples:
+            >>> # Replace with dict mapping
+            >>> df.replace({'A': 'X', 'B': 'Y'})
+            
+            >>> # Replace list of values with single value
+            >>> df.replace([1, 2], 99, subset=['col1'])
+            
+            >>> # Replace single value
+            >>> df.replace(1, 99)
+        """
+        from copy import deepcopy
+
+        # Determine columns to apply replacement to
+        target_columns = subset if subset else self.columns
+
+        # Build replacement map
+        replace_map: Dict[Any, Any] = {}
+        if isinstance(to_replace, dict):
+            replace_map = to_replace
+        elif isinstance(to_replace, list):
+            if value is None:
+                raise ValueError("value cannot be None when to_replace is a list")
+            # If value is also a list, create mapping
+            if isinstance(value, list):
+                if len(to_replace) != len(value):
+                    raise ValueError("to_replace and value lists must have same length")
+                replace_map = dict(zip(to_replace, value))
+            else:
+                # All values in list map to single value
+                replace_map = {v: value for v in to_replace}
+        else:
+            # Scalar to_replace
+            if value is None:
+                raise ValueError("value cannot be None when to_replace is a scalar")
+            replace_map = {to_replace: value}
+
+        # Apply replacements
+        new_data = []
+        for row in self.data:
+            new_row = deepcopy(row)
+            for col in target_columns:
+                if col in new_row and new_row[col] in replace_map:
+                    new_row[col] = replace_map[new_row[col]]
+            new_data.append(new_row)
+
+        return MockDataFrame(new_data, self.schema, self.storage)
+
     def selectExpr(self, *exprs: str) -> "MockDataFrame":
         """Select columns or expressions using SQL-like syntax.
 
@@ -3717,18 +3843,18 @@ class MockDataFrame:
             materialized = self._materialize_if_lazy()
         else:
             materialized = self
-        
+
         # Convert data to Row objects
         from ..spark_types import MockRow
         from typing import Iterator
-        
+
         def row_iterator() -> Iterator[MockRow]:
             for row_dict in materialized.data:
                 yield MockRow(row_dict)
-        
+
         # Apply the function
         result_iterator = func(row_iterator())
-        
+
         # Collect results
         result_data = []
         for result_row in result_iterator:
@@ -3739,12 +3865,12 @@ class MockDataFrame:
             else:
                 # Try to convert to dict
                 result_data.append(dict(result_row))
-        
+
         # Infer schema from result data
         from ..core.schema_inference import infer_schema_from_data
-        
+
         result_schema = infer_schema_from_data(result_data) if result_data else self.schema
-        
+
         return MockDataFrame(result_data, result_schema, self.storage)
 
     def mapInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
@@ -3775,25 +3901,25 @@ class MockDataFrame:
                 "pandas is required for mapInPandas. "
                 "Install it with: pip install 'mock-spark[pandas]'"
             )
-        
+
         # Materialize if lazy
         if self.is_lazy:
             materialized = self._materialize_if_lazy()
         else:
             materialized = self
-        
+
         # Convert to pandas DataFrame
         input_pdf = pd.DataFrame(materialized.data)
-        
+
         # Create an iterator that yields the pandas DataFrame
         from typing import Iterator
-        
+
         def input_iterator() -> Iterator[Any]:
             yield input_pdf
-        
+
         # Apply the function
         result_iterator = func(input_iterator())
-        
+
         # Collect results from the iterator
         result_pdfs = []
         for result_pdf in result_iterator:
@@ -3802,18 +3928,18 @@ class MockDataFrame:
                     f"Function must yield pandas DataFrames, got {type(result_pdf).__name__}"
                 )
             result_pdfs.append(result_pdf)
-        
+
         # Concatenate all results
         result_data: List[Dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
             result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
-        
+
         # Parse schema
         from ..spark_types import MockStructType
         from ..core.schema_inference import infer_schema_from_data
-        
+
         result_schema: MockStructType
         if isinstance(schema, str):
             # For DDL string, use schema inference from result data
@@ -3824,7 +3950,7 @@ class MockDataFrame:
         else:
             # Try to infer schema from result data
             result_schema = infer_schema_from_data(result_data) if result_data else self.schema
-        
+
         return MockDataFrame(result_data, result_schema, self.storage)
 
     def transform(self, func: Any) -> "MockDataFrame":
@@ -3881,11 +4007,11 @@ class MockDataFrame:
             materialized = self._materialize_if_lazy()
         else:
             materialized = self
-        
+
         # Normalize inputs
         id_cols = [ids] if isinstance(ids, str) else ids
         value_cols = [values] if isinstance(values, str) else values
-        
+
         # Validate columns exist
         all_cols = set(materialized.columns)
         for col in id_cols:
@@ -3898,7 +4024,7 @@ class MockDataFrame:
                 raise AnalysisException(
                     f"Cannot resolve column name '{col}' among ({', '.join(materialized.columns)})"
                 )
-        
+
         # Create unpivoted data
         unpivoted_data = []
         for row in materialized.data:
@@ -3912,11 +4038,11 @@ class MockDataFrame:
                 new_row[variableColumnName] = value_col
                 new_row[valueColumnName] = row.get(value_col)
                 unpivoted_data.append(new_row)
-        
+
         # Infer schema for unpivoted DataFrame
         # ID columns keep their types, variable is string, value type is inferred
         from ..spark_types import MockStructType, MockStructField, MockDataType
-        
+
         fields = []
         # Add id column fields
         for id_col in id_cols:
@@ -3924,10 +4050,10 @@ class MockDataFrame:
                 if field.name == id_col:
                     fields.append(MockStructField(id_col, field.dataType, field.nullable))
                     break
-        
+
         # Add variable column (always string)
         fields.append(MockStructField(variableColumnName, StringType(), False))
-        
+
         # Add value column (infer from first value column's type)
         value_type: MockDataType = StringType()  # Default to string
         for field in materialized.schema.fields:
@@ -3935,7 +4061,7 @@ class MockDataFrame:
                 value_type = field.dataType
                 break
         fields.append(MockStructField(valueColumnName, value_type, True))
-        
+
         unpivoted_schema = MockStructType(fields)
         return MockDataFrame(unpivoted_data, unpivoted_schema, self.storage)
 
@@ -3962,11 +4088,11 @@ class MockDataFrame:
         # Simplified: check if schemas match
         if len(self.schema.fields) != len(other.schema.fields):
             return False
-        
+
         for f1, f2 in zip(self.schema.fields, other.schema.fields):
             if f1.name != f2.name or f1.dataType != f2.dataType:
                 return False
-        
+
         return True
 
     def semanticHash(self) -> int:
@@ -3980,6 +4106,385 @@ class MockDataFrame:
         # Create hash from schema
         schema_str = ",".join([f"{f.name}:{f.dataType}" for f in self.schema.fields])
         return hash(schema_str)
+
+    # Priority 1: Critical DataFrame Method Aliases
+    def where(self, condition: Union[MockColumnOperation, MockColumn]) -> "MockDataFrame":
+        """Alias for filter() - Filter rows based on condition (all PySpark versions).
+        
+        Args:
+            condition: Boolean condition to filter rows
+            
+        Returns:
+            Filtered DataFrame
+        """
+        return self.filter(condition)
+
+    def sort(self, *columns: Union[str, MockColumn], **kwargs: Any) -> "MockDataFrame":
+        """Alias for orderBy() - Sort DataFrame by columns (all PySpark versions).
+        
+        Args:
+            *columns: Column names or Column objects to sort by
+            **kwargs: Additional sort options (e.g., ascending)
+            
+        Returns:
+            Sorted DataFrame
+        """
+        return self.orderBy(*columns)
+
+    def toDF(self, *cols: str) -> "MockDataFrame":
+        """Rename columns of DataFrame (all PySpark versions).
+        
+        Args:
+            *cols: New column names
+            
+        Returns:
+            DataFrame with renamed columns
+            
+        Raises:
+            ValueError: If number of columns doesn't match
+        """
+        if len(cols) != len(self.schema.fields):
+            raise ValueError(
+                f"Number of column names ({len(cols)}) must match "
+                f"number of columns in DataFrame ({len(self.schema.fields)})"
+            )
+
+        # Create new schema with renamed columns
+        new_fields = [
+            MockStructField(new_name, field.dataType, field.nullable)
+            for new_name, field in zip(cols, self.schema.fields)
+        ]
+        new_schema = MockStructType(new_fields)
+
+        # Rename columns in data
+        old_names = [field.name for field in self.schema.fields]
+        new_data = []
+        for row in self.data:
+            new_row = {new_name: row[old_name] for new_name, old_name in zip(cols, old_names)}
+            new_data.append(new_row)
+
+        return MockDataFrame(new_data, new_schema, self.storage, is_lazy=False)
+
+    def groupby(self, *cols: Union[str, MockColumn], **kwargs: Any) -> MockGroupedData:
+        """Lowercase alias for groupBy() (all PySpark versions).
+        
+        Args:
+            *cols: Column names or Column objects to group by
+            **kwargs: Additional grouping options
+            
+        Returns:
+            MockGroupedData object
+        """
+        return self.groupBy(*cols, **kwargs)
+
+    def drop_duplicates(self, subset: Optional[List[str]] = None) -> "MockDataFrame":
+        """Alias for dropDuplicates() (all PySpark versions).
+        
+        Args:
+            subset: Optional list of column names to consider for deduplication
+            
+        Returns:
+            DataFrame with duplicates removed
+        """
+        return self.dropDuplicates(subset)
+
+    def unionAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Deprecated alias for union() - Use union() instead (all PySpark versions).
+        
+        Args:
+            other: DataFrame to union with
+            
+        Returns:
+            Union of both DataFrames
+            
+        Note:
+            Deprecated in PySpark 2.0+, use union() instead
+        """
+        import warnings
+        warnings.warn(
+            "unionAll is deprecated. Use union instead.",
+            FutureWarning,
+            stacklevel=2
+        )
+        return self.union(other)
+
+    def subtract(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Return rows in this DataFrame but not in another (all PySpark versions).
+        
+        Args:
+            other: DataFrame to subtract
+            
+        Returns:
+            DataFrame with rows from this DataFrame that are not in other
+        """
+        # Convert rows to tuples for comparison
+        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
+            return tuple(row.get(field.name) for field in self.schema.fields)
+
+        self_rows = {row_to_tuple(row) for row in self.data}
+        other_rows = {row_to_tuple(row) for row in other.data}
+
+        # Find rows in self but not in other
+        result_tuples = self_rows - other_rows
+
+        # Convert back to dicts
+        result_data = []
+        for row_tuple in result_tuples:
+            row_dict = {
+                field.name: value
+                for field, value in zip(self.schema.fields, row_tuple)
+            }
+            result_data.append(row_dict)
+
+        return MockDataFrame(result_data, self.schema, self.storage, is_lazy=False)
+
+    def alias(self, alias: str) -> "MockDataFrame":
+        """Give DataFrame an alias for join operations (all PySpark versions).
+        
+        Args:
+            alias: Alias name
+            
+        Returns:
+            DataFrame with alias set
+        """
+        # Store alias in a special attribute
+        result = MockDataFrame(self.data, self.schema, self.storage, is_lazy=self.is_lazy)
+        result._alias = alias  # type: ignore
+        return result
+
+    def withColumns(self, colsMap: Dict[str, Union[MockColumn, MockColumnOperation, MockLiteral, Any]]) -> "MockDataFrame":
+        """Add or replace multiple columns at once (PySpark 3.3+).
+        
+        Args:
+            colsMap: Dictionary mapping column names to column expressions
+            
+        Returns:
+            DataFrame with new/replaced columns
+        """
+        result = self
+        for col_name, col_expr in colsMap.items():
+            result = result.withColumn(col_name, col_expr)
+        return result
+
+    # Priority 3: Common DataFrame Methods
+    def approxQuantile(
+        self, col: Union[str, List[str]], probabilities: List[float], relativeError: float
+    ) -> Union[List[float], List[List[float]]]:
+        """Calculate approximate quantiles (all PySpark versions).
+        
+        Args:
+            col: Column name or list of column names
+            probabilities: List of quantile probabilities (0.0 to 1.0)
+            relativeError: Relative error for approximation (0.0 for exact)
+            
+        Returns:
+            List of quantile values, or list of lists if multiple columns
+        """
+        import numpy as np
+
+        def calc_quantiles(column_name: str) -> List[float]:
+            values_list: List[float] = []
+            for row in self.data:
+                val = row.get(column_name)
+                if val is not None:
+                    values_list.append(float(val))
+            if not values_list:
+                return [float('nan')] * len(probabilities)
+            return [float(np.percentile(values_list, p * 100)) for p in probabilities]
+
+        if isinstance(col, str):
+            return calc_quantiles(col)
+        else:
+            return [calc_quantiles(c) for c in col]
+
+    def cov(self, col1: str, col2: str) -> float:
+        """Calculate covariance between two columns (all PySpark versions).
+        
+        Args:
+            col1: First column name
+            col2: Second column name
+            
+        Returns:
+            Covariance value
+        """
+        import numpy as np
+
+        # Filter rows where both values are not None and extract numeric values
+        pairs = [(row.get(col1), row.get(col2)) for row in self.data
+                 if row.get(col1) is not None and row.get(col2) is not None]
+
+        if not pairs:
+            return 0.0
+
+        values1 = [float(p[0]) for p in pairs]  # type: ignore
+        values2 = [float(p[1]) for p in pairs]  # type: ignore
+
+        return float(np.cov(values1, values2)[0][1])
+
+    def crosstab(self, col1: str, col2: str) -> "MockDataFrame":
+        """Calculate cross-tabulation (all PySpark versions).
+        
+        Args:
+            col1: First column name (rows)
+            col2: Second column name (columns)
+            
+        Returns:
+            DataFrame with cross-tabulation
+        """
+        from collections import defaultdict
+
+        # Build cross-tab structure
+        crosstab_data: Dict[Any, Dict[Any, int]] = defaultdict(lambda: defaultdict(int))
+        col2_values = set()
+
+        for row in self.data:
+            val1 = row.get(col1)
+            val2 = row.get(col2)
+            crosstab_data[val1][val2] += 1
+            col2_values.add(val2)
+
+        # Convert to list of dicts
+        # Filter out None values before sorting to avoid comparison issues
+        col2_sorted = sorted([v for v in col2_values if v is not None])
+        result_data = []
+        for val1 in sorted([k for k in crosstab_data.keys() if k is not None]):
+            result_row = {f"{col1}_{col2}": val1}
+            for val2 in col2_sorted:
+                result_row[str(val2)] = crosstab_data[val1].get(val2, 0)
+            result_data.append(result_row)
+
+        # Build schema
+        fields = [MockStructField(f"{col1}_{col2}", StringType())]
+        for val2 in col2_sorted:
+            fields.append(MockStructField(str(val2), LongType()))
+        result_schema = MockStructType(fields)
+
+        return MockDataFrame(result_data, result_schema, self.storage, is_lazy=False)
+
+    def freqItems(self, cols: List[str], support: Optional[float] = None) -> "MockDataFrame":
+        """Find frequent items (all PySpark versions).
+        
+        Args:
+            cols: List of column names
+            support: Minimum support threshold (default 0.01)
+            
+        Returns:
+            DataFrame with frequent items for each column
+        """
+        from collections import Counter
+
+        if support is None:
+            support = 0.01
+
+        min_count = int(len(self.data) * support)
+        result_row = {}
+
+        for col in cols:
+            values = [row.get(col) for row in self.data if row.get(col) is not None]
+            counter = Counter(values)
+            freq_items = [item for item, count in counter.items() if count >= min_count]
+            result_row[f"{col}_freqItems"] = freq_items
+
+        # Build schema
+        from ..spark_types import ArrayType
+        fields = [MockStructField(f"{col}_freqItems", ArrayType(StringType())) for col in cols]
+        result_schema = MockStructType(fields)
+
+        return MockDataFrame([result_row], result_schema, self.storage, is_lazy=False)
+
+    def hint(self, name: str, *parameters: Any) -> "MockDataFrame":
+        """Provide query optimization hints (all PySpark versions).
+        
+        This is a no-op in mock-spark as there's no query optimizer.
+        
+        Args:
+            name: Hint name
+            *parameters: Hint parameters
+            
+        Returns:
+            Same DataFrame (no-op)
+        """
+        # No-op for mock implementation
+        return self
+
+    def intersectAll(self, other: "MockDataFrame") -> "MockDataFrame":
+        """Return intersection with duplicates (PySpark 3.0+).
+        
+        Args:
+            other: DataFrame to intersect with
+            
+        Returns:
+            DataFrame with common rows (preserving duplicates)
+        """
+        from collections import Counter
+
+        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
+            return tuple(row.get(field.name) for field in self.schema.fields)
+
+        # Count occurrences in each DataFrame
+        self_counter = Counter(row_to_tuple(row) for row in self.data)
+        other_counter = Counter(row_to_tuple(row) for row in other.data)
+
+        # Intersection preserves minimum count
+        result_data = []
+        for row_tuple, count in self_counter.items():
+            min_count = min(count, other_counter.get(row_tuple, 0))
+            for _ in range(min_count):
+                row_dict = {
+                    field.name: value
+                    for field, value in zip(self.schema.fields, row_tuple)
+                }
+                result_data.append(row_dict)
+
+        return MockDataFrame(result_data, self.schema, self.storage, is_lazy=False)
+
+    def isEmpty(self) -> bool:
+        """Check if DataFrame is empty (PySpark 3.3+).
+        
+        Returns:
+            True if DataFrame has no rows
+        """
+        return len(self.data) == 0
+
+    def sampleBy(
+        self, col: str, fractions: Dict[Any, float], seed: Optional[int] = None
+    ) -> "MockDataFrame":
+        """Stratified sampling (all PySpark versions).
+        
+        Args:
+            col: Column to stratify by
+            fractions: Dict mapping stratum values to sampling fractions
+            seed: Random seed
+            
+        Returns:
+            Sampled DataFrame
+        """
+        import random
+        if seed is not None:
+            random.seed(seed)
+
+        result_data = []
+        for row in self.data:
+            stratum_value = row.get(col)
+            fraction = fractions.get(stratum_value, 0.0)
+            if random.random() < fraction:
+                result_data.append(row)
+
+        return MockDataFrame(result_data, self.schema, self.storage, is_lazy=False)
+
+    def withColumnsRenamed(self, colsMap: Dict[str, str]) -> "MockDataFrame":
+        """Rename multiple columns (PySpark 3.4+).
+        
+        Args:
+            colsMap: Dictionary mapping old column names to new names
+            
+        Returns:
+            DataFrame with renamed columns
+        """
+        result = self
+        for old_name, new_name in colsMap.items():
+            result = result.withColumnRenamed(old_name, new_name)
+        return result
 
     @property
     def write(self) -> "MockDataFrameWriter":

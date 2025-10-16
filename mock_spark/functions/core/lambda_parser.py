@@ -51,13 +51,13 @@ class LambdaParser:
             LambdaTranslationError: If the function is not a lambda or cannot be parsed.
         """
         self.lambda_func = lambda_func
-        
+
         # Get the source code of the lambda
         try:
             source = inspect.getsource(lambda_func)
         except (OSError, TypeError) as e:
             raise LambdaTranslationError(f"Cannot get source for lambda: {e}")
-        
+
         # Parse the lambda expression
         try:
             # Clean up the source - extract just the lambda part
@@ -68,24 +68,24 @@ class LambdaParser:
                 if idx != -1:
                     lambda_start = idx
                     break
-            
+
             if lambda_start == -1:
                 raise LambdaTranslationError("Not a lambda function")
-            
+
             # Extract from 'lambda' onward
             lambda_expr = source[lambda_start:]
-            
+
             # Remove trailing characters that might cause issues
             # We need to find where the lambda expression ends
             # This is tricky because lambda can be nested in function calls
-            
+
             # Try to find the end by matching parentheses
             # Key insight: only after the ':' (colon) in lambda should we look for
             # terminating commas. Before the colon, commas are parameter separators.
             paren_depth = 0
             end_idx = len(lambda_expr)
             seen_colon = False
-            
+
             for i, char in enumerate(lambda_expr):
                 if char == ':':
                     seen_colon = True
@@ -101,20 +101,20 @@ class LambdaParser:
                     # End of lambda expression (only after we've seen the colon)
                     end_idx = i
                     break
-            
+
             lambda_expr = lambda_expr[:end_idx].strip()
-            
+
             # Try to parse as an expression
             tree = ast.parse(lambda_expr, mode='eval')
-            
+
             if not isinstance(tree.body, ast.Lambda):
                 raise LambdaTranslationError("Parsed expression is not a lambda")
-                
+
             self.ast_node = tree.body
-            
+
         except SyntaxError as e:
             raise LambdaTranslationError(f"Cannot parse lambda: {e}")
-        
+
         # Extract parameter names
         self.param_names = self.get_param_names()
 
@@ -126,10 +126,10 @@ class LambdaParser:
         """
         args = self.ast_node.args
         param_names = []
-        
+
         for arg in args.args:
             param_names.append(arg.arg)
-            
+
         return param_names
 
     def to_duckdb_lambda(self) -> str:
@@ -150,10 +150,10 @@ class LambdaParser:
             params = self.param_names[0]
         else:
             params = f"({', '.join(self.param_names)})"
-        
+
         # Translate body
         body_expr = self._translate_expression(self.ast_node.body)
-        
+
         return f"{params} -> {body_expr}"
 
     def _translate_expression(self, node: ast.expr) -> str:
@@ -171,27 +171,27 @@ class LambdaParser:
         if isinstance(node, ast.Name):
             # Variable reference (parameter name)
             return node.id
-        
+
         elif isinstance(node, ast.Constant):
             # Literal value (numbers, strings, etc.)
             if isinstance(node.value, str):
                 return f"'{node.value}'"
             return str(node.value)
-        
+
         elif isinstance(node, ast.Num):  # Python 3.7 compatibility
             return str(node.n)
-        
+
         elif isinstance(node, ast.BinOp):
             # Binary operation (x + y, x * y, etc.)
             left = self._translate_expression(node.left)
             right = self._translate_expression(node.right)
             op = self._translate_operator(node.op)
             return f"({left} {op} {right})"
-        
+
         elif isinstance(node, ast.Compare):
             # Comparison (x > 10, x == 5, etc.)
             left = self._translate_expression(node.left)
-            
+
             if len(node.ops) == 1 and len(node.comparators) == 1:
                 op = self._translate_comparison(node.ops[0])
                 right = self._translate_expression(node.comparators[0])
@@ -204,19 +204,19 @@ class LambdaParser:
                     right = self._translate_expression(comp)
                     parts.append(f"{op_str} {right}")
                 return f"({' '.join(parts)})"
-        
+
         elif isinstance(node, ast.BoolOp):
             # Boolean operation (and, or)
             op = self._translate_bool_op(node.op)
             values = [self._translate_expression(v) for v in node.values]
             return f"({f' {op} '.join(values)})"
-        
+
         elif isinstance(node, ast.UnaryOp):
             # Unary operation (-x, not x)
             operand = self._translate_expression(node.operand)
             op = self._translate_unary_op(node.op)
             return f"({op}{operand})"
-        
+
         elif isinstance(node, ast.Call):
             # Function call - may be a Spark function
             # For now, raise an error - we'll add support later
@@ -224,7 +224,7 @@ class LambdaParser:
                 "Function calls in lambdas not yet supported. "
                 "Lambda body must be a simple expression."
             )
-        
+
         else:
             raise LambdaTranslationError(
                 f"Unsupported expression type: {type(node).__name__}"
@@ -248,11 +248,11 @@ class LambdaParser:
             ast.Mod: '%',
             ast.Pow: '**',
         }
-        
+
         op_type = type(op)
         if op_type in operator_map:
             return operator_map[op_type]
-        
+
         raise LambdaTranslationError(f"Unsupported operator: {op_type.__name__}")
 
     def _translate_comparison(self, op: ast.cmpop) -> str:
@@ -272,11 +272,11 @@ class LambdaParser:
             ast.Gt: '>',
             ast.GtE: '>=',
         }
-        
+
         op_type = type(op)
         if op_type in comparison_map:
             return comparison_map[op_type]
-        
+
         raise LambdaTranslationError(f"Unsupported comparison: {op_type.__name__}")
 
     def _translate_bool_op(self, op: ast.boolop) -> str:
@@ -292,7 +292,7 @@ class LambdaParser:
             return "AND"
         elif isinstance(op, ast.Or):
             return "OR"
-        
+
         raise LambdaTranslationError(f"Unsupported boolean operator: {type(op).__name__}")
 
     def _translate_unary_op(self, op: ast.unaryop) -> str:
@@ -308,7 +308,7 @@ class LambdaParser:
             return "-"
         elif isinstance(op, ast.Not):
             return "NOT "
-        
+
         raise LambdaTranslationError(f"Unsupported unary operator: {type(op).__name__}")
 
 

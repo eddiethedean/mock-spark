@@ -131,19 +131,19 @@ class DuckDBTable(ITable):
                 has_map_columns = any(
                     "MapType" in type(field.dataType).__name__ for field in self.schema.fields
                 )
-                
+
                 if has_map_columns:
                     # Use raw SQL for MAP insertion
                     from sqlalchemy import text
-                    
+
                     for row in validated_data:
                         col_names = []
                         col_values = []
-                        
+
                         for field in self.schema.fields:
                             col_names.append(f'"{field.name}"')
                             value = row.get(field.name)
-                            
+
                             # Convert dict to DuckDB MAP format
                             if isinstance(value, dict) and value:
                                 keys = list(value.keys())
@@ -158,7 +158,7 @@ class DuckDBTable(ITable):
                                 col_values.append(f"{value!r}")
                             else:
                                 col_values.append(str(value))
-                        
+
                         insert_sql = f"INSERT INTO {self.name} ({', '.join(col_names)}) VALUES ({', '.join(col_values)})"
                         with self.engine.begin() as conn:
                             conn.execute(text(insert_sql))

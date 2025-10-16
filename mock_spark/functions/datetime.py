@@ -497,7 +497,7 @@ class DateTimeFunctions:
         """Convert timestamp from source to target timezone."""
         if isinstance(sourceTs, str):
             sourceTs = MockColumn(sourceTs)
-        
+
         return MockColumnOperation(
             sourceTs,
             "convert_timezone",
@@ -524,7 +524,7 @@ class DateTimeFunctions:
         """Convert UTC timestamp to given timezone."""
         if isinstance(ts, str):
             ts = MockColumn(ts)
-        
+
         return MockColumnOperation(
             ts,
             "from_utc_timestamp",
@@ -539,7 +539,7 @@ class DateTimeFunctions:
         """Convert timestamp from given timezone to UTC."""
         if isinstance(ts, str):
             ts = MockColumn(ts)
-        
+
         return MockColumnOperation(
             ts,
             "to_utc_timestamp",
@@ -798,4 +798,43 @@ class DateTimeFunctions:
             col,  # type: ignore[arg-type]
             "timestamp_seconds",
             name=f"timestamp_seconds({col})"
+        )
+
+    @staticmethod
+    def weekday(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Get the day of week as an integer (0 = Monday, 6 = Sunday) (PySpark 3.5+).
+
+        Args:
+            col: Column or column name containing date/timestamp values.
+
+        Returns:
+            MockColumnOperation representing the weekday function.
+            
+        Note:
+            Returns 0 for Monday through 6 for Sunday.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "weekday", name=f"weekday({column.name})")
+
+    @staticmethod
+    def extract(field: str, source: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract a field from a date/timestamp column (PySpark 3.5+).
+
+        Args:
+            field: The field to extract (YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, etc.)
+            source: Column or column name containing date/timestamp values.
+
+        Returns:
+            MockColumnOperation representing the extract function.
+            
+        Example:
+            >>> df.select(F.extract("YEAR", F.col("date")))
+            >>> df.select(F.extract("MONTH", F.col("timestamp")))
+        """
+        column = MockColumn(source) if isinstance(source, str) else source
+        return MockColumnOperation(
+            column,
+            "extract",
+            value=field.upper(),
+            name=f"extract({field}, {column.name})"
         )

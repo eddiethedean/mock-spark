@@ -35,38 +35,38 @@ def discover_api(spark_version: str) -> Dict[str, List[str]]:
     print(f"\n{'='*80}")
     print(f"Discovering PySpark {spark_version} API...")
     print(f"{'='*80}")
-    
+
     # Install specific PySpark version
     print(f"Installing pyspark=={spark_version}...")
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-q", f"pyspark=={spark_version}"],
         check=True
     )
-    
+
     # Force reimport by removing from sys.modules
     modules_to_remove = [m for m in sys.modules if m.startswith('pyspark')]
     for module in modules_to_remove:
         del sys.modules[module]
-    
+
     # Import fresh
     import pyspark.sql.functions as F
     from pyspark.sql import DataFrame
-    
+
     # Discover functions
     functions = sorted([
         name for name in dir(F)
         if callable(getattr(F, name, None)) and not name.startswith('_')
     ])
-    
+
     # Discover DataFrame methods
     df_methods = sorted([
         name for name in dir(DataFrame)
         if callable(getattr(DataFrame, name, None)) and not name.startswith('_')
     ])
-    
+
     print(f"Found {len(functions)} functions in pyspark.sql.functions")
     print(f"Found {len(df_methods)} public methods on DataFrame")
-    
+
     return {
         "functions": functions,
         "dataframe_methods": df_methods
@@ -86,11 +86,11 @@ def build_matrix(versions_data: Dict[str, Dict[str, List[str]]]) -> Dict[str, Di
     # Collect all unique items across all versions
     all_functions: Set[str] = set()
     all_df_methods: Set[str] = set()
-    
+
     for data in versions_data.values():
         all_functions.update(data["functions"])
         all_df_methods.update(data["dataframe_methods"])
-    
+
     # Build matrices
     function_matrix = {}
     for func in sorted(all_functions):
@@ -98,14 +98,14 @@ def build_matrix(versions_data: Dict[str, Dict[str, List[str]]]) -> Dict[str, Di
             version: func in data["functions"]
             for version, data in versions_data.items()
         }
-    
+
     df_method_matrix = {}
     for method in sorted(all_df_methods):
         df_method_matrix[method] = {
             version: method in data["dataframe_methods"]
             for version, data in versions_data.items()
         }
-    
+
     return {
         "functions": function_matrix,
         "dataframe_methods": df_method_matrix
@@ -132,7 +132,7 @@ def check_mock_spark_availability(item_name: str, item_type: str) -> bool:
             return hasattr(MockDataFrame, item_name)
     except Exception:
         return False
-    
+
     return False
 
 
@@ -147,7 +147,7 @@ def save_json(matrix: Dict, output_path: Path):
 def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
     """Save matrix as markdown table."""
     print(f"\nGenerating markdown table at {output_path}...")
-    
+
     lines = [
         "# PySpark Function & Method Availability Matrix",
         "",
@@ -158,7 +158,7 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
         "and whether they are implemented in mock-spark.",
         "",
     ]
-    
+
     # Functions table
     lines.extend([
         "## Functions (pyspark.sql.functions)",
@@ -166,12 +166,12 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
         f"Total functions cataloged: {len(matrix['functions'])}",
         "",
     ])
-    
+
     # Table header
     header = "| Function | " + " | ".join(versions) + " | Mock-Spark |"
     separator = "|" + "|".join(["-" * (len(v) + 2) for v in ["Function"] + versions + ["Mock-Spark"]]) + "|"
     lines.extend([header, separator])
-    
+
     # Table rows
     for func_name, availability in sorted(matrix['functions'].items()):
         mock_available = check_mock_spark_availability(func_name, 'function')
@@ -180,7 +180,7 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
             row += " ✅ |" if availability[version] else " ❌ |"
         row += " ✅ |" if mock_available else " ❌ |"
         lines.append(row)
-    
+
     # DataFrame methods table
     lines.extend([
         "",
@@ -189,12 +189,12 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
         f"Total methods cataloged: {len(matrix['dataframe_methods'])}",
         "",
     ])
-    
+
     # Table header
     header = "| Method | " + " | ".join(versions) + " | Mock-Spark |"
     separator = "|" + "|".join(["-" * (len(v) + 2) for v in ["Method"] + versions + ["Mock-Spark"]]) + "|"
     lines.extend([header, separator])
-    
+
     # Table rows
     for method_name, availability in sorted(matrix['dataframe_methods'].items()):
         mock_available = check_mock_spark_availability(method_name, 'dataframe_method')
@@ -203,31 +203,31 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]):
             row += " ✅ |" if availability[version] else " ❌ |"
         row += " ✅ |" if mock_available else " ❌ |"
         lines.append(row)
-    
+
     # Summary statistics
     lines.extend([
         "",
         "## Summary Statistics",
         "",
     ])
-    
+
     # Count functions per version
     for version in versions:
         func_count = sum(1 for avail in matrix['functions'].values() if avail[version])
         method_count = sum(1 for avail in matrix['dataframe_methods'].values() if avail[version])
         lines.append(f"- **PySpark {version}**: {func_count} functions, {method_count} DataFrame methods")
-    
+
     # Mock-spark coverage
-    mock_func_count = sum(1 for func in matrix['functions'].keys() 
+    mock_func_count = sum(1 for func in matrix['functions'].keys()
                           if check_mock_spark_availability(func, 'function'))
-    mock_method_count = sum(1 for method in matrix['dataframe_methods'].keys() 
+    mock_method_count = sum(1 for method in matrix['dataframe_methods'].keys()
                             if check_mock_spark_availability(method, 'dataframe_method'))
     lines.append(f"- **Mock-Spark**: {mock_func_count} functions, {mock_method_count} DataFrame methods")
-    
+
     # Write file
     with open(output_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
-    
+
     print(f"✓ Saved {output_path}")
 
 
@@ -236,33 +236,33 @@ def main():
     print("="*80)
     print("PySpark API Discovery Tool")
     print("="*80)
-    
+
     # Discover API for each version
     versions_data = {}
     for version in PYSPARK_VERSIONS:
         versions_data[version] = discover_api(version)
-    
+
     # Build matrix
     print(f"\n{'='*80}")
     print("Building API matrix...")
     print(f"{'='*80}")
     matrix = build_matrix(versions_data)
-    
+
     # Save outputs
     repo_root = Path(__file__).parent.parent
     json_path = repo_root / "mock_spark" / "pyspark_api_matrix.json"
     md_path = repo_root / "PYSPARK_FUNCTION_MATRIX.md"
-    
+
     save_json(matrix, json_path)
     save_markdown(matrix, md_path, PYSPARK_VERSIONS)
-    
+
     print(f"\n{'='*80}")
     print("✓ Discovery complete!")
     print(f"{'='*80}")
-    print(f"\nGenerated files:")
+    print("\nGenerated files:")
     print(f"  - {json_path}")
     print(f"  - {md_path}")
-    print(f"\nTotal items discovered:")
+    print("\nTotal items discovered:")
     print(f"  - {len(matrix['functions'])} functions")
     print(f"  - {len(matrix['dataframe_methods'])} DataFrame methods")
 
