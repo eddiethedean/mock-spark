@@ -199,8 +199,8 @@ class LambdaParser:
             else:
                 # Multiple comparisons (x > 0 and x < 100)
                 parts = [left]
-                for op, comp in zip(node.ops, node.comparators):
-                    op_str = self._translate_comparison(op)
+                for cmp_op, comp in zip(node.ops, node.comparators):
+                    op_str = self._translate_comparison(cmp_op)
                     right = self._translate_expression(comp)
                     parts.append(f"{op_str} {right}")
                 return f"({' '.join(parts)})"

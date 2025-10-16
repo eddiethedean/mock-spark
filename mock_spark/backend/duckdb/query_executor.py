@@ -2674,7 +2674,7 @@ class SQLAlchemyMaterializer:
             mock_rows = []
             for result in results:
                 # Convert result to dict using column names with type conversion
-                result_dict = {}
+                result_dict: Dict[str, Any] = {}
                 for i, column in enumerate(table_obj.columns):
                     value = result[i]
                     # Convert value to appropriate type based on column type
@@ -2717,7 +2717,7 @@ class SQLAlchemyMaterializer:
                             result_dict[column.name] = value
                     elif isinstance(column.type, Float) and value is not None:
                         try:
-                            result_dict[column.name] = float(value)  # type: ignore[assignment]
+                            result_dict[column.name] = float(value)
                         except (ValueError, TypeError):
                             result_dict[column.name] = value
                     elif isinstance(column.type, Boolean) and value is not None:
