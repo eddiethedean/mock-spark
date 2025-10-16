@@ -740,6 +740,17 @@ class SQLAlchemyMaterializer:
                                 "date_part": "date_part",  # Special handling below
                                 "dayname": "dayname",  # Special handling below
                                 "assert_true": "assert_true",  # Special handling below
+                                "from_xml": "from_xml",  # Special handling below
+                                "to_xml": "to_xml",  # Special handling below
+                                "schema_of_xml": "schema_of_xml",  # Special handling below
+                                "xpath": "xpath",  # Special handling below
+                                "xpath_boolean": "xpath_boolean",  # Special handling below
+                                "xpath_double": "xpath_double",  # Special handling below
+                                "xpath_float": "xpath_float",  # Special handling below
+                                "xpath_int": "xpath_int",  # Special handling below
+                                "xpath_long": "xpath_long",  # Special handling below
+                                "xpath_short": "xpath_short",  # Special handling below
+                                "xpath_string": "xpath_string",  # Special handling below
                                 "isnull": "({} IS NULL)",
                                 "expr": "{}",  # expr() function directly uses the SQL expression
                                 "coalesce": "coalesce",  # Mark for special handling
@@ -811,6 +822,10 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "dayname" and (not hasattr(col, "value") or col.value is None):
                                 # dayname(date) -> DAYNAME(date::DATE)
                                 special_sql = f"DAYNAME({column_expr}::DATE)"
+                                func_expr = text(special_sql)
+                            elif col.function_name == "schema_of_xml" and (not hasattr(col, "value") or col.value is None):
+                                # schema_of_xml(xml) - simplified: return fixed schema string
+                                special_sql = "'STRUCT<>'"
                                 func_expr = text(special_sql)
                             # Handle functions with parameters
                             elif hasattr(col, "value") and col.value is not None:
@@ -1416,6 +1431,37 @@ class SQLAlchemyMaterializer:
                                             condition_sql = column_expr
                                         special_sql = f"CASE WHEN {condition_sql} THEN TRUE ELSE NULL END"
                                         func_expr = text(special_sql)
+                                    elif col.function_name == "to_xml":
+                                        # to_xml(struct) - simplified: return XML-like string
+                                        # In real Spark, would convert struct to proper XML
+                                        if hasattr(col.value, 'name'):
+                                            struct_sql = col.value.name
+                                        else:
+                                            struct_sql = column_expr
+                                        special_sql = f"'<row>' || CAST({struct_sql} AS VARCHAR) || '</row>'"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name in ["xpath_string", "xpath_int", "xpath_long", 
+                                                               "xpath_short", "xpath_float", "xpath_double"]:
+                                        # XPath extraction - simplified: return NULL
+                                        # Real implementation would parse XML and extract values
+                                        xpath = col.value
+                                        special_sql = "NULL"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "xpath_boolean":
+                                        # XPath boolean - simplified: return FALSE
+                                        xpath = col.value
+                                        special_sql = "FALSE"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "xpath":
+                                        # XPath array - simplified: return empty array
+                                        xpath = col.value
+                                        special_sql = "[]"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "from_xml":
+                                        # from_xml(xml, schema) - simplified: return NULL
+                                        schema = col.value
+                                        special_sql = "NULL"
+                                        func_expr = text(special_sql)
                                     else:
                                         # Handle other special functions like add_months
                                         if isinstance(col.value, str):
@@ -1582,6 +1628,31 @@ class SQLAlchemyMaterializer:
                         elif col.function_name == "assert_true":
                             # assert_true returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name in ["to_xml", "schema_of_xml", "xpath_string"]:
+                            # XML string functions return strings
+                            new_columns.append(Column(col.name, String, primary_key=False))
+                        elif col.function_name in ["xpath_int", "xpath_short"]:
+                            # XPath integer functions return integers
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name in ["xpath_long"]:
+                            # XPath long returns integer (DuckDB uses BIGINT)
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                        elif col.function_name in ["xpath_float"]:
+                            # XPath float returns float
+                            new_columns.append(Column(col.name, Float, primary_key=False))
+                        elif col.function_name in ["xpath_double"]:
+                            # XPath double returns double
+                            new_columns.append(Column(col.name, Double, primary_key=False))
+                        elif col.function_name == "xpath_boolean":
+                            # XPath boolean returns boolean
+                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                        elif col.function_name == "xpath":
+                            # XPath returns array
+                            from sqlalchemy import ARRAY
+                            new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                        elif col.function_name == "from_xml":
+                            # from_xml returns struct (simplified as String)
+                            new_columns.append(Column(col.name, String, primary_key=False))
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean
                             new_columns.append(Column(col.name, Boolean, primary_key=False))

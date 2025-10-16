@@ -39,6 +39,7 @@ from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
 from .bitwise import BitwiseFunctions
+from .xml import XMLFunctions
 
 
 class MockFunctions:
@@ -935,6 +936,62 @@ class MockFunctions:
     def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
         """Assert condition is true."""
         return ConditionalFunctions.assert_true(condition)
+
+    # XML functions (PySpark 3.2+)
+    @staticmethod
+    def from_xml(col: Union[MockColumn, str], schema: str) -> MockColumnOperation:
+        """Parse XML string to struct."""
+        return XMLFunctions.from_xml(col, schema)
+
+    @staticmethod
+    def to_xml(col: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+        """Convert struct to XML string."""
+        return XMLFunctions.to_xml(col)
+
+    @staticmethod
+    def schema_of_xml(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Infer schema from XML."""
+        return XMLFunctions.schema_of_xml(col)
+
+    @staticmethod
+    def xpath(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract array from XML using XPath."""
+        return XMLFunctions.xpath(xml, path)
+
+    @staticmethod
+    def xpath_boolean(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract boolean from XML using XPath."""
+        return XMLFunctions.xpath_boolean(xml, path)
+
+    @staticmethod
+    def xpath_double(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract double from XML using XPath."""
+        return XMLFunctions.xpath_double(xml, path)
+
+    @staticmethod
+    def xpath_float(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract float from XML using XPath."""
+        return XMLFunctions.xpath_float(xml, path)
+
+    @staticmethod
+    def xpath_int(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract integer from XML using XPath."""
+        return XMLFunctions.xpath_int(xml, path)
+
+    @staticmethod
+    def xpath_long(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract long from XML using XPath."""
+        return XMLFunctions.xpath_long(xml, path)
+
+    @staticmethod
+    def xpath_short(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract short from XML using XPath."""
+        return XMLFunctions.xpath_short(xml, path)
+
+    @staticmethod
+    def xpath_string(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+        """Extract string from XML using XPath."""
+        return XMLFunctions.xpath_string(xml, path)
 
 
 # Create the F namespace instance

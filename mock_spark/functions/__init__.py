@@ -190,6 +190,17 @@ url_decode = F.url_decode
 date_part = F.date_part
 dayname = F.dayname
 assert_true = F.assert_true
+from_xml = F.from_xml
+to_xml = F.to_xml
+schema_of_xml = F.schema_of_xml
+xpath = F.xpath
+xpath_boolean = F.xpath_boolean
+xpath_double = F.xpath_double
+xpath_float = F.xpath_float
+xpath_int = F.xpath_int
+xpath_long = F.xpath_long
+xpath_short = F.xpath_short
+xpath_string = F.xpath_string
 
 __all__ = [
     "MockColumn",
@@ -349,4 +360,15 @@ __all__ = [
     "date_part",
     "dayname",
     "assert_true",
+    "from_xml",
+    "to_xml",
+    "schema_of_xml",
+    "xpath",
+    "xpath_boolean",
+    "xpath_double",
+    "xpath_float",
+    "xpath_int",
+    "xpath_long",
+    "xpath_short",
+    "xpath_string",
 ]
