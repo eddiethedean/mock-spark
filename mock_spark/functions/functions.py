@@ -231,6 +231,21 @@ class MockFunctions:
         return MathFunctions.tan(column)
 
     @staticmethod
+    def acosh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse hyperbolic cosine (PySpark 3.0+)."""
+        return MathFunctions.acosh(column)
+
+    @staticmethod
+    def asinh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse hyperbolic sine (PySpark 3.0+)."""
+        return MathFunctions.asinh(column)
+
+    @staticmethod
+    def atanh(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Inverse hyperbolic tangent (PySpark 3.0+)."""
+        return MathFunctions.atanh(column)
+
+    @staticmethod
     def sign(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sign of number (matches PySpark signum)."""
         return MathFunctions.sign(column)

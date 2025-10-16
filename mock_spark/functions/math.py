@@ -282,3 +282,48 @@ class MathFunctions:
             base_column, "least", columns[1:], name=f"least({', '.join(column_names)})"
         )
         return operation
+
+    @staticmethod
+    def acosh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse hyperbolic cosine (arc hyperbolic cosine).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the acosh function.
+            
+        Note:
+            Input must be >= 1. Returns NaN for invalid inputs.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "acosh", name=f"acosh({column.name})")
+
+    @staticmethod
+    def asinh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse hyperbolic sine (arc hyperbolic sine).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the asinh function.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "asinh", name=f"asinh({column.name})")
+
+    @staticmethod
+    def atanh(col: Union[MockColumn, str]) -> MockColumnOperation:
+        """Compute inverse hyperbolic tangent (arc hyperbolic tangent).
+
+        Args:
+            col: Column or column name.
+
+        Returns:
+            MockColumnOperation representing the atanh function.
+            
+        Note:
+            Input must be in range (-1, 1). Returns NaN for invalid inputs.
+        """
+        column = MockColumn(col) if isinstance(col, str) else col
+        return MockColumnOperation(column, "atanh", name=f"atanh({column.name})")

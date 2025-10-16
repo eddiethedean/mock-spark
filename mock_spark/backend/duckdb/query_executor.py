@@ -1642,7 +1642,7 @@ class SQLAlchemyMaterializer:
                         # Infer column type based on function
                         if col.function_name in ["length", "abs", "ceil", "floor"]:
                             new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["round", "sqrt"]:
+                        elif col.function_name in ["round", "sqrt", "acosh", "asinh", "atanh"]:
                             new_columns.append(Column(col.name, Float, primary_key=False))
                         elif col.function_name in ["isnull", "isnan", "isnotnull"]:
                             new_columns.append(Column(col.name, Boolean, primary_key=False))
