@@ -302,38 +302,6 @@ class MapFunctions:
         )
 
     @staticmethod
-    def map_filter(
-        column: Union[MockColumn, str], function: Callable[[Any, Any], bool]
-    ) -> MockColumnOperation:
-        """Filter map entries using a predicate function (PySpark 3.1+).
-
-        This is a higher-order function that filters map entries based on
-        the provided lambda function.
-
-        Args:
-            column: The map column.
-            function: Lambda function (key, value) -> boolean to filter entries.
-
-        Returns:
-            MockColumnOperation representing the map_filter function.
-
-        Example:
-            >>> df.select(F.map_filter(F.col("map"), lambda k, v: v > 10))
-        """
-        if isinstance(column, str):
-            column = MockColumn(column)
-
-        # Wrap the lambda function
-        lambda_expr = MockLambdaExpression(function)
-
-        return MockColumnOperation(
-            column,
-            "map_filter",
-            value=lambda_expr,
-            name=f"map_filter({column.name}, <lambda>)",
-        )
-
-    @staticmethod
     def map_zip_with(
         col1: Union[MockColumn, str],
         col2: Union[MockColumn, str],

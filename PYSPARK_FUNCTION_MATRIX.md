@@ -53,7 +53,7 @@ Total functions cataloged: 455
 | `approxCountDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `approx_count_distinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `approx_percentile` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `array_append` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `array_compact` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
@@ -68,7 +68,7 @@ Total functions cataloged: 455
 | `array_position` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_prepend` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `array_remove` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `array_repeat` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `array_repeat` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_size` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `array_sort` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `array_union` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -82,7 +82,7 @@ Total functions cataloged: 455
 | `asinh` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `assert_true` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `atan` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `atan2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `atan2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `atanh` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `avg` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `base64` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -138,7 +138,7 @@ Total functions cataloged: 455
 | `count_min_sketch` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `covar_pop` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `covar_samp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `crc32` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `crc32` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `create_map` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `csc` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `cume_dist` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -182,7 +182,7 @@ Total functions cataloged: 455
 | `exp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `explode` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `explode_outer` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `expm1` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `expm1` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `expr` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `extract` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `factorial` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -250,9 +250,9 @@ Total functions cataloged: 455
 | `localtimestamp` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `locate` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `log` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `log10` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `log1p` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `log2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `log10` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `log1p` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `log2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `lower` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `lpad` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `ltrim` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -275,7 +275,7 @@ Total functions cataloged: 455
 | `mask` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `max` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `max_by` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| `md5` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `md5` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `mean` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `median` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `min` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -358,8 +358,8 @@ Total functions cataloged: 455
 | `sequence` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `session_window` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `sha` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `sha1` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `sha2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sha1` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `sha2` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `shiftLeft` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `shiftRight` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | `shiftRightUnsigned` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ❌ |
@@ -376,7 +376,7 @@ Total functions cataloged: 455
 | `skewness` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `slice` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `some` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `sort_array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `sort_array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `soundex` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `spark_partition_id` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `split` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |

@@ -871,7 +871,7 @@ class SQLAlchemyMaterializer:
                                 # Use SHA256 for all bit lengths as approximation
                                 num_bits = col.value
                                 if num_bits not in [224, 256, 384, 512]:
-                                    raise ValueError(f"sha2: numBits must be 224, 256, 384, or 512")
+                                    raise ValueError("sha2: numBits must be 224, 256, 384, or 512")
                                 # DuckDB only has SHA256, use it for all variants
                                 special_sql = f"SHA256({column_expr})"
                                 func_expr = text(special_sql)
