@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-491%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-879%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-100%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 491 passing tests, 100% mypy typed, zero raw SQL |
+| 🏭 **Production Ready** | 879 passing tests, 100% mypy typed, zero raw SQL |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | ✅ **Tested** | Verified on Python 3.9-3.13 + PySpark 3.2-3.5 |
 
@@ -58,16 +58,25 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Current Version)
+### Latest (Version 2.8.0)
 
-**Extended PySpark API Coverage** - Continuous compatibility improvements:
-- ✅ **491+ tests passing** - Comprehensive validation across all features
-- ✅ **120+ functions** - String, math, datetime, array, map, XML, and more
-- ✅ **70+ DataFrame methods** - Complete transformation and action APIs
-- ✅ **100% type coverage** - Full mypy validation across 104 source files
+**High-Priority PySpark Features** - Critical missing features now available:
+- ✅ **879 tests passing** - Comprehensive validation across all features (+388 new tests)
+- ✅ **121 functions** - Complete function coverage across PySpark 3.0-3.5
+- ✅ **78 DataFrame methods** - Including iteration, optimization, and streaming methods
+- ✅ **100% type coverage** - Full mypy validation across 105 source files
 - ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
 
-**Key Capabilities:**
+**New in 2.8.0:**
+- 🔄 **Iteration Methods** - `foreach()`, `foreachPartition()`, `toLocalIterator()` for efficient processing
+- ⚡ **Optimization** - `localCheckpoint()`, `repartitionByRange()`, `sortWithinPartitions()`
+- 🌊 **Streaming Support** - `withWatermark()` for event time processing
+- 🐼 **Pandas UDFs** - `pandas_udf()` and `UserDefinedFunction` class for vectorized operations
+- 🔍 **Utilities** - `isLocal()` for environment detection
+
+### Version 2.7.0 Highlights
+
+**Extended PySpark API Coverage:**
 - 🎯 **User-Defined Functions** - Lambda and decorator patterns with `udf()`
 - ⏰ **Time Windows** - Group by time periods with `window()` function
 - 📝 **Value Replacement** - Data cleaning with `df.replace()`

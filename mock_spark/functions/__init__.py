@@ -47,6 +47,7 @@ from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
 from .udf import UserDefinedFunction
+from .pandas_types import PandasUDFType
 
 # Note: Module-level function aliases are NOT defined here.
 # All function access is handled by __getattr__ at the end of this file.
@@ -379,6 +380,11 @@ __all__ = [
     # Phase 1: High-priority missing features
     "pandas_udf",
     "UserDefinedFunction",
+    # Final core features for 100% PySpark 3.0-3.5 coverage
+    "PandasUDFType",
+    "to_str",
+    # PySpark 3.4+ features
+    "window_time",
 ]
 
 from typing import Any  # noqa: E402
@@ -432,7 +438,8 @@ _CLASS_EXPORTS = {
     "MockColumn", "MockColumnOperation", "MockLiteral", "ExpressionFunctions",
     "MockAggregateFunction", "MockCaseWhen", "MockWindowFunction", "MockFunctions",
     "F", "StringFunctions", "MathFunctions", "AggregateFunctions",
-    "DateTimeFunctions", "ArrayFunctions", "MapFunctions", "UserDefinedFunction"
+    "DateTimeFunctions", "ArrayFunctions", "MapFunctions", "UserDefinedFunction",
+    "PandasUDFType"
 }
 
 # Add ALL functions to module namespace unconditionally

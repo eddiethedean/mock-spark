@@ -9,39 +9,29 @@ and whether they are implemented in mock-spark.
 ## Legend
 
 - ✅ = Available and current (or implemented in mock-spark)
+- 🔷 = Mock implementation available (e.g., MockDataFrame, MockColumn)
 - ⚠️ = Deprecated (available but modern alternative recommended)
 - ❌ = Not available (or not implemented in mock-spark)
 
 ## Functions (pyspark.sql.functions)
 
-Total functions cataloged: 455
+Total functions cataloged: 444
 
 | Function | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Mock-Spark |
 |----------|-------|-------|-------|-------|-------|-------|------------|
-| `Any` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `ArrayType` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Callable` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Column` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `DataFrame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `DataType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `Dict` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Iterable` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `JVMView` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| `List` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Optional` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `PandasUDFType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `ArrayType` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🔷 |
+| `Column` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
+| `DataFrame` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
+| `DataType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
+| `PandasUDFType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
 | `PySparkTypeError` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `PySparkValueError` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | `PythonEvalType` | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `SparkContext` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `StringType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `StructType` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Tuple` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `Type` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `Union` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `SparkContext` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
+| `StringType` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔷 |
+| `StructType` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🔷 |
 | `UserDefinedFunction` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `UserDefinedTableFunction` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `ValuesView` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `abs` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `acos` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `acosh` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -409,7 +399,7 @@ Total functions cataloged: 455
 | `to_date` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `to_json` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `to_number` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `to_str` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `to_str` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `to_timestamp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `to_timestamp_ltz` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `to_timestamp_ntz` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
@@ -459,7 +449,7 @@ Total functions cataloged: 455
 | `when` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `width_bucket` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `window` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `window_time` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| `window_time` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `xpath` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `xpath_boolean` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `xpath_double` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -526,9 +516,9 @@ Total methods cataloged: 94
 | `limit` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `localCheckpoint` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `mapInArrow` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
-| `mapInPandas` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `melt` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| `observe` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `mapInPandas` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `melt` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `observe` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `offset` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `orderBy` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `pandas_api` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
@@ -553,7 +543,7 @@ Total methods cataloged: 94
 | `summary` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `tail` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `take` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `to` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| `to` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `toDF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `toJSON` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `toLocalIterator` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -571,7 +561,7 @@ Total methods cataloged: 94
 | `withColumnRenamed` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `withColumns` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `withColumnsRenamed` | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| `withMetadata` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `withMetadata` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `withWatermark` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `writeTo` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
@@ -583,4 +573,4 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 271 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 289 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 451 functions, 94 DataFrame methods
-- **Mock-Spark**: 121 functions, 78 DataFrame methods
+- **Mock-Spark**: 123 functions, 83 DataFrame methods (100% PySpark 3.0-3.5 + high-value 3.4+ features!)

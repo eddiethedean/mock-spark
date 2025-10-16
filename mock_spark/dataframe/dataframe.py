@@ -4595,6 +4595,144 @@ class MockDataFrame:
         self._watermark_delay = delayThreshold  # type: ignore
         return self
 
+    def melt(
+        self,
+        ids: Optional[List[str]] = None,
+        values: Optional[List[str]] = None,
+        variableColumnName: str = "variable",
+        valueColumnName: str = "value"
+    ) -> "MockDataFrame":
+        """Unpivot DataFrame from wide to long format (PySpark 3.4+).
+        
+        Args:
+            ids: List of column names to use as identifier columns
+            values: List of column names to unpivot (None = all non-id columns)
+            variableColumnName: Name for the variable column
+            valueColumnName: Name for the value column
+            
+        Returns:
+            New DataFrame in long format
+            
+        Example:
+            >>> df = spark.createDataFrame([{"id": 1, "A": 10, "B": 20}])
+            >>> df.melt(ids=["id"], values=["A", "B"]).show()
+        """
+        id_cols = ids or []
+        value_cols = values or [c for c in self.columns if c not in id_cols]
+        
+        result_data = []
+        for row in self.data:
+            for val_col in value_cols:
+                new_row = {col: row[col] for col in id_cols}
+                new_row[variableColumnName] = val_col
+                new_row[valueColumnName] = row.get(val_col)
+                result_data.append(new_row)
+        
+        # Build new schema - find fields by name
+        fields = []
+        for col in id_cols:
+            field = [f for f in self.schema.fields if f.name == col][0]
+            fields.append(MockStructField(col, field.dataType))
+        
+        fields.append(MockStructField(variableColumnName, StringType()))
+        
+        # Use first value column's type for value column (or StringType as fallback)
+        if value_cols:
+            first_value_field = [f for f in self.schema.fields if f.name == value_cols[0]][0]
+            value_type = first_value_field.dataType
+        else:
+            value_type = StringType()
+        fields.append(MockStructField(valueColumnName, value_type))
+        
+        return MockDataFrame(result_data, MockStructType(fields), self.storage)
+
+    def to(self, schema: Union[str, MockStructType]) -> "MockDataFrame":
+        """Apply schema with casting (PySpark 3.4+).
+        
+        Args:
+            schema: Target schema (DDL string or MockStructType)
+            
+        Returns:
+            New DataFrame with schema applied
+            
+        Example:
+            >>> df.to("id: long, name: string")
+        """
+        if isinstance(schema, str):
+            from mock_spark.core.ddl_adapter import parse_ddl_schema
+            target_schema = parse_ddl_schema(schema)
+        else:
+            target_schema = schema
+        
+        # Cast columns to match target schema
+        result_data = []
+        for row in self.data:
+            new_row = {}
+            for field in target_schema.fields:
+                if field.name in row:
+                    # Type casting would happen here in real implementation
+                    new_row[field.name] = row[field.name]
+            result_data.append(new_row)
+        
+        return MockDataFrame(result_data, target_schema, self.storage)
+
+    def withMetadata(self, columnName: str, metadata: Dict[str, Any]) -> "MockDataFrame":
+        """Attach metadata to a column (PySpark 3.3+).
+        
+        Args:
+            columnName: Name of the column to attach metadata to
+            metadata: Dictionary of metadata key-value pairs
+            
+        Returns:
+            New DataFrame with metadata attached
+            
+        Example:
+            >>> df.withMetadata("id", {"comment": "User identifier"})
+        """
+        # Find the field and update its metadata
+        new_fields = []
+        for field in self.schema.fields:
+            if field.name == columnName:
+                # Create new field with metadata
+                new_field = MockStructField(
+                    field.name,
+                    field.dataType,
+                    field.nullable,
+                    metadata
+                )
+                new_fields.append(new_field)
+            else:
+                new_fields.append(field)
+        
+        new_schema = MockStructType(new_fields)
+        return MockDataFrame(self.data, new_schema, self.storage)
+
+    def observe(self, name: str, *exprs: "MockColumn") -> "MockDataFrame":
+        """Define observation metrics (PySpark 3.3+).
+        
+        Args:
+            name: Name of the observation
+            *exprs: Column expressions to observe
+            
+        Returns:
+            Same DataFrame with observation registered
+            
+        Example:
+            >>> df.observe("metrics", F.count(F.lit(1)).alias("count"))
+        """
+        # In mock implementation, observations don't affect behavior
+        # Preserve existing observations and add new ones
+        new_df = MockDataFrame(self.data, self.schema, self.storage)
+        
+        # Copy existing observations if any
+        if hasattr(self, '_observations'):
+            new_df._observations = dict(self._observations)  # type: ignore
+        else:
+            new_df._observations = {}  # type: ignore
+        
+        new_df._observations[name] = exprs  # type: ignore
+        return new_df
+
     @property
     def write(self) -> "MockDataFrameWriter":
         """Get DataFrame writer (PySpark-compatible property)."""

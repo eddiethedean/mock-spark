@@ -866,6 +866,10 @@ class SQLAlchemyMaterializer:
                                 # CASE WHEN col IS NULL THEN NULL ELSE ABS(HASH(col)) % 2^32 END
                                 special_sql = f"CASE WHEN {column_expr} IS NULL THEN NULL ELSE ABS(HASH({column_expr})) % 4294967296 END"
                                 func_expr = text(special_sql)
+                            elif col.function_name == "to_str" and (not hasattr(col, "value") or col.value is None):
+                                # to_str(column) - Convert to string
+                                special_sql = f"CAST({column_expr} AS VARCHAR)"
+                                func_expr = text(special_sql)
                             elif col.function_name == "sha2" and hasattr(col, "value") and col.value is not None:
                                 # sha2(str, numBits) - DuckDB only has SHA256
                                 # Use SHA256 for all bit lengths as approximation

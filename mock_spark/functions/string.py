@@ -1065,3 +1065,21 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(column, "crc32", name=f"crc32({column.name})")
+
+    @staticmethod
+    def to_str(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert column to string representation (all PySpark versions).
+        
+        Args:
+            column: Column to convert to string
+            
+        Returns:
+            Column operation for string conversion
+            
+        Example:
+            >>> df.select(F.to_str(F.col("value")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        return MockColumnOperation(column, "to_str", name=f"to_str({column.name})")

@@ -172,6 +172,11 @@ class MockFunctions:
         return StringFunctions.crc32(column)
 
     @staticmethod
+    def to_str(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Convert column to string (all PySpark versions)."""
+        return StringFunctions.to_str(column)
+
+    @staticmethod
     def regexp_extract_all(
         column: Union[MockColumn, str], pattern: str, idx: int = 0
     ) -> MockColumnOperation:
@@ -1843,6 +1848,25 @@ class MockFunctions:
         op._window_duration = windowDuration  # type: ignore
         op._window_slide = slideDuration or windowDuration  # type: ignore
         op._window_start = startTime or "0 seconds"  # type: ignore
+        return op
+
+    @staticmethod
+    def window_time(windowColumn: Union[MockColumn, str]) -> MockColumnOperation:
+        """Extract window start time from window column (PySpark 3.4+).
+        
+        Args:
+            windowColumn: Window column to extract time from
+            
+        Returns:
+            Column operation representing window start timestamp
+            
+        Example:
+            >>> df.groupBy(F.window("timestamp", "1 hour")).agg(
+            ...     F.window_time(F.col("window")).alias("window_start")
+            ... )
+        """
+        column = MockColumn(windowColumn) if isinstance(windowColumn, str) else windowColumn
+        op = MockColumnOperation(column, "window_time", name=f"window_time({column.name})")
         return op
 
     # Deprecated Aliases
