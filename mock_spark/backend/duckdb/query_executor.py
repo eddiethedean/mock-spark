@@ -7,7 +7,7 @@ and execution capabilities for complex DataFrame operations.
 
 # mypy: disable-error-code="arg-type"
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from sqlalchemy import (
     create_engine,
     select,
@@ -64,6 +64,16 @@ class SQLAlchemyMaterializer:
         # Create table and insert data
         self._create_table_with_data(current_table_name, data)
 
+        # Try an optimized single-CTE plan to reduce intermediate materializations.
+        # If anything isn't supported yet, fall back to the legacy multi-table path.
+        try:
+            optimized_rows = self._materialize_with_ctes(current_table_name, operations)
+            if optimized_rows is not None:
+                return optimized_rows
+        except Exception:
+            # Fall back silently to legacy path
+            pass
+
         # Apply operations step by step
         temp_counter = 1
         for op_name, op_val in operations:
@@ -92,6 +102,156 @@ class SQLAlchemyMaterializer:
 
         # Get final results
         return self._get_table_results(current_table_name)
+
+    # ------------------------------------------------------------------
+    # Optimized CTE-based materialization
+    # ------------------------------------------------------------------
+    def _materialize_with_ctes(
+        self, base_table: str, operations: List[Tuple[str, Any]]
+    ) -> Optional[List[MockRow]]:
+        """Attempt to build a single SQL query using chained CTEs.
+
+        Returns:
+            List[MockRow] if successful, or None to signal fallback to legacy path.
+        """
+        # Bail out early for operations we don't yet support in the CTE path
+        unsupported_ops = {"join", "union"}
+        for op_name, op_val in operations:
+            if op_name in unsupported_ops:
+                return None
+            # Detect window functions in select/withColumn payloads (fallback)
+            if op_name == "select":
+                cols = op_val if isinstance(op_val, tuple) else tuple(op_val)
+                if any(
+                    (hasattr(c, "function_name") and hasattr(c, "window_spec"))
+                    or (
+                        hasattr(c, "function_name")
+                        and hasattr(c, "column")
+                        and c.__class__.__name__ == "MockAggregateFunction"
+                    )
+                    for c in cols
+                ):
+                    return None
+            if op_name == "withColumn":
+                _, col_expr = op_val
+                if hasattr(col_expr, "window_spec"):
+                    return None
+
+        # Build CTE chain
+        ctes_sql: List[str] = []
+        alias_prev = "t0"
+        # Start from base table with a simple projection (no copy of data yet)
+        ctes_sql.append(f'{alias_prev} AS (SELECT * FROM {base_table})')
+
+        final_order_by: List[str] = []
+        final_limit: Optional[int] = None
+
+        alias_index = 1
+
+        for op_name, op_val in operations:
+            curr_alias = f"t{alias_index}"
+
+            if op_name == "filter":
+                condition_sql = self._expression_to_sql(op_val)
+                step_sql = f'SELECT * FROM {alias_prev} WHERE {condition_sql}'
+                ctes_sql.append(f"{curr_alias} AS ({step_sql})")
+                alias_prev = curr_alias
+                alias_index += 1
+                continue
+
+            if op_name == "select":
+                columns = op_val if isinstance(op_val, tuple) else tuple(op_val)
+                select_items: List[str] = []
+                for idx, col in enumerate(columns):
+                    if isinstance(col, str):
+                        if col == "*":
+                            # Entire projection; reset items to * alone
+                            select_items = ["*"]
+                            break
+                        else:
+                            ident = col.replace('"', '""')
+                            select_items.append(f'"{ident}" AS "{ident}"')
+                    else:
+                        expr_sql = self._expression_to_sql(col)
+                        alias = getattr(col, "name", None) or f"col_{idx}"
+                        alias_quoted = str(alias).replace('"', '""')
+                        select_items.append(f"{expr_sql} AS \"{alias_quoted}\"")
+
+                step_sql = f'SELECT {", ".join(select_items)} FROM {alias_prev}'
+                ctes_sql.append(f"{curr_alias} AS ({step_sql})")
+                alias_prev = curr_alias
+                alias_index += 1
+                continue
+
+            if op_name == "withColumn":
+                col_name, col_expr = op_val
+                expr_sql = self._expression_to_sql(col_expr)
+                alias_q = str(col_name).replace('"', '""')
+                step_sql = f'SELECT {alias_prev}.*, {expr_sql} AS "{alias_q}" FROM {alias_prev}'
+                ctes_sql.append(f"{curr_alias} AS ({step_sql})")
+                alias_prev = curr_alias
+                alias_index += 1
+                continue
+
+            if op_name == "orderBy":
+                order_exprs: List[str] = []
+                for c in op_val:
+                    if isinstance(c, str):
+                        ident = c.replace('"', '""')
+                        order_exprs.append(f'"{ident}"')
+                    elif hasattr(c, "operation") and getattr(c, "operation", None) in ("desc", "asc"):
+                        target = getattr(c, "column", getattr(c, "name", None))
+                        if hasattr(target, "name"):
+                            ident = target.name.replace('"', '""')
+                            order_exprs.append(f'"{ident}" {c.operation.upper()}')
+                        else:
+                            order_exprs.append(str(target))
+                    elif hasattr(c, "name"):
+                        ident = c.name.replace('"', '""')
+                        order_exprs.append(f'"{ident}"')
+                    else:
+                        order_exprs.append(str(c))
+                # Defer ORDER BY to the final SELECT (semantics match PySpark)
+                final_order_by = order_exprs
+                # Keep the same alias without creating a new CTE for orderBy
+                continue
+
+            if op_name == "limit":
+                # Defer LIMIT to final SELECT
+                final_limit = int(op_val)
+                continue
+
+            # Unknown/unsupported operation for CTE path -> fallback
+            return None
+
+        # Build final query using accumulated CTEs
+        with_clause = "WITH " + ",\n".join(ctes_sql) if ctes_sql else ""
+        final_select = f"SELECT * FROM {alias_prev}"
+        if final_order_by:
+            final_select += " ORDER BY " + ", ".join(final_order_by)
+        if final_limit is not None:
+            final_select += f" LIMIT {final_limit}"
+
+        final_table_name = f"temp_table_{self._temp_table_counter}_final"
+        self._temp_table_counter += 1
+
+        final_sql = (with_clause + "\n" + final_select).strip()
+
+        # Materialize only once into the final table
+        with Session(self.engine) as session:
+            session.execute(text(f"CREATE TABLE {final_table_name} AS {final_sql}"))
+            session.commit()
+
+        # Reflect the created table to get column metadata for result conversion
+        try:
+            target_table_obj = Table(final_table_name, self.metadata, autoload_with=self.engine)
+            self._created_tables[final_table_name] = target_table_obj
+        except Exception:
+            # If reflection fails, register a minimal table with unknown types
+            target_table_obj = Table(final_table_name, self.metadata, autoload_with=self.engine)
+            self._created_tables[final_table_name] = target_table_obj
+
+        return self._get_table_results(final_table_name)
 
     def _create_table_with_data(self, table_name: str, data: List[Dict[str, Any]]) -> None:
         """Create a table and insert data using SQLAlchemy Table."""
