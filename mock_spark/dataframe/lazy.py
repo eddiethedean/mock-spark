@@ -138,6 +138,12 @@ class LazyEvaluationEngine:
                             row_dict[field.name] = float(value)
                         except (ValueError, TypeError):
                             pass  # Keep as string if conversion fails
+                    else:
+                        # Convert Decimal or other numeric types to float
+                        try:
+                            row_dict[field.name] = float(value)
+                        except (ValueError, TypeError):
+                            pass  # Keep original value if conversion fails
 
             materialized_data.append(row_dict)
 
@@ -259,6 +265,11 @@ class LazyEvaluationEngine:
                 else:
                     # Default to StringType for unknown operations
                     new_fields.append(MockStructField(col_name, StringType()))
+            elif hasattr(col, "value") and hasattr(col, "data_type"):
+                # Handle MockLiteral objects
+                col_name = col.name
+                # Use the literal's data_type directly
+                new_fields.append(MockStructField(col_name, col.data_type))
             elif hasattr(col, "conditions") and hasattr(col, "default_value"):
                 # Handle MockCaseWhen objects
                 col_name = col.name

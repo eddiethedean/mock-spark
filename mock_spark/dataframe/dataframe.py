@@ -748,16 +748,18 @@ class MockDataFrame:
                     new_fields.extend(self.schema.fields)
                 elif col_name in literal_columns:
                     # Create field for literal column with correct type
-                    from ..spark_types import (
-                        convert_python_type_to_mock_type,
-                        MockDataType,
-                    )
-
-                    literal_value = literal_columns[col_name]
-                    literal_type: MockDataType = convert_python_type_to_mock_type(
-                        type(literal_value)
-                    )
-                    new_fields.append(MockStructField(col_name, literal_type))
+                    # Use the MockLiteral's data_type if available, otherwise infer from value
+                    if col_name in literal_objects:
+                        # Use the type from the MockLiteral object directly
+                        field_type = literal_objects[col_name].data_type
+                    else:
+                        # Fallback: infer from Python type
+                        from ..spark_types import convert_python_type_to_mock_type
+                        literal_value = literal_columns[col_name]
+                        field_type = convert_python_type_to_mock_type(
+                            type(literal_value)
+                        )
+                    new_fields.append(MockStructField(col_name, field_type))
                 else:
                     # Use existing field
                     for field in self.schema.fields:

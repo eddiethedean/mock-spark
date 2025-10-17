@@ -8,8 +8,8 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-879%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
-[![Type Checked](https://img.shields.io/badge/mypy-100%20files%20clean-blue.svg)](https://github.com/python/mypy)
+[![Tests](https://img.shields.io/badge/tests-942%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Type Checked](https://img.shields.io/badge/mypy-106%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead*
@@ -41,7 +41,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 879 passing tests, 100% mypy typed, zero raw SQL |
+| 🏭 **Production Ready** | 942 passing tests, 100% mypy typed, CTE-optimized queries |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | ✅ **Tested** | Verified on Python 3.9-3.13 + PySpark 3.2-3.5 |
 
@@ -58,21 +58,23 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.8.0)
+### Latest (Version 2.9.0)
 
-**High-Priority PySpark Features** - Critical missing features now available:
-- ✅ **879 tests passing** - Comprehensive validation across all features (+388 new tests)
+**CTE Query Optimization & Performance** - Major performance breakthrough with query optimization:
+- ✅ **942 tests passing** - Comprehensive validation across all features (+63 new tests)
 - ✅ **121 functions** - Complete function coverage across PySpark 3.0-3.5
 - ✅ **78 DataFrame methods** - Including iteration, optimization, and streaming methods
-- ✅ **100% type coverage** - Full mypy validation across 105 source files
+- ✅ **100% type coverage** - Full mypy validation across 106 source files
 - ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
 
-**New in 2.8.0:**
-- 🔄 **Iteration Methods** - `foreach()`, `foreachPartition()`, `toLocalIterator()` for efficient processing
-- ⚡ **Optimization** - `localCheckpoint()`, `repartitionByRange()`, `sortWithinPartitions()`
-- 🌊 **Streaming Support** - `withWatermark()` for event time processing
-- 🐼 **Pandas UDFs** - `pandas_udf()` and `UserDefinedFunction` class for vectorized operations
-- 🔍 **Utilities** - `isLocal()` for environment detection
+**New in 2.9.0:**
+- 🚀 **CTE Query Optimization** - Single-query execution using Common Table Expressions instead of intermediate tables
+  - **5-10x faster** for operation chains like `filter().select().withColumn()`
+  - Automatic optimization with graceful fallback for complex operations
+  - Reduces I/O and memory usage significantly
+  - See `docs/guides/cte_optimization.md` for details
+- 🎯 **Bug Fixes** - Literal type handling (proper float/Decimal conversion), schema tracking for lazy evaluation
+- 📚 **Documentation** - Complete CTE optimization guide with performance benchmarks
 
 ### Version 2.7.0 Highlights
 
@@ -229,6 +231,28 @@ def test_large_dataset():
 ---
 
 ## Core Features
+
+### 🚀 CTE Query Optimization (New in 2.9.0)
+
+DataFrame operation chains are now automatically optimized using Common Table Expressions:
+
+```python
+# Enable lazy evaluation for CTE optimization
+df = spark.createDataFrame(data).withLazy(True)
+
+# This entire chain executes as ONE optimized query:
+result = (
+    df.filter(F.col("age") > 25)           # CTE 0: WHERE clause
+      .select("name", "age", "salary")     # CTE 1: Column selection
+      .withColumn("bonus", F.col("salary") * 0.1)  # CTE 2: New column
+      .orderBy(F.desc("salary"))           # CTE 3: ORDER BY
+      .limit(10)                           # CTE 4: LIMIT
+).collect()  # Single query execution here
+
+# Performance: 5-10x faster than creating 5 intermediate tables
+```
+
+**Benefits**: Reduced I/O, lower memory usage, faster execution for operation chains.
 
 ### DataFrame Operations
 - **Transformations**: `select`, `filter`, `withColumn`, `drop`, `distinct`, `orderBy`, `replace`
@@ -446,7 +470,9 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.3.0** - Delta Time Travel, MERGE Operations  
 **v2.5.0** - Complete PySpark 3.2 API  
 **v2.6.0** - Higher-Order Functions, Lambda Support  
-**v2.7.0** - Extended 3.1/3.3/3.5 Compatibility
+**v2.7.0** - Extended 3.1/3.3/3.5 Compatibility  
+**v2.8.0** - Iteration Methods, Streaming Support  
+**v2.9.0** - CTE Query Optimization, 5-10x Performance Boost
 
 ---
 
@@ -457,7 +483,7 @@ While Mock Spark provides comprehensive PySpark compatibility, some advanced fea
 **Type System**: Strict runtime type validation, custom validators  
 **Error Handling**: Enhanced error messages with recovery strategies  
 **Functions**: Extended date/time, math, and null handling  
-**Performance**: Query optimization, parallel execution, intelligent caching  
+**Performance**: Advanced query optimization, parallel execution, intelligent caching  
 **Enterprise**: Schema evolution, data lineage, audit logging  
 **Compatibility**: PySpark 3.3+, Delta Lake, Iceberg support  
 
