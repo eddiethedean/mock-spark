@@ -200,9 +200,7 @@ class FormatValidationException(ValidationException):
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
-            message = (
-                f"Value {value} for field '{field_name}' does not match format '{expected_format}'"
-            )
+            message = f"Value {value} for field '{field_name}' does not match format '{expected_format}'"
         super().__init__(message, stackTrace)
         self.field_name = field_name
         self.value = value

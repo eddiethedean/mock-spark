@@ -65,7 +65,9 @@ class SessionPerformanceTracker:
     # Benchmarking
     # -------------------------------------------------------------------------
 
-    def benchmark_operation(self, operation_name: str, func: Any, *args: Any, **kwargs: Any) -> Any:
+    def benchmark_operation(
+        self, operation_name: str, func: Any, *args: Any, **kwargs: Any
+    ) -> Any:
         """Benchmark an operation and record simple telemetry.
 
         Args:

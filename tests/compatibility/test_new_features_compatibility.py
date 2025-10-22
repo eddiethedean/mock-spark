@@ -85,7 +85,9 @@ class TestNewDataTypes:
 class TestWindowConstants:
     """Test Window constants compatibility."""
 
-    def test_window_constants_compatibility(self, mock_environment, pyspark_environment):
+    def test_window_constants_compatibility(
+        self, mock_environment, pyspark_environment
+    ):
         """Test Window constants compatibility."""
         from mock_spark.window import MockWindow as MockWindow
         from pyspark.sql.window import Window as PySparkWindow
@@ -115,7 +117,9 @@ class TestEnhancedDataFrameWriter:
 
         # Test multiple options
         mock_writer = mock_dataframe.write.options(compression="gzip", format="parquet")
-        pyspark_writer = pyspark_dataframe.write.options(compression="gzip", format="parquet")
+        pyspark_writer = pyspark_dataframe.write.options(
+            compression="gzip", format="parquet"
+        )
 
         # Both should return the writer for chaining
         assert hasattr(mock_writer, "options")
@@ -154,12 +158,20 @@ class TestNewStringAndMathFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         mock_result = mock_dataframe.select(
-            mock_functions.format_string("Name: %s", mock_functions.col("name")).alias("fmt"),
-            mock_functions.translate(mock_functions.col("name"), "ae", "AE").alias("tr"),
+            mock_functions.format_string("Name: %s", mock_functions.col("name")).alias(
+                "fmt"
+            ),
+            mock_functions.translate(mock_functions.col("name"), "ae", "AE").alias(
+                "tr"
+            ),
         )
         pyspark_result = pyspark_dataframe.select(
-            pyspark_functions.format_string("Name: %s", pyspark_functions.col("name")).alias("fmt"),
-            pyspark_functions.translate(pyspark_functions.col("name"), "ae", "AE").alias("tr"),
+            pyspark_functions.format_string(
+                "Name: %s", pyspark_functions.col("name")
+            ).alias("fmt"),
+            pyspark_functions.translate(
+                pyspark_functions.col("name"), "ae", "AE"
+            ).alias("tr"),
         )
         # Relax comparison: ensure shape equality to account for environment-specific behavior
         assert len(mock_result.columns) == len(pyspark_result.columns)
@@ -172,9 +184,9 @@ class TestNewStringAndMathFunctions:
         # ascii(column)
         # Use deterministic literal to avoid null/empty discrepancies across environments
         mock_ascii = mock_dataframe.select(
-            mock_functions.format_string("%d", mock_functions.ascii(mock_functions.lit("A"))).alias(
-                "ascii_val"
-            )
+            mock_functions.format_string(
+                "%d", mock_functions.ascii(mock_functions.lit("A"))
+            ).alias("ascii_val")
         )
         pyspark_ascii = pyspark_dataframe.select(
             pyspark_functions.format_string(
@@ -196,9 +208,9 @@ class TestNewStringAndMathFunctions:
 
         # Test unbase64 function (round-trip test) - just verify it works
         mock_unbase64 = mock_dataframe.select(
-            mock_functions.unbase64(mock_functions.base64(mock_functions.col("name"))).alias(
-                "decoded"
-            )
+            mock_functions.unbase64(
+                mock_functions.base64(mock_functions.col("name"))
+            ).alias("decoded")
         )
         pyspark_unbase64 = pyspark_dataframe.select(
             pyspark_functions.unbase64(
@@ -214,17 +226,21 @@ class TestNewStringAndMathFunctions:
     ):
         mock_result = mock_dataframe.select(
             mock_functions.sign(mock_functions.col("age")).alias("sgn"),
-            mock_functions.greatest(mock_functions.col("age"), mock_functions.lit(30)).alias("gt"),
-            mock_functions.least(mock_functions.col("age"), mock_functions.lit(30)).alias("lt"),
+            mock_functions.greatest(
+                mock_functions.col("age"), mock_functions.lit(30)
+            ).alias("gt"),
+            mock_functions.least(
+                mock_functions.col("age"), mock_functions.lit(30)
+            ).alias("lt"),
         )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.signum(pyspark_functions.col("age")).alias("sgn"),
             pyspark_functions.greatest(
                 pyspark_functions.col("age"), pyspark_functions.lit(30)
             ).alias("gt"),
-            pyspark_functions.least(pyspark_functions.col("age"), pyspark_functions.lit(30)).alias(
-                "lt"
-            ),
+            pyspark_functions.least(
+                pyspark_functions.col("age"), pyspark_functions.lit(30)
+            ).alias("lt"),
         )
         # Relax comparison to type/shape parity due to PySpark numeric typing
         assert len(mock_result.columns) == len(pyspark_result.columns)
@@ -238,16 +254,20 @@ class TestNewAggregateFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         mock_result = mock_dataframe.select(
-            mock_functions.percentile_approx(mock_functions.col("salary"), 0.5).alias("p50"),
-            mock_functions.corr(mock_functions.col("age"), mock_functions.col("salary")).alias(
-                "corr"
+            mock_functions.percentile_approx(mock_functions.col("salary"), 0.5).alias(
+                "p50"
             ),
+            mock_functions.corr(
+                mock_functions.col("age"), mock_functions.col("salary")
+            ).alias("corr"),
             mock_functions.covar_samp(
                 mock_functions.col("age"), mock_functions.col("salary")
             ).alias("cov"),
         )
         pyspark_result = pyspark_dataframe.select(
-            pyspark_functions.percentile_approx(pyspark_functions.col("salary"), 0.5).alias("p50"),
+            pyspark_functions.percentile_approx(
+                pyspark_functions.col("salary"), 0.5
+            ).alias("p50"),
             pyspark_functions.corr(
                 pyspark_functions.col("age"), pyspark_functions.col("salary")
             ).alias("corr"),
@@ -275,9 +295,9 @@ class TestNewDateTimeFunctions:
             mock_functions.minute(mock_functions.col("ts")).alias("min"),
             mock_functions.second(mock_functions.col("ts")).alias("sec"),
             mock_functions.add_months(mock_functions.col("dt"), 1).alias("addm"),
-            mock_functions.months_between(mock_functions.col("dt"), mock_functions.col("dt")).alias(
-                "mb"
-            ),
+            mock_functions.months_between(
+                mock_functions.col("dt"), mock_functions.col("dt")
+            ).alias("mb"),
             mock_functions.date_add(mock_functions.col("dt"), 5).alias("dadd"),
             mock_functions.date_sub(mock_functions.col("dt"), 5).alias("dsub"),
         )
@@ -309,7 +329,9 @@ class TestNewWindowFunctions:
             from pyspark.sql.window import Window as PySparkWindow
             from mock_spark.window import MockWindow
 
-            mock_win = MockWindow.partitionBy("department").orderBy(mock_functions.col("salary"))
+            mock_win = MockWindow.partitionBy("department").orderBy(
+                mock_functions.col("salary")
+            )
             pyspark_win = PySparkWindow.partitionBy("department").orderBy(
                 pyspark_functions.col("salary")
             )
@@ -349,13 +371,17 @@ class TestNewDataFrameEnhancements:
         pyspark_result = pyspark_dataframe.selectExpr("name as up")
         assert_dataframes_equal(mock_result, pyspark_result)
 
-        mock_result2 = mock_dataframe.select(mock_functions.expr("lower(name)").alias("lo"))
+        mock_result2 = mock_dataframe.select(
+            mock_functions.expr("lower(name)").alias("lo")
+        )
         pyspark_result2 = pyspark_dataframe.select(
             pyspark_functions.expr("lower(name)").alias("lo")
         )
         assert_dataframes_equal(mock_result2, pyspark_result2)
 
-    def test_head_tail_toJSON_and_partition_ops(self, mock_dataframe, pyspark_dataframe):
+    def test_head_tail_toJSON_and_partition_ops(
+        self, mock_dataframe, pyspark_dataframe
+    ):
         mock_head = mock_dataframe.head(2)
         pyspark_head = pyspark_dataframe.head(2)
         assert len(mock_head) == len(pyspark_head)
@@ -368,8 +394,13 @@ class TestNewDataFrameEnhancements:
         pyspark_json = pyspark_dataframe.toJSON()
         assert mock_json.count() == pyspark_json.count()
 
-        assert mock_dataframe.repartition(2).count() == pyspark_dataframe.repartition(2).count()
-        assert mock_dataframe.coalesce(1).count() == pyspark_dataframe.coalesce(1).count()
+        assert (
+            mock_dataframe.repartition(2).count()
+            == pyspark_dataframe.repartition(2).count()
+        )
+        assert (
+            mock_dataframe.coalesce(1).count() == pyspark_dataframe.coalesce(1).count()
+        )
         # Checkpoint requires configuration in PySpark; skip direct parity
         # Just ensure mock method exists and returns a DataFrame
         assert hasattr(mock_dataframe, "checkpoint")
@@ -381,7 +412,9 @@ class TestNewDataFrameEnhancements:
 class TestNewSessionEnhancements:
     """Compatibility tests for new session behaviors."""
 
-    def test_getOrCreate_and_global_temp_view(self, mock_environment, pyspark_environment):
+    def test_getOrCreate_and_global_temp_view(
+        self, mock_environment, pyspark_environment
+    ):
         mock_builder = mock_environment["session"].builder
         pyspark_builder = pyspark_environment["session"].builder
 
@@ -604,7 +637,9 @@ class TestMockOnlyFeatures:
         assert all("name" in row and "age" in row for row in data)
 
         # Test create_corrupted_data
-        corrupted_data = create_corrupted_data(schema, num_rows=10, corruption_rate=0.3, seed=42)
+        corrupted_data = create_corrupted_data(
+            schema, num_rows=10, corruption_rate=0.3, seed=42
+        )
         assert len(corrupted_data) == 10
 
     def test_data_generator_builder(self, mock_environment):

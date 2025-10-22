@@ -119,7 +119,9 @@ class IStringFunction(IColumnFunction):
         pass
 
     @abstractmethod
-    def substring(self, column: Union[str, Any], start: int, length: int) -> "IStringFunction":
+    def substring(
+        self, column: Union[str, Any], start: int, length: int
+    ) -> "IStringFunction":
         """Extract substring."""
         pass
 
@@ -172,7 +174,9 @@ class IDateTimeFunction(IColumnFunction):
         pass
 
     @abstractmethod
-    def to_date(self, column: Union[str, Any], format: Optional[str] = None) -> "IDateTimeFunction":
+    def to_date(
+        self, column: Union[str, Any], format: Optional[str] = None
+    ) -> "IDateTimeFunction":
         """Convert to date."""
         pass
 

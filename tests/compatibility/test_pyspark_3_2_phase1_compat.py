@@ -10,6 +10,7 @@ import pytest
 try:
     from pyspark.sql import SparkSession  # noqa: F401
     from pyspark.sql import functions as PySparkF  # noqa: F401
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
@@ -27,27 +28,41 @@ class TestTimestampFunctionsCompat:
         """Setup test data for both mock-spark and PySpark."""
         self.mock_spark = MockSparkSession("test")
         if PYSPARK_AVAILABLE:
-            self.real_spark = SparkSession.builder.appName("test").master("local[1]").getOrCreate()
+            self.real_spark = (
+                SparkSession.builder.appName("test").master("local[1]").getOrCreate()
+            )
 
         self.test_data = [
-            {"id": 1, "timestamp": "2024-01-15 10:30:00", "start_date": "2024-01-01", "end_date": "2024-01-31"},
-            {"id": 2, "timestamp": "2024-06-15 14:20:00", "start_date": "2024-06-01", "end_date": "2024-06-30"},
+            {
+                "id": 1,
+                "timestamp": "2024-01-15 10:30:00",
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-31",
+            },
+            {
+                "id": 2,
+                "timestamp": "2024-06-15 14:20:00",
+                "start_date": "2024-06-01",
+                "end_date": "2024-06-30",
+            },
         ]
 
     def teardown_method(self):
         """Cleanup sessions."""
-        if PYSPARK_AVAILABLE and hasattr(self, 'real_spark'):
+        if PYSPARK_AVAILABLE and hasattr(self, "real_spark"):
             self.real_spark.stop()
 
     def test_timestampadd_day(self):
         """Test timestampadd with DAY unit."""
         mock_df = self.mock_spark.createDataFrame(self.test_data)
-        _real_df = self.real_spark.createDataFrame(self.test_data)  # For future comparison
+        _real_df = self.real_spark.createDataFrame(
+            self.test_data
+        )  # For future comparison
 
         # Both should add 7 days
         mock_result = mock_df.select(
             F.col("id"),
-            F.timestampadd("DAY", 7, F.col("timestamp")).alias("new_timestamp")
+            F.timestampadd("DAY", 7, F.col("timestamp")).alias("new_timestamp"),
         ).collect()
 
         # Note: PySpark 3.3+ has timestampadd, 3.2 might not
@@ -62,7 +77,9 @@ class TestTimestampFunctionsCompat:
         # Calculate days between start and end
         mock_result = mock_df.select(
             F.col("id"),
-            F.timestampdiff("DAY", F.col("start_date"), F.col("end_date")).alias("days_diff")
+            F.timestampdiff("DAY", F.col("start_date"), F.col("end_date")).alias(
+                "days_diff"
+            ),
         ).collect()
 
         assert len(mock_result) == 2
@@ -78,7 +95,9 @@ class TestStringFunctionsCompat:
         """Setup test data."""
         self.mock_spark = MockSparkSession("test")
         if PYSPARK_AVAILABLE:
-            self.real_spark = SparkSession.builder.appName("test").master("local[1]").getOrCreate()
+            self.real_spark = (
+                SparkSession.builder.appName("test").master("local[1]").getOrCreate()
+            )
 
         self.test_data = [
             {"id": 1, "text": "Hello World", "tags": ["a", "b", "c"]},
@@ -87,7 +106,7 @@ class TestStringFunctionsCompat:
 
     def teardown_method(self):
         """Cleanup sessions."""
-        if PYSPARK_AVAILABLE and hasattr(self, 'real_spark'):
+        if PYSPARK_AVAILABLE and hasattr(self, "real_spark"):
             self.real_spark.stop()
 
     def test_initcap(self):
@@ -95,8 +114,7 @@ class TestStringFunctionsCompat:
         mock_df = self.mock_spark.createDataFrame(self.test_data)
 
         mock_result = mock_df.select(
-            F.col("id"),
-            F.initcap(F.col("text")).alias("capitalized")
+            F.col("id"), F.initcap(F.col("text")).alias("capitalized")
         ).collect()
 
         assert len(mock_result) == 2
@@ -127,8 +145,7 @@ class TestStringFunctionsCompat:
         mock_df = self.mock_spark.createDataFrame(self.test_data)
 
         mock_result = mock_df.select(
-            F.col("id"),
-            F.array_join(F.col("tags"), ", ").alias("joined_tags")
+            F.col("id"), F.array_join(F.col("tags"), ", ").alias("joined_tags")
         ).collect()
 
         assert len(mock_result) == 2
@@ -160,12 +177,9 @@ class TestEnhancedErrorMessagesCompat:
         from mock_spark.core.exceptions.analysis import ColumnNotFoundException
 
         exc = ColumnNotFoundException(
-            "missing_col",
-            available_columns=["id", "name"],
-            table_name="users"
+            "missing_col", available_columns=["id", "name"], table_name="users"
         )
 
         assert exc.error_code == "COLUMN_NOT_FOUND"
         assert "missing_col" in str(exc)
         assert "Available columns" in str(exc)
-

@@ -311,7 +311,9 @@ class MockColumnOperation(IColumn):
 
     def alias(self, name: str) -> "MockColumnOperation":
         """Create an alias for this operation."""
-        aliased_operation = MockColumnOperation(self.column, self.operation, self.value, name)
+        aliased_operation = MockColumnOperation(
+            self.column, self.operation, self.value, name
+        )
         return aliased_operation
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]

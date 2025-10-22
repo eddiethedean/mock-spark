@@ -23,11 +23,9 @@ def check_docker_available() -> bool:
     """Check if Docker is available."""
     try:
         import subprocess
+
         result = subprocess.run(
-            ["docker", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            ["docker", "--version"], capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
             print(f"✓ Docker: {result.stdout.strip()}")
@@ -83,7 +81,9 @@ def main():
         all_good = False
         print()
         print("Note: Docker is required to run compatibility tests.")
-        print("Install Docker Desktop from: https://www.docker.com/products/docker-desktop")
+        print(
+            "Install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+        )
 
     print()
     print("=" * 70)
@@ -101,4 +101,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

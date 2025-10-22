@@ -82,7 +82,9 @@ class TestDropSchemaSQL:
         dbs = spark.catalog.listDatabases()
         db_names = [db.name for db in dbs]
 
-        assert "test_schema" not in db_names, "Dropped schema should not appear in catalog"
+        assert "test_schema" not in db_names, (
+            "Dropped schema should not appear in catalog"
+        )
 
     def test_drop_database_updates_catalog(self, spark):
         """Test that DROP DATABASE removes from catalog."""
@@ -182,9 +184,9 @@ class TestSparkForgePatterns:
         # This assertion was failing in SparkForge - should now work
         dbs = spark.catalog.listDatabases()
         db_names = [db.name for db in dbs]
-        assert (
-            schema_name in db_names
-        ), f"Schema {schema_name} should appear in catalog after SQL CREATE"
+        assert schema_name in db_names, (
+            f"Schema {schema_name} should appear in catalog after SQL CREATE"
+        )
 
     def test_multiple_schema_creation_workflow(self, spark):
         """Test creating multiple schemas as in real workflows."""

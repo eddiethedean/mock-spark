@@ -25,7 +25,9 @@ class SQLAlchemyQueryBuilder:
         """
         self.table = table
         self.schema = schema
-        self.select_stmt: Any = select(table)  # Can be Select or CompoundSelect after union()
+        self.select_stmt: Any = select(
+            table
+        )  # Can be Select or CompoundSelect after union()
         self._with_columns: Dict[str, Any] = {}
         self._join_tables: List[Tuple[Table, Any, str]] = []
 
@@ -92,7 +94,9 @@ class SQLAlchemyQueryBuilder:
         if order_cols:
             self.select_stmt = self.select_stmt.order_by(*order_cols)
 
-    def add_join(self, other_table: Table, on: Union[str, List[str]], how: str = "inner") -> None:
+    def add_join(
+        self, other_table: Table, on: Union[str, List[str]], how: str = "inner"
+    ) -> None:
         """Add a JOIN operation using SQLAlchemy."""
         # Build join condition
         if isinstance(on, str):
@@ -138,7 +142,11 @@ class SQLAlchemyQueryBuilder:
             return literal(str(op))
 
         left = self._column_to_sqlalchemy(op.column)
-        right = self._value_to_sqlalchemy(op.value) if hasattr(op, "value") else literal(op.value)
+        right = (
+            self._value_to_sqlalchemy(op.value)
+            if hasattr(op, "value")
+            else literal(op.value)
+        )
 
         # Map operations to SQLAlchemy operators
         operation_map = {

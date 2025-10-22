@@ -20,13 +20,15 @@ class TestBooleanAggregates:
             {"group": "A", "flag": True},
             {"group": "A", "flag": True},
             {"group": "B", "flag": True},
-            {"group": "B", "flag": False}
+            {"group": "B", "flag": False},
         ]
         df = self.spark.createDataFrame(data)
 
-        result = df.groupBy("group").agg(
-            F.bool_and(F.col("flag")).alias("all_true")
-        ).collect()
+        result = (
+            df.groupBy("group")
+            .agg(F.bool_and(F.col("flag")).alias("all_true"))
+            .collect()
+        )
 
         # Group A: all True
         group_a = [r for r in result if r["group"] == "A"][0]
@@ -42,13 +44,15 @@ class TestBooleanAggregates:
             {"group": "A", "flag": False},
             {"group": "A", "flag": False},
             {"group": "B", "flag": False},
-            {"group": "B", "flag": True}
+            {"group": "B", "flag": True},
         ]
         df = self.spark.createDataFrame(data)
 
-        result = df.groupBy("group").agg(
-            F.bool_or(F.col("flag")).alias("any_true")
-        ).collect()
+        result = (
+            df.groupBy("group")
+            .agg(F.bool_or(F.col("flag")).alias("any_true"))
+            .collect()
+        )
 
         # Group A: all False
         group_a = [r for r in result if r["group"] == "A"][0]
@@ -91,7 +95,7 @@ class TestAdvancedAggregates:
         data = [
             {"name": "Alice", "score": 95},
             {"name": "Bob", "score": 87},
-            {"name": "Charlie", "score": 92}
+            {"name": "Charlie", "score": 92},
         ]
         df = self.spark.createDataFrame(data)
 
@@ -106,7 +110,7 @@ class TestAdvancedAggregates:
         data = [
             {"name": "Alice", "score": 95},
             {"name": "Bob", "score": 87},
-            {"name": "Charlie", "score": 92}
+            {"name": "Charlie", "score": 92},
         ]
         df = self.spark.createDataFrame(data)
 
@@ -118,12 +122,7 @@ class TestAdvancedAggregates:
 
     def test_count_if(self):
         """Test count_if - conditional counting."""
-        data = [
-            {"value": 10},
-            {"value": 25},
-            {"value": 30},
-            {"value": 15}
-        ]
+        data = [{"value": 10}, {"value": 25}, {"value": 30}, {"value": 15}]
         df = self.spark.createDataFrame(data)
 
         result = df.agg(
@@ -137,13 +136,15 @@ class TestAdvancedAggregates:
         data = [
             {"group": "A", "value": 10},
             {"group": "A", "value": 20},
-            {"group": "B", "value": 30}
+            {"group": "B", "value": 30},
         ]
         df = self.spark.createDataFrame(data)
 
-        result = df.groupBy("group").agg(
-            F.any_value(F.col("value")).alias("some_value")
-        ).collect()
+        result = (
+            df.groupBy("group")
+            .agg(F.any_value(F.col("value")).alias("some_value"))
+            .collect()
+        )
 
         # Should return some value from each group (non-deterministic)
         group_a = [r for r in result if r["group"] == "A"][0]
@@ -151,4 +152,3 @@ class TestAdvancedAggregates:
 
         group_b = [r for r in result if r["group"] == "B"][0]
         assert group_b["some_value"] == 30
-

@@ -59,7 +59,9 @@ class CSVSerializer:
             writer.writerow(["name", "data_type", "nullable"])
 
             for field in schema.fields:
-                writer.writerow([field.name, type(field.dataType).__name__, field.nullable])
+                writer.writerow(
+                    [field.name, type(field.dataType).__name__, field.nullable]
+                )
 
     @staticmethod
     def deserialize_schema(file_path: str) -> MockStructType:

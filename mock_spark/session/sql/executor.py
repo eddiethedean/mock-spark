@@ -92,7 +92,9 @@ class MockSQLExecutor:
             elif ast.query_type == "DESCRIBE":
                 return self._execute_describe(ast)
             else:
-                raise QueryExecutionException(f"Unsupported query type: {ast.query_type}")
+                raise QueryExecutionException(
+                    f"Unsupported query type: {ast.query_type}"
+                )
 
         except Exception as e:
             if isinstance(e, QueryExecutionException):
@@ -122,7 +124,9 @@ class MockSQLExecutor:
 
             # For now, create a simple DataFrame with one row
             # This is a basic implementation for literal SELECT queries
-            data: List[Dict[str, Any]] = [{}]  # Empty row, we'll populate based on SELECT columns
+            data: List[Dict[str, Any]] = [
+                {}
+            ]  # Empty row, we'll populate based on SELECT columns
             schema = MockStructType([])
             df = MockDataFrame(data, schema)
         else:
@@ -205,7 +209,9 @@ class MockSQLExecutor:
 
         # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
         if object_type in ("DATABASE", "SCHEMA"):
-            self.session.catalog.createDatabase(object_name, ignoreIfExists=ignore_if_exists)
+            self.session.catalog.createDatabase(
+                object_name, ignoreIfExists=ignore_if_exists
+            )
         elif object_type == "TABLE":
             # Mock table creation
             pass
@@ -236,7 +242,9 @@ class MockSQLExecutor:
 
         # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
         if object_type in ("DATABASE", "SCHEMA"):
-            self.session.catalog.dropDatabase(object_name, ignoreIfNotExists=ignore_if_not_exists)
+            self.session.catalog.dropDatabase(
+                object_name, ignoreIfNotExists=ignore_if_not_exists
+            )
         elif object_type == "TABLE":
             # Mock table drop
             pass
@@ -354,7 +362,9 @@ class MockSQLExecutor:
             # DESCRIBE HISTORY table_name
             import re
 
-            match = re.search(r"DESCRIBE\s+HISTORY\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
+            match = re.search(
+                r"DESCRIBE\s+HISTORY\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE
+            )
             if match:
                 table_name = match.group(1)
 
@@ -482,7 +492,8 @@ class MockSQLExecutor:
                 # Check if this target row matches any source row
                 for source_dict in source_data_list:
                     matches = all(
-                        target_dict.get(cond["left_col"]) == source_dict.get(cond["right_col"])
+                        target_dict.get(cond["left_col"])
+                        == source_dict.get(cond["right_col"])
                         for cond in condition_parts
                     )
 
@@ -499,11 +510,15 @@ class MockSQLExecutor:
                                 for assignment in set_clause.split(","):
                                     assignment = assignment.strip()
                                     # Match: t.column = s.column or t.column = value
-                                    match = re.match(r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", assignment)
+                                    match = re.match(
+                                        r"(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)", assignment
+                                    )
                                     if match:
                                         target_col = match.group(2)
                                         source_col = match.group(4)
-                                        updated_row[target_col] = source_dict.get(source_col)
+                                        updated_row[target_col] = source_dict.get(
+                                            source_col
+                                        )
 
                                 updated_rows.append(updated_row)
                             elif clause["action"] == "DELETE":
@@ -524,7 +539,8 @@ class MockSQLExecutor:
                 for target_row in target_data:
                     target_dict = target_row.asDict()
                     matches = all(
-                        target_dict.get(cond["left_col"]) == source_dict.get(cond["right_col"])
+                        target_dict.get(cond["left_col"])
+                        == source_dict.get(cond["right_col"])
                         for cond in condition_parts
                     )
                     if matches:
@@ -545,9 +561,13 @@ class MockSQLExecutor:
         # Write merged data back to target table
 
         self.session.storage.drop_table(target_schema, target_name)  # type: ignore[attr-defined]
-        self.session.storage.create_table(target_schema, target_name, target_df.schema.fields)  # type: ignore[attr-defined]
+        self.session.storage.create_table(
+            target_schema, target_name, target_df.schema.fields
+        )  # type: ignore[attr-defined]
         if updated_rows:
-            self.session.storage.insert_data(target_schema, target_name, updated_rows, mode="append")  # type: ignore[attr-defined]
+            self.session.storage.insert_data(
+                target_schema, target_name, updated_rows, mode="append"
+            )  # type: ignore[attr-defined]
 
         # MERGE returns empty DataFrame
         return cast(IDataFrame, MockDataFrame([], MockStructType([])))

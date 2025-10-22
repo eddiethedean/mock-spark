@@ -99,7 +99,9 @@ class ConfigurationException(PySparkRuntimeError):
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
-            message = f"Invalid configuration value '{config_value}' for key '{config_key}'"
+            message = (
+                f"Invalid configuration value '{config_value}' for key '{config_key}'"
+            )
         super().__init__(message, stackTrace)
         self.config_key = config_key
         self.config_value = config_value
@@ -183,7 +185,9 @@ class TimeoutException(PySparkRuntimeError):
         stackTrace: Optional[Any] = None,
     ):
         if message is None:
-            message = f"Operation '{operation}' timed out after {timeout_seconds} seconds"
+            message = (
+                f"Operation '{operation}' timed out after {timeout_seconds} seconds"
+            )
         super().__init__(message, stackTrace)
         self.operation = operation
         self.timeout_seconds = timeout_seconds

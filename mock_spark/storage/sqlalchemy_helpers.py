@@ -284,14 +284,22 @@ class TableFactory:
         """
         self.metadata = metadata or MetaData()
 
-    def from_mock_schema(self, table_name: str, mock_schema: Any, **kwargs: Any) -> Table:
+    def from_mock_schema(
+        self, table_name: str, mock_schema: Any, **kwargs: Any
+    ) -> Table:
         """Create table from MockSpark schema."""
-        return create_table_from_mock_schema(table_name, mock_schema, self.metadata, **kwargs)
+        return create_table_from_mock_schema(
+            table_name, mock_schema, self.metadata, **kwargs
+        )
 
-    def from_data(self, table_name: str, data: List[Dict[str, Any]], **kwargs: Any) -> Table:
+    def from_data(
+        self, table_name: str, data: List[Dict[str, Any]], **kwargs: Any
+    ) -> Table:
         """Create table by inferring types from data."""
         return create_table_from_data(table_name, data, self.metadata, **kwargs)
 
-    def from_columns(self, table_name: str, columns: List[Column], **kwargs: Any) -> Table:
+    def from_columns(
+        self, table_name: str, columns: List[Column], **kwargs: Any
+    ) -> Table:
         """Create table from list of Column objects."""
         return Table(table_name, self.metadata, *columns, **kwargs)

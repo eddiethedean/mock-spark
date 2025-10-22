@@ -14,9 +14,7 @@ class TestXMLFunctionsUnit:
         df = spark.createDataFrame(data)
 
         # to_xml with simple column - should wrap in XML tags
-        result = df.select(
-            F.to_xml(F.col("data")).alias("xml")
-        ).collect()
+        result = df.select(F.to_xml(F.col("data")).alias("xml")).collect()
 
         # Should contain XML tags
         assert "<row>" in str(result[0]["xml"]) and "</row>" in str(result[0]["xml"])
@@ -43,9 +41,7 @@ class TestXMLFunctionsUnit:
         data = [{"xml": "<row><name>Alice</name><age>30</age></row>"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.schema_of_xml(F.col("xml")).alias("schema")
-        ).collect()
+        result = df.select(F.schema_of_xml(F.col("xml")).alias("schema")).collect()
 
         # Should return STRUCT<...> format
         schema_str = result[0]["schema"]
@@ -144,13 +140,10 @@ class TestXMLFunctionsUnit:
         data = [{"xml": "<root><item>A</item><item>B</item></root>"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.xpath(F.col("xml"), "/root/item").alias("items")
-        ).collect()
+        result = df.select(F.xpath(F.col("xml"), "/root/item").alias("items")).collect()
 
         # Should return array with "A" and "B"
         items = result[0]["items"]
         assert items is not None
         assert len(items) == 2
         assert "A" in items and "B" in items
-

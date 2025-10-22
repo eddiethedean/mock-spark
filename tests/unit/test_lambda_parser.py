@@ -184,4 +184,3 @@ class TestLambdaIntegration:
         """Test lambda with string values (future support)."""
         # Placeholder for future string lambda support
         pass
-

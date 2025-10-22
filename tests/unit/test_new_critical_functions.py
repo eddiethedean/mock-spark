@@ -52,7 +52,9 @@ class TestDataFrameMethodAliases:
 
     def test_groupby_lowercase(self, spark):
         """Test groupby() as lowercase alias."""
-        df = spark.createDataFrame([{"dept": "IT", "count": 1}, {"dept": "IT", "count": 2}])
+        df = spark.createDataFrame(
+            [{"dept": "IT", "count": 1}, {"dept": "IT", "count": 2}]
+        )
         result = df.groupby("dept").count()
         assert result.count() == 1
 
@@ -89,10 +91,7 @@ class TestDataFrameMethodAliases:
     def test_withColumns(self, spark):
         """Test withColumns() to add multiple columns."""
         df = spark.createDataFrame([{"a": 1}])
-        result = df.withColumns({
-            "b": F.col("a") * 2,
-            "c": F.col("a") * 3
-        })
+        result = df.withColumns({"b": F.col("a") * 2, "c": F.col("a") * 3})
         assert "b" in result.columns
         assert "c" in result.columns
         row = result.collect()[0]
@@ -114,21 +113,21 @@ class TestAdvancedDataFrameMethods:
 
     def test_cov(self, spark):
         """Test cov() covariance calculation."""
-        df = spark.createDataFrame([
-            {"x": 1, "y": 2},
-            {"x": 2, "y": 4},
-            {"x": 3, "y": 6}
-        ])
+        df = spark.createDataFrame(
+            [{"x": 1, "y": 2}, {"x": 2, "y": 4}, {"x": 3, "y": 6}]
+        )
         cov_value = df.cov("x", "y")
         assert cov_value > 0  # Positive covariance for positive correlation
 
     def test_crosstab(self, spark):
         """Test crosstab() cross-tabulation."""
-        df = spark.createDataFrame([
-            {"age": "young", "gender": "M"},
-            {"age": "young", "gender": "F"},
-            {"age": "old", "gender": "M"}
-        ])
+        df = spark.createDataFrame(
+            [
+                {"age": "young", "gender": "M"},
+                {"age": "young", "gender": "F"},
+                {"age": "old", "gender": "M"},
+            ]
+        )
         result = df.crosstab("age", "gender")
         assert result.count() == 2  # Two age groups
 
@@ -155,12 +154,14 @@ class TestAdvancedDataFrameMethods:
         """Test isEmpty() check."""
         df_empty = spark.createDataFrame([])
         df_not_empty = spark.createDataFrame([{"a": 1}])
-        assert df_empty.isEmpty() == True
-        assert df_not_empty.isEmpty() == False
+        assert df_empty.isEmpty()
+        assert not df_not_empty.isEmpty()
 
     def test_sampleBy(self, spark):
         """Test sampleBy() stratified sampling."""
-        df = spark.createDataFrame([{"group": "A"} for _ in range(100)] + [{"group": "B"} for _ in range(100)])
+        df = spark.createDataFrame(
+            [{"group": "A"} for _ in range(100)] + [{"group": "B"} for _ in range(100)]
+        )
         result = df.sampleBy("group", {"A": 0.5, "B": 0.5}, seed=42)
         # With seed, should be deterministic
         count = result.count()
@@ -181,20 +182,20 @@ class TestStatisticalFunctions:
 
     def test_median(self, spark):
         """Test median() aggregate function."""
-        df = spark.createDataFrame([{"value": i} for i in [1, 2, 3, 4, 5]])
+        spark.createDataFrame([{"value": i} for i in [1, 2, 3, 4, 5]])
         # Note: median needs to be handled in aggregation, this just tests the function exists
         median_func = F.median("value")
         assert median_func.function_name == "median"
 
     def test_mode(self, spark):
         """Test mode() aggregate function."""
-        df = spark.createDataFrame([{"value": 1}, {"value": 1}, {"value": 2}])
+        spark.createDataFrame([{"value": 1}, {"value": 1}, {"value": 2}])
         mode_func = F.mode("value")
         assert mode_func.function_name == "mode"
 
     def test_percentile(self, spark):
         """Test percentile() aggregate function."""
-        df = spark.createDataFrame([{"value": i} for i in range(1, 11)])
+        spark.createDataFrame([{"value": i} for i in range(1, 11)])
         percentile_func = F.percentile("value", 0.5)
         assert percentile_func.function_name == "percentile"
         assert percentile_func.percentage == 0.5
@@ -245,10 +246,13 @@ class TestConditionalFunctions:
     def test_ifnull(self, spark):
         """Test ifnull() function."""
         from mock_spark.spark_types import MockStructType, MockStructField, IntegerType
-        schema = MockStructType([
-            MockStructField("a", IntegerType(), nullable=True),
-            MockStructField("b", IntegerType(), nullable=False)
-        ])
+
+        schema = MockStructType(
+            [
+                MockStructField("a", IntegerType(), nullable=True),
+                MockStructField("b", IntegerType(), nullable=False),
+            ]
+        )
         df = spark.createDataFrame([{"a": None, "b": 10}], schema=schema)
         result = df.select(F.ifnull("a", "b").alias("result"))
         assert "result" in result.columns
@@ -265,7 +269,9 @@ class TestArrayFunctions:
 
     def test_array_agg(self, spark):
         """Test array_agg() aggregate function."""
-        df = spark.createDataFrame([{"dept": "IT", "name": "Alice"}, {"dept": "IT", "name": "Bob"}])
+        spark.createDataFrame(
+            [{"dept": "IT", "name": "Alice"}, {"dept": "IT", "name": "Bob"}]
+        )
         agg_func = F.array_agg("name")
         assert agg_func.function_name == "array_agg"
 
@@ -321,19 +327,19 @@ class TestBitwiseFunctions:
 
     def test_bit_and(self, spark):
         """Test bit_and() aggregate function."""
-        df = spark.createDataFrame([{"dept": "IT", "flags": 7}, {"dept": "IT", "flags": 3}])
+        spark.createDataFrame([{"dept": "IT", "flags": 7}, {"dept": "IT", "flags": 3}])
         agg_func = F.bit_and("flags")
         assert agg_func.function_name == "bit_and"
 
     def test_bit_or(self, spark):
         """Test bit_or() aggregate function."""
-        df = spark.createDataFrame([{"dept": "IT", "flags": 1}, {"dept": "IT", "flags": 2}])
+        spark.createDataFrame([{"dept": "IT", "flags": 1}, {"dept": "IT", "flags": 2}])
         agg_func = F.bit_or("flags")
         assert agg_func.function_name == "bit_or"
 
     def test_bit_xor(self, spark):
         """Test bit_xor() aggregate function."""
-        df = spark.createDataFrame([{"dept": "IT", "flags": 5}, {"dept": "IT", "flags": 3}])
+        spark.createDataFrame([{"dept": "IT", "flags": 5}, {"dept": "IT", "flags": 3}])
         agg_func = F.bit_xor("flags")
         assert agg_func.function_name == "bit_xor"
 
@@ -359,4 +365,3 @@ class TestIntegration:
         assert "x" not in result.columns
         row = result.collect()[0]
         assert row["original"] == 5
-

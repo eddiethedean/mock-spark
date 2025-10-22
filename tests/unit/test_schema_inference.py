@@ -33,9 +33,9 @@ class TestBasicTypeDetection:
         # PySpark infers integers as LongType
         value_field = df.schema.fields[0]
         assert value_field.name == "value"
-        assert isinstance(
-            value_field.dataType, LongType
-        ), f"Expected LongType, got {type(value_field.dataType).__name__}"
+        assert isinstance(value_field.dataType, LongType), (
+            f"Expected LongType, got {type(value_field.dataType).__name__}"
+        )
         assert value_field.nullable, "All inferred fields should be nullable"
 
     def test_detect_float_as_double(self, spark):
@@ -45,9 +45,9 @@ class TestBasicTypeDetection:
 
         # PySpark infers floats as DoubleType
         value_field = df.schema.fields[0]
-        assert isinstance(
-            value_field.dataType, DoubleType
-        ), f"Expected DoubleType, got {type(value_field.dataType).__name__}"
+        assert isinstance(value_field.dataType, DoubleType), (
+            f"Expected DoubleType, got {type(value_field.dataType).__name__}"
+        )
         assert value_field.nullable
 
     def test_detect_string(self, spark):
@@ -56,9 +56,9 @@ class TestBasicTypeDetection:
         df = spark.createDataFrame(data)
 
         value_field = df.schema.fields[0]
-        assert isinstance(
-            value_field.dataType, StringType
-        ), f"Expected StringType, got {type(value_field.dataType).__name__}"
+        assert isinstance(value_field.dataType, StringType), (
+            f"Expected StringType, got {type(value_field.dataType).__name__}"
+        )
         assert value_field.nullable
 
     def test_detect_boolean(self, spark):
@@ -67,9 +67,9 @@ class TestBasicTypeDetection:
         df = spark.createDataFrame(data)
 
         value_field = df.schema.fields[0]
-        assert isinstance(
-            value_field.dataType, BooleanType
-        ), f"Expected BooleanType, got {type(value_field.dataType).__name__}"
+        assert isinstance(value_field.dataType, BooleanType), (
+            f"Expected BooleanType, got {type(value_field.dataType).__name__}"
+        )
         assert value_field.nullable
 
     def test_all_nulls_raises_error(self, spark):
@@ -131,9 +131,9 @@ class TestMultipleRows:
 
         # Should infer from non-null values
         fields_by_name = {f.name: f for f in df.schema.fields}
-        assert isinstance(
-            fields_by_name["value"].dataType, LongType
-        ), "Should infer from non-null values"
+        assert isinstance(fields_by_name["value"].dataType, LongType), (
+            "Should infer from non-null values"
+        )
         assert fields_by_name["value"].nullable
 
 
@@ -186,9 +186,9 @@ class TestArrayInference:
 
         tags_field = [f for f in df.schema.fields if f.name == "tags"][0]
         assert isinstance(tags_field.dataType, ArrayType), "Should be ArrayType"
-        assert isinstance(
-            tags_field.dataType.element_type, StringType
-        ), "Elements should be StringType"
+        assert isinstance(tags_field.dataType.element_type, StringType), (
+            "Elements should be StringType"
+        )
         assert tags_field.nullable
 
     def test_array_of_integers(self, spark):
@@ -201,9 +201,9 @@ class TestArrayInference:
 
         numbers_field = [f for f in df.schema.fields if f.name == "numbers"][0]
         assert isinstance(numbers_field.dataType, ArrayType)
-        assert isinstance(
-            numbers_field.dataType.element_type, LongType
-        ), "Array elements should be LongType"
+        assert isinstance(numbers_field.dataType.element_type, LongType), (
+            "Array elements should be LongType"
+        )
 
     def test_empty_array_with_non_empty(self, spark):
         """Test that empty arrays don't break inference."""
@@ -232,7 +232,9 @@ class TestMapInference:
 
         # PySpark infers consistent-key dicts as MapType
         metadata_field = [f for f in df.schema.fields if f.name == "metadata"][0]
-        assert isinstance(metadata_field.dataType, MapType), "Consistent dicts should be MapType"
+        assert isinstance(metadata_field.dataType, MapType), (
+            "Consistent dicts should be MapType"
+        )
         # MapType should have string keys and string values
         assert metadata_field.dataType.key_type.typeName() == "string"
         assert metadata_field.dataType.value_type.typeName() == "string"
@@ -285,7 +287,9 @@ class TestColumnOrdering:
 
         # PySpark sorts columns alphabetically
         # Expected order: age, id, name
-        assert df.columns == sorted(df.columns), "Columns should be in alphabetical order"
+        assert df.columns == sorted(df.columns), (
+            "Columns should be in alphabetical order"
+        )
 
 
 class TestNestedStructures:
@@ -369,12 +373,12 @@ class TestExplicitSchemaOverride:
         df = spark.createDataFrame(data, schema=explicit_schema)
 
         # Should use explicit schema, not inferred LongType
-        assert isinstance(
-            df.schema.fields[0].dataType, IntegerType
-        ), "Should use explicit IntegerType"
-        assert isinstance(
-            df.schema.fields[1].dataType, IntegerType
-        ), "Should use explicit IntegerType"
+        assert isinstance(df.schema.fields[0].dataType, IntegerType), (
+            "Should use explicit IntegerType"
+        )
+        assert isinstance(df.schema.fields[1].dataType, IntegerType), (
+            "Should use explicit IntegerType"
+        )
 
     def test_no_schema_triggers_inference(self, spark):
         """Test that omitting schema triggers auto-inference."""
@@ -448,7 +452,9 @@ class TestColumnOrderingPySpark:
 
         # PySpark sorts columns alphabetically
         expected_order = ["apple", "middle", "zebra"]
-        assert df.columns == expected_order, f"Expected {expected_order}, got {df.columns}"
+        assert df.columns == expected_order, (
+            f"Expected {expected_order}, got {df.columns}"
+        )
 
     def test_ordering_with_multiple_rows(self, spark):
         """Test column ordering with keys appearing in different rows."""
@@ -505,9 +511,9 @@ class TestNoneValueHandling:
 
         fields_by_name = {f.name: f for f in df.schema.fields}
         # Should infer LongType from non-null value (row 3)
-        assert isinstance(
-            fields_by_name["value"].dataType, LongType
-        ), "Should infer type from non-null values"
+        assert isinstance(fields_by_name["value"].dataType, LongType), (
+            "Should infer type from non-null values"
+        )
 
     def test_multiple_columns_all_none_raises_error(self, spark):
         """Test multiple columns with all None values raises ValueError."""

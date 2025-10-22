@@ -156,7 +156,9 @@ class MockCatalog:
 
         # Support both camelCase (PySpark) and snake_case (Python) parameter names
         ignore_flag = (
-            ignore_if_not_exists if ignore_if_not_exists is not None else ignoreIfNotExists
+            ignore_if_not_exists
+            if ignore_if_not_exists is not None
+            else ignoreIfNotExists
         )
 
         if not ignore_flag and not self.storage.schema_exists(name):
@@ -232,7 +234,9 @@ class MockCatalog:
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
-            raise AnalysisException(f"Failed to list tables in database '{dbName}': {str(e)}")
+            raise AnalysisException(
+                f"Failed to list tables in database '{dbName}': {str(e)}"
+            )
 
     def createTable(
         self,

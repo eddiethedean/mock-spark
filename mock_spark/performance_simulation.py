@@ -293,7 +293,9 @@ def create_slow_simulator(
     Returns:
         MockPerformanceSimulator configured for slow operations.
     """
-    return MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
+    return (
+        MockPerformanceSimulatorBuilder(spark_session).slowdown(slowdown_factor).build()
+    )
 
 
 def create_memory_limited_simulator(
@@ -308,7 +310,11 @@ def create_memory_limited_simulator(
     Returns:
         MockPerformanceSimulator configured for memory limits.
     """
-    return MockPerformanceSimulatorBuilder(spark_session).memory_limit(memory_limit).build()
+    return (
+        MockPerformanceSimulatorBuilder(spark_session)
+        .memory_limit(memory_limit)
+        .build()
+    )
 
 
 def create_high_performance_simulator(spark_session: Any) -> MockPerformanceSimulator:

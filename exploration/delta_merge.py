@@ -34,7 +34,10 @@ try:
     print("=" * 80)
 
     # Create target table
-    target_data = [{"id": 1, "name": "Alice", "score": 100}, {"id": 2, "name": "Bob", "score": 200}]
+    target_data = [
+        {"id": 1, "name": "Alice", "score": 100},
+        {"id": 2, "name": "Bob", "score": 200},
+    ]
     target_df = spark.createDataFrame(target_data)
     target_df.write.format("delta").mode("overwrite").saveAsTable("test.target")
 
@@ -187,7 +190,11 @@ try:
     print("=" * 80)
 
     target5 = spark.createDataFrame(
-        [{"id": 1, "active": True}, {"id": 2, "active": True}, {"id": 3, "active": True}]
+        [
+            {"id": 1, "active": True},
+            {"id": 2, "active": True},
+            {"id": 3, "active": True},
+        ]
     )
     target5.write.format("delta").mode("overwrite").saveAsTable("test.target5")
 

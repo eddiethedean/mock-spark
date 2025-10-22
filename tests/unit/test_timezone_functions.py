@@ -15,22 +15,24 @@ class TestTimezoneFunctionsUnit:
         df = spark.createDataFrame(data)
 
         result = df.select(
-            F.convert_timezone("UTC", "America/New_York", F.col("ts")).alias("converted")
+            F.convert_timezone("UTC", "America/New_York", F.col("ts")).alias(
+                "converted"
+            )
         ).collect()
 
         # Just check it runs without error
         assert "converted" in result[0]
 
-    @pytest.mark.skip(reason="current_timezone() needs special handling for functions without column input")
+    @pytest.mark.skip(
+        reason="current_timezone() needs special handling for functions without column input"
+    )
     def test_current_timezone(self):
         """Test current_timezone returns timezone."""
         spark = MockSparkSession("test")
         data = [{"id": 1}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.current_timezone().alias("tz")
-        ).collect()
+        result = df.select(F.current_timezone().alias("tz")).collect()
 
         # Check it returns a string
         assert isinstance(result[0]["tz"], str)
@@ -60,4 +62,3 @@ class TestTimezoneFunctionsUnit:
 
         # Check it runs
         assert "utc" in result[0]
-

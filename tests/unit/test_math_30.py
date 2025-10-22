@@ -10,37 +10,41 @@ class TestTrigFunctions:
     def test_atan2_quadrants(self):
         """Test atan2 in all four quadrants."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"y": 1.0, "x": 1.0},    # Quadrant 1: π/4
-            {"y": 1.0, "x": -1.0},   # Quadrant 2: 3π/4
-            {"y": -1.0, "x": -1.0},  # Quadrant 3: -3π/4
-            {"y": -1.0, "x": 1.0},   # Quadrant 4: -π/4
-        ])
+        df = spark.createDataFrame(
+            [
+                {"y": 1.0, "x": 1.0},  # Quadrant 1: π/4
+                {"y": 1.0, "x": -1.0},  # Quadrant 2: 3π/4
+                {"y": -1.0, "x": -1.0},  # Quadrant 3: -3π/4
+                {"y": -1.0, "x": 1.0},  # Quadrant 4: -π/4
+            ]
+        )
 
         result = df.select(F.atan2(F.col("y"), F.col("x")).alias("angle")).collect()
 
         # Verify angles in correct quadrants
-        assert abs(result[0]["angle"] - math.pi/4) < 0.001
-        assert abs(result[1]["angle"] - 3*math.pi/4) < 0.001
-        assert abs(result[2]["angle"] - (-3*math.pi/4)) < 0.001
-        assert abs(result[3]["angle"] - (-math.pi/4)) < 0.001
+        assert abs(result[0]["angle"] - math.pi / 4) < 0.001
+        assert abs(result[1]["angle"] - 3 * math.pi / 4) < 0.001
+        assert abs(result[2]["angle"] - (-3 * math.pi / 4)) < 0.001
+        assert abs(result[3]["angle"] - (-math.pi / 4)) < 0.001
 
     def test_atan2_special_cases(self):
         """Test atan2 with special cases."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"y": 0.0, "x": 1.0},    # 0 radians
-            {"y": 1.0, "x": 0.0},    # π/2 radians
-            {"y": 0.0, "x": -1.0},   # π radians
-            {"y": -1.0, "x": 0.0},   # -π/2 radians
-        ])
+        df = spark.createDataFrame(
+            [
+                {"y": 0.0, "x": 1.0},  # 0 radians
+                {"y": 1.0, "x": 0.0},  # π/2 radians
+                {"y": 0.0, "x": -1.0},  # π radians
+                {"y": -1.0, "x": 0.0},  # -π/2 radians
+            ]
+        )
 
         result = df.select(F.atan2(F.col("y"), F.col("x")).alias("angle")).collect()
 
         assert abs(result[0]["angle"] - 0.0) < 0.001
-        assert abs(result[1]["angle"] - math.pi/2) < 0.001
+        assert abs(result[1]["angle"] - math.pi / 2) < 0.001
         assert abs(result[2]["angle"] - math.pi) < 0.001
-        assert abs(result[3]["angle"] - (-math.pi/2)) < 0.001
+        assert abs(result[3]["angle"] - (-math.pi / 2)) < 0.001
 
 
 class TestLogFunctions:
@@ -49,12 +53,9 @@ class TestLogFunctions:
     def test_log10_basic(self):
         """Test log10 with powers of 10."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"value": 1.0},
-            {"value": 10.0},
-            {"value": 100.0},
-            {"value": 1000.0}
-        ])
+        df = spark.createDataFrame(
+            [{"value": 1.0}, {"value": 10.0}, {"value": 100.0}, {"value": 1000.0}]
+        )
 
         result = df.select(F.log10(F.col("value")).alias("log10")).collect()
 
@@ -67,13 +68,15 @@ class TestLogFunctions:
     def test_log2_basic(self):
         """Test log2 with powers of 2."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"value": 1.0},
-            {"value": 2.0},
-            {"value": 4.0},
-            {"value": 8.0},
-            {"value": 16.0}
-        ])
+        df = spark.createDataFrame(
+            [
+                {"value": 1.0},
+                {"value": 2.0},
+                {"value": 4.0},
+                {"value": 8.0},
+                {"value": 16.0},
+            ]
+        )
 
         result = df.select(F.log2(F.col("value")).alias("log2")).collect()
 
@@ -87,12 +90,9 @@ class TestLogFunctions:
     def test_log1p_basic(self):
         """Test log1p for small values."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"value": 0.0},
-            {"value": 0.01},
-            {"value": 0.1},
-            {"value": 1.0}
-        ])
+        df = spark.createDataFrame(
+            [{"value": 0.0}, {"value": 0.01}, {"value": 0.1}, {"value": 1.0}]
+        )
 
         result = df.select(F.log1p(F.col("value")).alias("log1p")).collect()
 
@@ -107,12 +107,9 @@ class TestLogFunctions:
     def test_expm1_basic(self):
         """Test expm1 for small values."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"value": 0.0},
-            {"value": 0.01},
-            {"value": 0.1},
-            {"value": 1.0}
-        ])
+        df = spark.createDataFrame(
+            [{"value": 0.0}, {"value": 0.01}, {"value": 0.1}, {"value": 1.0}]
+        )
 
         result = df.select(F.expm1(F.col("value")).alias("expm1")).collect()
 
@@ -126,14 +123,10 @@ class TestLogFunctions:
     def test_log_functions_with_nulls(self):
         """Test log functions handle nulls properly."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([
-            {"value": 10.0},
-            {"value": None}
-        ])
+        df = spark.createDataFrame([{"value": 10.0}, {"value": None}])
 
         result = df.select(
-            F.log10(F.col("value")).alias("log10"),
-            F.log2(F.col("value")).alias("log2")
+            F.log10(F.col("value")).alias("log10"), F.log2(F.col("value")).alias("log2")
         ).collect()
 
         # First row should have values
@@ -143,4 +136,3 @@ class TestLogFunctions:
         # Second row should be None
         assert result[1]["log10"] is None
         assert result[1]["log2"] is None
-

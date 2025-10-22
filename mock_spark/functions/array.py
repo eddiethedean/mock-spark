@@ -25,7 +25,11 @@ from typing import Any, Union, Callable, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from mock_spark.functions.base import MockAggregateFunction
 
-from mock_spark.functions.base import MockColumn, MockColumnOperation, MockLambdaExpression
+from mock_spark.functions.base import (
+    MockColumn,
+    MockColumnOperation,
+    MockLambdaExpression,
+)
 
 
 class ArrayFunctions:
@@ -136,7 +140,9 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_position(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+    def array_position(
+        column: Union[MockColumn, str], value: Any
+    ) -> MockColumnOperation:
         """Return the (1-based) index of the first occurrence of value in the array.
 
         Args:
@@ -153,7 +159,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_position", value, name=f"array_position({column.name}, {value!r})"
+            column,
+            "array_position",
+            value,
+            name=f"array_position({column.name}, {value!r})",
         )
 
     @staticmethod
@@ -174,7 +183,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_remove", value, name=f"array_remove({column.name}, {value!r})"
+            column,
+            "array_remove",
+            value,
+            name=f"array_remove({column.name}, {value!r})",
         )
 
     @staticmethod
@@ -409,7 +421,9 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def slice(column: Union[MockColumn, str], start: int, length: int) -> MockColumnOperation:
+    def slice(
+        column: Union[MockColumn, str], start: int, length: int
+    ) -> MockColumnOperation:
         """Extract array slice starting at position for given length.
 
         Args:
@@ -427,7 +441,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "slice", (start, length), name=f"slice({column.name}, {start}, {length})"
+            column,
+            "slice",
+            (start, length),
+            name=f"slice({column.name}, {start}, {length})",
         )
 
     @staticmethod
@@ -453,7 +470,9 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_append(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+    def array_append(
+        column: Union[MockColumn, str], element: Any
+    ) -> MockColumnOperation:
         """Append element to end of array.
 
         Args:
@@ -470,11 +489,16 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_append", element, name=f"array_append({column.name}, {element})"
+            column,
+            "array_append",
+            element,
+            name=f"array_append({column.name}, {element})",
         )
 
     @staticmethod
-    def array_prepend(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+    def array_prepend(
+        column: Union[MockColumn, str], element: Any
+    ) -> MockColumnOperation:
         """Prepend element to start of array.
 
         Args:
@@ -491,7 +515,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_prepend", element, name=f"array_prepend({column.name}, {element})"
+            column,
+            "array_prepend",
+            element,
+            name=f"array_prepend({column.name}, {element})",
         )
 
     @staticmethod
@@ -515,7 +542,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_insert", (pos, value), name=f"array_insert({column.name}, {pos}, {value})"
+            column,
+            "array_insert",
+            (pos, value),
+            name=f"array_insert({column.name}, {pos}, {value})",
         )
 
     @staticmethod
@@ -578,7 +608,10 @@ class ArrayFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "array_contains", value=value, name=f"array_contains({column.name}, {value})"
+            column,
+            "array_contains",
+            value=value,
+            name=f"array_contains({column.name}, {value})",
         )
 
     @staticmethod
@@ -637,9 +670,7 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "explode", name=f"explode({column.name})"
-        )
+        return MockColumnOperation(column, "explode", name=f"explode({column.name})")
 
     @staticmethod
     def size(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -657,9 +688,7 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "size", name=f"size({column.name})"
-        )
+        return MockColumnOperation(column, "size", name=f"size({column.name})")
 
     @staticmethod
     def flatten(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -677,9 +706,7 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "flatten", name=f"flatten({column.name})"
-        )
+        return MockColumnOperation(column, "flatten", name=f"flatten({column.name})")
 
     @staticmethod
     def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -697,9 +724,7 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "reverse", name=f"reverse({column.name})"
-        )
+        return MockColumnOperation(column, "reverse", name=f"reverse({column.name})")
 
     @staticmethod
     def arrays_overlap(
@@ -801,14 +826,14 @@ class ArrayFunctions:
             cols[0] if cols else MockColumn(""),
             "arrays_zip",
             value=cols[1:] if len(cols) > 1 else [],
-            name="arrays_zip(...)"
+            name="arrays_zip(...)",
         )
 
     @staticmethod
     def sequence(
         start: Union[MockColumn, str, int],
         stop: Union[MockColumn, str, int],
-        step: Union[MockColumn, str, int] = 1
+        step: Union[MockColumn, str, int] = 1,
     ) -> MockColumnOperation:
         """Generate array of integers from start to stop by step.
 
@@ -824,13 +849,14 @@ class ArrayFunctions:
             start = MockColumn(start)
         elif isinstance(start, int):
             from mock_spark.functions.core.literals import MockLiteral
+
             start = MockLiteral(start)  # type: ignore[assignment]
 
         return MockColumnOperation(
             start,  # type: ignore[arg-type]
             "sequence",
             value=(stop, step),
-            name=f"sequence({start}, {stop}, {step})"
+            name=f"sequence({start}, {stop}, {step})",
         )
 
     @staticmethod
@@ -846,9 +872,7 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "shuffle", name=f"shuffle({column.name})"
-        )
+        return MockColumnOperation(column, "shuffle", name=f"shuffle({column.name})")
 
     @staticmethod
     def array(*cols: Union[MockColumn, str]) -> MockColumnOperation:
@@ -881,12 +905,14 @@ class ArrayFunctions:
         else:
             rest_cols = ()
 
-        col_names = ", ".join(c.name if hasattr(c, "name") else str(c) for c in converted_cols)
+        col_names = ", ".join(
+            c.name if hasattr(c, "name") else str(c) for c in converted_cols
+        )
         return MockColumnOperation(
             first_col,
             "array",
             value=rest_cols if rest_cols else None,
-            name=f"array({col_names})"
+            name=f"array({col_names})",
         )
 
     @staticmethod
@@ -907,14 +933,13 @@ class ArrayFunctions:
             col = MockColumn(col)
 
         return MockColumnOperation(
-            col,
-            "array_repeat",
-            value=count,
-            name=f"array_repeat({col.name}, {count})"
+            col, "array_repeat", value=count, name=f"array_repeat({col.name}, {count})"
         )
 
     @staticmethod
-    def sort_array(col: Union[MockColumn, str], asc: bool = True) -> MockColumnOperation:
+    def sort_array(
+        col: Union[MockColumn, str], asc: bool = True
+    ) -> MockColumnOperation:
         """Sort array elements (PySpark 3.0+).
 
         Args:
@@ -932,10 +957,7 @@ class ArrayFunctions:
 
         # Use array_sort as internal function name (reuse existing handlers)
         return MockColumnOperation(
-            col,
-            "array_sort",
-            value=asc,
-            name=f"sort_array({col.name}, {asc})"
+            col, "array_sort", value=asc, name=f"sort_array({col.name}, {asc})"
         )
 
     # Priority 2: Additional Array Functions
@@ -972,4 +994,3 @@ class ArrayFunctions:
         """
         column = MockColumn(col) if isinstance(col, str) else col
         return MockColumnOperation(column, "size", name=f"cardinality({column.name})")
-

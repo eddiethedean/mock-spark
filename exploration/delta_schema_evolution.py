@@ -69,7 +69,9 @@ try:
     print("Attempting append with new column WITH mergeSchema=true...")
     print("-" * 80)
 
-    df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable("test.users")
+    df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
+        "test.users"
+    )
 
     print("\nAfter schema evolution:")
     result2 = spark.table("test.users")
@@ -105,18 +107,18 @@ try:
 
     # Add column b
     df_v2 = spark.createDataFrame([{"a": 2, "b": "two"}])
-    df_v2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-        "test.evolve"
-    )
+    df_v2.write.format("delta").mode("append").option(
+        "mergeSchema", "true"
+    ).saveAsTable("test.evolve")
     print("\nVersion 2 (columns: a, b):")
     spark.table("test.evolve").show()
     print(f"Columns: {spark.table('test.evolve').columns}")
 
     # Add column c
     df_v3 = spark.createDataFrame([{"a": 3, "b": "three", "c": 3.0}])
-    df_v3.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-        "test.evolve"
-    )
+    df_v3.write.format("delta").mode("append").option(
+        "mergeSchema", "true"
+    ).saveAsTable("test.evolve")
     print("\nVersion 3 (columns: a, b, c):")
     result = spark.table("test.evolve")
     result.show()
@@ -138,10 +140,12 @@ try:
     spark.table("test.type_test").printSchema()
 
     # Add string column
-    df_str = spark.createDataFrame([{"id": 2, "value": 200, "description": "two hundred"}])
-    df_str.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-        "test.type_test"
+    df_str = spark.createDataFrame(
+        [{"id": 2, "value": 200, "description": "two hundred"}]
     )
+    df_str.write.format("delta").mode("append").option(
+        "mergeSchema", "true"
+    ).saveAsTable("test.type_test")
     print("\nAfter adding string column:")
     spark.table("test.type_test").printSchema()
     spark.table("test.type_test").show()
@@ -152,7 +156,9 @@ try:
     print("1. mergeSchema=true required to add new columns during append")
     print("2. Without mergeSchema, append with new columns raises AnalysisException")
     print("3. Old rows get null values for newly added columns")
-    print("4. Schema evolution works incrementally (can add multiple columns over time)")
+    print(
+        "4. Schema evolution works incrementally (can add multiple columns over time)"
+    )
     print("5. Column types are preserved correctly")
 
 finally:

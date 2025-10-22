@@ -34,9 +34,10 @@ class TestStructFunctionsUnit:
         df = spark.createDataFrame(data)
 
         result = df.select(
-            F.named_struct("field1", F.col("x"), "field2", F.col("y")).alias("struct_col")
+            F.named_struct("field1", F.col("x"), "field2", F.col("y")).alias(
+                "struct_col"
+            )
         ).collect()
 
         # Named struct should be dict-like
         assert isinstance(result[0]["struct_col"], (dict, str))
-

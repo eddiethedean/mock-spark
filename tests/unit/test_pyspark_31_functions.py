@@ -7,13 +7,19 @@ from mock_spark import MockSparkSession, F
 class TestMapFunctions:
     """Test higher-order map functions (PySpark 3.1+)."""
 
-    @pytest.mark.skip(reason="map_filter has complex DuckDB map representation - compatibility tests verify core functionality")
+    @pytest.mark.skip(
+        reason="map_filter has complex DuckDB map representation - compatibility tests verify core functionality"
+    )
     def test_map_filter_basic(self):
         """Test map_filter filters map entries."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([{"properties": {"a": "apple", "b": "banana", "c": "cherry"}}])
+        df = spark.createDataFrame(
+            [{"properties": {"a": "apple", "b": "banana", "c": "cherry"}}]
+        )
 
-        result = df.select(F.map_filter(F.col("properties"), lambda k, v: k > "a").alias("filtered")).collect()
+        result = df.select(
+            F.map_filter(F.col("properties"), lambda k, v: k > "a").alias("filtered")
+        ).collect()
 
         # Should keep only entries with keys > "a" (b, c)
         filtered_map = result[0]["filtered"]
@@ -30,20 +36,19 @@ class TestMapFunctions:
             # DuckDB may return other representation - just verify not None
             assert filtered_map is not None
 
-    @pytest.mark.skip(reason="map_zip_with has NULL handling complexity - compatibility tests verify core functionality")
+    @pytest.mark.skip(
+        reason="map_zip_with has NULL handling complexity - compatibility tests verify core functionality"
+    )
     def test_map_zip_with_basic(self):
         """Test map_zip_with merges two maps."""
         spark = MockSparkSession("test")
-        df = spark.createDataFrame([{
-            "map1": {"a": "x", "b": "y"},
-            "map2": {"a": "1", "b": "2", "c": "3"}
-        }])
+        df = spark.createDataFrame(
+            [{"map1": {"a": "x", "b": "y"}, "map2": {"a": "1", "b": "2", "c": "3"}}]
+        )
 
         result = df.select(
             F.map_zip_with(
-                F.col("map1"),
-                F.col("map2"),
-                lambda k, v1, v2: v1 + "_" + v2
+                F.col("map1"), F.col("map2"), lambda k, v1, v2: v1 + "_" + v2
             ).alias("merged")
         ).collect()
 
@@ -135,4 +140,3 @@ class TestDataFrameMethods:
 
         # Same schema should produce same hash
         assert df1.semanticHash() == df2.semanticHash()
-

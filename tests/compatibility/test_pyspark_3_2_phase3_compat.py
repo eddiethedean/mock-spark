@@ -10,6 +10,7 @@ import pytest
 try:
     from pyspark.sql import SparkSession  # noqa: F401
     from pyspark.sql import functions as PySparkF  # noqa: F401
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
@@ -19,7 +20,9 @@ from mock_spark import functions as F
 
 
 @pytest.mark.compatibility
-@pytest.mark.skip(reason="SQL WHERE clause has pre-existing parsing issue - parameter binding works but WHERE doesn't filter")
+@pytest.mark.skip(
+    reason="SQL WHERE clause has pre-existing parsing issue - parameter binding works but WHERE doesn't filter"
+)
 class TestParameterizedSQLCompat:
     """Test parameterized SQL queries."""
 
@@ -74,7 +77,9 @@ class TestParameterizedSQLCompat:
 
 
 @pytest.mark.compatibility
-@pytest.mark.skip(reason="SQL parsing has pre-existing issues - ALL syntax implemented but needs SQL parser fixes")
+@pytest.mark.skip(
+    reason="SQL parsing has pre-existing issues - ALL syntax implemented but needs SQL parser fixes"
+)
 class TestSQLAllSyntaxCompat:
     """Test ORDER BY ALL and GROUP BY ALL compatibility."""
 
@@ -107,7 +112,9 @@ class TestSQLAllSyntaxCompat:
         df.createOrReplaceTempView("employees")
 
         # GROUP BY ALL should group by non-aggregated columns
-        result = spark.sql("SELECT dept, SUM(salary) as total FROM employees GROUP BY ALL")
+        result = spark.sql(
+            "SELECT dept, SUM(salary) as total FROM employees GROUP BY ALL"
+        )
 
         collected = result.collect()
         assert len(collected) == 2  # Two departments
@@ -150,16 +157,24 @@ class TestArrayFunctionsCompat:
 
     def setup_method(self):
         """Setup test data."""
-        from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, ArrayType, StringType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            IntegerType,
+            ArrayType,
+            StringType,
+        )
 
         self.mock_spark = MockSparkSession("test")
 
         # Create DataFrame with proper array schema
-        schema = MockStructType([
-            MockStructField("id", IntegerType()),
-            MockStructField("tags", ArrayType(StringType())),
-            MockStructField("tags2", ArrayType(StringType())),
-        ])
+        schema = MockStructType(
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("tags", ArrayType(StringType())),
+                MockStructField("tags2", ArrayType(StringType())),
+            ]
+        )
 
         # Create data - arrays will be stored as Python lists
         data = [
@@ -175,8 +190,7 @@ class TestArrayFunctionsCompat:
         mock_df = self.test_df
 
         result = mock_df.select(
-            F.col("id"),
-            F.array_distinct(F.col("tags")).alias("distinct_tags")
+            F.col("id"), F.array_distinct(F.col("tags")).alias("distinct_tags")
         )
 
         collected = result.collect()
@@ -186,7 +200,7 @@ class TestArrayFunctionsCompat:
         """Test array_intersect function."""
         result = self.test_df.select(
             F.col("id"),
-            F.array_intersect(F.col("tags"), F.col("tags2")).alias("intersection")
+            F.array_intersect(F.col("tags"), F.col("tags2")).alias("intersection"),
         )
 
         collected = result.collect()
@@ -195,8 +209,7 @@ class TestArrayFunctionsCompat:
     def test_array_union(self):
         """Test array_union function."""
         result = self.test_df.select(
-            F.col("id"),
-            F.array_union(F.col("tags"), F.col("tags2")).alias("union")
+            F.col("id"), F.array_union(F.col("tags"), F.col("tags2")).alias("union")
         )
 
         collected = result.collect()
@@ -205,8 +218,7 @@ class TestArrayFunctionsCompat:
     def test_array_except(self):
         """Test array_except function."""
         result = self.test_df.select(
-            F.col("id"),
-            F.array_except(F.col("tags"), F.col("tags2")).alias("except")
+            F.col("id"), F.array_except(F.col("tags"), F.col("tags2")).alias("except")
         )
 
         collected = result.collect()
@@ -215,8 +227,7 @@ class TestArrayFunctionsCompat:
     def test_array_position(self):
         """Test array_position function."""
         result = self.test_df.select(
-            F.col("id"),
-            F.array_position(F.col("tags"), "b").alias("position")
+            F.col("id"), F.array_position(F.col("tags"), "b").alias("position")
         )
 
         collected = result.collect()
@@ -225,8 +236,7 @@ class TestArrayFunctionsCompat:
     def test_array_remove(self):
         """Test array_remove function."""
         result = self.test_df.select(
-            F.col("id"),
-            F.array_remove(F.col("tags"), "a").alias("removed")
+            F.col("id"), F.array_remove(F.col("tags"), "a").alias("removed")
         )
 
         collected = result.collect()
@@ -239,15 +249,23 @@ class TestMapFunctionsCompat:
 
     def setup_method(self):
         """Setup test data."""
-        from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, MapType, StringType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            IntegerType,
+            MapType,
+            StringType,
+        )
 
         self.mock_spark = MockSparkSession("test")
 
         # Create DataFrame with proper map schema
-        schema = MockStructType([
-            MockStructField("id", IntegerType()),
-            MockStructField("properties", MapType(StringType(), StringType())),
-        ])
+        schema = MockStructType(
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("properties", MapType(StringType(), StringType())),
+            ]
+        )
 
         # Create data - maps will be stored as Python dicts
         data = [
@@ -262,7 +280,7 @@ class TestMapFunctionsCompat:
         # Use DataFrame directly, not temp view
         result = self.test_df.select(
             F.col("id"),
-            F.map_keys(F.col("properties")).alias("keys")  # Explicit alias required
+            F.map_keys(F.col("properties")).alias("keys"),  # Explicit alias required
         )
 
         collected = result.collect()
@@ -273,16 +291,18 @@ class TestMapFunctionsCompat:
         # Check if it's a list or string representation of a list
         assert isinstance(keys, (list, str))
         if isinstance(keys, str):
-            assert 'key1' in keys and 'key2' in keys
+            assert "key1" in keys and "key2" in keys
         else:
-            assert 'key1' in keys
+            assert "key1" in keys
 
     def test_map_values(self):
         """Test map_values function."""
         # Use DataFrame directly, not temp view
         result = self.test_df.select(
             F.col("id"),
-            F.map_values(F.col("properties")).alias("values")  # Explicit alias required
+            F.map_values(F.col("properties")).alias(
+                "values"
+            ),  # Explicit alias required
         )
 
         collected = result.collect()
@@ -293,7 +313,6 @@ class TestMapFunctionsCompat:
         # Check if it's a list or string representation of a list
         assert isinstance(values, (list, str))
         if isinstance(values, str):
-            assert 'val1' in values and 'val2' in values
+            assert "val1" in values and "val2" in values
         else:
-            assert 'val1' in values
-
+            assert "val1" in values

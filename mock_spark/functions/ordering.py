@@ -93,4 +93,3 @@ class OrderingFunctions:
         return MockColumnOperation(
             column, "desc_nulls_last", name=f"{column.name} DESC NULLS LAST"
         )
-

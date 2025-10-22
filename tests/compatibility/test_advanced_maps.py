@@ -10,13 +10,20 @@ import pytest
 try:
     from pyspark.sql import SparkSession  # noqa: F401
     from pyspark.sql import functions as PySparkF  # noqa: F401
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
-from mock_spark.spark_types import MockStructType, MockStructField, MapType, StringType, IntegerType
+from mock_spark.spark_types import (
+    MockStructType,
+    MockStructField,
+    MapType,
+    StringType,
+    IntegerType,
+)
 
 
 @pytest.mark.fast
@@ -30,7 +37,9 @@ class TestAdvancedMapFunctionsUnit:
         df = spark.createDataFrame(data)
 
         result = df.select(
-            F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")).alias("map")
+            F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")).alias(
+                "map"
+            )
         ).collect()
 
         assert result[0]["map"] == {"a": 1, "b": 2}
@@ -39,9 +48,9 @@ class TestAdvancedMapFunctionsUnit:
         """Test map_contains_key checks for key existence."""
         spark = MockSparkSession("test")
         data = [{"map": {"a": 1, "b": 2, "c": 3}}]
-        schema = MockStructType([
-            MockStructField("map", MapType(StringType(), IntegerType()))
-        ])
+        schema = MockStructType(
+            [MockStructField("map", MapType(StringType(), IntegerType()))]
+        )
         df = spark.createDataFrame(data, schema)
 
         result = df.select(
@@ -70,4 +79,3 @@ class TestAdvancedMapFunctionsUnit:
         """Test transform_values transforms map values with lambda."""
         # Skip - complex type handling issues
         pytest.skip("Type handling for map lambdas needs improvement")
-

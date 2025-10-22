@@ -256,4 +256,3 @@ class TestDeltaTableIntegration:
 
         assert result is not None
         assert len(result.columns) == 2
-

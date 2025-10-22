@@ -25,10 +25,10 @@ _API_MATRIX: Optional[Dict[str, Dict[str, Dict[str, bool]]]] = None
 def set_pyspark_version(version: Optional[str]) -> None:
     """
     Set PySpark compatibility version.
-    
+
     Args:
         version: PySpark version string (e.g., '3.1', '3.2', '3.5') or None for all features
-    
+
     Examples:
         >>> set_pyspark_version('3.1')
         >>> # Only PySpark 3.1-compatible APIs will be available
@@ -41,15 +41,15 @@ def set_pyspark_version(version: Optional[str]) -> None:
         return
 
     # Normalize version format (3.1 or 3.1.3 -> 3.1.3)
-    if version.count('.') == 1:
+    if version.count(".") == 1:
         # Map major.minor to specific patch version
         version_map = {
-            '3.0': '3.0.3',
-            '3.1': '3.1.3',
-            '3.2': '3.2.4',
-            '3.3': '3.3.4',
-            '3.4': '3.4.3',
-            '3.5': '3.5.2',
+            "3.0": "3.0.3",
+            "3.1": "3.1.3",
+            "3.2": "3.2.4",
+            "3.3": "3.3.4",
+            "3.4": "3.4.3",
+            "3.5": "3.5.2",
         }
         version = version_map.get(version, version)
 
@@ -59,7 +59,7 @@ def set_pyspark_version(version: Optional[str]) -> None:
 def get_pyspark_version() -> Optional[str]:
     """
     Get current PySpark compatibility version.
-    
+
     Returns:
         Version string or None if all features available
     """
@@ -69,7 +69,7 @@ def get_pyspark_version() -> Optional[str]:
 def _load_api_matrix() -> Dict[str, Dict[str, Dict[str, bool]]]:
     """
     Load the API availability matrix from JSON file.
-    
+
     Returns:
         Dictionary with 'functions' and 'dataframe_methods' matrices
     """
@@ -85,7 +85,7 @@ def _load_api_matrix() -> Dict[str, Dict[str, Dict[str, bool]]]:
         # Fallback: all items available if matrix file missing
         return {"functions": {}, "dataframe_methods": {}}
 
-    with open(matrix_path, 'r') as f:
+    with open(matrix_path, "r") as f:
         _API_MATRIX = json.load(f)
 
     return _API_MATRIX
@@ -94,14 +94,14 @@ def _load_api_matrix() -> Dict[str, Dict[str, Dict[str, bool]]]:
 def is_available(item_name: str, item_type: str = "function") -> bool:
     """
     Check if a function or method is available in current compatibility mode.
-    
+
     Args:
         item_name: Name of the function or method
         item_type: Either 'function' or 'dataframe_method'
-    
+
     Returns:
         True if item is available in current version mode
-    
+
     Examples:
         >>> set_pyspark_version('3.0')
         >>> is_available('make_date', 'function')
@@ -138,7 +138,7 @@ def is_available(item_name: str, item_type: str = "function") -> bool:
 def check_version_from_env() -> None:
     """
     Check environment variable for version setting.
-    
+
     Looks for MOCK_SPARK_PYSPARK_VERSION environment variable.
     """
     env_version = os.environ.get("MOCK_SPARK_PYSPARK_VERSION")
@@ -149,19 +149,19 @@ def check_version_from_env() -> None:
 def check_version_from_marker() -> None:
     """
     Check for version marker file in package directory.
-    
+
     Looks for .pyspark_X_Y_compat marker files created during installation.
     """
     marker_dir = Path(__file__).parent
 
     # Check for marker files in order (latest first)
     version_markers = [
-        ('.pyspark_3_5_compat', '3.5'),
-        ('.pyspark_3_4_compat', '3.4'),
-        ('.pyspark_3_3_compat', '3.3'),
-        ('.pyspark_3_2_compat', '3.2'),
-        ('.pyspark_3_1_compat', '3.1'),
-        ('.pyspark_3_0_compat', '3.0'),
+        (".pyspark_3_5_compat", "3.5"),
+        (".pyspark_3_4_compat", "3.4"),
+        (".pyspark_3_3_compat", "3.3"),
+        (".pyspark_3_2_compat", "3.2"),
+        (".pyspark_3_1_compat", "3.1"),
+        (".pyspark_3_0_compat", "3.0"),
     ]
 
     for marker_file, version in version_markers:
@@ -173,4 +173,3 @@ def check_version_from_marker() -> None:
 # Auto-check version on module import
 check_version_from_env()
 check_version_from_marker()
-

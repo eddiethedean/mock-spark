@@ -128,7 +128,9 @@ class TestDeltaTimeTravel:
 
         # Try to read version 99 (doesn't exist)
         with pytest.raises(AnalysisException) as exc_info:
-            spark.read.format("delta").option("versionAsOf", 99).table("test.limited").collect()
+            spark.read.format("delta").option("versionAsOf", 99).table(
+                "test.limited"
+            ).collect()
 
         assert "version" in str(exc_info.value).lower() or "99" in str(exc_info.value)
 
@@ -160,8 +162,13 @@ class TestDeltaTimeTravel:
 
         # Try to use versionAsOf on non-Delta table
         with pytest.raises(AnalysisException) as exc_info:
-            spark.read.format("delta").option("versionAsOf", 0).table("test.regular").collect()
+            spark.read.format("delta").option("versionAsOf", 0).table(
+                "test.regular"
+            ).collect()
 
-        assert "delta" in str(exc_info.value).lower() or "format" in str(exc_info.value).lower()
+        assert (
+            "delta" in str(exc_info.value).lower()
+            or "format" in str(exc_info.value).lower()
+        )
 
         spark.stop()

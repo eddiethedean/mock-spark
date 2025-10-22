@@ -61,12 +61,16 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def insert_data(self, schema_name: str, table_name: str, data: List[Dict[str, Any]]) -> None:
+    def insert_data(
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
+    ) -> None:
         """Insert data into table."""
         pass
 
     @abstractmethod
-    def query_data(self, schema_name: str, table_name: str, **filters: Any) -> List[Dict[str, Any]]:
+    def query_data(
+        self, schema_name: str, table_name: str, **filters: Any
+    ) -> List[Dict[str, Any]]:
         """Query data from table."""
         pass
 

@@ -29,7 +29,9 @@ class TestDeltaWriteCompatibility:
     - Or add delta-core JARs to Spark classpath
     """
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore not available in test environment"
+    )
     def test_delta_write_save_as_table_basic(self, real_spark, mock_spark):
         """Test basic Delta write compatibility."""
         data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
@@ -59,7 +61,9 @@ class TestDeltaWriteCompatibility:
             assert mock_row["id"] == real_row["id"]
             assert mock_row["name"] == real_row["name"]
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore not available in test environment"
+    )
     def test_delta_write_modes_compatibility(self, real_spark, mock_spark):
         """Test Delta write modes match real PySpark behavior."""
         # Create schemas
@@ -68,26 +72,28 @@ class TestDeltaWriteCompatibility:
 
         # Test overwrite mode
         df1 = [{"id": 1, "value": "first"}]
-        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.modes"
-        )
-        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.modes"
-        )
+        real_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.modes")
+        mock_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.modes")
 
         df2 = [{"id": 2, "value": "second"}]
-        real_spark.createDataFrame(df2).write.format("delta").mode("overwrite").saveAsTable(
-            "test.modes"
-        )
-        mock_spark.createDataFrame(df2).write.format("delta").mode("overwrite").saveAsTable(
-            "test.modes"
-        )
+        real_spark.createDataFrame(df2).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.modes")
+        mock_spark.createDataFrame(df2).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.modes")
 
         real_count = real_spark.table("test.modes").count()
         mock_count = mock_spark.table("test.modes").count()
         assert mock_count == real_count == 1
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore not available in test environment"
+    )
     def test_delta_write_append_compatibility(self, real_spark, mock_spark):
         """Test Delta append mode compatibility."""
         # Create schemas
@@ -98,26 +104,28 @@ class TestDeltaWriteCompatibility:
         df2 = [{"id": 2}]
 
         # Real
-        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.append"
-        )
-        real_spark.createDataFrame(df2).write.format("delta").mode("append").saveAsTable(
-            "test.append"
-        )
+        real_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.append")
+        real_spark.createDataFrame(df2).write.format("delta").mode(
+            "append"
+        ).saveAsTable("test.append")
         real_count = real_spark.table("test.append").count()
 
         # Mock
-        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.append"
-        )
-        mock_spark.createDataFrame(df2).write.format("delta").mode("append").saveAsTable(
-            "test.append"
-        )
+        mock_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.append")
+        mock_spark.createDataFrame(df2).write.format("delta").mode(
+            "append"
+        ).saveAsTable("test.append")
         mock_count = mock_spark.table("test.append").count()
 
         assert mock_count == real_count == 2
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore not available in test environment"
+    )
     def test_delta_write_error_mode_raises(self, real_spark, mock_spark):
         """Test that error mode raises exception in both implementations."""
         # Create schemas
@@ -128,25 +136,27 @@ class TestDeltaWriteCompatibility:
         df2 = [{"id": 2}]
 
         # Create table in both
-        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.error"
-        )
-        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.error"
-        )
+        real_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.error")
+        mock_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.error")
 
         # Both should raise on error mode
         with pytest.raises(Exception):  # Real raises AnalysisException
-            real_spark.createDataFrame(df2).write.format("delta").mode("error").saveAsTable(
-                "test.error"
-            )
+            real_spark.createDataFrame(df2).write.format("delta").mode(
+                "error"
+            ).saveAsTable("test.error")
 
         with pytest.raises(Exception):  # Mock should raise same
-            mock_spark.createDataFrame(df2).write.format("delta").mode("error").saveAsTable(
-                "test.error"
-            )
+            mock_spark.createDataFrame(df2).write.format("delta").mode(
+                "error"
+            ).saveAsTable("test.error")
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore not available in test environment")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore not available in test environment"
+    )
     def test_delta_write_ignore_mode_compatibility(self, real_spark, mock_spark):
         """Test ignore mode leaves table unchanged in both implementations."""
         # Create schemas
@@ -157,22 +167,22 @@ class TestDeltaWriteCompatibility:
         df2 = [{"id": 2, "value": "should be ignored"}]
 
         # Real
-        real_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.ignore"
-        )
-        real_spark.createDataFrame(df2).write.format("delta").mode("ignore").saveAsTable(
-            "test.ignore"
-        )
+        real_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.ignore")
+        real_spark.createDataFrame(df2).write.format("delta").mode(
+            "ignore"
+        ).saveAsTable("test.ignore")
         real_count = real_spark.table("test.ignore").count()
         real_val = real_spark.table("test.ignore").collect()[0]["value"]
 
         # Mock
-        mock_spark.createDataFrame(df1).write.format("delta").mode("overwrite").saveAsTable(
-            "test.ignore"
-        )
-        mock_spark.createDataFrame(df2).write.format("delta").mode("ignore").saveAsTable(
-            "test.ignore"
-        )
+        mock_spark.createDataFrame(df1).write.format("delta").mode(
+            "overwrite"
+        ).saveAsTable("test.ignore")
+        mock_spark.createDataFrame(df2).write.format("delta").mode(
+            "ignore"
+        ).saveAsTable("test.ignore")
         mock_count = mock_spark.table("test.ignore").count()
         mock_val = mock_spark.table("test.ignore").collect()[0]["value"]
 

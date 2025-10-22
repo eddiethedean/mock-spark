@@ -125,7 +125,9 @@ class MockFunctions:
         return StringFunctions.concat(*columns)
 
     @staticmethod
-    def format_string(format_str: str, *columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def format_string(
+        format_str: str, *columns: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Format string using printf-style placeholders."""
         return StringFunctions.format_string(format_str, *columns)
 
@@ -286,7 +288,9 @@ class MockFunctions:
         return StringFunctions.decode(column, charset)
 
     @staticmethod
-    def conv(column: Union[MockColumn, str], from_base: int, to_base: int) -> MockColumnOperation:
+    def conv(
+        column: Union[MockColumn, str], from_base: int, to_base: int
+    ) -> MockColumnOperation:
         """Convert number between bases."""
         return StringFunctions.conv(column, from_base, to_base)
 
@@ -332,7 +336,9 @@ class MockFunctions:
         return MathFunctions.exp(column)
 
     @staticmethod
-    def log(column: Union[MockColumn, str], base: Optional[float] = None) -> MockColumnOperation:
+    def log(
+        column: Union[MockColumn, str], base: Optional[float] = None
+    ) -> MockColumnOperation:
         """Logarithm."""
         return MathFunctions.log(column, base)
 
@@ -409,7 +415,9 @@ class MockFunctions:
         return MathFunctions.atan(column)
 
     @staticmethod
-    def atan2(y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]) -> MockColumnOperation:
+    def atan2(
+        y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]
+    ) -> MockColumnOperation:
         """2-argument arctangent (PySpark 3.0+)."""
         return MathFunctions.atan2(y, x)
 
@@ -474,12 +482,16 @@ class MockFunctions:
         return MathFunctions.sign(column)
 
     @staticmethod
-    def hypot(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def hypot(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Compute hypotenuse."""
         return MathFunctions.hypot(col1, col2)
 
     @staticmethod
-    def nanvl(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def nanvl(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Return col1 if not NaN, else col2."""
         return MathFunctions.nanvl(col1, col2)
 
@@ -668,7 +680,9 @@ class MockFunctions:
         return AggregateFunctions.mode(column)
 
     @staticmethod
-    def percentile(column: Union[MockColumn, str], percentage: float) -> MockAggregateFunction:
+    def percentile(
+        column: Union[MockColumn, str], percentage: float
+    ) -> MockAggregateFunction:
         """Exact percentile (PySpark 3.5+)."""
         return AggregateFunctions.percentile(column, percentage)
 
@@ -693,12 +707,16 @@ class MockFunctions:
         return AggregateFunctions.some(column)
 
     @staticmethod
-    def max_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+    def max_by(
+        column: Union[MockColumn, str], ord: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
         """Value with max of ord column (PySpark 3.1+)."""
         return AggregateFunctions.max_by(column, ord)
 
     @staticmethod
-    def min_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+    def min_by(
+        column: Union[MockColumn, str], ord: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
         """Value with min of ord column (PySpark 3.1+)."""
         return AggregateFunctions.min_by(column, ord)
 
@@ -726,11 +744,12 @@ class MockFunctions:
     @staticmethod
     def version() -> MockLiteral:
         """Return Spark version string (PySpark 3.0+).
-        
+
         Returns:
             MockLiteral with mock-spark version
         """
         from mock_spark import __version__
+
         # Return mock-spark version as a constant expression
         return MockLiteral(f"mock-spark-{__version__}")
 
@@ -844,7 +863,9 @@ class MockFunctions:
         return DateTimeFunctions.second(column)
 
     @staticmethod
-    def add_months(column: Union[MockColumn, str], num_months: int) -> MockColumnOperation:
+    def add_months(
+        column: Union[MockColumn, str], num_months: int
+    ) -> MockColumnOperation:
         """Add months to date."""
         return DateTimeFunctions.add_months(column, num_months)
 
@@ -874,25 +895,29 @@ class MockFunctions:
     def make_date(
         year: Union[MockColumn, int],
         month: Union[MockColumn, int],
-        day: Union[MockColumn, int]
+        day: Union[MockColumn, int],
     ) -> MockColumnOperation:
         """Construct date from year, month, day (PySpark 3.0+)."""
         return DateTimeFunctions.make_date(year, month, day)
 
     @staticmethod
-    def date_trunc(format: str, timestamp: Union[MockColumn, str]) -> MockColumnOperation:
+    def date_trunc(
+        format: str, timestamp: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Truncate timestamp to specified unit."""
         return DateTimeFunctions.date_trunc(format, timestamp)
 
     @staticmethod
-    def datediff(end: Union[MockColumn, str], start: Union[MockColumn, str]) -> MockColumnOperation:
+    def datediff(
+        end: Union[MockColumn, str], start: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Number of days between two dates."""
         return DateTimeFunctions.datediff(end, start)
 
     @staticmethod
     def unix_timestamp(
         timestamp: Optional[Union[MockColumn, str]] = None,
-        format: str = 'yyyy-MM-dd HH:mm:ss'
+        format: str = "yyyy-MM-dd HH:mm:ss",
     ) -> MockColumnOperation:
         """Convert timestamp to Unix timestamp."""
         return DateTimeFunctions.unix_timestamp(timestamp, format)
@@ -939,12 +964,13 @@ class MockFunctions:
         """
         if isinstance(msg, str):
             from mock_spark.functions.core.literals import MockLiteral
+
             msg = MockLiteral(msg)  # type: ignore[assignment]
 
         return MockColumnOperation(
             msg,  # type: ignore[arg-type]
             "raise_error",
-            name=f"raise_error({msg})"
+            name=f"raise_error({msg})",
         )
 
     @staticmethod
@@ -986,7 +1012,9 @@ class MockFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "nvl2", (value_if_not_null, value_if_null))
+        operation = MockColumnOperation(
+            column, "nvl2", (value_if_not_null, value_if_null)
+        )
         operation.name = f"nvl2({column.name}, {value_if_not_null}, {value_if_null})"
         return operation
 
@@ -1103,7 +1131,9 @@ class MockFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "desc", None, name=f"{column.name} DESC")
+        operation = MockColumnOperation(
+            column, "desc", None, name=f"{column.name} DESC"
+        )
         operation.function_name = "desc"
         return operation
 
@@ -1119,7 +1149,9 @@ class MockFunctions:
         return ArrayFunctions.array_repeat(col, count)
 
     @staticmethod
-    def sort_array(col: Union[MockColumn, str], asc: bool = True) -> MockColumnOperation:
+    def sort_array(
+        col: Union[MockColumn, str], asc: bool = True
+    ) -> MockColumnOperation:
         """Sort array elements (PySpark 3.0+)."""
         return ArrayFunctions.sort_array(col, asc)
 
@@ -1160,7 +1192,9 @@ class MockFunctions:
         return ArrayFunctions.array_except(column1, column2)
 
     @staticmethod
-    def array_position(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+    def array_position(
+        column: Union[MockColumn, str], value: Any
+    ) -> MockColumnOperation:
         """Position of element in array."""
         return ArrayFunctions.array_position(column, value)
 
@@ -1224,7 +1258,9 @@ class MockFunctions:
         return ArrayFunctions.array_compact(column)
 
     @staticmethod
-    def slice(column: Union[MockColumn, str], start: int, length: int) -> MockColumnOperation:
+    def slice(
+        column: Union[MockColumn, str], start: int, length: int
+    ) -> MockColumnOperation:
         """Extract array slice."""
         return ArrayFunctions.slice(column, start, length)
 
@@ -1234,17 +1270,23 @@ class MockFunctions:
         return ArrayFunctions.element_at(column, index)
 
     @staticmethod
-    def array_append(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+    def array_append(
+        column: Union[MockColumn, str], element: Any
+    ) -> MockColumnOperation:
         """Append element to array."""
         return ArrayFunctions.array_append(column, element)
 
     @staticmethod
-    def array_prepend(column: Union[MockColumn, str], element: Any) -> MockColumnOperation:
+    def array_prepend(
+        column: Union[MockColumn, str], element: Any
+    ) -> MockColumnOperation:
         """Prepend element to array."""
         return ArrayFunctions.array_prepend(column, element)
 
     @staticmethod
-    def array_insert(column: Union[MockColumn, str], pos: int, value: Any) -> MockColumnOperation:
+    def array_insert(
+        column: Union[MockColumn, str], pos: int, value: Any
+    ) -> MockColumnOperation:
         """Insert element at position."""
         return ArrayFunctions.array_insert(column, pos, value)
 
@@ -1266,7 +1308,9 @@ class MockFunctions:
         return ArrayFunctions.arrays_overlap(column1, column2)
 
     @staticmethod
-    def array_contains(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+    def array_contains(
+        column: Union[MockColumn, str], value: Any
+    ) -> MockColumnOperation:
         """Check if array contains value."""
         return ArrayFunctions.array_contains(column, value)
 
@@ -1324,7 +1368,7 @@ class MockFunctions:
     def sequence(
         start: Union[MockColumn, str, int],
         stop: Union[MockColumn, str, int],
-        step: Union[MockColumn, str, int] = 1
+        step: Union[MockColumn, str, int] = 1,
     ) -> MockColumnOperation:
         """Generate array sequence from start to stop."""
         return ArrayFunctions.sequence(start, stop, step)
@@ -1369,7 +1413,9 @@ class MockFunctions:
         return MapFunctions.create_map(*cols)
 
     @staticmethod
-    def map_contains_key(column: Union[MockColumn, str], key: Any) -> MockColumnOperation:
+    def map_contains_key(
+        column: Union[MockColumn, str], key: Any
+    ) -> MockColumnOperation:
         """Check if map contains key."""
         return MapFunctions.map_contains_key(column, key)
 
@@ -1379,17 +1425,23 @@ class MockFunctions:
         return MapFunctions.map_from_entries(column)
 
     @staticmethod
-    def map_filter(column: Union[MockColumn, str], function: Callable[[Any, Any], bool]) -> MockColumnOperation:
+    def map_filter(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], bool]
+    ) -> MockColumnOperation:
         """Filter map entries with predicate."""
         return MapFunctions.map_filter(column, function)
 
     @staticmethod
-    def transform_keys(column: Union[MockColumn, str], function: Callable[[Any, Any], Any]) -> MockColumnOperation:
+    def transform_keys(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], Any]
+    ) -> MockColumnOperation:
         """Transform map keys with function."""
         return MapFunctions.transform_keys(column, function)
 
     @staticmethod
-    def transform_values(column: Union[MockColumn, str], function: Callable[[Any, Any], Any]) -> MockColumnOperation:
+    def transform_values(
+        column: Union[MockColumn, str], function: Callable[[Any, Any], Any]
+    ) -> MockColumnOperation:
         """Transform map values with function."""
         return MapFunctions.transform_values(column, function)
 
@@ -1397,7 +1449,7 @@ class MockFunctions:
     def map_zip_with(
         col1: Union[MockColumn, str],
         col2: Union[MockColumn, str],
-        function: Callable[[Any, Any, Any], Any]
+        function: Callable[[Any, Any, Any], Any],
     ) -> MockColumnOperation:
         """Merge two maps using function (PySpark 3.1+)."""
         return MapFunctions.map_zip_with(col1, col2, function)
@@ -1410,7 +1462,9 @@ class MockFunctions:
             raise ValueError("struct requires at least one column")
 
         # Use first column as base
-        base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        base_col = (
+            cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        )
 
         return MockColumnOperation(
             base_col,
@@ -1422,7 +1476,7 @@ class MockFunctions:
     @staticmethod
     def named_struct(*cols: Any) -> MockColumnOperation:
         """Create a struct column with named fields.
-        
+
         Args:
             *cols: Alternating field names (strings) and column values.
         """
@@ -1430,7 +1484,9 @@ class MockFunctions:
             raise ValueError("named_struct requires alternating field names and values")
 
         # Use first value column as base (skip first name)
-        base_col = cols[1] if isinstance(cols[1], MockColumn) else MockColumn(str(cols[1]))
+        base_col = (
+            cols[1] if isinstance(cols[1], MockColumn) else MockColumn(str(cols[1]))
+        )
 
         return MockColumnOperation(
             base_col,
@@ -1472,7 +1528,9 @@ class MockFunctions:
 
     # Timezone functions (PySpark 3.2+)
     @staticmethod
-    def convert_timezone(sourceTz: str, targetTz: str, sourceTs: Union[MockColumn, str]) -> MockColumnOperation:
+    def convert_timezone(
+        sourceTz: str, targetTz: str, sourceTs: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Convert timestamp between timezones."""
         return DateTimeFunctions.convert_timezone(sourceTz, targetTz, sourceTs)
 
@@ -1512,7 +1570,7 @@ class MockFunctions:
         src: Union[MockColumn, str],
         replace: Union[MockColumn, str],
         pos: Union[MockColumn, int],
-        len: Union[MockColumn, int] = -1
+        len: Union[MockColumn, int] = -1,
     ) -> MockColumnOperation:
         """Replace part of string (PySpark 3.0+)."""
         return StringFunctions.overlay(src, replace, pos, len)
@@ -1529,17 +1587,23 @@ class MockFunctions:
         return DateTimeFunctions.dayname(date)
 
     @staticmethod
-    def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+    def assert_true(
+        condition: Union[MockColumn, MockColumnOperation],
+    ) -> MockColumnOperation:
         """Assert condition is true."""
         return ConditionalFunctions.assert_true(condition)
 
     @staticmethod
-    def ifnull(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def ifnull(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Return col2 if col1 is null (PySpark 3.5+)."""
         return ConditionalFunctions.ifnull(col1, col2)
 
     @staticmethod
-    def nullif(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def nullif(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Return null if col1 equals col2 (PySpark 3.5+)."""
         return ConditionalFunctions.nullif(col1, col2)
 
@@ -1601,51 +1665,65 @@ class MockFunctions:
 
     # JSON/CSV functions
     @staticmethod
-    def from_json(column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None) -> MockColumnOperation:
+    def from_json(
+        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+    ) -> MockColumnOperation:
         """Parse JSON string into struct/array."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.from_json(column, schema, options)
 
     @staticmethod
     def to_json(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Convert struct/array to JSON string."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.to_json(column)
 
     @staticmethod
-    def get_json_object(column: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def get_json_object(
+        column: Union[MockColumn, str], path: str
+    ) -> MockColumnOperation:
         """Extract JSON object at path."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.get_json_object(column, path)
 
     @staticmethod
     def json_tuple(column: Union[MockColumn, str], *fields: str) -> MockColumnOperation:
         """Extract multiple fields from JSON."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.json_tuple(column, *fields)
 
     @staticmethod
     def schema_of_json(json_string: str) -> MockColumnOperation:
         """Infer schema from JSON string."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.schema_of_json(json_string)
 
     @staticmethod
-    def from_csv(column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None) -> MockColumnOperation:
+    def from_csv(
+        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+    ) -> MockColumnOperation:
         """Parse CSV string into struct."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.from_csv(column, schema, options)
 
     @staticmethod
     def to_csv(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Convert struct to CSV string."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.to_csv(column)
 
     @staticmethod
     def schema_of_csv(csv_string: str) -> MockColumnOperation:
         """Infer schema from CSV string."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
+
         return JSONCSVFunctions.schema_of_csv(csv_string)
 
     # Column ordering functions
@@ -1653,30 +1731,35 @@ class MockFunctions:
     def asc(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sort ascending."""
         from mock_spark.functions.ordering import OrderingFunctions
+
         return OrderingFunctions.asc(column)
 
     @staticmethod
     def asc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sort ascending, nulls first."""
         from mock_spark.functions.ordering import OrderingFunctions
+
         return OrderingFunctions.asc_nulls_first(column)
 
     @staticmethod
     def asc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sort ascending, nulls last."""
         from mock_spark.functions.ordering import OrderingFunctions
+
         return OrderingFunctions.asc_nulls_last(column)
 
     @staticmethod
     def desc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sort descending, nulls first."""
         from mock_spark.functions.ordering import OrderingFunctions
+
         return OrderingFunctions.desc_nulls_first(column)
 
     @staticmethod
     def desc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Sort descending, nulls last."""
         from mock_spark.functions.ordering import OrderingFunctions
+
         return OrderingFunctions.desc_nulls_last(column)
 
     # Metadata/utility functions
@@ -1684,55 +1767,62 @@ class MockFunctions:
     def input_file_name() -> MockColumnOperation:
         """Return input file name."""
         from mock_spark.functions.metadata import MetadataFunctions
+
         return MetadataFunctions.input_file_name()
 
     @staticmethod
     def monotonically_increasing_id() -> MockColumnOperation:
         """Generate monotonically increasing ID."""
         from mock_spark.functions.metadata import MetadataFunctions
+
         return MetadataFunctions.monotonically_increasing_id()
 
     @staticmethod
     def spark_partition_id() -> MockColumnOperation:
         """Return partition ID."""
         from mock_spark.functions.metadata import MetadataFunctions
+
         return MetadataFunctions.spark_partition_id()
 
     @staticmethod
     def broadcast(df: Any) -> Any:
         """Mark DataFrame for broadcast (hint)."""
         from mock_spark.functions.metadata import MetadataFunctions
+
         return MetadataFunctions.broadcast(df)
 
     @staticmethod
     def column(col_name: str) -> MockColumn:
         """Create column reference (alias for col)."""
         from mock_spark.functions.metadata import MetadataFunctions
+
         return MetadataFunctions.column(col_name)
 
     @staticmethod
     def grouping(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Grouping indicator for CUBE/ROLLUP."""
         from mock_spark.functions.metadata import GroupingFunctions
+
         return GroupingFunctions.grouping(column)
 
     @staticmethod
     def grouping_id(*cols: Union[MockColumn, str]) -> MockColumnOperation:
         """Grouping ID for CUBE/ROLLUP."""
         from mock_spark.functions.metadata import GroupingFunctions
+
         return GroupingFunctions.grouping_id(*cols)
 
     @staticmethod
     def udf(f: Optional[Callable] = None, returnType: Any = None) -> Callable:
         """Create a user-defined function (all PySpark versions).
-        
+
         Args:
             f: Python function to wrap
             returnType: Return type of the function (defaults to StringType)
-            
+
         Returns:
             Wrapped function that can be used in DataFrame operations
-            
+
         Example:
             >>> from mock_spark import MockSparkSession, F
             >>> from mock_spark.spark_types import IntegerType
@@ -1748,6 +1838,7 @@ class MockFunctions:
 
         def udf_wrapper(func: Callable) -> Callable:
             """Wrap function to create MockColumnOperation."""
+
             def apply_udf(col: Union[MockColumn, str]) -> MockColumnOperation:
                 column = MockColumn(col) if isinstance(col, str) else col
                 # Create a UDF operation that stores the function
@@ -1755,6 +1846,7 @@ class MockFunctions:
                 op._udf_func = func  # type: ignore
                 op._udf_return_type = returnType  # type: ignore
                 return op
+
             return apply_udf
 
         # Support decorator pattern: @udf or udf(lambda x: x)
@@ -1765,23 +1857,21 @@ class MockFunctions:
 
     @staticmethod
     def pandas_udf(
-        f: Optional[Any] = None,
-        returnType: Any = None,
-        functionType: Any = None
+        f: Optional[Any] = None, returnType: Any = None, functionType: Any = None
     ) -> Any:
         """Create a Pandas UDF (vectorized UDF) (all PySpark versions).
-        
+
         Pandas UDFs are user-defined functions that execute vectorized operations
         using Pandas Series/DataFrame, providing better performance than row-at-a-time UDFs.
-        
+
         Args:
             f: Python function to wrap OR return type (if used as decorator)
             returnType: Return type of the function (defaults to StringType)
             functionType: Type of Pandas UDF (optional, for compatibility)
-            
+
         Returns:
             Wrapped function that can be used in DataFrame operations
-            
+
         Example:
             >>> from mock_spark import MockSparkSession, F
             >>> from mock_spark.spark_types import IntegerType
@@ -1799,7 +1889,7 @@ class MockFunctions:
         # 1. @pandas_udf(IntegerType()) - f is the type, returnType is None
         # 2. @pandas_udf(returnType=IntegerType()) - f is None, returnType is the type
         # 3. pandas_udf(lambda x: x, IntegerType()) - f is function, returnType is the type
-        
+
         # Check if first argument is a data type (not a function)
         if f is not None and not callable(f):
             # f is actually the return type
@@ -1824,19 +1914,19 @@ class MockFunctions:
         timeColumn: Union[MockColumn, str],
         windowDuration: str,
         slideDuration: Optional[str] = None,
-        startTime: Optional[str] = None
+        startTime: Optional[str] = None,
     ) -> MockColumnOperation:
         """Create time-based window for grouping operations (all PySpark versions).
-        
+
         Args:
             timeColumn: Timestamp column to window
             windowDuration: Duration string (e.g., "10 seconds", "1 minute", "2 hours")
             slideDuration: Slide duration for sliding windows (defaults to windowDuration)
             startTime: Offset for window alignment (e.g., "0 seconds")
-            
+
         Returns:
             Column representing window struct with start and end times
-            
+
         Example:
             >>> df.groupBy(F.window("timestamp", "10 minutes")).count()
             >>> df.groupBy(F.window("timestamp", "10 minutes", "5 minutes")).agg(F.sum("value"))
@@ -1853,20 +1943,24 @@ class MockFunctions:
     @staticmethod
     def window_time(windowColumn: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract window start time from window column (PySpark 3.4+).
-        
+
         Args:
             windowColumn: Window column to extract time from
-            
+
         Returns:
             Column operation representing window start timestamp
-            
+
         Example:
             >>> df.groupBy(F.window("timestamp", "1 hour")).agg(
             ...     F.window_time(F.col("window")).alias("window_start")
             ... )
         """
-        column = MockColumn(windowColumn) if isinstance(windowColumn, str) else windowColumn
-        op = MockColumnOperation(column, "window_time", name=f"window_time({column.name})")
+        column = (
+            MockColumn(windowColumn) if isinstance(windowColumn, str) else windowColumn
+        )
+        op = MockColumnOperation(
+            column, "window_time", name=f"window_time({column.name})"
+        )
         return op
 
     # Deprecated Aliases

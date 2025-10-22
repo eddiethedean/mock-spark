@@ -48,7 +48,10 @@ def _find_java11():
     # Note: This sometimes returns wrong version, so we validate it
     try:
         result = subprocess.run(
-            ["/usr/libexec/java_home", "-v", "11"], capture_output=True, text=True, timeout=2
+            ["/usr/libexec/java_home", "-v", "11"],
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         if result.returncode == 0 and result.stdout.strip():
             path = result.stdout.strip()
@@ -70,7 +73,9 @@ if java11_home:
     # Force Java 11 by setting JAVA_HOME and prepending to PATH
     os.environ["JAVA_HOME"] = java11_home
     # Remove any existing java from PATH and add Java 11 first
-    path_parts = [p for p in os.environ.get("PATH", "").split(":") if "java" not in p.lower()]
+    path_parts = [
+        p for p in os.environ.get("PATH", "").split(":") if "java" not in p.lower()
+    ]
     os.environ["PATH"] = f"{java11_home}/bin:{':'.join(path_parts)}"
 else:
     # Warn that Java 11 is required

@@ -88,10 +88,14 @@ class SQLToSQLAlchemyTranslator:
             elif isinstance(ast, exp.Drop):
                 return self._translate_drop(ast)
             else:
-                raise SQLTranslationError(f"Unsupported SQL statement type: {type(ast).__name__}")
+                raise SQLTranslationError(
+                    f"Unsupported SQL statement type: {type(ast).__name__}"
+                )
 
         except Exception as e:
-            raise SQLTranslationError(f"Failed to translate SQL: {sql}\nError: {e}") from e
+            raise SQLTranslationError(
+                f"Failed to translate SQL: {sql}\nError: {e}"
+            ) from e
 
     def _get_table(self, table_name: str) -> Table:
         """
@@ -131,7 +135,9 @@ class SQLToSQLAlchemyTranslator:
             table_name = str(table_exp.this)
             table = self._get_table(table_name)
         else:
-            raise SQLTranslationError(f"Unsupported FROM clause: {type(table_exp).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported FROM clause: {type(table_exp).__name__}"
+            )
 
         # Build SELECT columns
         select_cols: List[Any] = []  # Can contain Table or ColumnElement
@@ -167,15 +173,21 @@ class SQLToSQLAlchemyTranslator:
                 # Get join condition
                 on_exp = join_exp.args.get("on")
                 if on_exp:
-                    join_condition = self._translate_join_condition(on_exp, table, join_table)
+                    join_condition = self._translate_join_condition(
+                        on_exp, table, join_table
+                    )
 
                     # Determine join type
                     join_kind = join_exp.args.get("kind", "").upper()
                     if join_kind == "LEFT":
-                        stmt = stmt.select_from(table).outerjoin(join_table, join_condition)  # type: ignore[attr-defined]
+                        stmt = stmt.select_from(table).outerjoin(
+                            join_table, join_condition
+                        )  # type: ignore[attr-defined]
                     elif join_kind == "RIGHT":
                         # SQLAlchemy doesn't have right join, need to swap tables
-                        stmt = stmt.select_from(join_table).outerjoin(table, join_condition)  # type: ignore[attr-defined]
+                        stmt = stmt.select_from(join_table).outerjoin(
+                            table, join_condition
+                        )  # type: ignore[attr-defined]
                     elif join_kind == "FULL":
                         stmt = stmt.select_from(table).outerjoin(  # type: ignore[attr-defined]
                             join_table, join_condition, full=True
@@ -202,7 +214,9 @@ class SQLToSQLAlchemyTranslator:
                     # For simplicity, group by all non-aggregate selected columns
                     for i, sel_expr in enumerate(ast.expressions):
                         # Skip aggregate functions
-                        if not isinstance(sel_expr, (exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max)):
+                        if not isinstance(
+                            sel_expr, (exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max)
+                        ):
                             col = self._translate_expression(sel_expr, table)
                             group_cols.append(col)
                 else:
@@ -231,7 +245,9 @@ class SQLToSQLAlchemyTranslator:
             if len(order_by.expressions) == 1:
                 expr_str = str(order_by.expressions[0]).strip().upper()
                 # Remove DESC if present
-                expr_str_clean = expr_str.replace(" DESC", "").replace(" ASC", "").strip()
+                expr_str_clean = (
+                    expr_str.replace(" DESC", "").replace(" ASC", "").strip()
+                )
                 if expr_str_clean == "ALL":
                     # ORDER BY ALL: order by all selected columns
                     for sel_expr in ast.expressions:
@@ -240,7 +256,9 @@ class SQLToSQLAlchemyTranslator:
                 else:
                     for ordered in order_by.expressions:
                         col = self._translate_expression(ordered.this, table)
-                        if isinstance(ordered, exp.Ordered) and ordered.args.get("desc"):
+                        if isinstance(ordered, exp.Ordered) and ordered.args.get(
+                            "desc"
+                        ):
                             col = desc(col)
                         else:
                             col = asc(col)
@@ -262,7 +280,9 @@ class SQLToSQLAlchemyTranslator:
         if limit_exp:
             # Get limit expression value
             limit_expr = (
-                limit_exp.expression if hasattr(limit_exp, "expression") else limit_exp.this
+                limit_exp.expression
+                if hasattr(limit_exp, "expression")
+                else limit_exp.this
             )
             if limit_expr:
                 limit_val = int(str(limit_expr))
@@ -296,7 +316,9 @@ class SQLToSQLAlchemyTranslator:
             table_name = str(table_exp.this)
             table = self._get_table(table_name)
         else:
-            raise SQLTranslationError(f"Unsupported INSERT table: {type(table_exp).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported INSERT table: {type(table_exp).__name__}"
+            )
 
         # Get VALUES or SELECT
         values_exp = ast.expression
@@ -320,7 +342,9 @@ class SQLToSQLAlchemyTranslator:
             return insert(table).from_select(col_names, select_stmt)
 
         else:
-            raise SQLTranslationError(f"Unsupported INSERT source: {type(values_exp).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported INSERT source: {type(values_exp).__name__}"
+            )
 
     def _translate_update(self, ast: exp.Update) -> Update:
         """Translate UPDATE statement to SQLAlchemy."""
@@ -330,7 +354,9 @@ class SQLToSQLAlchemyTranslator:
             table_name = str(table_exp.this)
             table = self._get_table(table_name)
         else:
-            raise SQLTranslationError(f"Unsupported UPDATE table: {type(table_exp).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported UPDATE table: {type(table_exp).__name__}"
+            )
 
         # Build UPDATE statement
         stmt = update(table)
@@ -361,7 +387,9 @@ class SQLToSQLAlchemyTranslator:
             table_name = str(table_exp.this)
             table = self._get_table(table_name)
         else:
-            raise SQLTranslationError(f"Unsupported DELETE table: {type(table_exp).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported DELETE table: {type(table_exp).__name__}"
+            )
 
         stmt = delete(table)
 
@@ -387,7 +415,9 @@ class SQLToSQLAlchemyTranslator:
             "not through spark.sql() translation"
         )
 
-    def _translate_expression(self, expr: exp.Expression, table: Table) -> ColumnElement:
+    def _translate_expression(
+        self, expr: exp.Expression, table: Table
+    ) -> ColumnElement:
         """
         Translate sqlglot expression to SQLAlchemy column element.
 
@@ -489,7 +519,9 @@ class SQLToSQLAlchemyTranslator:
             return left / right
 
         else:
-            raise SQLTranslationError(f"Unsupported expression type: {type(expr).__name__}")
+            raise SQLTranslationError(
+                f"Unsupported expression type: {type(expr).__name__}"
+            )
 
     def _translate_function(self, expr: exp.Func, table: Table) -> ColumnElement:
         """Translate SQL function to SQLAlchemy function."""

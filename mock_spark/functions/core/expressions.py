@@ -56,7 +56,9 @@ class ExpressionFunctions:
         return MockCaseWhen(None, condition, value)
 
     @staticmethod
-    def coalesce(*columns: Union[MockColumn, MockColumnOperation, str]) -> MockColumnOperation:
+    def coalesce(
+        *columns: Union[MockColumn, MockColumnOperation, str],
+    ) -> MockColumnOperation:
         """Return the first non-null value from a list of columns.
 
         Args:

@@ -17,12 +17,15 @@ class TestHyperbolicFunctions:
 
     def test_acosh(self):
         """Test acosh - inverse hyperbolic cosine."""
-        data = [{"id": 1, "value": 1.5}, {"id": 2, "value": 2.0}, {"id": 3, "value": 3.0}]
+        data = [
+            {"id": 1, "value": 1.5},
+            {"id": 2, "value": 2.0},
+            {"id": 3, "value": 3.0},
+        ]
         df = self.spark.createDataFrame(data)
 
         result = df.select(
-            F.col("id"),
-            F.acosh(F.col("value")).alias("acosh_value")
+            F.col("id"), F.acosh(F.col("value")).alias("acosh_value")
         ).collect()
 
         # Verify against Python's math.acosh
@@ -32,12 +35,15 @@ class TestHyperbolicFunctions:
 
     def test_asinh(self):
         """Test asinh - inverse hyperbolic sine."""
-        data = [{"id": 1, "value": 0.5}, {"id": 2, "value": 1.0}, {"id": 3, "value": 2.0}]
+        data = [
+            {"id": 1, "value": 0.5},
+            {"id": 2, "value": 1.0},
+            {"id": 3, "value": 2.0},
+        ]
         df = self.spark.createDataFrame(data)
 
         result = df.select(
-            F.col("id"),
-            F.asinh(F.col("value")).alias("asinh_value")
+            F.col("id"), F.asinh(F.col("value")).alias("asinh_value")
         ).collect()
 
         # Verify against Python's math.asinh
@@ -47,12 +53,15 @@ class TestHyperbolicFunctions:
 
     def test_atanh(self):
         """Test atanh - inverse hyperbolic tangent."""
-        data = [{"id": 1, "value": 0.2}, {"id": 2, "value": 0.5}, {"id": 3, "value": 0.8}]
+        data = [
+            {"id": 1, "value": 0.2},
+            {"id": 2, "value": 0.5},
+            {"id": 3, "value": 0.8},
+        ]
         df = self.spark.createDataFrame(data)
 
         result = df.select(
-            F.col("id"),
-            F.atanh(F.col("value")).alias("atanh_value")
+            F.col("id"), F.atanh(F.col("value")).alias("atanh_value")
         ).collect()
 
         # Verify against Python's math.atanh
@@ -64,14 +73,14 @@ class TestHyperbolicFunctions:
         """Test hyperbolic functions with edge case values."""
         data = [
             {"id": 1, "acosh_val": 1.0, "asinh_val": 0.0, "atanh_val": 0.0},
-            {"id": 2, "acosh_val": 10.0, "asinh_val": 5.0, "atanh_val": 0.99}
+            {"id": 2, "acosh_val": 10.0, "asinh_val": 5.0, "atanh_val": 0.99},
         ]
         df = self.spark.createDataFrame(data)
 
         result = df.select(
             F.acosh(F.col("acosh_val")).alias("acosh_result"),
             F.asinh(F.col("asinh_val")).alias("asinh_result"),
-            F.atanh(F.col("atanh_val")).alias("atanh_result")
+            F.atanh(F.col("atanh_val")).alias("atanh_result"),
         ).collect()
 
         # acosh(1.0) = 0, asinh(0.0) = 0, atanh(0.0) = 0
@@ -83,4 +92,3 @@ class TestHyperbolicFunctions:
         assert result[1]["acosh_result"] > 0
         assert result[1]["asinh_result"] > 0
         assert result[1]["atanh_result"] > 0
-

@@ -14,9 +14,7 @@ class JSONCSVFunctions:
 
     @staticmethod
     def from_json(
-        column: Union[MockColumn, str],
-        schema: Any,
-        options: Optional[dict] = None
+        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
     ) -> MockColumnOperation:
         """Parse JSON string column into struct/array column.
 
@@ -35,7 +33,7 @@ class JSONCSVFunctions:
             column,
             "from_json",
             value=(schema, options),
-            name=f"from_json({column.name})"
+            name=f"from_json({column.name})",
         )
 
     @staticmethod
@@ -51,16 +49,11 @@ class JSONCSVFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column,
-            "to_json",
-            name=f"to_json({column.name})"
-        )
+        return MockColumnOperation(column, "to_json", name=f"to_json({column.name})")
 
     @staticmethod
     def get_json_object(
-        column: Union[MockColumn, str],
-        path: str
+        column: Union[MockColumn, str], path: str
     ) -> MockColumnOperation:
         """Extract JSON object at specified path.
 
@@ -78,7 +71,7 @@ class JSONCSVFunctions:
             column,
             "get_json_object",
             value=path,
-            name=f"get_json_object({column.name}, {path})"
+            name=f"get_json_object({column.name}, {path})",
         )
 
     @staticmethod
@@ -96,10 +89,7 @@ class JSONCSVFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "json_tuple",
-            value=fields,
-            name=f"json_tuple({column.name}, ...)"
+            column, "json_tuple", value=fields, name=f"json_tuple({column.name}, ...)"
         )
 
     @staticmethod
@@ -113,17 +103,14 @@ class JSONCSVFunctions:
             MockColumnOperation representing schema_of_json
         """
         from mock_spark.functions.core.literals import MockLiteral
+
         return MockColumnOperation(
-            MockLiteral(json_string),
-            "schema_of_json",
-            name="schema_of_json(...)"
+            MockLiteral(json_string), "schema_of_json", name="schema_of_json(...)"
         )
 
     @staticmethod
     def from_csv(
-        column: Union[MockColumn, str],
-        schema: Any,
-        options: Optional[dict] = None
+        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
     ) -> MockColumnOperation:
         """Parse CSV string column into struct column.
 
@@ -139,10 +126,7 @@ class JSONCSVFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "from_csv",
-            value=(schema, options),
-            name=f"from_csv({column.name})"
+            column, "from_csv", value=(schema, options), name=f"from_csv({column.name})"
         )
 
     @staticmethod
@@ -158,11 +142,7 @@ class JSONCSVFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column,
-            "to_csv",
-            name=f"to_csv({column.name})"
-        )
+        return MockColumnOperation(column, "to_csv", name=f"to_csv({column.name})")
 
     @staticmethod
     def schema_of_csv(csv_string: str) -> MockColumnOperation:
@@ -175,9 +155,7 @@ class JSONCSVFunctions:
             MockColumnOperation representing schema_of_csv
         """
         from mock_spark.functions.core.literals import MockLiteral
-        return MockColumnOperation(
-            MockLiteral(csv_string),
-            "schema_of_csv",
-            name="schema_of_csv(...)"
-        )
 
+        return MockColumnOperation(
+            MockLiteral(csv_string), "schema_of_csv", name="schema_of_csv(...)"
+        )

@@ -68,7 +68,9 @@ class TestDataFrameAdvancedOperations:
     @pytest.fixture
     def large_data(self):
         """Create large dataset for performance testing."""
-        return [{"id": i, "value": i * 10, "category": f"cat_{i % 10}"} for i in range(1000)]
+        return [
+            {"id": i, "value": i * 10, "category": f"cat_{i % 10}"} for i in range(1000)
+        ]
 
     def test_complex_aggregation_operations(self, spark, complex_data):
         """Test complex aggregation operations."""
@@ -132,7 +134,9 @@ class TestDataFrameAdvancedOperations:
         df = spark.createDataFrame(complex_data)
 
         # Test window with rowsBetween
-        window_spec = MockWindow.partitionBy("department").orderBy("salary").rowsBetween(-1, 1)
+        window_spec = (
+            MockWindow.partitionBy("department").orderBy("salary").rowsBetween(-1, 1)
+        )
 
         result = df.select(
             F.col("*"),
@@ -150,7 +154,9 @@ class TestDataFrameAdvancedOperations:
 
         # Test window with rangeBetween
         window_spec = (
-            MockWindow.partitionBy("department").orderBy("salary").rangeBetween(-10000, 10000)
+            MockWindow.partitionBy("department")
+            .orderBy("salary")
+            .rangeBetween(-10000, 10000)
         )
 
         result = df.select(
@@ -173,7 +179,9 @@ class TestDataFrameAdvancedOperations:
             F.col("name"),
             F.col("salary"),
             (F.col("salary") + F.col("bonus")).alias("total_compensation"),
-            F.when(F.col("salary") > 75000, "High").otherwise("Low").alias("salary_level"),
+            F.when(F.col("salary") > 75000, "High")
+            .otherwise("Low")
+            .alias("salary_level"),
             F.coalesce(F.col("bonus"), F.lit(0)).alias("safe_bonus"),
             F.isnull(F.col("bonus")).alias("bonus_is_null"),
             F.upper(F.col("name")).alias("upper_name"),

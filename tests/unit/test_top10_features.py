@@ -102,11 +102,13 @@ class TestDataFrameReplace:
 
     def test_replace_with_dict(self, spark):
         """Test replace using dict mapping."""
-        df = spark.createDataFrame([
-            {"status": "A", "value": 1},
-            {"status": "B", "value": 2},
-            {"status": "C", "value": 3}
-        ])
+        df = spark.createDataFrame(
+            [
+                {"status": "A", "value": 1},
+                {"status": "B", "value": 2},
+                {"status": "C", "value": 3},
+            ]
+        )
         result = df.replace({"A": "Active", "B": "Blocked", "C": "Closed"})
 
         statuses = [row["status"] for row in result.collect()]
@@ -114,11 +116,9 @@ class TestDataFrameReplace:
 
     def test_replace_with_list_and_single_value(self, spark):
         """Test replace list of values with single value."""
-        df = spark.createDataFrame([
-            {"id": 1, "score": 10},
-            {"id": 2, "score": 20},
-            {"id": 3, "score": 30}
-        ])
+        df = spark.createDataFrame(
+            [{"id": 1, "score": 10}, {"id": 2, "score": 20}, {"id": 3, "score": 30}]
+        )
         result = df.replace([10, 20], 99)
 
         scores = [row["score"] for row in result.collect()]
@@ -126,10 +126,7 @@ class TestDataFrameReplace:
 
     def test_replace_with_subset(self, spark):
         """Test replace with subset parameter."""
-        df = spark.createDataFrame([
-            {"col1": 1, "col2": 1},
-            {"col1": 2, "col2": 2}
-        ])
+        df = spark.createDataFrame([{"col1": 1, "col2": 1}, {"col1": 2, "col2": 2}])
         # Only replace in col1
         result = df.replace(1, 99, subset=["col1"])
 
@@ -176,6 +173,7 @@ class TestUDF:
 
     def test_udf_decorator_pattern(self, spark):
         """Test UDF used as decorator."""
+
         @F.udf(returnType=IntegerType())
         def add_ten(x):
             return (x + 10) if x is not None else None
@@ -205,7 +203,7 @@ class TestWindowFunction:
             {"timestamp": base_time + timedelta(minutes=i), "value": i}
             for i in range(30)
         ]
-        df = spark.createDataFrame(data)
+        spark.createDataFrame(data)
 
         # Create window operation
         window_col = F.window("timestamp", "10 minutes")
@@ -218,8 +216,11 @@ class TestWindowFunction:
     def test_window_sliding(self, spark):
         """Test window function with sliding window."""
         base_time = datetime(2024, 1, 1, 0, 0, 0)
-        data = [{"timestamp": base_time + timedelta(minutes=i), "value": i} for i in range(20)]
-        df = spark.createDataFrame(data)
+        data = [
+            {"timestamp": base_time + timedelta(minutes=i), "value": i}
+            for i in range(20)
+        ]
+        spark.createDataFrame(data)
 
         window_col = F.window("timestamp", "10 minutes", "5 minutes")
 
@@ -230,7 +231,7 @@ class TestWindowFunction:
         """Test window function with custom start time."""
         base_time = datetime(2024, 1, 1, 0, 0, 0)
         data = [{"timestamp": base_time, "value": 1}]
-        df = spark.createDataFrame(data)
+        spark.createDataFrame(data)
 
         window_col = F.window("timestamp", "1 hour", startTime="30 minutes")
 
@@ -240,7 +241,7 @@ class TestWindowFunction:
         """Test window function with Column object."""
         base_time = datetime(2024, 1, 1, 0, 0, 0)
         data = [{"ts": base_time, "val": 1}]
-        df = spark.createDataFrame(data)
+        spark.createDataFrame(data)
 
         window_col = F.window(F.col("ts"), "5 minutes")
 
@@ -252,7 +253,7 @@ class TestDeprecatedAliases:
 
     def test_approxCountDistinct_deprecated(self, spark):
         """Test approxCountDistinct emits deprecation warning."""
-        df = spark.createDataFrame([{"a": 1}, {"a": 2}, {"a": 1}])
+        spark.createDataFrame([{"a": 1}, {"a": 2}, {"a": 1}])
 
         with pytest.warns(FutureWarning, match="approxCountDistinct is deprecated"):
             result = F.approxCountDistinct("a")
@@ -261,7 +262,7 @@ class TestDeprecatedAliases:
 
     def test_sumDistinct_deprecated(self, spark):
         """Test sumDistinct emits deprecation warning."""
-        df = spark.createDataFrame([{"value": 1}, {"value": 2}, {"value": 1}])
+        spark.createDataFrame([{"value": 1}, {"value": 2}, {"value": 1}])
 
         with pytest.warns(FutureWarning, match="sumDistinct is deprecated"):
             result = F.sumDistinct("value")
@@ -270,7 +271,7 @@ class TestDeprecatedAliases:
 
     def test_bitwiseNOT_deprecated(self, spark):
         """Test bitwiseNOT emits deprecation warning."""
-        df = spark.createDataFrame([{"flags": 5}])
+        spark.createDataFrame([{"flags": 5}])
 
         with pytest.warns(FutureWarning, match="bitwiseNOT is deprecated"):
             result = F.bitwiseNOT("flags")
@@ -279,7 +280,7 @@ class TestDeprecatedAliases:
 
     def test_toDegrees_deprecated(self, spark):
         """Test toDegrees emits deprecation warning."""
-        df = spark.createDataFrame([{"radians": 3.14159}])
+        spark.createDataFrame([{"radians": 3.14159}])
 
         with pytest.warns(FutureWarning, match="toDegrees is deprecated"):
             result = F.toDegrees("radians")
@@ -288,7 +289,7 @@ class TestDeprecatedAliases:
 
     def test_toRadians_deprecated(self, spark):
         """Test toRadians emits deprecation warning."""
-        df = spark.createDataFrame([{"degrees": 180.0}])
+        spark.createDataFrame([{"degrees": 180.0}])
 
         with pytest.warns(FutureWarning, match="toRadians is deprecated"):
             result = F.toRadians("degrees")
@@ -301,16 +302,19 @@ class TestIntegration:
 
     def test_replace_in_pipeline(self, spark):
         """Test replace used in transformation pipeline."""
-        df = spark.createDataFrame([
-            {"status": "A", "score": 10},
-            {"status": "B", "score": 20},
-            {"status": "A", "score": 30}
-        ])
+        df = spark.createDataFrame(
+            [
+                {"status": "A", "score": 10},
+                {"status": "B", "score": 20},
+                {"status": "A", "score": 30},
+            ]
+        )
 
-        result = (df
-                  .replace({"A": "Active", "B": "Blocked"})
-                  .filter(F.col("status") == "Active")
-                  .select("score"))
+        result = (
+            df.replace({"A": "Active", "B": "Blocked"})
+            .filter(F.col("status") == "Active")
+            .select("score")
+        )
 
         scores = [row["score"] for row in result.collect()]
         assert set(scores) == {10, 30}
@@ -390,11 +394,10 @@ class TestEdgeCases:
 
     def test_window_default_parameters(self, spark):
         """Test window function with minimal parameters."""
-        df = spark.createDataFrame([{"ts": datetime(2024, 1, 1)}])
+        spark.createDataFrame([{"ts": datetime(2024, 1, 1)}])
 
         window_col = F.window("ts", "1 hour")
 
         # Verify defaults
         assert window_col._window_slide == "1 hour"  # type: ignore
         assert window_col._window_start == "0 seconds"  # type: ignore
-

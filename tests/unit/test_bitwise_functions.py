@@ -20,9 +20,7 @@ class TestBitwiseFunctionsUnit:
         data = [{"val": 7}]  # Binary: 111
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.bit_count(F.col("val")).alias("bits")
-        ).collect()
+        result = df.select(F.bit_count(F.col("val")).alias("bits")).collect()
 
         assert result[0]["bits"] == 3
 
@@ -34,7 +32,7 @@ class TestBitwiseFunctionsUnit:
 
         result = df.select(
             F.bit_get(F.col("val"), 0).alias("bit0"),
-            F.bit_get(F.col("val"), 2).alias("bit2")
+            F.bit_get(F.col("val"), 2).alias("bit2"),
         ).collect()
 
         # bit_get may return string or int depending on DuckDB
@@ -47,10 +45,7 @@ class TestBitwiseFunctionsUnit:
         data = [{"val": 5}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.bitwise_not(F.col("val")).alias("not_val")
-        ).collect()
+        result = df.select(F.bitwise_not(F.col("val")).alias("not_val")).collect()
 
         # Bitwise NOT of 5 depends on bit width, just check it's an integer
         assert isinstance(result[0]["not_val"], int)
-

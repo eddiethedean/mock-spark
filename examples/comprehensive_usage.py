@@ -12,11 +12,13 @@ Showcases advanced features including:
 Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
 """
 
+from typing import List, Dict, Any
+
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
 
 
-def create_sample_data():
+def create_sample_data() -> List[Dict[str, Any]]:
     """Generate comprehensive sample dataset."""
     return [
         {
@@ -27,7 +29,14 @@ def create_sample_data():
             "years": 5,
             "rating": 4.5,
         },
-        {"id": 2, "name": "Bob", "dept": "Sales", "salary": 80000, "years": 3, "rating": 4.2},
+        {
+            "id": 2,
+            "name": "Bob",
+            "dept": "Sales",
+            "salary": 80000,
+            "years": 3,
+            "rating": 4.2,
+        },
         {
             "id": 3,
             "name": "Charlie",
@@ -36,8 +45,22 @@ def create_sample_data():
             "years": 7,
             "rating": 4.8,
         },
-        {"id": 4, "name": "Diana", "dept": "Marketing", "salary": 75000, "years": 2, "rating": 4.0},
-        {"id": 5, "name": "Eve", "dept": "Sales", "salary": 90000, "years": 4, "rating": 4.6},
+        {
+            "id": 4,
+            "name": "Diana",
+            "dept": "Marketing",
+            "salary": 75000,
+            "years": 2,
+            "rating": 4.0,
+        },
+        {
+            "id": 5,
+            "name": "Eve",
+            "dept": "Sales",
+            "salary": 90000,
+            "years": 4,
+            "rating": 4.6,
+        },
         {
             "id": 6,
             "name": "Frank",
@@ -46,12 +69,26 @@ def create_sample_data():
             "years": 3,
             "rating": 4.1,
         },
-        {"id": 7, "name": "Grace", "dept": "Marketing", "salary": 82000, "years": 4, "rating": 4.4},
-        {"id": 8, "name": "Henry", "dept": "Sales", "salary": 95000, "years": 6, "rating": 4.7},
+        {
+            "id": 7,
+            "name": "Grace",
+            "dept": "Marketing",
+            "salary": 82000,
+            "years": 4,
+            "rating": 4.4,
+        },
+        {
+            "id": 8,
+            "name": "Henry",
+            "dept": "Sales",
+            "salary": 95000,
+            "years": 6,
+            "rating": 4.7,
+        },
     ]
 
 
-def demo_advanced_transformations(df):
+def demo_advanced_transformations(df: Any) -> None:
     """Demonstrate complex DataFrame transformations."""
     print("\n" + "=" * 60)
     print("📊 ADVANCED TRANSFORMATIONS")
@@ -81,7 +118,7 @@ def demo_advanced_transformations(df):
     return result
 
 
-def demo_window_analytics(df):
+def demo_window_analytics(df: Any) -> None:
     """Demonstrate window functions and analytics."""
     print("\n" + "=" * 60)
     print("🪟 WINDOW ANALYTICS")
@@ -106,7 +143,7 @@ def demo_window_analytics(df):
     return analytics
 
 
-def demo_complex_aggregations(df):
+def demo_complex_aggregations(df: Any) -> None:
     """Demonstrate multi-level aggregations."""
     print("\n" + "=" * 60)
     print("📈 COMPLEX AGGREGATIONS")
@@ -147,7 +184,7 @@ def demo_complex_aggregations(df):
     return dept_stats
 
 
-def demo_sql_operations(spark, df):
+def demo_sql_operations(spark: Any, df: Any) -> None:
     """Demonstrate SQL query capabilities."""
     print("\n" + "=" * 60)
     print("🗄️  SQL OPERATIONS")
@@ -157,19 +194,23 @@ def demo_sql_operations(spark, df):
     df.createOrReplaceTempView("employees")
 
     # Simple SQL query with filtering
-    sql_result = spark.sql("SELECT name, dept, salary FROM employees WHERE salary > 85000")
+    sql_result = spark.sql(
+        "SELECT name, dept, salary FROM employees WHERE salary > 85000"
+    )
 
     print("\n✓ SQL query (salary > 85k):")
     sql_result.show()
 
     # Another SQL example
-    top_rated = spark.sql("SELECT name, dept, rating FROM employees WHERE rating >= 4.5")
+    top_rated = spark.sql(
+        "SELECT name, dept, rating FROM employees WHERE rating >= 4.5"
+    )
 
     print("\n✓ Top rated employees (rating >= 4.5):")
     top_rated.show()
 
 
-def demo_advanced_features(df):
+def demo_advanced_features(df: Any) -> None:
     """Demonstrate advanced DataFrame features."""
     print("\n" + "=" * 60)
     print("🔬 ADVANCED FEATURES")
@@ -196,7 +237,7 @@ def demo_advanced_features(df):
     percentiles.show()
 
 
-def demo_error_handling(spark, df):
+def demo_error_handling(spark: Any, df: Any) -> None:
     """Demonstrate error handling and validation."""
     print("\n" + "=" * 60)
     print("⚠️  ERROR HANDLING")
@@ -219,11 +260,13 @@ def demo_error_handling(spark, df):
         {"name": "Test2", "value": None},
     ]
     null_df = spark.createDataFrame(null_data)
-    result = null_df.select("name", F.coalesce(F.col("value"), F.lit(0)).alias("value_safe"))
+    result = null_df.select(
+        "name", F.coalesce(F.col("value"), F.lit(0)).alias("value_safe")
+    )
     result.show()
 
 
-def main():
+def main() -> None:
     """Run comprehensive Mock Spark demonstration."""
     print("🚀 Mock Spark - Comprehensive Feature Showcase")
     print("=" * 60)

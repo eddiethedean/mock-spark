@@ -11,7 +11,11 @@ from mock_spark.spark_types import MockDataType, StringType
 # Import core classes from their canonical locations
 from .core.column import MockColumn, MockColumnOperation
 from .core.literals import MockLiteral
-from .core.lambda_parser import MockLambdaExpression, LambdaParser, LambdaTranslationError
+from .core.lambda_parser import (
+    MockLambdaExpression,
+    LambdaParser,
+    LambdaTranslationError,
+)
 
 if TYPE_CHECKING:
     from .window_execution import MockWindowFunction
@@ -114,7 +118,9 @@ class MockAggregateFunction:
         if self.column is None:
             return len(data)
         else:
-            column_name = self.column if isinstance(self.column, str) else self.column.name
+            column_name = (
+                self.column if isinstance(self.column, str) else self.column.name
+            )
             return sum(1 for row in data if row.get(column_name) is not None)
 
     def _evaluate_sum(self, data: List[dict]) -> Any:
@@ -136,7 +142,9 @@ class MockAggregateFunction:
             return 0.0
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
-        values = [row.get(column_name) for row in data if row.get(column_name) is not None]
+        values = [
+            row.get(column_name) for row in data if row.get(column_name) is not None
+        ]
         numeric_values = [v for v in values if isinstance(v, (int, float))]
         if numeric_values:
             return sum(numeric_values) / len(numeric_values)
@@ -149,7 +157,9 @@ class MockAggregateFunction:
             return None
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
-        values = [row.get(column_name) for row in data if row.get(column_name) is not None]
+        values = [
+            row.get(column_name) for row in data if row.get(column_name) is not None
+        ]
         if values:
             return max(values)  # type: ignore[type-var]
         else:
@@ -161,7 +171,9 @@ class MockAggregateFunction:
             return None
 
         column_name = self.column if isinstance(self.column, str) else self.column.name
-        values = [row.get(column_name) for row in data if row.get(column_name) is not None]
+        values = [
+            row.get(column_name) for row in data if row.get(column_name) is not None
+        ]
         if values:
             return min(values)  # type: ignore[type-var]
         else:

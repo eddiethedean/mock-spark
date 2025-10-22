@@ -19,7 +19,7 @@ from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
 
 
-def main():
+def main() -> None:
     """Demonstrate all new 0.3.0 features."""
     print("🚀 Mock Spark 0.3.0 New Features Demo")
     print("=" * 50)
@@ -77,22 +77,25 @@ def main():
     print("✓ format_string:")
     format_ops = df.select(
         F.col("name"),
-        F.format_string("Hello %s, you are %d years old", F.col("name"), F.col("age")).alias(
-            "greeting"
-        ),
+        F.format_string(
+            "Hello %s, you are %d years old", F.col("name"), F.col("age")
+        ).alias("greeting"),
     )
     format_ops.show()
 
     # translate
     print("✓ translate:")
     translate_ops = df.select(
-        F.col("name"), F.translate(F.col("name"), "aeiou", "AEIOU").alias("vowels_upper")
+        F.col("name"),
+        F.translate(F.col("name"), "aeiou", "AEIOU").alias("vowels_upper"),
     )
     translate_ops.show()
 
     # ascii
     print("✓ ascii:")
-    ascii_ops = df.select(F.col("name"), F.ascii(F.col("name")).alias("first_char_ascii"))
+    ascii_ops = df.select(
+        F.col("name"), F.ascii(F.col("name")).alias("first_char_ascii")
+    )
     ascii_ops.show()
 
     # base64
@@ -163,7 +166,8 @@ def main():
     # add_months
     print("✓ add_months:")
     date_ops = df.select(
-        F.col("hire_date"), F.add_months(F.col("hire_date"), 6).alias("hire_date_plus_6_months")
+        F.col("hire_date"),
+        F.add_months(F.col("hire_date"), 6).alias("hire_date_plus_6_months"),
     )
     date_ops.show()
 
@@ -171,7 +175,9 @@ def main():
     print("✓ months_between:")
     months_ops = df.select(
         F.col("hire_date"),
-        F.months_between(F.current_date(), F.col("hire_date")).alias("months_since_hire"),
+        F.months_between(F.current_date(), F.col("hire_date")).alias(
+            "months_since_hire"
+        ),
     )
     months_ops.show()
 
@@ -275,7 +281,9 @@ def main():
     # F.col, F.lit, F.expr
     print("✓ F.col, F.lit, F.expr:")
     expr_ops = df.select(
-        F.col("name"), F.lit("Employee").alias("type"), F.expr("upper(name)").alias("upper_name")
+        F.col("name"),
+        F.lit("Employee").alias("type"),
+        F.expr("upper(name)").alias("upper_name"),
     )
     expr_ops.show()
 

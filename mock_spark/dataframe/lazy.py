@@ -16,7 +16,9 @@ class LazyEvaluationEngine:
     """Handles lazy evaluation and materialization for DataFrames."""
 
     @staticmethod
-    def queue_operation(df: "MockDataFrame", op_name: str, payload: Any) -> "MockDataFrame":
+    def queue_operation(
+        df: "MockDataFrame", op_name: str, payload: Any
+    ) -> "MockDataFrame":
         """Queue an operation for lazy evaluation.
 
         Args:
@@ -66,15 +68,24 @@ class LazyEvaluationEngine:
             materializer = BackendFactory.create_materializer("duckdb")
             try:
                 # Let materializer optimize and execute the operations
-                rows = materializer.materialize(df.data, df.schema, df._operations_queue)
+                rows = materializer.materialize(
+                    df.data, df.schema, df._operations_queue
+                )
 
                 # Convert rows back to data format
-                materialized_data = LazyEvaluationEngine._convert_materialized_rows(rows, df.schema)
+                materialized_data = LazyEvaluationEngine._convert_materialized_rows(
+                    rows, df.schema
+                )
 
                 # Create new eager DataFrame with materialized data
                 from ..dataframe import MockDataFrame
 
-                return MockDataFrame(materialized_data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
+                return MockDataFrame(
+                    materialized_data,
+                    df.schema,
+                    df.storage,
+                    is_lazy=False,  # type: ignore[has-type]
+                )
             finally:
                 materializer.close()
 
@@ -83,7 +94,9 @@ class LazyEvaluationEngine:
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
-    def _convert_materialized_rows(rows: List[Any], schema: "MockStructType") -> List[dict]:
+    def _convert_materialized_rows(
+        rows: List[Any], schema: "MockStructType"
+    ) -> List[dict]:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
@@ -261,36 +274,59 @@ class LazyEvaluationEngine:
                     new_fields.append(MockStructField(col_name, IntegerType()))
                 elif col.operation == "split":
                     # Split returns ArrayType of strings
-                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
+                    new_fields.append(
+                        MockStructField(col_name, ArrayType(StringType()))
+                    )
                 else:
                     # Default to StringType for unknown operations
                     new_fields.append(MockStructField(col_name, StringType()))
             elif hasattr(col, "value") and hasattr(col, "data_type"):
-                # Handle MockLiteral objects
+                # Handle MockLiteral objects - literals are never nullable
                 col_name = col.name
-                # Use the literal's data_type directly
-                new_fields.append(MockStructField(col_name, col.data_type))
-            elif hasattr(col, "conditions") and hasattr(col, "default_value"):
-                # Handle MockCaseWhen objects
-                col_name = col.name
-                # CASE WHEN can return various types - infer from default value
-                if hasattr(col.default_value, "name"):
-                    # Default is a column reference - try to find its type
-                    found = False
-                    for field in df.schema.fields:
-                        if field.name == col.default_value.name:
-                            new_fields.append(MockStructField(col_name, field.dataType))
-                            found = True
-                            break
-                    if not found:
-                        new_fields.append(MockStructField(col_name, IntegerType()))
-                elif isinstance(col.default_value, int):
-                    new_fields.append(MockStructField(col_name, IntegerType()))
-                elif isinstance(col.default_value, float):
-                    new_fields.append(MockStructField(col_name, DoubleType()))
+                # Use the literal's data_type and explicitly set nullable=False
+                from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                
+                data_type = col.data_type
+                # Create a new instance of the data type with nullable=False
+                if isinstance(data_type, BooleanType):
+                    data_type_non_null = BooleanType(nullable=False)
+                elif isinstance(data_type, IntegerType):
+                    data_type_non_null = IntegerType(nullable=False)
+                elif isinstance(data_type, LongType):
+                    data_type_non_null = LongType(nullable=False)
+                elif isinstance(data_type, DoubleType):
+                    data_type_non_null = DoubleType(nullable=False)
+                elif isinstance(data_type, StringType):
+                    data_type_non_null = StringType(nullable=False)
                 else:
-                    # Default to IntegerType for CASE WHEN
+                    # For other types, create a new instance with nullable=False
+                    data_type_non_null = data_type.__class__(nullable=False)
+                
+                new_fields.append(MockStructField(col_name, data_type_non_null, nullable=False))
+            elif hasattr(col, "conditions") and hasattr(col, "default_value"):
+                # Handle MockCaseWhen objects - use get_result_type() method
+                col_name = col.name
+                from ..functions.conditional import MockCaseWhen
+                
+                if isinstance(col, MockCaseWhen):
+                    # Use the proper type inference method
+                    inferred_type = col.get_result_type()
+                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
+                else:
+                    # Fallback for other conditional objects
                     new_fields.append(MockStructField(col_name, IntegerType()))
+            elif hasattr(col, "conditions"):
+                # Handle MockCaseWhen objects that didn't match the first condition
+                col_name = col.name
+                from ..functions.conditional import MockCaseWhen
+                
+                if isinstance(col, MockCaseWhen):
+                    # Use the proper type inference method
+                    inferred_type = col.get_result_type()
+                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
+                else:
+                    # Default to StringType for unknown operations
+                    new_fields.append(MockStructField(col_name, StringType()))
             elif hasattr(col, "name"):
                 # Handle MockColumn
                 col_name = col.name
@@ -353,7 +389,9 @@ class LazyEvaluationEngine:
         original_columns = {field.name for field in original_schema.fields}
 
         # Check if the filter references any of the original columns
-        if hasattr(filter_condition, "column") and hasattr(filter_condition.column, "name"):
+        if hasattr(filter_condition, "column") and hasattr(
+            filter_condition.column, "name"
+        ):
             column_name = filter_condition.column.name
             return column_name in original_columns
         elif hasattr(filter_condition, "name"):

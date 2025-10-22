@@ -92,7 +92,9 @@ class MockQueryOptimizer:
             optimized_components = rule(optimized_components)
 
         # Create optimized AST
-        optimized_components["original_query"] = ast.components.get("original_query", "")
+        optimized_components["original_query"] = ast.components.get(
+            "original_query", ""
+        )
         optimized_ast = MockSQLAST(ast.query_type, optimized_components)
 
         return optimized_ast
@@ -124,7 +126,9 @@ class MockQueryOptimizer:
         # down to the data source level
         return components
 
-    def _rule_projection_elimination(self, components: Dict[str, Any]) -> Dict[str, Any]:
+    def _rule_projection_elimination(
+        self, components: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Apply projection elimination optimization.
 
         Args:
@@ -222,7 +226,9 @@ class MockQueryOptimizer:
             plan.children.append(sort_plan)
 
         if components.get("limit_value"):
-            limit_plan = MockQueryPlan("LIMIT", properties={"limit": components.get("limit_value")})
+            limit_plan = MockQueryPlan(
+                "LIMIT", properties={"limit": components.get("limit_value")}
+            )
             plan.children.append(limit_plan)
 
         return plan

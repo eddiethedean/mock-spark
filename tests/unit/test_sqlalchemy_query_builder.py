@@ -5,7 +5,16 @@ Tests the database-agnostic query building functionality.
 """
 
 import pytest
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Float, insert
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    String,
+    Float,
+    insert,
+)
 from mock_spark.dataframe.sqlalchemy_query_builder import SQLAlchemyQueryBuilder
 from mock_spark.functions import col
 from mock_spark.spark_types import (
@@ -220,10 +229,18 @@ class TestSQLAlchemyMaterializer:
     def test_materializer_basic(self):
         """Test basic materialization with SQLite."""
         from mock_spark.backend.duckdb import SQLAlchemyMaterializer
-        from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            IntegerType,
+            StringType,
+        )
 
         schema = MockStructType(
-            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("name", StringType()),
+            ]
         )
 
         data = [
@@ -243,11 +260,19 @@ class TestSQLAlchemyMaterializer:
     def test_materializer_with_filter(self):
         """Test materialization with filter operation."""
         from mock_spark.backend.duckdb import SQLAlchemyMaterializer
-        from mock_spark.spark_types import MockStructType, MockStructField, IntegerType, StringType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            IntegerType,
+            StringType,
+        )
         from mock_spark.functions import col
 
         schema = MockStructType(
-            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("name", StringType()),
+            ]
         )
 
         data = [

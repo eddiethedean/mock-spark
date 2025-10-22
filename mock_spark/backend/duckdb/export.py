@@ -16,7 +16,10 @@ class DuckDBExporter:
     """Handles exporting DataFrame to DuckDB format."""
 
     def to_duckdb(
-        self, df: "MockDataFrame", connection: Any = None, table_name: Optional[str] = None
+        self,
+        df: "MockDataFrame",
+        connection: Any = None,
+        table_name: Optional[str] = None,
     ) -> str:
         """Convert DataFrame to DuckDB table for analytical operations.
 
@@ -35,7 +38,8 @@ class DuckDBExporter:
             import duckdb
         except ImportError:
             raise ImportError(
-                "duckdb is required for toDuckDB() method. " "Install with: pip install duckdb"
+                "duckdb is required for toDuckDB() method. "
+                "Install with: pip install duckdb"
             )
 
         # Handle SQLAlchemy Engine objects
@@ -64,7 +68,8 @@ class DuckDBExporter:
             if isinstance(connection, duckdb.DuckDBPyConnection):
                 # Use DuckDB connection directly for backward compatibility
                 values_list = [
-                    tuple(row.get(field.name) for field in df.schema.fields) for row in df.data
+                    tuple(row.get(field.name) for field in df.schema.fields)
+                    for row in df.data
                 ]
                 placeholders = ", ".join(["?" for _ in df.schema.fields])
                 connection.executemany(
@@ -81,7 +86,9 @@ class DuckDBExporter:
 
         return table_name
 
-    def create_duckdb_table(self, df: "MockDataFrame", connection: Any, table_name: str) -> Any:
+    def create_duckdb_table(
+        self, df: "MockDataFrame", connection: Any, table_name: str
+    ) -> Any:
         """Create DuckDB table from MockSpark schema.
 
         Args:

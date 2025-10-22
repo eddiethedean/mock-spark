@@ -129,7 +129,8 @@ class DuckDBTable(ITable):
             if self.sqlalchemy_table is not None:
                 # Check if we have MAP columns that need special handling
                 has_map_columns = any(
-                    "MapType" in type(field.dataType).__name__ for field in self.schema.fields
+                    "MapType" in type(field.dataType).__name__
+                    for field in self.schema.fields
                 )
 
                 if has_map_columns:
@@ -208,7 +209,9 @@ class DuckDBTable(ITable):
     def _update_row_count(self, new_rows: int) -> None:
         """Update row count with type safety."""
         current_count = self.metadata.get("row_count", 0)
-        self.metadata["row_count"] = int(current_count) + new_rows if current_count else new_rows
+        self.metadata["row_count"] = (
+            int(current_count) + new_rows if current_count else new_rows
+        )
         self.metadata["updated_at"] = datetime.utcnow().isoformat()
 
     def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -237,7 +240,9 @@ class DuckDBTable(ITable):
             else:
                 # Use SQLAlchemy for unfiltered queries
                 with self.engine.connect() as conn:
-                    sqlalchemy_result: Any = conn.execute(stmt).fetchall()  # Sequence[Row]
+                    sqlalchemy_result: Any = conn.execute(
+                        stmt
+                    ).fetchall()  # Sequence[Row]
                     columns = [col.name for col in self.sqlalchemy_table.columns]
                     data = [dict(zip(columns, row)) for row in sqlalchemy_result]
 
@@ -388,7 +393,9 @@ class DuckDBStorageManager(IStorageManager):
                 import tempfile
                 import uuid
 
-                self._temp_dir = tempfile.mkdtemp(prefix=f"duckdb_test_{uuid.uuid4().hex[:8]}_")
+                self._temp_dir = tempfile.mkdtemp(
+                    prefix=f"duckdb_test_{uuid.uuid4().hex[:8]}_"
+                )
                 self.connection.execute(f"SET temp_directory='{self._temp_dir}'")
             else:
                 # Disable disk spillover for test isolation
@@ -397,7 +404,9 @@ class DuckDBStorageManager(IStorageManager):
             pass  # Ignore if settings not supported
 
         # Create default schema with SQLAlchemy engine
-        self.schemas["default"] = DuckDBSchema("default", self.connection, None, self.engine)
+        self.schemas["default"] = DuckDBSchema(
+            "default", self.connection, None, self.engine
+        )
 
         # Enable extensions using DuckDB Python API (zero raw SQL)
         try:
@@ -409,7 +418,9 @@ class DuckDBStorageManager(IStorageManager):
     def create_schema(self, schema: str) -> None:
         """Create a new schema."""
         if schema not in self.schemas:
-            self.schemas[schema] = DuckDBSchema(schema, self.connection, None, self.engine)
+            self.schemas[schema] = DuckDBSchema(
+                schema, self.connection, None, self.engine
+            )
 
     def schema_exists(self, schema: str) -> bool:
         """Check if schema exists."""

@@ -52,7 +52,11 @@ class TestLazyEvaluationCompatibility:
         df = spark.createDataFrame(sample_data)
 
         # Create a transformation chain - filter first, then select
-        result = df.filter(F.col("age") > 25).select("name", "salary").orderBy(F.desc("salary"))
+        result = (
+            df.filter(F.col("age") > 25)
+            .select("name", "salary")
+            .orderBy(F.desc("salary"))
+        )
 
         # Verify operations are queued
         assert len(result._operations_queue) == 3
@@ -91,7 +95,9 @@ class TestLazyEvaluationCompatibility:
         df = spark.createDataFrame(sample_data)
 
         # Create transformation chain
-        result = df.filter(F.col("department") == "Engineering").filter(F.col("salary") > 80000)
+        result = df.filter(F.col("department") == "Engineering").filter(
+            F.col("salary") > 80000
+        )
 
         # Count should work without materializing all data
         count = result.count()
@@ -102,7 +108,9 @@ class TestLazyEvaluationCompatibility:
         df = spark.createDataFrame(sample_data)
 
         # Create transformation chain
-        result = df.filter(F.col("department") == "Engineering").orderBy(F.desc("salary"))
+        result = df.filter(F.col("department") == "Engineering").orderBy(
+            F.desc("salary")
+        )
 
         # First action
         rows1 = result.collect()
@@ -123,9 +131,9 @@ class TestLazyEvaluationCompatibility:
 
         # Create window function transformation
         window = Window.partitionBy("department").orderBy(F.desc("salary"))
-        result = df.select(F.col("*"), F.row_number().over(window).alias("rank")).filter(
-            F.col("rank") <= 2
-        )
+        result = df.select(
+            F.col("*"), F.row_number().over(window).alias("rank")
+        ).filter(F.col("rank") <= 2)
 
         # Verify operations are queued
         assert result.is_lazy is True
@@ -136,7 +144,9 @@ class TestLazyEvaluationCompatibility:
         assert len(rows) == 3  # Top 2 from Engineering + 1 from Marketing
 
         # Verify ranking is correct
-        engineering_ranks = [r["rank"] for r in rows if r["department"] == "Engineering"]
+        engineering_ranks = [
+            r["rank"] for r in rows if r["department"] == "Engineering"
+        ]
         marketing_ranks = [r["rank"] for r in rows if r["department"] == "Marketing"]
 
         assert engineering_ranks == [1, 2]  # Bob (1), Diana (2)
@@ -222,7 +232,9 @@ class TestLazyEvaluationCompatibility:
 
         # Verify operations are queued
         assert result.is_lazy is True
-        assert len(result._operations_queue) == 5  # filter, withColumn, filter, select, orderBy
+        assert (
+            len(result._operations_queue) == 5
+        )  # filter, withColumn, filter, select, orderBy
 
         # Materialize and verify results
         rows = result.collect()

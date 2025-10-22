@@ -32,7 +32,9 @@ class DuckDBMaterializer(SQLAlchemyMaterializer):
                 import tempfile
                 import uuid
 
-                self._temp_dir = tempfile.mkdtemp(prefix=f"duckdb_mat_{uuid.uuid4().hex[:8]}_")
+                self._temp_dir = tempfile.mkdtemp(
+                    prefix=f"duckdb_mat_{uuid.uuid4().hex[:8]}_"
+                )
                 raw_conn.execute(f"SET temp_directory='{self._temp_dir}'")
             else:
                 # Disable disk spillover for test isolation

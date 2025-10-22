@@ -405,7 +405,7 @@ class FileStorageManager(IStorageManager):
 
     def close(self) -> None:
         """Close storage backend and clean up resources.
-        
+
         For file-based storage, this is a no-op as files are managed per operation.
         """
         pass

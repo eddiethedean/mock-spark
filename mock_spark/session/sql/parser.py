@@ -41,7 +41,9 @@ class MockSQLAST:
 
     def __str__(self) -> str:
         """String representation."""
-        return f"MockSQLAST(type='{self.query_type}', components={len(self.components)})"
+        return (
+            f"MockSQLAST(type='{self.query_type}', components={len(self.components)})"
+        )
 
     def __repr__(self) -> str:
         """Representation."""
@@ -393,7 +395,9 @@ class MockSQLParser:
             if columns_str.strip() == "*":
                 components["select_columns"] = ["*"]
             else:
-                components["select_columns"] = [col.strip() for col in columns_str.split(",")]
+                components["select_columns"] = [
+                    col.strip() for col in columns_str.split(",")
+                ]
 
         # Extract FROM tables
         from_match = re.search(r"FROM\s+(\w+)", query, re.IGNORECASE)
@@ -424,7 +428,9 @@ class MockSQLParser:
 
         # Parse CREATE DATABASE/SCHEMA [IF NOT EXISTS] <name>
         create_db_match = re.match(
-            r"CREATE\s+(DATABASE|SCHEMA)\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w]+)", query, re.IGNORECASE
+            r"CREATE\s+(DATABASE|SCHEMA)\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w]+)",
+            query,
+            re.IGNORECASE,
         )
         if create_db_match:
             object_type = create_db_match.group(1).upper()
@@ -458,7 +464,9 @@ class MockSQLParser:
 
         # Parse DROP DATABASE/SCHEMA [IF EXISTS] <name>
         drop_db_match = re.match(
-            r"DROP\s+(DATABASE|SCHEMA)\s+(?:IF\s+EXISTS\s+)?([`\w]+)", query, re.IGNORECASE
+            r"DROP\s+(DATABASE|SCHEMA)\s+(?:IF\s+EXISTS\s+)?([`\w]+)",
+            query,
+            re.IGNORECASE,
         )
         if drop_db_match:
             object_type = drop_db_match.group(1).upper()
@@ -527,7 +535,9 @@ class MockSQLParser:
         components = {}
 
         # Extract: MERGE INTO target_table
-        target_match = re.search(r"MERGE\s+INTO\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE)
+        target_match = re.search(
+            r"MERGE\s+INTO\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE
+        )
         if target_match:
             components["target_table"] = target_match.group(1)
             components["target_alias"] = None
@@ -571,10 +581,14 @@ class MockSQLParser:
 
             if action == "UPDATE":
                 # Parse SET clause
-                set_match = re.search(r"SET\s+(.*?)(?=WHEN|$)", details, re.IGNORECASE | re.DOTALL)
+                set_match = re.search(
+                    r"SET\s+(.*?)(?=WHEN|$)", details, re.IGNORECASE | re.DOTALL
+                )
                 if set_match:
                     set_clause = set_match.group(1).strip()
-                    matched_clauses.append({"action": "UPDATE", "set_clause": set_clause})
+                    matched_clauses.append(
+                        {"action": "UPDATE", "set_clause": set_clause}
+                    )
             elif action == "DELETE":
                 matched_clauses.append({"action": "DELETE"})
 
@@ -588,7 +602,9 @@ class MockSQLParser:
             re.IGNORECASE | re.DOTALL,
         ):
             insert_clause = match.group(1).strip()
-            not_matched_clauses.append({"action": "INSERT", "insert_clause": insert_clause})
+            not_matched_clauses.append(
+                {"action": "INSERT", "insert_clause": insert_clause}
+            )
 
         components["when_not_matched"] = not_matched_clauses
 

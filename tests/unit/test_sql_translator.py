@@ -6,7 +6,10 @@ Tests the translation of Spark SQL to SQLAlchemy statements.
 
 import pytest
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Float
-from mock_spark.storage.sql_translator import SQLToSQLAlchemyTranslator, SQLTranslationError
+from mock_spark.storage.sql_translator import (
+    SQLToSQLAlchemyTranslator,
+    SQLTranslationError,
+)
 
 
 class TestSQLTranslator:
@@ -133,7 +136,9 @@ class TestSQLTranslator:
         """Test INSERT translation."""
         translator = SQLToSQLAlchemyTranslator(engine)
 
-        stmt = translator.translate("INSERT INTO users VALUES (4, 'Diana', 28, 80000.0)")
+        stmt = translator.translate(
+            "INSERT INTO users VALUES (4, 'Diana', 28, 80000.0)"
+        )
 
         with engine.begin() as conn:
             conn.execute(stmt)

@@ -21,7 +21,9 @@ class TestColumnFunctions:
     ):
         """Test lit() function."""
         mock_result = mock_dataframe.select(mock_functions.lit("constant_value"))
-        pyspark_result = pyspark_dataframe.select(pyspark_functions.lit("constant_value"))
+        pyspark_result = pyspark_dataframe.select(
+            pyspark_functions.lit("constant_value")
+        )
         assert_dataframes_equal(mock_result, pyspark_result)
 
     def test_lit_function_with_existing_column(
@@ -161,12 +163,16 @@ class TestColumnFunctions:
         """Test null check operations."""
         # isNull
         mock_result = mock_dataframe.filter(mock_functions.col("name").isNull())
-        pyspark_result = pyspark_dataframe.filter(pyspark_functions.col("name").isNull())
+        pyspark_result = pyspark_dataframe.filter(
+            pyspark_functions.col("name").isNull()
+        )
         assert_dataframes_equal(mock_result, pyspark_result)
 
         # isNotNull
         mock_result = mock_dataframe.filter(mock_functions.col("name").isNotNull())
-        pyspark_result = pyspark_dataframe.filter(pyspark_functions.col("name").isNotNull())
+        pyspark_result = pyspark_dataframe.filter(
+            pyspark_functions.col("name").isNotNull()
+        )
         assert_dataframes_equal(mock_result, pyspark_result)
 
 
@@ -222,7 +228,9 @@ class TestAggregateFunctions:
         assert "count" in pyspark_result_method.columns
 
         # Test groupBy().agg(count("*"))
-        mock_result_agg = mock_dataframe.groupBy("department").agg(mock_functions.count("*"))
+        mock_result_agg = mock_dataframe.groupBy("department").agg(
+            mock_functions.count("*")
+        )
         pyspark_result_agg = pyspark_dataframe.groupBy("department").agg(
             pyspark_functions.count("*")
         )
@@ -311,7 +319,9 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test upper() function."""
-        mock_result = mock_dataframe.select(mock_functions.upper(mock_functions.col("name")))
+        mock_result = mock_dataframe.select(
+            mock_functions.upper(mock_functions.col("name"))
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.upper(pyspark_functions.col("name"))
         )
@@ -321,7 +331,9 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test lower() function."""
-        mock_result = mock_dataframe.select(mock_functions.lower(mock_functions.col("name")))
+        mock_result = mock_dataframe.select(
+            mock_functions.lower(mock_functions.col("name"))
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.lower(pyspark_functions.col("name"))
         )
@@ -331,7 +343,9 @@ class TestStringFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test length() function."""
-        mock_result = mock_dataframe.select(mock_functions.length(mock_functions.col("name")))
+        mock_result = mock_dataframe.select(
+            mock_functions.length(mock_functions.col("name"))
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.length(pyspark_functions.col("name"))
         )
@@ -346,12 +360,16 @@ class TestMathematicalFunctions:
     ):
         """Test abs() function."""
         # Create a DataFrame with negative values
-        mock_data_with_neg = mock_dataframe.withColumn("age_neg", mock_functions.col("age") * -1)
+        mock_data_with_neg = mock_dataframe.withColumn(
+            "age_neg", mock_functions.col("age") * -1
+        )
         pyspark_data_with_neg = pyspark_dataframe.withColumn(
             "age_neg", pyspark_functions.col("age") * -1
         )
 
-        mock_result = mock_data_with_neg.select(mock_functions.abs(mock_functions.col("age_neg")))
+        mock_result = mock_data_with_neg.select(
+            mock_functions.abs(mock_functions.col("age_neg"))
+        )
         pyspark_result = pyspark_data_with_neg.select(
             pyspark_functions.abs(pyspark_functions.col("age_neg"))
         )
@@ -361,7 +379,9 @@ class TestMathematicalFunctions:
         self, mock_dataframe, pyspark_dataframe, mock_functions, pyspark_functions
     ):
         """Test round() function."""
-        mock_result = mock_dataframe.select(mock_functions.round(mock_functions.col("salary"), 2))
+        mock_result = mock_dataframe.select(
+            mock_functions.round(mock_functions.col("salary"), 2)
+        )
         pyspark_result = pyspark_dataframe.select(
             pyspark_functions.round(pyspark_functions.col("salary"), 2)
         )
@@ -429,7 +449,9 @@ class TestFunctionDiscrepancyDetection:
                 pyspark_functions.col("name"),
                 pyspark_functions.col("age"),
                 (pyspark_functions.col("age") + 1).alias("age_plus_one"),
-                pyspark_functions.upper(pyspark_functions.col("name")).alias("name_upper"),
+                pyspark_functions.upper(pyspark_functions.col("name")).alias(
+                    "name_upper"
+                ),
             )
             .filter(pyspark_functions.col("age") > 25)
             .orderBy(pyspark_functions.col("age"))

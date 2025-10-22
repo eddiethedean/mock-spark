@@ -213,7 +213,9 @@ class DeltaTable:
                 MockStructField("userId", StringType()),
                 MockStructField("userName", StringType()),
                 MockStructField("operation", StringType()),
-                MockStructField("operationParameters", MapType(StringType(), StringType())),
+                MockStructField(
+                    "operationParameters", MapType(StringType(), StringType())
+                ),
                 MockStructField("readVersion", LongType()),
                 MockStructField("isolationLevel", StringType()),
                 MockStructField("isBlindAppend", LongType()),

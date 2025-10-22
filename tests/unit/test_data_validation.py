@@ -56,7 +56,9 @@ class TestDataValidatorInit:
 
     def test_init_strict_mode(self, simple_schema):
         """Test initialization in strict mode."""
-        validator = DataValidator(simple_schema, validation_mode="strict", enable_coercion=False)
+        validator = DataValidator(
+            simple_schema, validation_mode="strict", enable_coercion=False
+        )
         assert validator.validation_mode == "strict"
         assert validator.enable_coercion is False
 
@@ -119,7 +121,9 @@ class TestValidation:
 
     def test_validate_allows_nulls(self, simple_schema):
         """Test validation allows null values."""
-        data_with_nulls = [{"name": "Alice", "age": None, "salary": None, "active": None}]
+        data_with_nulls = [
+            {"name": "Alice", "age": None, "salary": None, "active": None}
+        ]
         validator = DataValidator(simple_schema, validation_mode="strict")
         validator.validate(data_with_nulls)  # Should not raise
 

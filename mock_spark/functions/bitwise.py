@@ -31,7 +31,9 @@ class BitwiseFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(column, "bit_count", name=f"bit_count({column.name})")
+        return MockColumnOperation(
+            column, "bit_count", name=f"bit_count({column.name})"
+        )
 
     @staticmethod
     def bit_get(column: Union[MockColumn, str], pos: int) -> MockColumnOperation:
@@ -70,7 +72,9 @@ class BitwiseFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(column, "bitwise_not", name=f"bitwise_not({column.name})")
+        return MockColumnOperation(
+            column, "bitwise_not", name=f"bitwise_not({column.name})"
+        )
 
     # Priority 2: Bitwise Aggregate Functions
     @staticmethod
@@ -131,20 +135,20 @@ class BitwiseFunctions:
     @staticmethod
     def bitwiseNOT(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Deprecated alias for bitwise_not (all PySpark versions).
-        
+
         Use bitwise_not instead.
-        
+
         Args:
             column: Integer column.
-            
+
         Returns:
             MockColumnOperation representing bitwise NOT.
         """
         import warnings
+
         warnings.warn(
             "bitwiseNOT is deprecated. Use bitwise_not instead.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return BitwiseFunctions.bitwise_not(column)
-

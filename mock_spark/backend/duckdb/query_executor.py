@@ -48,7 +48,10 @@ class SQLAlchemyMaterializer:
         self.metadata = MetaData()
 
     def materialize(
-        self, data: List[Dict[str, Any]], schema: MockStructType, operations: List[Tuple[str, Any]]
+        self,
+        data: List[Dict[str, Any]],
+        schema: MockStructType,
+        operations: List[Tuple[str, Any]],
     ) -> List[MockRow]:
         """
         Materializes the DataFrame by building and executing operations using CTEs.
@@ -72,7 +75,10 @@ class SQLAlchemyMaterializer:
             # Fallback to old table-per-operation approach if CTE fails
             # This ensures backward compatibility for complex operations
             import warnings
-            warnings.warn(f"CTE optimization failed, falling back to table-per-operation: {e}")
+
+            warnings.warn(
+                f"CTE optimization failed, falling back to table-per-operation: {e}"
+            )
             return self._materialize_with_tables(source_table_name, operations)
 
     def _materialize_with_cte(
@@ -81,27 +87,27 @@ class SQLAlchemyMaterializer:
         """Materialize operations using a single CTE query."""
         # Build the CTE query
         cte_query = self._build_cte_query(source_table_name, operations)
-        
+
         # Execute the query
         with Session(self.engine) as session:
             results = list(session.execute(text(cte_query)).all())
-            
+
             # Convert results to MockRow objects
             if not results:
                 return []
-            
+
             # Get column names from the first result
             result_rows = []
             for result in results:
-                if hasattr(result, '_mapping'):
+                if hasattr(result, "_mapping"):
                     row_dict = dict(result._mapping)
-                elif hasattr(result, 'keys'):
+                elif hasattr(result, "keys"):
                     row_dict = {key: result[i] for i, key in enumerate(result.keys())}
                 else:
                     # Fallback: assume it's a tuple-like result
                     row_dict = {f"col_{i}": val for i, val in enumerate(result)}
                 result_rows.append(MockRow(row_dict))
-            
+
             return result_rows
 
     def _materialize_with_tables(
@@ -109,7 +115,7 @@ class SQLAlchemyMaterializer:
     ) -> List[MockRow]:
         """Fallback: materialize operations using table-per-operation approach."""
         current_table_name = source_table_name
-        
+
         # Apply operations step by step
         temp_counter = 1
         for op_name, op_val in operations:
@@ -122,7 +128,9 @@ class SQLAlchemyMaterializer:
                 self._apply_select(current_table_name, next_table_name, op_val)
             elif op_name == "withColumn":
                 col_name, col = op_val
-                self._apply_with_column(current_table_name, next_table_name, col_name, col)
+                self._apply_with_column(
+                    current_table_name, next_table_name, col_name, col
+                )
             elif op_name == "orderBy":
                 self._apply_order_by(current_table_name, next_table_name, op_val)
             elif op_name == "limit":
@@ -139,7 +147,9 @@ class SQLAlchemyMaterializer:
         # Get final results
         return self._get_table_results(current_table_name)
 
-    def _create_table_with_data(self, table_name: str, data: List[Dict[str, Any]]) -> None:
+    def _create_table_with_data(
+        self, table_name: str, data: List[Dict[str, Any]]
+    ) -> None:
         """Create a table and insert data using SQLAlchemy Table."""
         if not data:
             # Create a minimal table with at least one column to avoid "Table must have at least one column!" error
@@ -168,9 +178,12 @@ class SQLAlchemyMaterializer:
                 elif isinstance(value, list):
                     # For arrays, infer element type from first element
                     from sqlalchemy import ARRAY, VARCHAR
+
                     if value and len(value) > 0:
                         # Infer element type from first non-None element
-                        first_elem = next((elem for elem in value if elem is not None), None)
+                        first_elem = next(
+                            (elem for elem in value if elem is not None), None
+                        )
                         if isinstance(first_elem, int):
                             columns.append(Column(key, ARRAY(Integer)))
                         elif isinstance(first_elem, float):
@@ -201,14 +214,17 @@ class SQLAlchemyMaterializer:
             for col in columns:
                 if col.name in map_column_names:
                     col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
-                elif type(col.type).__name__ == 'ARRAY':
+                elif type(col.type).__name__ == "ARRAY":
                     # Determine array element type
                     from sqlalchemy import ARRAY
+
                     if isinstance(col.type, ARRAY):
                         elem_type = col.type.item_type
                         if isinstance(elem_type, Integer):
                             col_defs.append(f'"{col.name}" INTEGER[]')
-                        elif isinstance(elem_type, Float) or isinstance(elem_type, Double):
+                        elif isinstance(elem_type, Float) or isinstance(
+                            elem_type, Double
+                        ):
                             col_defs.append(f'"{col.name}" DOUBLE[]')
                         elif isinstance(elem_type, Boolean):
                             col_defs.append(f'"{col.name}" BOOLEAN[]')
@@ -269,7 +285,7 @@ class SQLAlchemyMaterializer:
                     col_values = []
                     for col_name, col_value in insert_values.items():
                         col_names.append(f'"{col_name}"')
-                        if hasattr(col_value, 'text'):  # TextClause
+                        if hasattr(col_value, "text"):  # TextClause
                             col_values.append(col_value.text)
                         elif isinstance(col_value, str):
                             col_values.append(f"'{col_value}'")
@@ -286,13 +302,17 @@ class SQLAlchemyMaterializer:
                     session.execute(insert_stmt)
             session.commit()
 
-    def _apply_filter(self, source_table: str, target_table: str, condition: Any) -> None:
+    def _apply_filter(
+        self, source_table: str, target_table: str, condition: Any
+    ) -> None:
         """Apply a filter operation using SQLAlchemy expressions."""
         source_table_obj = self._created_tables[source_table]
 
         # Check if source table has any rows
         with Session(self.engine) as session:
-            row_count = session.execute(select(func.count()).select_from(source_table_obj)).scalar()
+            row_count = session.execute(
+                select(func.count()).select_from(source_table_obj)
+            ).scalar()
 
         # Set flag to enable strict column validation for filters
         # Only validate if table has rows (errors should only occur when processing actual data)
@@ -316,7 +336,9 @@ class SQLAlchemyMaterializer:
 
             if filter_expr is not None:
                 # Convert SQLAlchemy expression to SQL string
-                filter_sql = str(filter_expr.compile(compile_kwargs={"literal_binds": True}))
+                filter_sql = str(
+                    filter_expr.compile(compile_kwargs={"literal_binds": True})
+                )
                 sql += f" WHERE {filter_sql}"
 
             results = session.execute(text(sql)).all()
@@ -331,7 +353,9 @@ class SQLAlchemyMaterializer:
                 session.execute(insert_stmt)
             session.commit()
 
-    def _apply_select(self, source_table: str, target_table: str, columns: Tuple[Any, ...]) -> None:
+    def _apply_select(
+        self, source_table: str, target_table: str, columns: Tuple[Any, ...]
+    ) -> None:
         """Apply a select operation."""
         source_table_obj = self._created_tables[source_table]
 
@@ -339,7 +363,9 @@ class SQLAlchemyMaterializer:
 
         # Check if we have window functions or aggregate functions - if so, use raw SQL
         has_window_functions = any(
-            (hasattr(col, "function_name") and hasattr(col, "window_spec"))  # MockWindowFunction
+            (
+                hasattr(col, "function_name") and hasattr(col, "window_spec")
+            )  # MockWindowFunction
             or (
                 hasattr(col, "function_name")
                 and hasattr(col, "column")
@@ -353,7 +379,9 @@ class SQLAlchemyMaterializer:
         if has_window_functions:
             # Use raw SQL for window functions
             # print("DEBUG: Using window functions path")
-            self._apply_select_with_window_functions(source_table, target_table, columns)
+            self._apply_select_with_window_functions(
+                source_table, target_table, columns
+            )
             return
 
         # Build select columns and new table structure
@@ -367,13 +395,17 @@ class SQLAlchemyMaterializer:
                     # Select all columns
                     for column in source_table_obj.columns:
                         select_columns.append(column)
-                        new_columns.append(Column(column.name, column.type, primary_key=False))
+                        new_columns.append(
+                            Column(column.name, column.type, primary_key=False)
+                        )
                 else:
                     # Select specific column
                     try:
                         source_column = source_table_obj.c[col]
                         select_columns.append(source_column)
-                        new_columns.append(Column(col, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col, source_column.type, primary_key=False)
+                        )
                     except KeyError:
                         # Column not found - raise AnalysisException
                         from mock_spark.core.exceptions import AnalysisException
@@ -425,13 +457,17 @@ class SQLAlchemyMaterializer:
                     # Select all columns
                     for column in source_table_obj.columns:
                         select_columns.append(column)
-                        new_columns.append(Column(column.name, column.type, primary_key=False))
+                        new_columns.append(
+                            Column(column.name, column.type, primary_key=False)
+                        )
                 else:
                     # Check if column exists in source table (might come from join)
                     if col_name in source_table_obj.c:
                         source_column = source_table_obj.c[col_name]
                         select_columns.append(source_column)
-                        new_columns.append(Column(col_name, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col_name, source_column.type, primary_key=False)
+                        )
                     else:
                         # Column doesn't exist in source, might come from join
                         # Add as text column reference with default String type
@@ -444,7 +480,23 @@ class SQLAlchemyMaterializer:
                     # Build CASE WHEN SQL expression
                     case_expr = self._build_case_when_sql(col, source_table_obj)
                     select_columns.append(text(case_expr))
-                    new_columns.append(Column(col.name, String, primary_key=False))
+                    
+                    # Infer the correct column type from MockCaseWhen
+                    from ...spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                    inferred_type = col.get_result_type()
+                    if isinstance(inferred_type, BooleanType):
+                        new_columns.append(Column(col.name, Boolean, primary_key=False))
+                    elif isinstance(inferred_type, IntegerType):
+                        new_columns.append(Column(col.name, Integer, primary_key=False))
+                    elif isinstance(inferred_type, LongType):
+                        new_columns.append(Column(col.name, Integer, primary_key=False))
+                    elif isinstance(inferred_type, DoubleType):
+                        new_columns.append(Column(col.name, Float, primary_key=False))
+                    elif isinstance(inferred_type, StringType):
+                        new_columns.append(Column(col.name, String, primary_key=False))
+                    else:
+                        # Default to String for unknown types
+                        new_columns.append(Column(col.name, String, primary_key=False))
                 except Exception as e:
                     print(f"Warning: Error handling MockCaseWhen: {e}")
                     continue
@@ -460,7 +512,9 @@ class SQLAlchemyMaterializer:
                     try:
                         left_col = source_table_obj.c[col.column.name]
                         # Extract value from MockLiteral or MockColumn
-                        if hasattr(col.value, "value") and hasattr(col.value, "data_type"):
+                        if hasattr(col.value, "value") and hasattr(
+                            col.value, "data_type"
+                        ):
                             # This is a MockLiteral
                             right_val = col.value.value
                         elif hasattr(col.value, "name"):
@@ -485,7 +539,9 @@ class SQLAlchemyMaterializer:
                         # For arithmetic operations, determine result type based on operand types
                         if col.function_name == "/":
                             # Division always returns float
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                         else:
                             # For other operations, if either operand is float, result is float
                             left_is_float = (
@@ -502,7 +558,9 @@ class SQLAlchemyMaterializer:
                                 )
 
                             if left_is_float or right_is_float:
-                                new_columns.append(Column(col.name, Float, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Float, primary_key=False)
+                                )
                             else:
                                 new_columns.append(
                                     Column(col.name, left_col.type, primary_key=False)
@@ -518,7 +576,9 @@ class SQLAlchemyMaterializer:
                     try:
                         left_col = source_table_obj.c[col.column.name]
                         # Extract value from MockLiteral if needed
-                        if hasattr(col.value, "value") and hasattr(col.value, "data_type"):
+                        if hasattr(col.value, "value") and hasattr(
+                            col.value, "data_type"
+                        ):
                             # This is a MockLiteral
                             right_val = col.value.value
                         else:
@@ -562,7 +622,9 @@ class SQLAlchemyMaterializer:
                         and col.value is not None
                     ):
                         # Use the SQL expression directly
-                        func_expr: Any = text(col.value)  # Can be TextClause or Function[Any]
+                        func_expr: Any = text(
+                            col.value
+                        )  # Can be TextClause or Function[Any]
                         # Handle labeling
                         try:
                             select_columns.append(func_expr.label(col.name))
@@ -615,17 +677,27 @@ class SQLAlchemyMaterializer:
                         try:
                             source_column = source_table_obj.c[col.column.name]
                             # Use raw SQL with AS clause since text expressions don't support .label()
-                            cast_sql = f"CAST({col.column.name} AS {sql_type}) AS {col.name}"
+                            cast_sql = (
+                                f"CAST({col.column.name} AS {sql_type}) AS {col.name}"
+                            )
                             select_columns.append(text(cast_sql))
                             # Infer column type based on cast target
                             if sql_type in ["INTEGER", "BIGINT"]:
-                                new_columns.append(Column(col.name, Integer, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Integer, primary_key=False)
+                                )
                             elif sql_type == "DOUBLE":
-                                new_columns.append(Column(col.name, Double, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Double, primary_key=False)
+                                )
                             elif sql_type == "BOOLEAN":
-                                new_columns.append(Column(col.name, Boolean, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Boolean, primary_key=False)
+                                )
                             else:
-                                new_columns.append(Column(col.name, String, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
                             continue
                         except KeyError:
                             print(
@@ -635,7 +707,9 @@ class SQLAlchemyMaterializer:
 
                     try:
                         # Check if the column is a complex expression (e.g., arithmetic operation)
-                        if hasattr(col.column, "function_name") and col.column.function_name in [
+                        if hasattr(
+                            col.column, "function_name"
+                        ) and col.column.function_name in [
                             "+",
                             "-",
                             "*",
@@ -867,7 +941,7 @@ class SQLAlchemyMaterializer:
                             # Handle raise_error immediately (before column_expr setup)
                             if col.function_name == "raise_error":
                                 # Extract error message from MockLiteral
-                                if hasattr(col.column, 'value'):
+                                if hasattr(col.column, "value"):
                                     error_msg = str(col.column.value)
                                 else:
                                     error_msg = "Error raised"
@@ -877,9 +951,9 @@ class SQLAlchemyMaterializer:
                             # Check if this function needs type casting
                             column_expr = col.column.name
                             if col.function_name in type_casting_functions:
-                                column_expr = type_casting_functions[col.function_name].format(
-                                    col.column.name
-                                )
+                                column_expr = type_casting_functions[
+                                    col.function_name
+                                ].format(col.column.name)
 
                             # Handle special functions that need custom SQL regardless of parameters
                             if col.function_name == "initcap":
@@ -889,45 +963,68 @@ class SQLAlchemyMaterializer:
                             elif col.function_name == "soundex":
                                 # DuckDB doesn't have soundex, just return original
                                 func_expr = source_column
-                            elif col.function_name == "log1p" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "log1p" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # log1p(x) = ln(1 + x) - DuckDB: LN(1 + col)
                                 special_sql = f"LN(1 + {column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "expm1" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "expm1" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # expm1(x) = exp(x) - 1 - DuckDB: EXP(col) - 1
                                 special_sql = f"EXP({column_expr}) - 1"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "md5" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "md5" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # md5(str) - DuckDB: MD5(str)
                                 special_sql = f"MD5({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "sha1" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "sha1" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # sha1(str) - DuckDB doesn't have SHA1, use SHA256 as fallback
                                 # TODO: Consider Python fallback for exact SHA1
                                 special_sql = f"SHA256({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "crc32" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "crc32" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # crc32(str) - DuckDB doesn't have CRC32
                                 # Use HASH() as approximation, handle NULLs
                                 # CASE WHEN col IS NULL THEN NULL ELSE ABS(HASH(col)) % 2^32 END
                                 special_sql = f"CASE WHEN {column_expr} IS NULL THEN NULL ELSE ABS(HASH({column_expr})) % 4294967296 END"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "to_str" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "to_str" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # to_str(column) - Convert to string
                                 special_sql = f"CAST({column_expr} AS VARCHAR)"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "sha2" and hasattr(col, "value") and col.value is not None:
+                            elif (
+                                col.function_name == "sha2"
+                                and hasattr(col, "value")
+                                and col.value is not None
+                            ):
                                 # sha2(str, numBits) - DuckDB only has SHA256
                                 # Use SHA256 for all bit lengths as approximation
                                 num_bits = col.value
                                 if num_bits not in [224, 256, 384, 512]:
-                                    raise ValueError("sha2: numBits must be 224, 256, 384, or 512")
+                                    raise ValueError(
+                                        "sha2: numBits must be 224, 256, 384, or 512"
+                                    )
                                 # DuckDB only has SHA256, use it for all variants
                                 special_sql = f"SHA256({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array" and hasattr(col, "value") and col.value is not None:
+                            elif (
+                                col.function_name == "array"
+                                and hasattr(col, "value")
+                                and col.value is not None
+                            ):
                                 # array(col1, col2, ...) -> LIST_VALUE(col1, col2, ...)
                                 from mock_spark.functions.base import MockColumn
+
                                 cols = [column_expr]
                                 if isinstance(col.value, tuple):
                                     for c in col.value:
@@ -938,36 +1035,58 @@ class SQLAlchemyMaterializer:
                                 col_list = ", ".join(cols)
                                 special_sql = f"LIST_VALUE({col_list})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # array(single_col) -> LIST_VALUE(col)
                                 special_sql = f"LIST_VALUE({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_distinct" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_distinct" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # array_distinct without parameters - cast to array if needed
-                                special_sql = f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
+                                special_sql = (
+                                    f"LIST_DISTINCT(CAST({column_expr} AS VARCHAR[]))"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "map_keys" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "map_keys" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # map_keys(map) - DuckDB: MAP_KEYS(map)
                                 # Convert dict to map if needed
                                 special_sql = f"MAP_KEYS({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "map_values" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "map_values" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # map_values(map) - DuckDB: MAP_VALUES(map)
                                 special_sql = f"MAP_VALUES({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_compact" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_compact" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # array_compact(array) -> LIST_FILTER(array, x -> x IS NOT NULL)
-                                special_sql = f"LIST_FILTER({column_expr}, x -> x IS NOT NULL)"
+                                special_sql = (
+                                    f"LIST_FILTER({column_expr}, x -> x IS NOT NULL)"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_size" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_size" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # array_size(array) -> LEN(array)
                                 special_sql = f"LEN({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_sort" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_sort" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # array_sort(array) -> LIST_SORT(array) ascending
                                 special_sql = f"LIST_SORT({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_sort" and hasattr(col, "value") and col.value is not None:
+                            elif (
+                                col.function_name == "array_sort"
+                                and hasattr(col, "value")
+                                and col.value is not None
+                            ):
                                 # array_sort(array, asc) -> LIST_SORT or LIST_REVERSE_SORT
                                 asc = col.value
                                 if asc:
@@ -975,98 +1094,164 @@ class SQLAlchemyMaterializer:
                                 else:
                                     special_sql = f"LIST_REVERSE_SORT({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_repeat" and hasattr(col, "value") and col.value is not None:
+                            elif (
+                                col.function_name == "array_repeat"
+                                and hasattr(col, "value")
+                                and col.value is not None
+                            ):
                                 # array_repeat(value, count) -> Create array by repeating
                                 count = col.value
                                 # DuckDB doesn't have direct LIST_REPEAT, build array manually
                                 # Use RANGE to generate indices and LIST_TRANSFORM
                                 special_sql = f"LIST_TRANSFORM(RANGE({count}), x -> {column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "map_from_entries" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "map_from_entries" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # map_from_entries(array) -> MAP_FROM_ENTRIES(array)
                                 special_sql = f"MAP_FROM_ENTRIES({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "bit_count" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "bit_count" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # bit_count(col) -> BIT_COUNT(col)
                                 special_sql = f"BIT_COUNT({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "bitwise_not" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "bitwise_not" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # bitwise_not(col) -> ~col
                                 special_sql = f"(~{column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "url_encode" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "url_encode" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # URL encode - use REPLACE for basic encoding
                                 special_sql = f"REPLACE(REPLACE({column_expr}, ' ', '%20'), '#', '%23')"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "url_decode" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "url_decode" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # URL decode
                                 special_sql = f"REPLACE({column_expr}, '%20', ' ')"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "dayname" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "dayname" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # dayname(date) -> DAYNAME(date::DATE)
                                 special_sql = f"DAYNAME({column_expr}::DATE)"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "schema_of_xml" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "schema_of_xml" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # schema_of_xml(xml) - infer schema from XML structure
                                 # For simple implementation, return a fixed STRUCT schema string
                                 # A full implementation would parse and infer actual field types
                                 special_sql = "'STRUCT<name:STRING,age:STRING>'"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "to_xml" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "to_xml" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # to_xml(column) - wrap column value in XML tags (simple case)
                                 special_sql = f"'<row>' || CAST({column_expr} AS VARCHAR) || '</row>'"
                                 func_expr = text(special_sql)
                             # PySpark 3.0 functions without value parameter
-                            elif col.function_name == "array_max" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_max" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 special_sql = f"LIST_MAX({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "array_min" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "array_min" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 special_sql = f"LIST_MIN({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "size" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "size" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 special_sql = f"LEN({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "flatten" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "flatten" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # DuckDB doesn't have LIST_FLATTEN - use LIST_CONCAT with UNNEST
-                                special_sql = f"LIST_CONCAT_AGG((SELECT UNNEST({column_expr})))"
+                                special_sql = (
+                                    f"LIST_CONCAT_AGG((SELECT UNNEST({column_expr})))"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "reverse" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "reverse" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 special_sql = f"LIST_REVERSE({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "last_day" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "last_day" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 special_sql = f"LAST_DAY({column_expr}::DATE)"
                                 func_expr = text(special_sql)
                             # PySpark 3.0 simple math functions (no parameters)
-                            elif col.function_name in ["acos", "asin", "atan", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "factorial"] and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name in [
+                                "acos",
+                                "asin",
+                                "atan",
+                                "cosh",
+                                "sinh",
+                                "tanh",
+                                "degrees",
+                                "radians",
+                                "cbrt",
+                                "factorial",
+                            ] and (not hasattr(col, "value") or col.value is None):
                                 # These functions work directly in DuckDB with same names
-                                special_sql = f"{col.function_name.upper()}({column_expr})"
+                                special_sql = (
+                                    f"{col.function_name.upper()}({column_expr})"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "rint" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "rint" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # rint uses banker's rounding - ROUND in DuckDB
                                 special_sql = f"ROUND({column_expr}, 0)"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "signum" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "signum" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # signum is sign function in DuckDB
                                 special_sql = f"SIGN({column_expr})"
                                 func_expr = text(special_sql)
-                            elif col.function_name in ["bin", "hex", "unhex"] and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name in ["bin", "hex", "unhex"] and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # Binary/hex conversion functions
-                                special_sql = f"{col.function_name.upper()}({column_expr})"
+                                special_sql = (
+                                    f"{col.function_name.upper()}({column_expr})"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "input_file_name" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "input_file_name" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # input_file_name returns empty string in mock
                                 special_sql = "''"
                                 func_expr = text(special_sql)
-                            elif col.function_name == "monotonically_increasing_id" and (not hasattr(col, "value") or col.value is None):
+                            elif (
+                                col.function_name == "monotonically_increasing_id"
+                                and (not hasattr(col, "value") or col.value is None)
+                            ):
                                 # Generate unique increasing IDs using ROW_NUMBER
-                                special_sql = "ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1"
+                                special_sql = (
+                                    "ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1"
+                                )
                                 func_expr = text(special_sql)
-                            elif col.function_name == "spark_partition_id" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "spark_partition_id" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # Partition ID is always 0 in mock (single partition)
                                 special_sql = "0"
                                 func_expr = text(special_sql)
                             # PySpark 3.1 utility functions (no parameters)
-                            elif col.function_name == "timestamp_seconds" and (not hasattr(col, "value") or col.value is None):
+                            elif col.function_name == "timestamp_seconds" and (
+                                not hasattr(col, "value") or col.value is None
+                            ):
                                 # timestamp_seconds(col) -> TO_TIMESTAMP(col)
                                 special_sql = f"TO_TIMESTAMP({column_expr})"
                                 func_expr = text(special_sql)
@@ -1080,15 +1265,17 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(col.value)
                                     elif col.function_name == "months_between":
                                         # For months_between, we need both column names with DATE casting
-                                        column1_name = f"CAST({col.column.name} AS DATE)"
+                                        column1_name = (
+                                            f"CAST({col.column.name} AS DATE)"
+                                        )
                                         column2_name = (
                                             f"CAST({col.value.name} AS DATE)"
                                             if hasattr(col.value, "name")
                                             else f"CAST({col.value} AS DATE)"
                                         )
-                                        special_sql = special_functions[col.function_name].format(
-                                            column1_name, column2_name
-                                        )
+                                        special_sql = special_functions[
+                                            col.function_name
+                                        ].format(column1_name, column2_name)
                                         func_expr = text(special_sql)
                                     elif col.function_name in ["date_add", "date_sub"]:
                                         # For date_add and date_sub, we need the column and the number of days
@@ -1105,15 +1292,15 @@ class SQLAlchemyMaterializer:
                                         else:
                                             param_value = str(col.value)
 
-                                        special_sql = special_functions[col.function_name].format(
-                                            column_expr, param_value
-                                        )
+                                        special_sql = special_functions[
+                                            col.function_name
+                                        ].format(column_expr, param_value)
                                         func_expr = text(special_sql)
                                     elif col.function_name == "isnull":
                                         # For isnull, we only need the column name (no parameters)
-                                        special_sql = special_functions[col.function_name].format(
-                                            column_expr
-                                        )
+                                        special_sql = special_functions[
+                                            col.function_name
+                                        ].format(column_expr)
                                         func_expr = text(special_sql)
                                     elif col.function_name == "coalesce":
                                         # For coalesce, cast all arguments to VARCHAR to ensure type compatibility
@@ -1141,7 +1328,9 @@ class SQLAlchemyMaterializer:
                                                         f'CAST("{param.name}" AS VARCHAR)'
                                                     )
                                                 else:
-                                                    params.append(f"CAST({param} AS VARCHAR)")
+                                                    params.append(
+                                                        f"CAST({param} AS VARCHAR)"
+                                                    )
                                         else:
                                             # Single parameter
                                             if hasattr(col.value, "value") and hasattr(
@@ -1161,14 +1350,19 @@ class SQLAlchemyMaterializer:
                                                     f'CAST("{col.value.name}" AS VARCHAR)'
                                                 )
                                             else:
-                                                params.append(f"CAST({col.value} AS VARCHAR)")
+                                                params.append(
+                                                    f"CAST({col.value} AS VARCHAR)"
+                                                )
 
                                         coalesce_sql = f"coalesce({', '.join(params)})"
                                         func_expr = text(coalesce_sql)
                                     elif col.function_name == "timestampadd":
                                         # timestampadd(unit, quantity, timestamp)
                                         # DuckDB uses interval arithmetic: timestamp + INTERVAL quantity unit
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             unit = col.value[0].upper()
                                             quantity = col.value[1]
                                             # Format quantity
@@ -1180,9 +1374,14 @@ class SQLAlchemyMaterializer:
                                                 qty_str = str(quantity)
                                             # Map units to DuckDB interval types
                                             unit_map = {
-                                                "YEAR": "YEAR", "QUARTER": "QUARTER", "MONTH": "MONTH",
-                                                "WEEK": "WEEK", "DAY": "DAY", "HOUR": "HOUR",
-                                                "MINUTE": "MINUTE", "SECOND": "SECOND"
+                                                "YEAR": "YEAR",
+                                                "QUARTER": "QUARTER",
+                                                "MONTH": "MONTH",
+                                                "WEEK": "WEEK",
+                                                "DAY": "DAY",
+                                                "HOUR": "HOUR",
+                                                "MINUTE": "MINUTE",
+                                                "SECOND": "SECOND",
                                             }
                                             interval_unit = unit_map.get(unit, unit)
                                             # Cast to timestamp for interval arithmetic
@@ -1193,16 +1392,25 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "timestampdiff":
                                         # timestampdiff(unit, start, end)
                                         # DuckDB: DATE_DIFF(unit, start, end)
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
-                                            unit = col.value[0].lower()  # DuckDB uses lowercase
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
+                                            unit = col.value[
+                                                0
+                                            ].lower()  # DuckDB uses lowercase
                                             end = col.value[1]
                                             # Format end timestamp
                                             if hasattr(end, "name"):
-                                                end_str = f'CAST("{end.name}" AS TIMESTAMP)'
+                                                end_str = (
+                                                    f'CAST("{end.name}" AS TIMESTAMP)'
+                                                )
                                             else:
                                                 end_str = f"CAST('{end}' AS TIMESTAMP)"
                                             # Cast start column to timestamp too
-                                            start_str = f"CAST({column_expr} AS TIMESTAMP)"
+                                            start_str = (
+                                                f"CAST({column_expr} AS TIMESTAMP)"
+                                            )
                                             special_sql = f"DATE_DIFF('{unit}', {start_str}, {end_str})"
                                             func_expr = text(special_sql)
                                         else:
@@ -1212,8 +1420,15 @@ class SQLAlchemyMaterializer:
                                         # DuckDB: ARRAY_TO_STRING or LIST_AGGREGATE
                                         if isinstance(col.value, tuple):
                                             delimiter = col.value[0]
-                                            null_replacement = col.value[1] if len(col.value) > 1 else None
-                                            if null_replacement and null_replacement != "None":
+                                            null_replacement = (
+                                                col.value[1]
+                                                if len(col.value) > 1
+                                                else None
+                                            )
+                                            if (
+                                                null_replacement
+                                                and null_replacement != "None"
+                                            ):
                                                 special_sql = f"ARRAY_TO_STRING({column_expr}, '{delimiter}', '{null_replacement}')"
                                             else:
                                                 special_sql = f"ARRAY_TO_STRING({column_expr}, '{delimiter}')"
@@ -1222,7 +1437,10 @@ class SQLAlchemyMaterializer:
                                             func_expr = source_column
                                     elif col.function_name == "regexp_extract_all":
                                         # regexp_extract_all(column, pattern, idx)
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             pattern = col.value[0]
                                             # idx parameter not used in DuckDB implementation
                                             special_sql = f"REGEXP_EXTRACT_ALL({column_expr}, '{pattern}')"
@@ -1232,7 +1450,11 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "repeat":
                                         # repeat(column, n)
                                         # DuckDB: REPEAT(string, n)
-                                        n = col.value if not isinstance(col.value, tuple) else col.value[0]
+                                        n = (
+                                            col.value
+                                            if not isinstance(col.value, tuple)
+                                            else col.value[0]
+                                        )
                                         special_sql = f"REPEAT({column_expr}, {n})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_distinct":
@@ -1241,16 +1463,20 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_intersect":
                                         # array_intersect(array1, array2) -> list_intersect(array1, array2)
-                                        if hasattr(col.value, 'name'):
-                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        if hasattr(col.value, "name"):
+                                            array2 = (
+                                                f'CAST("{col.value.name}" AS VARCHAR[])'
+                                            )
                                         else:
                                             array2 = str(col.value)
                                         special_sql = f"LIST_INTERSECT(CAST({column_expr} AS VARCHAR[]), {array2})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_union":
                                         # array_union(array1, array2) -> list_concat + list_distinct
-                                        if hasattr(col.value, 'name'):
-                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        if hasattr(col.value, "name"):
+                                            array2 = (
+                                                f'CAST("{col.value.name}" AS VARCHAR[])'
+                                            )
                                         else:
                                             array2 = str(col.value)
                                         special_sql = f"LIST_DISTINCT(LIST_CONCAT(CAST({column_expr} AS VARCHAR[]), {array2}))"
@@ -1258,8 +1484,10 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "array_except":
                                         # array_except(array1, array2) - DuckDB doesn't have list_except
                                         # Use LIST_FILTER: filter out elements that are in array2
-                                        if hasattr(col.value, 'name'):
-                                            array2 = f'CAST("{col.value.name}" AS VARCHAR[])'
+                                        if hasattr(col.value, "name"):
+                                            array2 = (
+                                                f'CAST("{col.value.name}" AS VARCHAR[])'
+                                            )
                                         else:
                                             array2 = str(col.value)
                                         special_sql = f"LIST_FILTER(CAST({column_expr} AS VARCHAR[]), x -> NOT LIST_CONTAINS({array2}, x))"
@@ -1285,14 +1513,14 @@ class SQLAlchemyMaterializer:
                                         # overlay(src, replace, pos, len) -> OVERLAY(src PLACING replace FROM pos FOR len)
                                         replace_str, pos_val, len_val = col.value
                                         # Extract literal values
-                                        if hasattr(replace_str, 'value'):
+                                        if hasattr(replace_str, "value"):
                                             replace_str = f"'{replace_str.value}'"
                                         elif isinstance(replace_str, str):
                                             replace_str = f"'{replace_str}'"
 
-                                        if hasattr(pos_val, 'value'):
+                                        if hasattr(pos_val, "value"):
                                             pos_val = pos_val.value
-                                        if hasattr(len_val, 'value'):
+                                        if hasattr(len_val, "value"):
                                             len_val = len_val.value
 
                                         if len_val == -1:
@@ -1304,12 +1532,12 @@ class SQLAlchemyMaterializer:
                                         # make_date(year, month, day) -> MAKE_DATE(year, month, day)
                                         month_val, day_val = col.value
                                         # Extract column names or values
-                                        if hasattr(month_val, 'name'):
+                                        if hasattr(month_val, "name"):
                                             month_expr = f'"{month_val.name}"'
                                         else:
                                             month_expr = str(month_val)
 
-                                        if hasattr(day_val, 'name'):
+                                        if hasattr(day_val, "name"):
                                             day_expr = f'"{day_val.name}"'
                                         else:
                                             day_expr = str(day_val)
@@ -1353,9 +1581,16 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "concat_ws":
                                         # concat_ws(sep, col1, col2, ...) -> CONCAT_WS(sep, col1, col2, ...)
                                         sep, cols = col.value
-                                        col_exprs = [f'"{c.name}"' if hasattr(c, 'name') else str(c) for c in cols]
+                                        col_exprs = [
+                                            f'"{c.name}"'
+                                            if hasattr(c, "name")
+                                            else str(c)
+                                            for c in cols
+                                        ]
                                         all_cols = [column_expr] + col_exprs
-                                        special_sql = f"CONCAT_WS('{sep}', {', '.join(all_cols)})"
+                                        special_sql = (
+                                            f"CONCAT_WS('{sep}', {', '.join(all_cols)})"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "regexp_extract":
                                         # regexp_extract(str, pattern, idx) -> REGEXP_EXTRACT(str, pattern, idx)
@@ -1367,7 +1602,7 @@ class SQLAlchemyMaterializer:
                                         delim, count = col.value
                                         if count > 0:
                                             # Get substring before nth occurrence - join array slice back
-                                            special_sql = f"ARRAY_TO_STRING(STRING_SPLIT({column_expr}, '{delim}')[1:{count+1}], '{delim}')"
+                                            special_sql = f"ARRAY_TO_STRING(STRING_SPLIT({column_expr}, '{delim}')[1:{count + 1}], '{delim}')"
                                         else:
                                             # Get substring after nth occurrence from end
                                             special_sql = f"ARRAY_TO_STRING(STRING_SPLIT({column_expr}, '{delim}')[{count}:], '{delim}')"
@@ -1379,34 +1614,44 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "instr":
                                         # instr(str, substr) -> INSTR(str, substr)
-                                        special_sql = f"INSTR({column_expr}, '{col.value}')"
+                                        special_sql = (
+                                            f"INSTR({column_expr}, '{col.value}')"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "locate":
                                         # locate(substr, str, pos) -> INSTR(SUBSTRING(str, pos), substr) + pos - 1
                                         substr, pos = col.value
                                         if pos == 1:
-                                            special_sql = f"INSTR({column_expr}, '{substr}')"
+                                            special_sql = (
+                                                f"INSTR({column_expr}, '{substr}')"
+                                            )
                                         else:
                                             special_sql = f"(INSTR(SUBSTRING({column_expr}, {pos}), '{substr}') + {pos} - 1)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "lpad":
                                         # lpad(str, len, pad) -> LPAD(str, len, pad)
                                         length, pad = col.value
-                                        special_sql = f"LPAD({column_expr}, {length}, '{pad}')"
+                                        special_sql = (
+                                            f"LPAD({column_expr}, {length}, '{pad}')"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "rpad":
                                         # rpad(str, len, pad) -> RPAD(str, len, pad)
                                         length, pad = col.value
-                                        special_sql = f"RPAD({column_expr}, {length}, '{pad}')"
+                                        special_sql = (
+                                            f"RPAD({column_expr}, {length}, '{pad}')"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "levenshtein":
                                         # levenshtein(left, right) -> LEVENSHTEIN(left, right)
                                         right_col = col.value
-                                        if hasattr(right_col, 'name'):
+                                        if hasattr(right_col, "name"):
                                             right_expr = f'"{right_col.name}"'
                                         else:
                                             right_expr = f"'{right_col}'"
-                                        special_sql = f"LEVENSHTEIN({column_expr}, {right_expr})"
+                                        special_sql = (
+                                            f"LEVENSHTEIN({column_expr}, {right_expr})"
+                                        )
                                         func_expr = text(special_sql)
                                     # PySpark 3.0 Math Functions (most work directly, some need handling)
                                     elif col.function_name == "rand":
@@ -1426,7 +1671,9 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "bround":
                                         # bround(col, scale) -> ROUND(col, scale) with HALF_EVEN mode
-                                        scale = col.value if hasattr(col, 'value') else 0
+                                        scale = (
+                                            col.value if hasattr(col, "value") else 0
+                                        )
                                         special_sql = f"ROUND({column_expr}, {scale})"
                                         func_expr = text(special_sql)
                                     # PySpark 3.0 DateTime Functions
@@ -1438,8 +1685,10 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "datediff":
                                         # datediff(end, start) -> DATEDIFF('DAY', start, end)
                                         start_col = col.value
-                                        if hasattr(start_col, 'name'):
-                                            start_expr = f'CAST("{start_col.name}" AS DATE)'
+                                        if hasattr(start_col, "name"):
+                                            start_expr = (
+                                                f'CAST("{start_col.name}" AS DATE)'
+                                            )
                                         else:
                                             start_expr = f"CAST('{start_col}' AS DATE)"
                                         special_sql = f"DATEDIFF('DAY', {start_expr}, CAST({column_expr} AS DATE))"
@@ -1447,9 +1696,15 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "unix_timestamp":
                                         # unix_timestamp(timestamp, format) -> EPOCH(timestamp)
                                         # DuckDB: EPOCH(timestamp) returns seconds since 1970-01-01
-                                        format_str = col.value if hasattr(col, 'value') else 'yyyy-MM-dd HH:mm:ss'
+                                        format_str = (
+                                            col.value
+                                            if hasattr(col, "value")
+                                            else "yyyy-MM-dd HH:mm:ss"
+                                        )
                                         # If format is provided, need to parse first
-                                        special_sql = f"EPOCH(CAST({column_expr} AS TIMESTAMP))"
+                                        special_sql = (
+                                            f"EPOCH(CAST({column_expr} AS TIMESTAMP))"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "next_day":
                                         # next_day(date, dayOfWeek) -> complex SQL
@@ -1467,7 +1722,7 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "hypot":
                                         # hypot(a, b) -> SQRT(a^2 + b^2)
                                         col2 = col.value
-                                        if hasattr(col2, 'name'):
+                                        if hasattr(col2, "name"):
                                             col2_expr = f'"{col2.name}"'
                                         else:
                                             col2_expr = str(col2)
@@ -1476,7 +1731,7 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "nanvl":
                                         # nanvl(col1, col2) -> CASE WHEN col1 IS NaN THEN col2 ELSE col1
                                         col2 = col.value
-                                        if hasattr(col2, 'name'):
+                                        if hasattr(col2, "name"):
                                             col2_expr = f'"{col2.name}"'
                                         else:
                                             col2_expr = str(col2)
@@ -1485,9 +1740,20 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "hash":
                                         # hash(*cols) -> HASH(*cols)
                                         if col.value:
-                                            other_cols = col.value if isinstance(col.value, list) else [col.value]
-                                            col_exprs = [column_expr] + [f'"{c.name}"' if hasattr(c, 'name') else str(c) for c in other_cols]
-                                            special_sql = f"HASH({', '.join(col_exprs)})"
+                                            other_cols = (
+                                                col.value
+                                                if isinstance(col.value, list)
+                                                else [col.value]
+                                            )
+                                            col_exprs = [column_expr] + [
+                                                f'"{c.name}"'
+                                                if hasattr(c, "name")
+                                                else str(c)
+                                                for c in other_cols
+                                            ]
+                                            special_sql = (
+                                                f"HASH({', '.join(col_exprs)})"
+                                            )
                                         else:
                                             special_sql = f"HASH({column_expr})"
                                         func_expr = text(special_sql)
@@ -1505,14 +1771,16 @@ class SQLAlchemyMaterializer:
                                         # conv(col, from_base, to_base) - base conversion
                                         from_base, to_base = col.value
                                         # DuckDB doesn't have direct base conversion, use workaround
-                                        special_sql = f"TO_BASE({column_expr}, {to_base})"
+                                        special_sql = (
+                                            f"TO_BASE({column_expr}, {to_base})"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "sequence":
                                         # sequence(start, stop, step) -> RANGE(start, stop, step)
                                         stop, step = col.value
                                         if isinstance(stop, int):
                                             stop_expr = str(stop)
-                                        elif hasattr(stop, 'name'):
+                                        elif hasattr(stop, "name"):
                                             stop_expr = f'"{stop.name}"'
                                         else:
                                             stop_expr = str(stop)
@@ -1526,55 +1794,84 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "shuffle":
                                         # shuffle(array) -> LIST_SORT(array, x -> RANDOM())
-                                        special_sql = f"LIST_SORT({column_expr}, x -> RANDOM())"
+                                        special_sql = (
+                                            f"LIST_SORT({column_expr}, x -> RANDOM())"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "transform":
                                         # transform(array, lambda) -> LIST_TRANSFORM(array, lambda)
-                                        from mock_spark.functions.base import MockLambdaExpression
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                        )
+
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
                                             # Don't cast - let DuckDB infer array type
                                             special_sql = f"LIST_TRANSFORM({column_expr}, {lambda_sql})"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("transform requires a lambda function")
+                                            raise ValueError(
+                                                "transform requires a lambda function"
+                                            )
                                     elif col.function_name == "filter":
                                         # filter(array, lambda) -> LIST_FILTER(array, lambda)
-                                        from mock_spark.functions.base import MockLambdaExpression
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                        )
+
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
                                             special_sql = f"LIST_FILTER({column_expr}, {lambda_sql})"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("filter requires a lambda function")
+                                            raise ValueError(
+                                                "filter requires a lambda function"
+                                            )
                                     elif col.function_name == "exists":
                                         # exists(array, lambda) -> LIST_ANY(LIST_FILTER(array, lambda))
                                         # DuckDB doesn't have LIST_ANY directly, workaround: check if filtered list has length > 0
-                                        from mock_spark.functions.base import MockLambdaExpression
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                        )
+
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
                                             special_sql = f"LEN(LIST_FILTER({column_expr}, {lambda_sql})) > 0"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("exists requires a lambda function")
+                                            raise ValueError(
+                                                "exists requires a lambda function"
+                                            )
                                     elif col.function_name == "forall":
                                         # forall(array, lambda) -> check if all elements satisfy condition
                                         # Workaround: LEN(LIST_FILTER(array, NOT lambda)) == 0
                                         # Or: LEN(LIST_FILTER(array, lambda)) == LEN(array)
-                                        from mock_spark.functions.base import MockLambdaExpression
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                        )
+
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
                                             # Use approach: LEN(filtered) == LEN(original)
                                             special_sql = f"(LEN(LIST_FILTER({column_expr}, {lambda_sql})) = LEN({column_expr}))"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("forall requires a lambda function")
+                                            raise ValueError(
+                                                "forall requires a lambda function"
+                                            )
                                     elif col.function_name == "aggregate":
                                         # aggregate(array, init, merge, finish) -> LIST_REDUCE or custom
                                         # DuckDB has LIST_REDUCE but with different signature
-                                        from mock_spark.functions.base import MockLambdaExpression, MockLiteral
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                            MockLiteral,
+                                        )
+
                                         # col.value is initial_value, col.value2 is lambda_data dict
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             initial_value = col.value[0]
                                             lambda_data = col.value[1]
 
@@ -1585,24 +1882,44 @@ class SQLAlchemyMaterializer:
                                                 init_val = str(initial_value)
 
                                             # Get merge lambda
-                                            if isinstance(lambda_data, dict) and "merge" in lambda_data:
+                                            if (
+                                                isinstance(lambda_data, dict)
+                                                and "merge" in lambda_data
+                                            ):
                                                 merge_expr = lambda_data["merge"]
-                                                if isinstance(merge_expr, MockLambdaExpression):
-                                                    lambda_sql = merge_expr.to_duckdb_lambda()
+                                                if isinstance(
+                                                    merge_expr, MockLambdaExpression
+                                                ):
+                                                    lambda_sql = (
+                                                        merge_expr.to_duckdb_lambda()
+                                                    )
                                                     # DuckDB LIST_REDUCE: list_reduce(list, lambda, initial_value)
                                                     special_sql = f"LIST_REDUCE({column_expr}, {lambda_sql}, {init_val})"
                                                     func_expr = text(special_sql)
                                                 else:
-                                                    raise ValueError("aggregate merge must be a lambda function")
+                                                    raise ValueError(
+                                                        "aggregate merge must be a lambda function"
+                                                    )
                                             else:
-                                                raise ValueError("aggregate requires merge lambda")
+                                                raise ValueError(
+                                                    "aggregate requires merge lambda"
+                                                )
                                         else:
-                                            raise ValueError("aggregate requires initial value and merge function")
+                                            raise ValueError(
+                                                "aggregate requires initial value and merge function"
+                                            )
                                     elif col.function_name == "zip_with":
                                         # zip_with(array1, array2, lambda) -> Custom SQL with LIST_ZIP
-                                        from mock_spark.functions.base import MockLambdaExpression, MockColumn
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                            MockColumn,
+                                        )
+
                                         # col.value is tuple of (array2, lambda)
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             array2 = col.value[0]
                                             lambda_expr = col.value[1]
 
@@ -1613,40 +1930,65 @@ class SQLAlchemyMaterializer:
                                                 array2_expr = str(array2)
 
                                             # Get lambda
-                                            if isinstance(lambda_expr, MockLambdaExpression):
+                                            if isinstance(
+                                                lambda_expr, MockLambdaExpression
+                                            ):
                                                 # DuckDB LIST_ZIP creates STRUCT(elem1, elem2)
                                                 # We need to transform the 2-arg lambda to access struct fields
                                                 # Original lambda: (x, y) -> (x + y)
                                                 # DuckDB needs: s -> (s.field1 + s.field2) OR s -> (s[1] + s[2])
-                                                param_names = lambda_expr.get_param_names()
+                                                param_names = (
+                                                    lambda_expr.get_param_names()
+                                                )
                                                 if len(param_names) == 2:
                                                     # Get the body of the lambda by translating with modified params
                                                     # We'll use a wrapper lambda that unpacks the struct
-                                                    lambda_sql = lambda_expr.to_duckdb_lambda()
+                                                    lambda_sql = (
+                                                        lambda_expr.to_duckdb_lambda()
+                                                    )
                                                     # Replace (x, y) -> expr with s -> expr where x becomes s[1] and y becomes s[2]
                                                     x_name = param_names[0]
                                                     y_name = param_names[1]
                                                     # Get the body part after the ->
-                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    body_part = lambda_sql.split(
+                                                        " -> ", 1
+                                                    )[1]
                                                     # Replace x and y with struct accessors
                                                     # Use word boundaries to avoid partial replacements
                                                     import re
-                                                    body_part = re.sub(rf'\b{x_name}\b', 's[1]', body_part)
-                                                    body_part = re.sub(rf'\b{y_name}\b', 's[2]', body_part)
-                                                    modified_lambda = f"s -> {body_part}"
+
+                                                    body_part = re.sub(
+                                                        rf"\b{x_name}\b",
+                                                        "s[1]",
+                                                        body_part,
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{y_name}\b",
+                                                        "s[2]",
+                                                        body_part,
+                                                    )
+                                                    modified_lambda = (
+                                                        f"s -> {body_part}"
+                                                    )
                                                     # Filter out NULLs from mismatched array lengths before transform
                                                     # LIST_ZIP pads with NULL when lengths differ, but PySpark stops at shorter length
                                                     zipped = f"LIST_FILTER(LIST_ZIP({column_expr}, {array2_expr}), s -> s[1] IS NOT NULL AND s[2] IS NOT NULL)"
                                                     special_sql = f"LIST_TRANSFORM({zipped}, {modified_lambda})"
                                                 else:
                                                     # Single param lambda - just use it as is
-                                                    lambda_sql = lambda_expr.to_duckdb_lambda()
+                                                    lambda_sql = (
+                                                        lambda_expr.to_duckdb_lambda()
+                                                    )
                                                     special_sql = f"LIST_TRANSFORM(LIST_ZIP({column_expr}, {array2_expr}), {lambda_sql})"
                                                 func_expr = text(special_sql)
                                             else:
-                                                raise ValueError("zip_with requires a lambda function")
+                                                raise ValueError(
+                                                    "zip_with requires a lambda function"
+                                                )
                                         else:
-                                            raise ValueError("zip_with requires array2 and lambda function")
+                                            raise ValueError(
+                                                "zip_with requires array2 and lambda function"
+                                            )
                                     elif col.function_name == "current_timezone":
                                         # current_timezone() -> current_setting('TIMEZONE')
                                         # This function doesn't use the column, ignore column_expr
@@ -1659,7 +2001,10 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "slice":
                                         # slice(array, start, length) -> LIST_SLICE(array, start, start+length-1)
                                         # PySpark uses 1-based indexing
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             start_pos = col.value[0]
                                             length = col.value[1]
                                             # DuckDB LIST_SLICE is 1-based like Spark
@@ -1667,13 +2012,17 @@ class SQLAlchemyMaterializer:
                                             special_sql = f"LIST_SLICE({column_expr}, {start_pos}, {end_pos})"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("slice requires start and length")
+                                            raise ValueError(
+                                                "slice requires start and length"
+                                            )
                                     elif col.function_name == "element_at":
                                         # element_at(array, index) -> array[index]
                                         # PySpark uses 1-based indexing, DuckDB uses 1-based too
                                         # Negative indices count from end
                                         index = col.value
-                                        special_sql = f"LIST_EXTRACT({column_expr}, {index})"
+                                        special_sql = (
+                                            f"LIST_EXTRACT({column_expr}, {index})"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_append":
                                         # array_append(array, element) -> LIST_CONCAT(array, [element])
@@ -1697,7 +2046,10 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_insert":
                                         # array_insert(array, pos, value) -> custom SQL with slicing
-                                        if isinstance(col.value, tuple) and len(col.value) >= 2:
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) >= 2
+                                        ):
                                             pos = col.value[0]
                                             value = col.value[1]
                                             # DuckDB: slice before + [value] + slice after
@@ -1709,7 +2061,9 @@ class SQLAlchemyMaterializer:
                                             special_sql = f"LIST_CONCAT(LIST_SLICE({column_expr}, 1, {pos}-1), [{value_sql}], LIST_SLICE({column_expr}, {pos}, LEN({column_expr})))"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("array_insert requires pos and value")
+                                            raise ValueError(
+                                                "array_insert requires pos and value"
+                                            )
                                     elif col.function_name == "array_size":
                                         # array_size(array) -> LEN(array) or LIST_LENGTH(array)
                                         special_sql = f"LEN({column_expr})"
@@ -1721,6 +2075,7 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "arrays_overlap":
                                         # arrays_overlap(arr1, arr2) -> LEN(LIST_INTERSECT(arr1, arr2)) > 0
                                         from mock_spark.functions.base import MockColumn
+
                                         if isinstance(col.value, MockColumn):
                                             array2_expr = f'"{col.value.name}"'
                                         else:
@@ -1730,7 +2085,11 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "create_map":
                                         # create_map(k1, v1, k2, v2, ...) -> MAP([k1, k2, ...], [v1, v2, ...])
                                         # col.value contains alternating key-value columns
-                                        from mock_spark.functions.base import MockColumn, MockLiteral
+                                        from mock_spark.functions.base import (
+                                            MockColumn,
+                                            MockLiteral,
+                                        )
+
                                         if isinstance(col.value, (tuple, list)):
                                             # Build keys and values arrays
                                             keys = [column_expr]
@@ -1742,9 +2101,13 @@ class SQLAlchemyMaterializer:
                                                         values.append(f'"{arg.name}"')
                                                     elif isinstance(arg, MockLiteral):
                                                         if isinstance(arg.value, str):
-                                                            values.append(f"'{arg.value}'")
+                                                            values.append(
+                                                                f"'{arg.value}'"
+                                                            )
                                                         else:
-                                                            values.append(str(arg.value))
+                                                            values.append(
+                                                                str(arg.value)
+                                                            )
                                                     elif isinstance(arg, str):
                                                         values.append(f"'{arg}'")
                                                     else:
@@ -1755,7 +2118,9 @@ class SQLAlchemyMaterializer:
                                                         keys.append(f'"{arg.name}"')
                                                     elif isinstance(arg, MockLiteral):
                                                         if isinstance(arg.value, str):
-                                                            keys.append(f"'{arg.value}'")
+                                                            keys.append(
+                                                                f"'{arg.value}'"
+                                                            )
                                                         else:
                                                             keys.append(str(arg.value))
                                                     elif isinstance(arg, str):
@@ -1764,10 +2129,14 @@ class SQLAlchemyMaterializer:
                                                         keys.append(str(arg))
                                             keys_array = f"[{', '.join(keys)}]"
                                             values_array = f"[{', '.join(values)}]"
-                                            special_sql = f"MAP({keys_array}, {values_array})"
+                                            special_sql = (
+                                                f"MAP({keys_array}, {values_array})"
+                                            )
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("create_map requires key-value pairs")
+                                            raise ValueError(
+                                                "create_map requires key-value pairs"
+                                            )
                                     elif col.function_name == "map_contains_key":
                                         # map_contains_key(map, key) -> MAP_EXTRACT(map, key) IS NOT NULL
                                         key = col.value
@@ -1777,66 +2146,131 @@ class SQLAlchemyMaterializer:
                                             key_sql = str(key)
                                         special_sql = f"(MAP_EXTRACT({column_expr}, {key_sql}) IS NOT NULL)"
                                         func_expr = text(special_sql)
-                                    elif col.function_name in ["map_filter", "transform_keys", "transform_values"]:
+                                    elif col.function_name in [
+                                        "map_filter",
+                                        "transform_keys",
+                                        "transform_values",
+                                    ]:
                                         # Higher-order map functions with lambdas
                                         # These are complex - DuckDB doesn't have native map lambda functions
                                         # We'll need to convert map to entries, transform, convert back
-                                        from mock_spark.functions.base import MockLambdaExpression
+                                        from mock_spark.functions.base import (
+                                            MockLambdaExpression,
+                                        )
+
                                         if isinstance(col.value, MockLambdaExpression):
                                             lambda_sql = col.value.to_duckdb_lambda()
 
                                             if col.function_name == "map_filter":
                                                 # map_filter: Convert to entries, filter, convert back
                                                 # MAP_FROM_ENTRIES(LIST_FILTER(MAP_ENTRIES(map), e -> lambda(e.key, e.value)))
-                                                param_names = col.value.get_param_names()
+                                                param_names = (
+                                                    col.value.get_param_names()
+                                                )
                                                 if len(param_names) == 2:
                                                     k_name = param_names[0]
                                                     v_name = param_names[1]
-                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    body_part = lambda_sql.split(
+                                                        " -> ", 1
+                                                    )[1]
                                                     import re
-                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
-                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
-                                                    modified_lambda = f"e -> {body_part}"
+
+                                                    body_part = re.sub(
+                                                        rf"\b{k_name}\b",
+                                                        "e.key",
+                                                        body_part,
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{v_name}\b",
+                                                        "e.value",
+                                                        body_part,
+                                                    )
+                                                    modified_lambda = (
+                                                        f"e -> {body_part}"
+                                                    )
                                                     special_sql = f"MAP_FROM_ENTRIES(LIST_FILTER(MAP_ENTRIES({column_expr}), {modified_lambda}))"
                                                 else:
-                                                    raise ValueError("map_filter requires 2-parameter lambda")
+                                                    raise ValueError(
+                                                        "map_filter requires 2-parameter lambda"
+                                                    )
                                             elif col.function_name == "transform_keys":
                                                 # transform_keys: Convert entries, transform keys, convert back
                                                 # MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES(map), e -> {key: lambda(e.key, e.value), value: e.value}))
-                                                param_names = col.value.get_param_names()
+                                                param_names = (
+                                                    col.value.get_param_names()
+                                                )
                                                 if len(param_names) == 2:
                                                     k_name = param_names[0]
                                                     v_name = param_names[1]
-                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    body_part = lambda_sql.split(
+                                                        " -> ", 1
+                                                    )[1]
                                                     import re
-                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
-                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
+
+                                                    body_part = re.sub(
+                                                        rf"\b{k_name}\b",
+                                                        "e.key",
+                                                        body_part,
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{v_name}\b",
+                                                        "e.value",
+                                                        body_part,
+                                                    )
                                                     modified_lambda = f"e -> {{key: {body_part}, value: e.value}}"
                                                     special_sql = f"MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES({column_expr}), {modified_lambda}))"
                                                 else:
-                                                    raise ValueError("transform_keys requires 2-parameter lambda")
-                                            elif col.function_name == "transform_values":
+                                                    raise ValueError(
+                                                        "transform_keys requires 2-parameter lambda"
+                                                    )
+                                            elif (
+                                                col.function_name == "transform_values"
+                                            ):
                                                 # transform_values: Convert entries, transform values, convert back
-                                                param_names = col.value.get_param_names()
+                                                param_names = (
+                                                    col.value.get_param_names()
+                                                )
                                                 if len(param_names) == 2:
                                                     k_name = param_names[0]
                                                     v_name = param_names[1]
-                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    body_part = lambda_sql.split(
+                                                        " -> ", 1
+                                                    )[1]
                                                     import re
-                                                    body_part = re.sub(rf'\b{k_name}\b', 'e.key', body_part)
-                                                    body_part = re.sub(rf'\b{v_name}\b', 'e.value', body_part)
+
+                                                    body_part = re.sub(
+                                                        rf"\b{k_name}\b",
+                                                        "e.key",
+                                                        body_part,
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{v_name}\b",
+                                                        "e.value",
+                                                        body_part,
+                                                    )
                                                     modified_lambda = f"e -> {{key: e.key, value: {body_part}}}"
                                                     special_sql = f"MAP_FROM_ENTRIES(LIST_TRANSFORM(MAP_ENTRIES({column_expr}), {modified_lambda}))"
                                                 else:
-                                                    raise ValueError("transform_values requires 2-parameter lambda")
+                                                    raise ValueError(
+                                                        "transform_values requires 2-parameter lambda"
+                                                    )
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError(f"{col.function_name} requires a lambda function")
+                                            raise ValueError(
+                                                f"{col.function_name} requires a lambda function"
+                                            )
                                     elif col.function_name == "map_zip_with":
                                         # map_zip_with(map1, map2, lambda) -> Merge two maps with lambda
                                         # Extract col2 and lambda from value tuple
-                                        if isinstance(col.value, tuple) and len(col.value) == 2:
-                                            from mock_spark.functions.base import MockColumn, MockLambdaExpression
+                                        if (
+                                            isinstance(col.value, tuple)
+                                            and len(col.value) == 2
+                                        ):
+                                            from mock_spark.functions.base import (
+                                                MockColumn,
+                                                MockLambdaExpression,
+                                            )
+
                                             col2, lambda_expr = col.value
 
                                             # Get col2 expression
@@ -1845,15 +2279,23 @@ class SQLAlchemyMaterializer:
                                             else:
                                                 col2_expr = str(col2)
 
-                                            if isinstance(lambda_expr, MockLambdaExpression):
-                                                lambda_sql = lambda_expr.to_duckdb_lambda()
-                                                param_names = lambda_expr.get_param_names()
+                                            if isinstance(
+                                                lambda_expr, MockLambdaExpression
+                                            ):
+                                                lambda_sql = (
+                                                    lambda_expr.to_duckdb_lambda()
+                                                )
+                                                param_names = (
+                                                    lambda_expr.get_param_names()
+                                                )
 
                                                 if len(param_names) == 3:
                                                     k_name = param_names[0]
                                                     v1_name = param_names[1]
                                                     v2_name = param_names[2]
-                                                    body_part = lambda_sql.split(' -> ', 1)[1]
+                                                    body_part = lambda_sql.split(
+                                                        " -> ", 1
+                                                    )[1]
 
                                                     # Build DuckDB SQL:
                                                     # Get union of all keys, then for each key apply lambda
@@ -1867,9 +2309,20 @@ class SQLAlchemyMaterializer:
                                                     #   )
                                                     # )
                                                     import re
-                                                    body_part = re.sub(rf'\b{k_name}\b', 'k', body_part)
-                                                    body_part = re.sub(rf'\b{v1_name}\b', f'MAP_EXTRACT({column_expr}, k)', body_part)
-                                                    body_part = re.sub(rf'\b{v2_name}\b', f'MAP_EXTRACT({col2_expr}, k)', body_part)
+
+                                                    body_part = re.sub(
+                                                        rf"\b{k_name}\b", "k", body_part
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{v1_name}\b",
+                                                        f"MAP_EXTRACT({column_expr}, k)",
+                                                        body_part,
+                                                    )
+                                                    body_part = re.sub(
+                                                        rf"\b{v2_name}\b",
+                                                        f"MAP_EXTRACT({col2_expr}, k)",
+                                                        body_part,
+                                                    )
 
                                                     special_sql = f"""MAP_FROM_ENTRIES(
                                                         LIST_TRANSFORM(
@@ -1879,20 +2332,27 @@ class SQLAlchemyMaterializer:
                                                     )"""
                                                     func_expr = text(special_sql)
                                                 else:
-                                                    raise ValueError("map_zip_with requires 3-parameter lambda (key, value1, value2)")
+                                                    raise ValueError(
+                                                        "map_zip_with requires 3-parameter lambda (key, value1, value2)"
+                                                    )
                                             else:
-                                                raise ValueError("map_zip_with requires a lambda function")
+                                                raise ValueError(
+                                                    "map_zip_with requires a lambda function"
+                                                )
                                         else:
-                                            raise ValueError("map_zip_with requires col2 and lambda")
+                                            raise ValueError(
+                                                "map_zip_with requires col2 and lambda"
+                                            )
                                     elif col.function_name == "struct":
                                         # struct(col1, col2, ...) -> {col1, col2, ...} or STRUCT_PACK
                                         from mock_spark.functions.base import MockColumn
+
                                         cols = [column_expr]
                                         if isinstance(col.value, (tuple, list)):
                                             for c in col.value:
                                                 if isinstance(c, MockColumn):
                                                     cols.append(f'"{c.name}"')
-                                                elif hasattr(c, 'name'):
+                                                elif hasattr(c, "name"):
                                                     cols.append(f'"{c.name}"')
                                                 else:
                                                     cols.append(str(c))
@@ -1901,23 +2361,30 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "named_struct":
                                         # named_struct(name1, col1, name2, col2, ...) -> {name1: col1, name2: col2}
                                         from mock_spark.functions.base import MockColumn
+
                                         if isinstance(col.value, (tuple, list)):
                                             pairs = []
                                             for i in range(0, len(col.value), 2):
-                                                if i+1 < len(col.value):
+                                                if i + 1 < len(col.value):
                                                     field_name = col.value[i]
-                                                    field_val = col.value[i+1]
-                                                    if isinstance(field_val, MockColumn):
+                                                    field_val = col.value[i + 1]
+                                                    if isinstance(
+                                                        field_val, MockColumn
+                                                    ):
                                                         val_sql = f'"{field_val.name}"'
-                                                    elif hasattr(field_val, 'name'):
+                                                    elif hasattr(field_val, "name"):
                                                         val_sql = f'"{field_val.name}"'
                                                     else:
                                                         val_sql = str(field_val)
-                                                    pairs.append(f"{field_name}: {val_sql}")
+                                                    pairs.append(
+                                                        f"{field_name}: {val_sql}"
+                                                    )
                                             special_sql = f"{{{', '.join(pairs)}}}"
                                             func_expr = text(special_sql)
                                         else:
-                                            raise ValueError("named_struct requires field name-value pairs")
+                                            raise ValueError(
+                                                "named_struct requires field name-value pairs"
+                                            )
                                     elif col.function_name == "bit_get":
                                         # bit_get(col, pos) -> (col >> pos) & 1
                                         # DuckDB doesn't have BIT_GET, use bit shifting
@@ -1928,7 +2395,7 @@ class SQLAlchemyMaterializer:
                                         # convert_timezone(sourceTz, targetTz, sourceTs)
                                         # value is tuple (sourceTz, targetTz, sourceTs)
                                         source_tz, target_tz, source_ts = col.value
-                                        if hasattr(source_ts, 'name'):
+                                        if hasattr(source_ts, "name"):
                                             ts_expr = source_ts.name
                                         else:
                                             ts_expr = f"'{source_ts}'"
@@ -1963,13 +2430,15 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "date_part":
                                         # date_part(field, source) -> DATE_PART(field, source::DATE)
                                         field = col.value
-                                        special_sql = f"DATE_PART('{field}', {column_expr}::DATE)"
+                                        special_sql = (
+                                            f"DATE_PART('{field}', {column_expr}::DATE)"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "assert_true":
                                         # assert_true(condition) - if condition is false, raise error
                                         # For mock implementation, just return the condition
                                         # In real Spark, this would throw an exception
-                                        if hasattr(col.value, 'name'):
+                                        if hasattr(col.value, "name"):
                                             condition_sql = col.value.name
                                         else:
                                             # col.value is a MockColumnOperation, need to extract SQL
@@ -1979,7 +2448,7 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "to_xml":
                                         # to_xml(column) - convert column value to XML
                                         # Wrap the value in <row> tags
-                                        if hasattr(col.value, 'name'):
+                                        if hasattr(col.value, "name"):
                                             # If value is a column operation, use it
                                             value_sql = col.value.name
                                         else:
@@ -1992,38 +2461,65 @@ class SQLAlchemyMaterializer:
                                         xpath = col.value
                                         # Parse simple XPath like "/root/name" -> extract tag content
                                         # Extract tag name from path (e.g., "/root/name" -> "name")
-                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        tag = (
+                                            xpath.split("/")[-1]
+                                            if "/" in xpath
+                                            else xpath
+                                        )
                                         special_sql = f"regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1)"
                                         func_expr = text(special_sql)
-                                    elif col.function_name in ["xpath_int", "xpath_long", "xpath_short"]:
+                                    elif col.function_name in [
+                                        "xpath_int",
+                                        "xpath_long",
+                                        "xpath_short",
+                                    ]:
                                         # xpath_int/long/short(xml, path) - extract integer from XML
                                         xpath = col.value
-                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        tag = (
+                                            xpath.split("/")[-1]
+                                            if "/" in xpath
+                                            else xpath
+                                        )
                                         special_sql = f"CAST(regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) AS INTEGER)"
                                         func_expr = text(special_sql)
-                                    elif col.function_name in ["xpath_float", "xpath_double"]:
+                                    elif col.function_name in [
+                                        "xpath_float",
+                                        "xpath_double",
+                                    ]:
                                         # xpath_float/double(xml, path) - extract numeric from XML
                                         xpath = col.value
-                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        tag = (
+                                            xpath.split("/")[-1]
+                                            if "/" in xpath
+                                            else xpath
+                                        )
                                         special_sql = f"CAST(regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) AS DOUBLE)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath_boolean":
                                         # xpath_boolean(xml, path) - evaluate XPath to boolean
                                         xpath = col.value
-                                        if '=' in xpath:
+                                        if "=" in xpath:
                                             # Handle predicates like "/root/active='true'"
-                                            tag = xpath.split('/')[- 1].split('=')[0]
-                                            expected = xpath.split('=')[1].strip("'\"")
+                                            tag = xpath.split("/")[-1].split("=")[0]
+                                            expected = xpath.split("=")[1].strip("'\"")
                                             special_sql = f"regexp_extract({column_expr}, '<{tag}>([^<]*)</{tag}>', 1) = '{expected}'"
                                         else:
                                             # Just check if tag exists
-                                            tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                            tag = (
+                                                xpath.split("/")[-1]
+                                                if "/" in xpath
+                                                else xpath
+                                            )
                                             special_sql = f"regexp_extract({column_expr}, '<{tag}>', 0) IS NOT NULL"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "xpath":
                                         # xpath(xml, path) - extract array of values
                                         xpath = col.value
-                                        tag = xpath.split('/')[-1] if '/' in xpath else xpath
+                                        tag = (
+                                            xpath.split("/")[-1]
+                                            if "/" in xpath
+                                            else xpath
+                                        )
                                         # Use regexp_extract_all to get all matching tags
                                         special_sql = f"regexp_extract_all({column_expr}, '<{tag}>([^<]*)</{tag}>', 1)"
                                         func_expr = text(special_sql)
@@ -2033,22 +2529,35 @@ class SQLAlchemyMaterializer:
                                         schema_str = col.value
                                         # Parse schema to extract field names and types
                                         fields = []
-                                        if schema_str and ',' in schema_str:
-                                            for field_def in schema_str.split(','):
+                                        if schema_str and "," in schema_str:
+                                            for field_def in schema_str.split(","):
                                                 field_def = field_def.strip()
-                                                if ' ' in field_def:
+                                                if " " in field_def:
                                                     field_name = field_def.split()[0]
-                                                    field_type = field_def.split()[1].upper()
+                                                    field_type = field_def.split()[
+                                                        1
+                                                    ].upper()
                                                     # Extract value from XML tag
                                                     extract_sql = f"regexp_extract({column_expr}, '<{field_name}>([^<]*)</{field_name}>', 1)"
                                                     # Cast to appropriate type
-                                                    if field_type in ['INT', 'INTEGER', 'BIGINT', 'LONG']:
+                                                    if field_type in [
+                                                        "INT",
+                                                        "INTEGER",
+                                                        "BIGINT",
+                                                        "LONG",
+                                                    ]:
                                                         extract_sql = f"CAST({extract_sql} AS INTEGER)"
-                                                    elif field_type in ['FLOAT', 'DOUBLE', 'DECIMAL']:
+                                                    elif field_type in [
+                                                        "FLOAT",
+                                                        "DOUBLE",
+                                                        "DECIMAL",
+                                                    ]:
                                                         extract_sql = f"CAST({extract_sql} AS DOUBLE)"
-                                                    elif field_type == 'BOOLEAN':
+                                                    elif field_type == "BOOLEAN":
                                                         extract_sql = f"({extract_sql} IN ('true', 'True', '1'))"
-                                                    fields.append(f"{field_name}: {extract_sql}")
+                                                    fields.append(
+                                                        f"{field_name}: {extract_sql}"
+                                                    )
 
                                         if fields:
                                             # Create struct from extracted fields
@@ -2072,9 +2581,9 @@ class SQLAlchemyMaterializer:
                                         else:
                                             param_value = str(col.value)
 
-                                        special_sql = special_functions[col.function_name].format(
-                                            column_expr, param_value
-                                        )
+                                        special_sql = special_functions[
+                                            col.function_name
+                                        ].format(column_expr, param_value)
                                         func_expr = text(special_sql)
                                 elif isinstance(col.value, (tuple, list)):
                                     # Flatten nested tuples/lists and process parameters
@@ -2104,12 +2613,18 @@ class SQLAlchemyMaterializer:
                                             ):
                                                 # Handle MockLiteral objects
                                                 if isinstance(param.value, str):
-                                                    formatted_params.append(f"'{param.value}'")
+                                                    formatted_params.append(
+                                                        f"'{param.value}'"
+                                                    )
                                                 else:
-                                                    formatted_params.append(str(param.value))
+                                                    formatted_params.append(
+                                                        str(param.value)
+                                                    )
                                             elif hasattr(param, "name"):
                                                 # Handle MockColumn objects
-                                                formatted_params.append(f'"{param.name}"')
+                                                formatted_params.append(
+                                                    f'"{param.name}"'
+                                                )
                                             else:
                                                 formatted_params.append(str(param))
                                         param_str = ", ".join(formatted_params)
@@ -2118,7 +2633,9 @@ class SQLAlchemyMaterializer:
                                         )
                                     else:
                                         # No valid parameters - single argument function
-                                        func_expr = text(f"{duckdb_function_name}({column_expr})")
+                                        func_expr = text(
+                                            f"{duckdb_function_name}({column_expr})"
+                                        )
                                 else:
                                     # Single parameter
                                     if isinstance(col.value, str):
@@ -2153,16 +2670,23 @@ class SQLAlchemyMaterializer:
                                 # No parameters - single argument function
                                 # Check if this is a special function that doesn't use standard function syntax
                                 if col.function_name in special_functions:
-                                    special_sql = special_functions[col.function_name].format(
-                                        column_expr
-                                    )
+                                    special_sql = special_functions[
+                                        col.function_name
+                                    ].format(column_expr)
                                     func_expr = text(special_sql)
                                 else:
-                                    func_expr = text(f"{duckdb_function_name}({column_expr})")
+                                    func_expr = text(
+                                        f"{duckdb_function_name}({column_expr})"
+                                    )
 
                         # Handle labeling more carefully to avoid NotImplementedError
                         # Sanitize column name for SQL alias (remove problematic characters)
-                        safe_alias = col.name.replace("(", "_").replace(")", "_").replace(" ", "_").replace(",", "_")
+                        safe_alias = (
+                            col.name.replace("(", "_")
+                            .replace(")", "_")
+                            .replace(" ", "_")
+                            .replace(",", "_")
+                        )
 
                         try:
                             select_columns.append(func_expr.label(safe_alias))
@@ -2171,142 +2695,367 @@ class SQLAlchemyMaterializer:
                             # create a raw SQL expression with AS clause
                             if hasattr(func_expr, "text"):
                                 # For TextClause objects, create a new text expression with alias
-                                select_columns.append(text(f"({func_expr.text}) AS {safe_alias}"))
+                                select_columns.append(
+                                    text(f"({func_expr.text}) AS {safe_alias}")
+                                )
                             else:
                                 # Fallback: try to convert to string and wrap in parentheses
-                                select_columns.append(text(f"({str(func_expr)}) AS {safe_alias}"))
+                                select_columns.append(
+                                    text(f"({str(func_expr)}) AS {safe_alias}")
+                                )
                         # Infer column type based on function
-                        if col.function_name in ["length", "abs", "ceil", "floor", "factorial", "instr", "locate"]:
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["round", "sqrt", "log10", "log2", "log1p", "expm1", "acosh", "asinh", "atanh", "acos", "asin", "atan", "atan2", "cosh", "sinh", "tanh", "degrees", "radians", "cbrt", "rand", "randn", "rint", "bround", "hypot", "nanvl", "signum"]:
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                        if col.function_name in [
+                            "length",
+                            "abs",
+                            "ceil",
+                            "floor",
+                            "factorial",
+                            "instr",
+                            "locate",
+                        ]:
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "round",
+                            "sqrt",
+                            "log10",
+                            "log2",
+                            "log1p",
+                            "expm1",
+                            "acosh",
+                            "asinh",
+                            "atanh",
+                            "acos",
+                            "asin",
+                            "atan",
+                            "atan2",
+                            "cosh",
+                            "sinh",
+                            "tanh",
+                            "degrees",
+                            "radians",
+                            "cbrt",
+                            "rand",
+                            "randn",
+                            "rint",
+                            "bround",
+                            "hypot",
+                            "nanvl",
+                            "signum",
+                        ]:
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                         elif col.function_name in ["isnull", "isnan", "isnotnull"]:
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
                         elif col.function_name in ["exists", "forall"]:
                             # exists and forall return boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["array", "array_repeat", "sort_array", "transform", "filter", "array_distinct", "array_intersect", "array_union", "array_except", "array_remove", "array_compact", "slice", "array_append", "array_prepend", "array_insert", "array_sort", "flatten", "reverse", "sequence", "shuffle"]:
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "array",
+                            "array_repeat",
+                            "sort_array",
+                            "transform",
+                            "filter",
+                            "array_distinct",
+                            "array_intersect",
+                            "array_union",
+                            "array_except",
+                            "array_remove",
+                            "array_compact",
+                            "slice",
+                            "array_append",
+                            "array_prepend",
+                            "array_insert",
+                            "array_sort",
+                            "flatten",
+                            "reverse",
+                            "sequence",
+                            "shuffle",
+                        ]:
                             # Array functions return arrays - try to infer element type from source
                             from sqlalchemy import ARRAY
+
                             if col.function_name == "sequence":
                                 # sequence returns integer array
-                                new_columns.append(Column(col.name, ARRAY(Integer), primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, ARRAY(Integer), primary_key=False)
+                                )
                             else:
-                                source_col = source_table_obj.columns.get(col.column.name) if hasattr(col.column, 'name') else None
-                                if source_col is not None and isinstance(source_col.type, ARRAY):
+                                source_col = (
+                                    source_table_obj.columns.get(col.column.name)
+                                    if hasattr(col.column, "name")
+                                    else None
+                                )
+                                if source_col is not None and isinstance(
+                                    source_col.type, ARRAY
+                                ):
                                     # Preserve array element type from source
-                                    new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                                    new_columns.append(
+                                        Column(
+                                            col.name, source_col.type, primary_key=False
+                                        )
+                                    )
                                 else:
                                     # Default to VARCHAR array
-                                    new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                                    new_columns.append(
+                                        Column(
+                                            col.name, ARRAY(String), primary_key=False
+                                        )
+                                    )
                         elif col.function_name in ["array_max", "array_min"]:
                             # array_max/min return scalar - infer from array element type
                             from sqlalchemy import ARRAY
+
                             source_col = source_table_obj.columns.get(col.column.name)
-                            if source_col is not None and isinstance(source_col.type, ARRAY):
+                            if source_col is not None and isinstance(
+                                source_col.type, ARRAY
+                            ):
                                 # Return element type from array
-                                new_columns.append(Column(col.name, source_col.type.item_type, primary_key=False))
+                                new_columns.append(
+                                    Column(
+                                        col.name,
+                                        source_col.type.item_type,
+                                        primary_key=False,
+                                    )
+                                )
                             else:
                                 # Default to String
-                                new_columns.append(Column(col.name, String, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
                         elif col.function_name == "element_at":
                             # element_at returns scalar element - infer from array element type
                             from sqlalchemy import ARRAY
+
                             source_col = source_table_obj.columns.get(col.column.name)
-                            if source_col is not None and isinstance(source_col.type, ARRAY):
+                            if source_col is not None and isinstance(
+                                source_col.type, ARRAY
+                            ):
                                 # Return element type from array
-                                new_columns.append(Column(col.name, source_col.type.item_type, primary_key=False))
+                                new_columns.append(
+                                    Column(
+                                        col.name,
+                                        source_col.type.item_type,
+                                        primary_key=False,
+                                    )
+                                )
                             else:
                                 # Default to String
-                                new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["array_size", "bit_count", "bit_count", "bitwise_not", "size", "datediff", "unix_timestamp", "instr", "locate", "levenshtein", "spark_partition_id", "grouping", "grouping_id"]:
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
+                        elif col.function_name in [
+                            "array_size",
+                            "bit_count",
+                            "bit_count",
+                            "bitwise_not",
+                            "size",
+                            "datediff",
+                            "unix_timestamp",
+                            "instr",
+                            "locate",
+                            "levenshtein",
+                            "spark_partition_id",
+                            "grouping",
+                            "grouping_id",
+                        ]:
                             # These functions return integer
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
-                        elif col.function_name in ["hash", "monotonically_increasing_id", "crc32"]:
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "hash",
+                            "monotonically_increasing_id",
+                            "crc32",
+                        ]:
                             # These return big integers (BIGINT)
                             from sqlalchemy import BigInteger
-                            new_columns.append(Column(col.name, BigInteger, primary_key=False))
+
+                            new_columns.append(
+                                Column(col.name, BigInteger, primary_key=False)
+                            )
                         elif col.function_name == "array_contains":
                             # array_contains returns boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
                         elif col.function_name == "explode":
                             # explode unpacks array elements - infer from array element type
                             from sqlalchemy import ARRAY
+
                             source_col = source_table_obj.columns.get(col.column.name)
-                            if source_col is not None and isinstance(source_col.type, ARRAY):
-                                new_columns.append(Column(col.name, source_col.type.item_type, primary_key=False))
+                            if source_col is not None and isinstance(
+                                source_col.type, ARRAY
+                            ):
+                                new_columns.append(
+                                    Column(
+                                        col.name,
+                                        source_col.type.item_type,
+                                        primary_key=False,
+                                    )
+                                )
                             else:
-                                new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["convert_timezone", "from_utc_timestamp", "to_utc_timestamp", "date_trunc"]:
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
+                        elif col.function_name in [
+                            "convert_timezone",
+                            "from_utc_timestamp",
+                            "to_utc_timestamp",
+                            "date_trunc",
+                        ]:
                             # Timezone and truncation functions return timestamps
-                            new_columns.append(Column(col.name, DateTime, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, DateTime, primary_key=False)
+                            )
                         elif col.function_name in ["last_day", "next_day", "trunc"]:
                             # Date manipulation functions return dates
                             from sqlalchemy import Date
-                            new_columns.append(Column(col.name, Date, primary_key=False))
+
+                            new_columns.append(
+                                Column(col.name, Date, primary_key=False)
+                            )
                         elif col.function_name == "current_timezone":
                             # current_timezone returns string
-                            new_columns.append(Column(col.name, String, primary_key=False))
-                        elif col.function_name in ["parse_url", "url_encode", "url_decode", "dayname", "concat_ws", "regexp_extract", "substring_index", "format_number", "lpad", "rpad", "bin", "hex", "unhex", "encode", "decode", "conv", "input_file_name"]:
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "parse_url",
+                            "url_encode",
+                            "url_decode",
+                            "dayname",
+                            "concat_ws",
+                            "regexp_extract",
+                            "substring_index",
+                            "format_number",
+                            "lpad",
+                            "rpad",
+                            "bin",
+                            "hex",
+                            "unhex",
+                            "encode",
+                            "decode",
+                            "conv",
+                            "input_file_name",
+                        ]:
                             # String functions return strings
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         elif col.function_name == "date_part":
                             # date_part returns integer
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         elif col.function_name == "assert_true":
                             # assert_true returns boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["to_xml", "schema_of_xml", "xpath_string"]:
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "to_xml",
+                            "schema_of_xml",
+                            "xpath_string",
+                        ]:
                             # XML string functions return strings
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         elif col.function_name in ["xpath_int", "xpath_short"]:
                             # XPath integer functions return integers
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         elif col.function_name in ["xpath_long"]:
                             # XPath long returns integer (DuckDB uses BIGINT)
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         elif col.function_name in ["xpath_float"]:
                             # XPath float returns float
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                         elif col.function_name in ["xpath_double"]:
                             # XPath double returns double
-                            new_columns.append(Column(col.name, Double, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Double, primary_key=False)
+                            )
                         elif col.function_name == "xpath_boolean":
                             # XPath boolean returns boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
                         elif col.function_name == "xpath":
                             # XPath returns array
                             from sqlalchemy import ARRAY
-                            new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+
+                            new_columns.append(
+                                Column(col.name, ARRAY(String), primary_key=False)
+                            )
                         elif col.function_name == "from_xml":
                             # from_xml returns struct (simplified as String)
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         elif col.function_name == "arrays_overlap":
                             # arrays_overlap returns boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
                         elif col.function_name == "map_contains_key":
                             # map_contains_key returns boolean
-                            new_columns.append(Column(col.name, Boolean, primary_key=False))
-                        elif col.function_name in ["create_map", "map_filter", "map_zip_with", "transform_keys", "transform_values"]:
+                            new_columns.append(
+                                Column(col.name, Boolean, primary_key=False)
+                            )
+                        elif col.function_name in [
+                            "create_map",
+                            "map_filter",
+                            "map_zip_with",
+                            "transform_keys",
+                            "transform_values",
+                        ]:
                             # Map functions return maps - default to MAP(VARCHAR, VARCHAR)
                             # DuckDB doesn't have a direct SQLAlchemy type for MAP, use String
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         elif col.function_name == "map_from_entries":
                             # map_from_entries returns map
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         elif col.function_name == "aggregate":
                             # aggregate returns scalar - infer from initial value or default to Integer
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         elif col.function_name == "zip_with":
                             # zip_with returns array - try to infer element type
                             from sqlalchemy import ARRAY
+
                             source_col = source_table_obj.columns.get(col.column.name)
-                            if source_col is not None and isinstance(source_col.type, ARRAY):
-                                new_columns.append(Column(col.name, source_col.type, primary_key=False))
+                            if source_col is not None and isinstance(
+                                source_col.type, ARRAY
+                            ):
+                                new_columns.append(
+                                    Column(col.name, source_col.type, primary_key=False)
+                                )
                             else:
-                                new_columns.append(Column(col.name, ARRAY(Integer), primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, ARRAY(Integer), primary_key=False)
+                                )
                         else:
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                         # print(f"DEBUG: Successfully handled function operation: {col.function_name}")
                     except KeyError:
                         print(
@@ -2321,7 +3070,9 @@ class SQLAlchemyMaterializer:
                     # Select all columns from source table
                     for column in source_table_obj.columns:
                         select_columns.append(column)
-                        new_columns.append(Column(column.name, column.type, primary_key=False))
+                        new_columns.append(
+                            Column(column.name, column.type, primary_key=False)
+                        )
                     continue
 
                 # Check if this is an aliased column (check both _original_column and original_column)
@@ -2348,7 +3099,9 @@ class SQLAlchemyMaterializer:
                     try:
                         source_column = source_table_obj.c[col.name]
                         select_columns.append(source_column)
-                        new_columns.append(Column(col.name, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col.name, source_column.type, primary_key=False)
+                        )
                     except KeyError:
                         # Column not found - raise AnalysisException
                         from mock_spark.core.exceptions import AnalysisException
@@ -2421,11 +3174,15 @@ class SQLAlchemyMaterializer:
                     # Select all columns
                     for column in source_table_obj.columns:
                         select_parts.append(f'"{column.name}"')
-                        new_columns.append(Column(column.name, column.type, primary_key=False))
+                        new_columns.append(
+                            Column(column.name, column.type, primary_key=False)
+                        )
                 else:
                     select_parts.append(f'"{col}"')
                     source_column = source_table_obj.c[col]
-                    new_columns.append(Column(col, source_column.type, primary_key=False))
+                    new_columns.append(
+                        Column(col, source_column.type, primary_key=False)
+                    )
             elif (
                 hasattr(col, "function_name")
                 and hasattr(col, "column")
@@ -2436,70 +3193,112 @@ class SQLAlchemyMaterializer:
                     if col.column is None or col.column == "*":
                         select_parts.append("COUNT(*)")
                     else:
-                        column_name = col.column.name if hasattr(col.column, "name") else col.column
+                        column_name = (
+                            col.column.name
+                            if hasattr(col.column, "name")
+                            else col.column
+                        )
                         select_parts.append(f"COUNT({column_name})")
                 elif col.function_name == "countDistinct":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"COUNT(DISTINCT {column_name})")
                 elif col.function_name == "percentile_approx":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     # DuckDB doesn't have percentile functions, use AVG as approximation
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "corr":
                     # CORR function requires two columns, but we only have one
                     # This is a limitation - we'll use AVG as fallback
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "covar_samp":
                     # COVAR_SAMP function requires two columns, but we only have one
                     # This is a limitation - we'll use AVG as fallback
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "sum":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"SUM({column_name})")
                 elif col.function_name == "avg":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "max":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"MAX({column_name})")
                 elif col.function_name == "min":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"MIN({column_name})")
                 elif col.function_name == "bool_and":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"BOOL_AND({column_name})")
                 elif col.function_name == "bool_or":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"BOOL_OR({column_name})")
                 elif col.function_name == "max_by":
                     # max_by(col, ord) -> ARG_MAX(col, ord)
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
-                    ord_column = col.ord_column.name if hasattr(col.ord_column, "name") else col.ord_column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
+                    ord_column = (
+                        col.ord_column.name
+                        if hasattr(col.ord_column, "name")
+                        else col.ord_column
+                    )
                     select_parts.append(f"ARG_MAX({column_name}, {ord_column})")
                 elif col.function_name == "min_by":
                     # min_by(col, ord) -> ARG_MIN(col, ord)
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
-                    ord_column = col.ord_column.name if hasattr(col.ord_column, "name") else col.ord_column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
+                    ord_column = (
+                        col.ord_column.name
+                        if hasattr(col.ord_column, "name")
+                        else col.ord_column
+                    )
                     select_parts.append(f"ARG_MIN({column_name}, {ord_column})")
                 elif col.function_name == "count_if":
                     # count_if(condition) - column is the condition expression
                     # For now, use COUNT(CASE WHEN ... workaround if needed
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     # DuckDB supports COUNT_IF directly
                     select_parts.append(f"COUNT_IF({column_name})")
                 elif col.function_name == "any_value":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     # DuckDB supports ANY_VALUE
                     select_parts.append(f"ANY_VALUE({column_name})")
                 else:
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"{col.function_name.upper()}({column_name})")
 
                 # Add appropriate column type
                 if col.function_name in ["count", "countDistinct", "count_if"]:
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
                 elif col.function_name in ["bool_and", "bool_or"]:
                     new_columns.append(Column(col.name, Boolean, primary_key=False))
                 elif col.function_name == "sum":
@@ -2513,9 +3312,13 @@ class SQLAlchemyMaterializer:
                             int_type in source_type
                             for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
                         ):
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         else:
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                     elif isinstance(col.column, str):
                         column_name = col.column
                         if column_name in source_table_obj.c:
@@ -2525,27 +3328,42 @@ class SQLAlchemyMaterializer:
                                 int_type in source_type
                                 for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
                             ):
-                                new_columns.append(Column(col.name, Integer, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Integer, primary_key=False)
+                                )
                             else:
-                                new_columns.append(Column(col.name, Float, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, Float, primary_key=False)
+                                )
                         else:
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                     else:
                         new_columns.append(Column(col.name, Float, primary_key=False))
-                elif col.function_name in ["avg", "percentile_approx", "corr", "covar_samp"]:
+                elif col.function_name in [
+                    "avg",
+                    "percentile_approx",
+                    "corr",
+                    "covar_samp",
+                ]:
                     new_columns.append(Column(col.name, Float, primary_key=False))
                 elif col.function_name in ["max", "min"]:
                     # For max/min, use the same type as the source column
                     if col.column and hasattr(col.column, "name"):
                         source_column = source_table_obj.c[col.column.name]
-                        new_columns.append(Column(col.name, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col.name, source_column.type, primary_key=False)
+                        )
                     else:
                         new_columns.append(Column(col.name, Integer, primary_key=False))
                 elif col.function_name in ["max_by", "min_by", "any_value"]:
                     # For max_by/min_by/any_value, use the same type as the value column
                     if col.column and hasattr(col.column, "name"):
                         source_column = source_table_obj.c[col.column.name]
-                        new_columns.append(Column(col.name, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col.name, source_column.type, primary_key=False)
+                        )
                     else:
                         new_columns.append(Column(col.name, String, primary_key=False))
                 else:
@@ -2557,16 +3375,30 @@ class SQLAlchemyMaterializer:
                 for column in source_table_obj.columns:
                     if column.name not in existing_col_names:
                         select_parts.append(f'"{column.name}"')
-                        new_columns.append(Column(column.name, column.type, primary_key=False))
+                        new_columns.append(
+                            Column(column.name, column.type, primary_key=False)
+                        )
             elif hasattr(col, "name") and not hasattr(col, "alias"):
                 # Handle F.col("column_name") case (but not window functions)
                 select_parts.append(f'"{col.name}"')
                 source_column = source_table_obj.c[col.name]
-                new_columns.append(Column(col.name, source_column.type, primary_key=False))
-            elif hasattr(col, "operation") and hasattr(col, "column") and hasattr(col, "value"):
+                new_columns.append(
+                    Column(col.name, source_column.type, primary_key=False)
+                )
+            elif (
+                hasattr(col, "operation")
+                and hasattr(col, "column")
+                and hasattr(col, "value")
+            ):
                 # Handle MockColumnOperation objects (arithmetic and string operations)
                 # Check if this is an arithmetic operation (not a function)
-                if hasattr(col, "function_name") and col.function_name in ["+", "-", "*", "/", "%"]:
+                if hasattr(col, "function_name") and col.function_name in [
+                    "+",
+                    "-",
+                    "*",
+                    "/",
+                    "%",
+                ]:
                     # This is an arithmetic operation, not a function
                     col_expr = self._expression_to_sql(col)
                     select_parts.append(f"({col_expr})")
@@ -2576,7 +3408,9 @@ class SQLAlchemyMaterializer:
                         new_columns.append(Column(col.name, Float, primary_key=False))
                     elif hasattr(col, "column") and hasattr(col.column, "name"):
                         source_column = source_table_obj.c[col.column.name]
-                        new_columns.append(Column(col.name, source_column.type, primary_key=False))
+                        new_columns.append(
+                            Column(col.name, source_column.type, primary_key=False)
+                        )
                     else:
                         new_columns.append(Column(col.name, Float, primary_key=False))
                 elif hasattr(col, "function_name") and col.function_name in [
@@ -2619,20 +3453,28 @@ class SQLAlchemyMaterializer:
                 # Handle MockWindowFunction objects like F.row_number().over(...).alias("rank")
                 if col.function_name == "row_number":
                     # Build the window specification from the window_spec
-                    window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
+                    window_sql = self._window_spec_to_sql(
+                        col.window_spec, source_table_obj
+                    )
                     select_parts.append(f"ROW_NUMBER() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
                 elif col.function_name == "rank":
-                    window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
+                    window_sql = self._window_spec_to_sql(
+                        col.window_spec, source_table_obj
+                    )
                     select_parts.append(f"RANK() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
                 elif col.function_name == "dense_rank":
-                    window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
+                    window_sql = self._window_spec_to_sql(
+                        col.window_spec, source_table_obj
+                    )
                     select_parts.append(f"DENSE_RANK() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
                 else:
                     # Generic window function - handle parameters
-                    window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
+                    window_sql = self._window_spec_to_sql(
+                        col.window_spec, source_table_obj
+                    )
 
                     # Build function call with parameters
                     # Get parameters from the original function stored in the MockWindowFunction
@@ -2648,7 +3490,9 @@ class SQLAlchemyMaterializer:
                             if col.function_name in ["lag", "lead"]:
                                 # Get the column name from the original function
                                 column_name = getattr(
-                                    getattr(original_function, "column", None), "name", "unknown"
+                                    getattr(original_function, "column", None),
+                                    "name",
+                                    "unknown",
                                 )
                                 # Extract offset and default_value from tuple
                                 params = [f'"{column_name}"']
@@ -2680,9 +3524,13 @@ class SQLAlchemyMaterializer:
                             if col.function_name in ["nth_value"]:
                                 # Extract column name from the original function's column attribute
                                 column_name = getattr(
-                                    getattr(original_function, "column", None), "name", "unknown"
+                                    getattr(original_function, "column", None),
+                                    "name",
+                                    "unknown",
                                 )
-                                param_str = f'"{column_name}", {original_function.value}'
+                                param_str = (
+                                    f'"{column_name}", {original_function.value}'
+                                )
                                 select_parts.append(
                                     f"{col.function_name.upper()}({param_str}) OVER ({window_sql})"
                                 )
@@ -2699,7 +3547,12 @@ class SQLAlchemyMaterializer:
                     else:
                         # No parameters in value, but check if there's a column (for aggregate functions)
                         # Some functions like CUME_DIST, PERCENT_RANK, RANK, DENSE_RANK don't take parameters
-                        if col.function_name in ["cume_dist", "percent_rank", "rank", "dense_rank"]:
+                        if col.function_name in [
+                            "cume_dist",
+                            "percent_rank",
+                            "rank",
+                            "dense_rank",
+                        ]:
                             # These functions don't take parameters
                             select_parts.append(
                                 f"{col.function_name.upper()}() OVER ({window_sql})"
@@ -2709,9 +3562,14 @@ class SQLAlchemyMaterializer:
                             and hasattr(original_function, "column")
                             and original_function.column
                         ):
-                            column_name = getattr(original_function.column, "name", "unknown")
+                            column_name = getattr(
+                                original_function.column, "name", "unknown"
+                            )
                             # Check if column exists in table before adding to SQL
-                            if column_name != "unknown" and column_name in source_table_obj.c:
+                            if (
+                                column_name != "unknown"
+                                and column_name in source_table_obj.c
+                            ):
                                 select_parts.append(
                                     f'{col.function_name.upper()}("{column_name}") OVER ({window_sql})'
                                 )
@@ -2719,7 +3577,9 @@ class SQLAlchemyMaterializer:
                                 # Column doesn't exist, skip this window function or use placeholder
                                 # Add NULL as placeholder to maintain column position
                                 select_parts.append(f"NULL AS {col.name}")
-                                new_columns.append(Column(col.name, String, primary_key=False))
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
                                 continue
                         else:
                             # Truly no parameters
@@ -2727,7 +3587,11 @@ class SQLAlchemyMaterializer:
                                 f"{col.function_name.upper()}() OVER ({window_sql})"
                             )
 
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    # Window ranking functions never return NULL
+                    if col.function_name in ["row_number", "rank", "dense_rank", "cume_dist", "percent_rank"]:
+                        new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    else:
+                        new_columns.append(Column(col.name, Integer, primary_key=False))
             elif (
                 hasattr(col, "operation")
                 and hasattr(col, "column")
@@ -2746,7 +3610,9 @@ class SQLAlchemyMaterializer:
                 elif col.function_name == "round":
                     # For round function, check if there's a precision parameter
                     if hasattr(col, "value") and col.value is not None:
-                        select_parts.append(f"ROUND({col.column.name}, {col.value}) AS {col.name}")
+                        select_parts.append(
+                            f"ROUND({col.column.name}, {col.value}) AS {col.name}"
+                        )
                     else:
                         select_parts.append(f"ROUND({col.column.name}) AS {col.name}")
                 elif col.function_name == "ceil":
@@ -2757,20 +3623,28 @@ class SQLAlchemyMaterializer:
                     select_parts.append(f"SQRT({col.column.name}) AS {col.name}")
                 elif col.function_name == "months_between":
                     # For months_between, we need both column names
-                    column1_name = col.column.name if hasattr(col.column, "name") else col.column
-                    column2_name = col.value.name if hasattr(col.value, "name") else col.value
+                    column1_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
+                    column2_name = (
+                        col.value.name if hasattr(col.value, "name") else col.value
+                    )
                     select_parts.append(
                         f"MONTHS_BETWEEN({column1_name}, {column2_name}) AS {col.name}"
                     )
                 elif col.function_name == "split":
                     # For split, use DuckDB's string_split or str_split function
-                    delimiter = col.value if isinstance(col.value, str) else str(col.value)
+                    delimiter = (
+                        col.value if isinstance(col.value, str) else str(col.value)
+                    )
                     select_parts.append(
                         f"STRING_SPLIT({col.column.name}, '{delimiter}') AS {col.name}"
                     )
                 else:
                     # Fallback to raw SQL for unknown functions
-                    select_parts.append(f"{col.function_name}({col.column.name}) AS {col.name}")
+                    select_parts.append(
+                        f"{col.function_name}({col.column.name}) AS {col.name}"
+                    )
 
                 # Infer column type based on function
                 if col.function_name in ["length", "abs", "ceil", "floor"]:
@@ -2783,7 +3657,9 @@ class SQLAlchemyMaterializer:
                     from sqlalchemy import ARRAY
 
                     try:
-                        new_columns.append(Column(col.name, ARRAY(String), primary_key=False))
+                        new_columns.append(
+                            Column(col.name, ARRAY(String), primary_key=False)
+                        )
                     except:  # noqa: E722
                         # Fallback to String if ARRAY not supported
                         new_columns.append(Column(col.name, String, primary_key=False))
@@ -2814,24 +3690,36 @@ class SQLAlchemyMaterializer:
                     if col.column is None or col.column == "*":
                         select_parts.append("COUNT(*)")
                     else:
-                        column_name = col.column.name if hasattr(col.column, "name") else col.column
+                        column_name = (
+                            col.column.name
+                            if hasattr(col.column, "name")
+                            else col.column
+                        )
                         select_parts.append(f"COUNT({column_name})")
                 elif col.function_name == "countDistinct":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"COUNT(DISTINCT {column_name})")
                 elif col.function_name == "percentile_approx":
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     # DuckDB doesn't have percentile functions, use AVG as approximation
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "corr":
                     # CORR function requires two columns, but we only have one
                     # This is a limitation - we'll use AVG as fallback
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "covar_samp":
                     # COVAR_SAMP function requires two columns, but we only have one
                     # This is a limitation - we'll use AVG as fallback
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     select_parts.append(f"AVG({column_name})")
                 elif col.function_name == "sum":
                     select_parts.append(f"SUM({col.column.name})")
@@ -2849,10 +3737,12 @@ class SQLAlchemyMaterializer:
 
                 # Add column with appropriate type
                 if col.function_name == "count":
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
+                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
                 elif col.function_name == "sum":
                     # Preserve source column type for SUM
-                    column_name = col.column.name if hasattr(col.column, "name") else col.column
+                    column_name = (
+                        col.column.name if hasattr(col.column, "name") else col.column
+                    )
                     if column_name in source_table_obj.c:
                         source_type = str(source_table_obj.c[column_name].type).upper()
                         # Use Integer for integer types, Float for floating types
@@ -2860,9 +3750,13 @@ class SQLAlchemyMaterializer:
                             int_type in source_type
                             for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
                         ):
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         else:
-                            new_columns.append(Column(col.name, Float, primary_key=False))
+                            new_columns.append(
+                                Column(col.name, Float, primary_key=False)
+                            )
                     else:
                         new_columns.append(Column(col.name, Float, primary_key=False))
                 elif col.function_name == "avg":
@@ -2911,9 +3805,19 @@ class SQLAlchemyMaterializer:
         # Add new computed column - determine type based on operation
         if hasattr(col, "function_name") and hasattr(col, "window_spec"):
             new_columns.append(Column(col_name, Integer, primary_key=False))
-        elif hasattr(col, "operation") and hasattr(col, "column") and hasattr(col, "value"):
+        elif (
+            hasattr(col, "operation")
+            and hasattr(col, "column")
+            and hasattr(col, "value")
+        ):
             # Handle arithmetic operations - preserve source column type
-            if hasattr(col, "function_name") and col.function_name in ["+", "-", "*", "/", "%"]:
+            if hasattr(col, "function_name") and col.function_name in [
+                "+",
+                "-",
+                "*",
+                "/",
+                "%",
+            ]:
                 if col.function_name == "/":
                     # Division always returns floating-point type
                     new_columns.append(Column(col_name, Float, primary_key=False))
@@ -2922,7 +3826,9 @@ class SQLAlchemyMaterializer:
                 ):
                     # Simple column reference - preserve its type
                     source_column = source_table_obj.c[col.column.name]
-                    new_columns.append(Column(col_name, source_column.type, primary_key=False))
+                    new_columns.append(
+                        Column(col_name, source_column.type, primary_key=False)
+                    )
                 else:
                     # Complex expression or nested operation - use Float for safety
                     new_columns.append(Column(col_name, Float, primary_key=False))
@@ -2934,7 +3840,9 @@ class SQLAlchemyMaterializer:
         # Handle window functions
         if hasattr(col, "function_name") and hasattr(col, "window_spec"):
             # For window functions, we need to use raw SQL
-            self._apply_window_function(source_table, target_table, col_name, col, new_columns)
+            self._apply_window_function(
+                source_table, target_table, col_name, col, new_columns
+            )
             return
 
         # Create target table using SQLAlchemy Table
@@ -2966,7 +3874,13 @@ class SQLAlchemyMaterializer:
         func_name = window_func.function_name.upper()
 
         # Generate function call based on type
-        if func_name in ["ROW_NUMBER", "RANK", "DENSE_RANK", "CUME_DIST", "PERCENT_RANK"]:
+        if func_name in [
+            "ROW_NUMBER",
+            "RANK",
+            "DENSE_RANK",
+            "CUME_DIST",
+            "PERCENT_RANK",
+        ]:
             # These functions don't take parameters
             func_call = f"{func_name}() OVER ({window_sql})"
         else:
@@ -3010,7 +3924,11 @@ class SQLAlchemyMaterializer:
             select_columns.append(source_table_obj.c[col_name_existing])
 
         # Handle the new column expression using SQLAlchemy
-        if hasattr(col, "operation") and hasattr(col, "column") and hasattr(col, "value"):
+        if (
+            hasattr(col, "operation")
+            and hasattr(col, "column")
+            and hasattr(col, "value")
+        ):
             # Handle arithmetic operations like MockColumnOperation
             # Check if left operand is a simple column or nested expression
             if hasattr(col.column, "name") and (
@@ -3146,14 +4064,18 @@ class SQLAlchemyMaterializer:
         else:
             new_columns.append(Column(col_name, String, primary_key=False))
 
-        target_table_obj = Table(target_table, self.metadata, *new_columns, extend_existing=True)
+        target_table_obj = Table(
+            target_table, self.metadata, *new_columns, extend_existing=True
+        )
         target_table_obj.create(self.engine, checkfirst=True)
         self._created_tables[target_table] = target_table_obj
 
         # Execute the insert
         with self.engine.connect() as conn:
             conn.execute(
-                insert(target_table_obj).from_select([c.name for c in new_columns], select_stmt)
+                insert(target_table_obj).from_select(
+                    [c.name for c in new_columns], select_stmt
+                )
             )
             conn.commit()
 
@@ -3208,7 +4130,9 @@ class SQLAlchemyMaterializer:
                 session.execute(insert_stmt)
             session.commit()
 
-    def _apply_limit(self, source_table: str, target_table: str, limit_count: int) -> None:
+    def _apply_limit(
+        self, source_table: str, target_table: str, limit_count: int
+    ) -> None:
         """Apply a limit operation using SQLAlchemy expressions."""
         source_table_obj = self._created_tables[source_table]
 
@@ -3253,7 +4177,10 @@ class SQLAlchemyMaterializer:
 
     def _condition_to_sql(self, condition: Any, source_table_obj: Any) -> str:
         """Convert a condition to SQL."""
-        if hasattr(condition, "column") and hasattr(condition, "function_name"):
+        # Handle MockLiteral objects directly
+        if isinstance(condition, MockLiteral):
+            return self._value_to_sql(condition.value)
+        elif hasattr(condition, "column") and hasattr(condition, "function_name"):
             # Handle column operations like F.col("age") > 30
             column_name = condition.column.name
             value = condition.value
@@ -3279,11 +4206,18 @@ class SQLAlchemyMaterializer:
         """Convert a value to SQL."""
         if value is None:
             return "NULL"
+        elif isinstance(value, bool):
+            # Handle booleans BEFORE str check (bool is subclass of int)
+            return "true" if value else "false"
         elif isinstance(value, str):
             return f"'{value}'"
         elif isinstance(value, (int, float)):
             return str(value)
-        elif hasattr(value, "operation") and hasattr(value, "column") and hasattr(value, "value"):
+        elif (
+            hasattr(value, "operation")
+            and hasattr(value, "column")
+            and hasattr(value, "value")
+        ):
             # Handle arithmetic/comparison operations (MockColumnOperation)
             return self._expression_to_sql(value)
         elif hasattr(value, "name") and not hasattr(value, "operation"):
@@ -3293,6 +4227,9 @@ class SQLAlchemyMaterializer:
             # Handle MockLiteral
             if value.value is None:
                 return "NULL"
+            elif isinstance(value.value, bool):
+                # Handle booleans in MockLiteral
+                return "true" if value.value else "false"
             elif isinstance(value.value, str):
                 return f"'{value.value}'"
             else:
@@ -3329,7 +4266,8 @@ class SQLAlchemyMaterializer:
             # Build raw SQL query
             # Escape double quotes in column names by doubling them
             column_names = [
-                f'"{col.name.replace(chr(34), chr(34)+chr(34))}"' for col in table_obj.columns
+                f'"{col.name.replace(chr(34), chr(34) + chr(34))}"'
+                for col in table_obj.columns
             ]
             sql = f"SELECT {', '.join(column_names)} FROM {table_name}"
             results = session.execute(text(sql)).all()
@@ -3342,9 +4280,12 @@ class SQLAlchemyMaterializer:
                     value = result[i]
                     # Convert value to appropriate type based on column type
                     from sqlalchemy import ARRAY
+
                     # Check for ARRAY type - need to check type name too since ARRAY is complex
-                    is_array_column = (isinstance(column.type, ARRAY) or
-                                      type(column.type).__name__ == 'ARRAY')
+                    is_array_column = (
+                        isinstance(column.type, ARRAY)
+                        or type(column.type).__name__ == "ARRAY"
+                    )
                     # DEBUG
                     # print(f"DEBUG _get_table_results: column={column.name}, type={type(column.type).__name__}, is_array={is_array_column}, value_type={type(value)}, value={value}")
                     if is_array_column and value is not None:
@@ -3356,15 +4297,22 @@ class SQLAlchemyMaterializer:
                             # DuckDB sometimes returns arrays as strings like "[1, 2, 3]"
                             try:
                                 import ast
+
                                 result_dict[column.name] = ast.literal_eval(value)
                             except (ValueError, SyntaxError):
                                 result_dict[column.name] = value
                         else:
                             result_dict[column.name] = value
-                    elif isinstance(column.type, String) and isinstance(value, str) and value.startswith('{') and value.endswith('}'):
+                    elif (
+                        isinstance(column.type, String)
+                        and isinstance(value, str)
+                        and value.startswith("{")
+                        and value.endswith("}")
+                    ):
                         # Map columns returned as strings like "{a=1, b=2}" - parse to dict
                         try:
                             import ast
+
                             # Try to parse as dict literal
                             result_dict[column.name] = ast.literal_eval(value)
                         except (ValueError, SyntaxError):
@@ -3385,7 +4333,12 @@ class SQLAlchemyMaterializer:
                             result_dict[column.name] = value
                     elif isinstance(column.type, Boolean) and value is not None:
                         if isinstance(value, str):
-                            result_dict[column.name] = value.lower() in ("true", "1", "yes", "on")
+                            result_dict[column.name] = value.lower() in (
+                                "true",
+                                "1",
+                                "yes",
+                                "on",
+                            )
                         else:
                             result_dict[column.name] = bool(value)
                     else:
@@ -3415,13 +4368,21 @@ class SQLAlchemyMaterializer:
                     return left <= right
                 elif condition.operation == "&":
                     # Logical AND operation
-                    left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
-                    right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
+                    left_expr = self._condition_to_sqlalchemy(
+                        table_obj, condition.column
+                    )
+                    right_expr = self._condition_to_sqlalchemy(
+                        table_obj, condition.value
+                    )
                     return and_(left_expr, right_expr)
                 elif condition.operation == "|":
                     # Logical OR operation
-                    left_expr = self._condition_to_sqlalchemy(table_obj, condition.column)
-                    right_expr = self._condition_to_sqlalchemy(table_obj, condition.value)
+                    left_expr = self._condition_to_sqlalchemy(
+                        table_obj, condition.column
+                    )
+                    right_expr = self._condition_to_sqlalchemy(
+                        table_obj, condition.value
+                    )
                     return or_(left_expr, right_expr)
                 elif condition.operation == "!":
                     # Logical NOT operation
@@ -3577,7 +4538,9 @@ class SQLAlchemyMaterializer:
             return func.dense_rank().over(partition_by=partition_by, order_by=order_by)
         else:
             # Generic window function
-            return getattr(func, function_name)().over(partition_by=partition_by, order_by=order_by)
+            return getattr(func, function_name)().over(
+                partition_by=partition_by, order_by=order_by
+            )
 
     def _window_spec_to_sql(self, window_spec: Any, table_obj: Any = None) -> str:
         """Convert window specification to SQL."""
@@ -3597,7 +4560,11 @@ class SQLAlchemyMaterializer:
                     col_name = col.name
 
                 # Validate column exists if available_columns is set
-                if available_columns is not None and col_name and col_name not in available_columns:
+                if (
+                    available_columns is not None
+                    and col_name
+                    and col_name not in available_columns
+                ):
                     continue  # Skip non-existent columns
 
                 if col_name:
@@ -3625,7 +4592,11 @@ class SQLAlchemyMaterializer:
                     col_name = col.name
 
                 # Validate column exists if available_columns is set
-                if available_columns is not None and col_name and col_name not in available_columns:
+                if (
+                    available_columns is not None
+                    and col_name
+                    and col_name not in available_columns
+                ):
                     continue  # Skip non-existent columns
 
                 if col_name:
@@ -3689,7 +4660,9 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Materialize the other DataFrame to get its data
-        other_materialized = other_df._materialize_if_lazy() if other_df.is_lazy else other_df
+        other_materialized = (
+            other_df._materialize_if_lazy() if other_df.is_lazy else other_df
+        )
         other_data = other_materialized.data
         other_schema = other_materialized.schema
 
@@ -3756,11 +4729,16 @@ class SQLAlchemyMaterializer:
 
                         # Add columns from other DataFrame
                         for field in other_schema.fields:
-                            if field.name not in on_columns and field.name not in combined_row:
+                            if (
+                                field.name not in on_columns
+                                and field.name not in combined_row
+                            ):
                                 combined_row[field.name] = other_row.get(field.name)
 
                         # Ensure all target columns have values
-                        target_column_names = [col.name for col in target_table_obj.columns]
+                        target_column_names = [
+                            col.name for col in target_table_obj.columns
+                        ]
                         complete_row = {}
                         for col_name in target_column_names:
                             complete_row[col_name] = combined_row.get(col_name, None)
@@ -3809,7 +4787,11 @@ class SQLAlchemyMaterializer:
         elif hasattr(expr, "conditions") and hasattr(expr, "default_value"):
             # Handle MockCaseWhen objects
             return self._build_case_when_sql(expr, None)
-        elif hasattr(expr, "operation") and hasattr(expr, "column") and hasattr(expr, "value"):
+        elif (
+            hasattr(expr, "operation")
+            and hasattr(expr, "column")
+            and hasattr(expr, "value")
+        ):
             # Handle string/math functions like upper, lower, abs, etc.
             if expr.operation in ["upper", "lower", "length", "trim", "abs", "round"]:
                 column_name = self._column_to_sql(expr.column)
@@ -3834,7 +4816,12 @@ class SQLAlchemyMaterializer:
                     # DuckDB: extract(part from date)
                     part = "day" if expr.operation == "dayofmonth" else expr.operation
                     return f"extract({part} from CAST({left} AS DATE))"
-                elif expr.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                elif expr.operation in [
+                    "dayofweek",
+                    "dayofyear",
+                    "weekofyear",
+                    "quarter",
+                ]:
                     # DuckDB date part extraction
                     part_map = {
                         "dayofweek": "dow",
@@ -3907,59 +4894,71 @@ class SQLAlchemyMaterializer:
         self, source_table_name: str, operations: List[Tuple[str, Any]]
     ) -> str:
         """Build a single SQL query with CTEs for all operations.
-        
+
         Args:
             source_table_name: Name of the initial table with data
             operations: List of (operation_name, operation_payload) tuples
-            
+
         Returns:
             Complete SQL query with CTEs
         """
         source_table_obj = self._created_tables[source_table_name]
-        
+
         cte_definitions = []
         current_cte_name = source_table_name
         # Track columns as we build CTEs for operations that modify schema
         current_columns = [c.name for c in source_table_obj.columns]
-        
+
         for i, (op_name, op_val) in enumerate(operations):
             cte_name = f"cte_{i}"
-            
+
             if op_name == "filter":
-                cte_sql = self._build_filter_cte(current_cte_name, op_val, source_table_obj)
+                cte_sql = self._build_filter_cte(
+                    current_cte_name, op_val, source_table_obj
+                )
             elif op_name == "select":
-                cte_sql = self._build_select_cte(current_cte_name, op_val, source_table_obj)
+                cte_sql = self._build_select_cte(
+                    current_cte_name, op_val, source_table_obj
+                )
                 # Update current columns for select operations
                 # Note: This is a simplification - full implementation would parse the select
                 # For now, we'll just use source columns as we don't modify in place
             elif op_name == "withColumn":
                 col_name, col = op_val
-                cte_sql = self._build_with_column_cte(current_cte_name, col_name, col, current_columns)
+                cte_sql = self._build_with_column_cte(
+                    current_cte_name, col_name, col, current_columns
+                )
                 # Track the new column
                 if col_name not in current_columns:
                     current_columns.append(col_name)
             elif op_name == "orderBy":
-                cte_sql = self._build_order_by_cte(current_cte_name, op_val, source_table_obj)
+                cte_sql = self._build_order_by_cte(
+                    current_cte_name, op_val, source_table_obj
+                )
             elif op_name == "limit":
                 cte_sql = self._build_limit_cte(current_cte_name, op_val)
             elif op_name == "join":
-                cte_sql = self._build_join_cte(current_cte_name, op_val, source_table_obj)
+                cte_sql = self._build_join_cte(
+                    current_cte_name, op_val, source_table_obj
+                )
             elif op_name == "union":
-                cte_sql = self._build_union_cte(current_cte_name, op_val, source_table_obj)
+                cte_sql = self._build_union_cte(
+                    current_cte_name, op_val, source_table_obj
+                )
             else:
                 # Unknown operation, skip
                 continue
-            
+
             cte_definitions.append(f"{cte_name} AS ({cte_sql})")
             current_cte_name = cte_name
-        
+
         # Build final query
         if cte_definitions:
             cte_clause = "WITH " + ",\n     ".join(cte_definitions)
             final_query = f"{cte_clause}\nSELECT * FROM {current_cte_name}"
         else:
             final_query = f"SELECT * FROM {source_table_name}"
-        
+
         return final_query
 
     def _build_filter_cte(
@@ -3984,10 +4983,12 @@ class SQLAlchemyMaterializer:
             )
             for col in columns
         )
-        
+
         if has_window_functions:
-            return self._build_select_with_window_cte(source_name, columns, source_table_obj)
-        
+            return self._build_select_with_window_cte(
+                source_name, columns, source_table_obj
+            )
+
         # Build column list
         select_parts = []
         for col in columns:
@@ -4001,7 +5002,7 @@ class SQLAlchemyMaterializer:
                 if isinstance(col.value, str):
                     select_parts.append(f"'{col.value}' AS \"{col.name}\"")
                 else:
-                    select_parts.append(f"{col.value} AS \"{col.name}\"")
+                    select_parts.append(f'{col.value} AS "{col.name}"')
             elif hasattr(col, "name"):
                 # Check for alias
                 original_col = getattr(col, "_original_column", None) or getattr(
@@ -4017,12 +5018,12 @@ class SQLAlchemyMaterializer:
                 # Column operation
                 expr_sql = self._expression_to_sql(col)
                 col_name = getattr(col, "name", "result")
-                select_parts.append(f"{expr_sql} AS \"{col_name}\"")
-        
+                select_parts.append(f'{expr_sql} AS "{col_name}"')
+
         # Remove duplicate "*" entries and keep only one
         if select_parts.count("*") > 1:
             select_parts = ["*"]
-        
+
         columns_clause = ", ".join(select_parts) if select_parts else "*"
         return f"SELECT {columns_clause} FROM {source_name}"
 
@@ -4031,7 +5032,7 @@ class SQLAlchemyMaterializer:
     ) -> str:
         """Build CTE SQL for select with window functions."""
         select_parts = []
-        
+
         for col in columns:
             if isinstance(col, str):
                 if col == "*":
@@ -4045,11 +5046,16 @@ class SQLAlchemyMaterializer:
                     col_expr = "*"
                 else:
                     col_expr = f'"{col.column.name}"'
-                
+
                 window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
                 result_name = getattr(col, "name", f"{func_name.lower()}_result")
-                select_parts.append(f"{func_name}({col_expr}) OVER ({window_sql}) AS \"{result_name}\"")
-            elif hasattr(col, "function_name") and col.__class__.__name__ == "MockAggregateFunction":
+                select_parts.append(
+                    f'{func_name}({col_expr}) OVER ({window_sql}) AS "{result_name}"'
+                )
+            elif (
+                hasattr(col, "function_name")
+                and col.__class__.__name__ == "MockAggregateFunction"
+            ):
                 # Aggregate function
                 func_name = col.function_name.upper()
                 if col.column is None or col.column == "*":
@@ -4057,10 +5063,10 @@ class SQLAlchemyMaterializer:
                 else:
                     col_expr = f'"{col.column.name}"'
                 result_name = getattr(col, "name", f"{func_name.lower()}_result")
-                select_parts.append(f"{func_name}({col_expr}) AS \"{result_name}\"")
+                select_parts.append(f'{func_name}({col_expr}) AS "{result_name}"')
             elif hasattr(col, "name"):
                 select_parts.append(f'"{col.name}"')
-        
+
         columns_clause = ", ".join(select_parts) if select_parts else "*"
         return f"SELECT {columns_clause} FROM {source_name}"
 
@@ -4068,7 +5074,7 @@ class SQLAlchemyMaterializer:
         self, source_name: str, col_name: str, col: Any, existing_columns: List[str]
     ) -> str:
         """Build CTE SQL for withColumn operation.
-        
+
         Args:
             source_name: Name of the source CTE/table
             col_name: Name of the column to add/replace
@@ -4078,7 +5084,7 @@ class SQLAlchemyMaterializer:
         # Check if we're replacing an existing column or adding a new one
         select_parts = []
         column_added = False
-        
+
         for existing_col in existing_columns:
             if existing_col == col_name:
                 # Replace this column with new expression
@@ -4087,11 +5093,11 @@ class SQLAlchemyMaterializer:
                     if isinstance(col.value, str):
                         select_parts.append(f"'{col.value}' AS \"{col_name}\"")
                     else:
-                        select_parts.append(f"{col.value} AS \"{col_name}\"")
+                        select_parts.append(f'{col.value} AS "{col_name}"')
                 elif hasattr(col, "operation"):
                     # Expression
                     expr_sql = self._expression_to_sql(col)
-                    select_parts.append(f"{expr_sql} AS \"{col_name}\"")
+                    select_parts.append(f'{expr_sql} AS "{col_name}"')
                 elif hasattr(col, "name"):
                     # Column reference
                     select_parts.append(f'"{col.name}" AS "{col_name}"')
@@ -4101,7 +5107,7 @@ class SQLAlchemyMaterializer:
                 column_added = True
             else:
                 select_parts.append(f'"{existing_col}"')
-        
+
         # If column doesn't exist, add it at the end
         if not column_added:
             if hasattr(col, "value") and hasattr(col, "data_type"):
@@ -4109,7 +5115,7 @@ class SQLAlchemyMaterializer:
                 if isinstance(col.value, str):
                     select_parts.append(f"'{col.value}' AS \"{col_name}\"")
                 else:
-                    select_parts.append(f"{col.value} AS \"{col_name}\"")
+                    select_parts.append(f'{col.value} AS "{col_name}"')
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
                 # Window function - can't get source_table_obj, skip window spec for now
                 func_name = col.function_name.upper()
@@ -4118,11 +5124,11 @@ class SQLAlchemyMaterializer:
                 else:
                     col_expr = f'"{col.column.name}"'
                 # Simplified window spec without source_table_obj
-                select_parts.append(f"{func_name}({col_expr}) OVER () AS \"{col_name}\"")
+                select_parts.append(f'{func_name}({col_expr}) OVER () AS "{col_name}"')
             elif hasattr(col, "operation"):
                 # Expression
                 expr_sql = self._expression_to_sql(col)
-                select_parts.append(f"{expr_sql} AS \"{col_name}\"")
+                select_parts.append(f'{expr_sql} AS "{col_name}"')
             elif hasattr(col, "name"):
                 # Column reference
                 select_parts.append(f'"{col.name}" AS "{col_name}"')
@@ -4131,8 +5137,8 @@ class SQLAlchemyMaterializer:
                 if isinstance(col, str):
                     select_parts.append(f"'{col}' AS \"{col_name}\"")
                 else:
-                    select_parts.append(f"{col} AS \"{col_name}\"")
-        
+                    select_parts.append(f'{col} AS "{col_name}"')
+
         columns_clause = ", ".join(select_parts)
         return f"SELECT {columns_clause} FROM {source_name}"
 
@@ -4141,7 +5147,7 @@ class SQLAlchemyMaterializer:
     ) -> str:
         """Build CTE SQL for orderBy operation."""
         order_parts = []
-        
+
         for col in columns:
             if isinstance(col, str):
                 order_parts.append(f'"{col}"')
@@ -4151,7 +5157,7 @@ class SQLAlchemyMaterializer:
                 order_parts.append(f'"{col.column.name}" ASC')
             elif hasattr(col, "name"):
                 order_parts.append(f'"{col.name}"')
-        
+
         order_clause = ", ".join(order_parts)
         return f"SELECT * FROM {source_name} ORDER BY {order_clause}"
 
@@ -4164,28 +5170,30 @@ class SQLAlchemyMaterializer:
     ) -> str:
         """Build CTE SQL for join operation."""
         other_df, on, how = join_params
-        
+
         # Materialize the other DataFrame if it's lazy
         if other_df.is_lazy and other_df._operations_queue:
             other_df = other_df._materialize_if_lazy()
-        
+
         # Create a temporary table for the other DataFrame
         other_table_name = f"temp_join_{self._temp_table_counter}"
         self._temp_table_counter += 1
         self._create_table_with_data(other_table_name, other_df.data)
-        
+
         # Build join condition
         if isinstance(on, str):
             join_condition = f'{source_name}."{on}" = {other_table_name}."{on}"'
         elif isinstance(on, list):
-            conditions = [f'{source_name}."{col}" = {other_table_name}."{col}"' for col in on]
+            conditions = [
+                f'{source_name}."{col}" = {other_table_name}."{col}"' for col in on
+            ]
             join_condition = " AND ".join(conditions)
         elif hasattr(on, "operation"):
             # Column operation as join condition
             join_condition = self._condition_to_sql(on, source_table_obj)
         else:
             join_condition = "1=1"  # Fallback
-        
+
         # Map join type
         join_type_map = {
             "inner": "INNER JOIN",
@@ -4198,7 +5206,7 @@ class SQLAlchemyMaterializer:
             "full_outer": "FULL OUTER JOIN",
         }
         join_type = join_type_map.get(how, "INNER JOIN")
-        
+
         return f"SELECT * FROM {source_name} {join_type} {other_table_name} ON {join_condition}"
 
     def _build_union_cte(
@@ -4208,12 +5216,12 @@ class SQLAlchemyMaterializer:
         # Materialize the other DataFrame if it's lazy
         if other_df.is_lazy and other_df._operations_queue:
             other_df = other_df._materialize_if_lazy()
-        
+
         # Create a temporary table for the other DataFrame
         other_table_name = f"temp_union_{self._temp_table_counter}"
         self._temp_table_counter += 1
         self._create_table_with_data(other_table_name, other_df.data)
-        
+
         return f"SELECT * FROM {source_name} UNION ALL SELECT * FROM {other_table_name}"
 
     def close(self) -> None:

@@ -22,7 +22,11 @@ Example:
 """
 
 from typing import Union, Callable, Any
-from mock_spark.functions.base import MockColumn, MockColumnOperation, MockLambdaExpression
+from mock_spark.functions.base import (
+    MockColumn,
+    MockColumnOperation,
+    MockLambdaExpression,
+)
 
 
 class MapFunctions:
@@ -62,7 +66,9 @@ class MapFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(column, "map_values", name=f"map_values({column.name})")
+        return MockColumnOperation(
+            column, "map_values", name=f"map_values({column.name})"
+        )
 
     @staticmethod
     def map_entries(column: Union[MockColumn, str]) -> MockColumnOperation:
@@ -80,7 +86,9 @@ class MapFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(column, "map_entries", name=f"map_entries({column.name})")
+        return MockColumnOperation(
+            column, "map_entries", name=f"map_entries({column.name})"
+        )
 
     @staticmethod
     def map_concat(*columns: Union[MockColumn, str]) -> MockColumnOperation:
@@ -98,8 +106,12 @@ class MapFunctions:
         if not columns:
             raise ValueError("At least one column must be provided")
 
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        base_column = (
+            MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        )
+        column_names = [
+            col.name if hasattr(col, "name") else str(col) for col in columns
+        ]
 
         return MockColumnOperation(
             base_column,
@@ -152,10 +164,14 @@ class MapFunctions:
             >>> df.select(F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")))
         """
         if len(cols) < 2 or len(cols) % 2 != 0:
-            raise ValueError("create_map requires an even number of arguments (key-value pairs)")
+            raise ValueError(
+                "create_map requires an even number of arguments (key-value pairs)"
+            )
 
         # Use first column as base, store rest as value
-        base_col = cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        base_col = (
+            cols[0] if isinstance(cols[0], MockColumn) else MockColumn(str(cols[0]))
+        )
 
         return MockColumnOperation(
             base_col,
@@ -165,7 +181,9 @@ class MapFunctions:
         )
 
     @staticmethod
-    def map_contains_key(column: Union[MockColumn, str], key: Any) -> MockColumnOperation:
+    def map_contains_key(
+        column: Union[MockColumn, str], key: Any
+    ) -> MockColumnOperation:
         """Check if map contains a specific key.
 
         Args:
@@ -182,7 +200,10 @@ class MapFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column, "map_contains_key", key, name=f"map_contains_key({column.name}, {key!r})"
+            column,
+            "map_contains_key",
+            key,
+            name=f"map_contains_key({column.name}, {key!r})",
         )
 
     @staticmethod
@@ -305,7 +326,7 @@ class MapFunctions:
     def map_zip_with(
         col1: Union[MockColumn, str],
         col2: Union[MockColumn, str],
-        function: Callable[[Any, Any, Any], Any]
+        function: Callable[[Any, Any, Any], Any],
     ) -> MockColumnOperation:
         """Merge two maps into a single map using a function (PySpark 3.1+).
 
@@ -338,4 +359,3 @@ class MapFunctions:
             value=(col2, lambda_expr),
             name=f"map_zip_with({col1.name}, {col2.name}, <lambda>)",
         )
-

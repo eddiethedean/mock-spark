@@ -32,9 +32,9 @@ class TestDeltaSchemaEvolution:
 
         # Append with new column using mergeSchema
         df2 = spark.createDataFrame([{"id": 2, "name": "Bob", "age": 30}])
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-            "test.users"
-        )
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable("test.users")
 
         # Verify schema evolved
         table2 = spark.table("test.users")
@@ -57,7 +57,10 @@ class TestDeltaSchemaEvolution:
         with pytest.raises(AnalysisException) as exc_info:
             df2.write.format("delta").mode("append").saveAsTable("test.strict")
 
-        assert "schema" in str(exc_info.value).lower() or "column" in str(exc_info.value).lower()
+        assert (
+            "schema" in str(exc_info.value).lower()
+            or "column" in str(exc_info.value).lower()
+        )
 
         spark.stop()
 
@@ -71,9 +74,9 @@ class TestDeltaSchemaEvolution:
 
         # Append with new column
         df2 = spark.createDataFrame([{"id": 2, "name": "Bob", "score": 100}])
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-            "test.nulls"
-        )
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable("test.nulls")
 
         result = spark.table("test.nulls")
         rows = {row["id"]: row for row in result.collect()}
@@ -97,16 +100,16 @@ class TestDeltaSchemaEvolution:
 
         # Version 2: add column 'b'
         df2 = spark.createDataFrame([{"a": 2, "b": "two"}])
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-            "test.evolve"
-        )
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable("test.evolve")
         assert set(spark.table("test.evolve").columns) == {"a", "b"}
 
         # Version 3: add column 'c'
         df3 = spark.createDataFrame([{"a": 3, "b": "three", "c": 3.0}])
-        df3.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-            "test.evolve"
-        )
+        df3.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable("test.evolve")
 
         result = spark.table("test.evolve")
         assert set(result.columns) == {"a", "b", "c"}
@@ -131,9 +134,9 @@ class TestDeltaSchemaEvolution:
 
         # Add float column
         df2 = spark.createDataFrame([{"id": 2, "value": 200, "score": 99.5}])
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(
-            "test.types"
-        )
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable("test.types")
 
         result = spark.table("test.types")
         assert "score" in result.columns
@@ -157,6 +160,8 @@ class TestDeltaSchemaEvolution:
 
         # Should raise error regardless of mergeSchema (non-Delta tables don't support it)
         with pytest.raises(AnalysisException):
-            df2.write.mode("append").option("mergeSchema", "true").saveAsTable("test.regular")
+            df2.write.mode("append").option("mergeSchema", "true").saveAsTable(
+                "test.regular"
+            )
 
         spark.stop()

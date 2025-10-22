@@ -96,6 +96,62 @@ class MockCaseWhen:
         # Return default value if no condition matches
         return self._evaluate_value(row, self.default_value)
 
+    def get_result_type(self) -> "MockDataType":
+        """Infer the result type from condition values."""
+        from ..spark_types import BooleanType, IntegerType, StringType, DoubleType
+        from .core.literals import MockLiteral
+        
+        # Check all condition values and default value
+        all_values = [v for _, v in self.conditions]
+        if self.default_value is not None:
+            all_values.append(self.default_value)
+        
+        # Check if all values are literals (which are never nullable)
+        all_literals = all(
+            isinstance(val, MockLiteral) or val is None 
+            for val in all_values
+        )
+        
+        for val in all_values:
+            if val is not None:
+                if isinstance(val, MockLiteral):
+                    # For MockLiteral, create a new instance with correct nullable
+                    data_type = val.data_type
+                    if isinstance(data_type, BooleanType):
+                        return BooleanType(nullable=False)  # Literals are never nullable
+                    elif isinstance(data_type, IntegerType):
+                        return IntegerType(nullable=False)  # Literals are never nullable
+                    elif isinstance(data_type, DoubleType):
+                        return DoubleType(nullable=False)  # Literals are never nullable
+                    elif isinstance(data_type, StringType):
+                        return StringType(nullable=False)  # Literals are never nullable
+                    else:
+                        # For other types, create with correct nullable
+                        return data_type.__class__(nullable=False)  # Literals are never nullable
+                elif isinstance(val, bool):
+                    return BooleanType(nullable=False)  # Literals are never nullable
+                elif isinstance(val, int):
+                    return IntegerType(nullable=False)  # Literals are never nullable
+                elif isinstance(val, float):
+                    return DoubleType(nullable=False)  # Literals are never nullable
+                elif isinstance(val, str):
+                    return StringType(nullable=False)  # Literals are never nullable
+                elif hasattr(val, "operation") and hasattr(val, "column"):
+                    # Handle MockColumnOperation - check the operation type
+                    from ..spark_types import LongType
+                    if val.operation in ["+", "-", "*", "/", "%", "abs"]:
+                        # Arithmetic operations return LongType
+                        return LongType(nullable=False)
+                    elif val.operation in ["round"]:
+                        # Round operations return DoubleType
+                        return DoubleType(nullable=False)
+                    else:
+                        # Default to StringType for other operations
+                        return StringType(nullable=False)
+        
+        # Default to LongType for arithmetic operations, not BooleanType
+        return LongType(nullable=not all_literals)
+
     def _evaluate_condition(self, row: dict, condition: Any) -> bool:
         """Evaluate a condition for a given row.
 
@@ -137,26 +193,60 @@ class MockCaseWhen:
         elif operation.operation == ">":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value is not None and right_value is not None and left_value > right_value
+            return (
+                left_value is not None
+                and right_value is not None
+                and left_value > right_value
+            )
         elif operation.operation == ">=":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value is not None and right_value is not None and left_value >= right_value
+            return (
+                left_value is not None
+                and right_value is not None
+                and left_value >= right_value
+            )
         elif operation.operation == "<":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value is not None and right_value is not None and left_value < right_value
+            return (
+                left_value is not None
+                and right_value is not None
+                and left_value < right_value
+            )
         elif operation.operation == "<=":
             left_value = self._get_column_value(row, operation.column)
             right_value = self._get_column_value(row, operation.value)
-            return left_value is not None and right_value is not None and left_value <= right_value
+            return (
+                left_value is not None
+                and right_value is not None
+                and left_value <= right_value
+            )
         elif operation.operation == "&":
-            left_result = self._evaluate_column_operation(row, operation.column)
-            right_result = self._evaluate_column_operation(row, operation.value)
+            # Prevent infinite recursion - check if operands are operations
+            if hasattr(operation.column, "operation"):
+                left_result = self._evaluate_column_operation(row, operation.column)
+            else:
+                left_result = self._evaluate_condition(row, operation.column)
+            
+            if hasattr(operation.value, "operation"):
+                right_result = self._evaluate_column_operation(row, operation.value)
+            else:
+                right_result = self._evaluate_condition(row, operation.value)
+            
             return left_result and right_result
         elif operation.operation == "|":
-            left_result = self._evaluate_column_operation(row, operation.column)
-            right_result = self._evaluate_column_operation(row, operation.value)
+            # Prevent infinite recursion - check if operands are operations
+            if hasattr(operation.column, "operation"):
+                left_result = self._evaluate_column_operation(row, operation.column)
+            else:
+                left_result = self._evaluate_condition(row, operation.column)
+            
+            if hasattr(operation.value, "operation"):
+                right_result = self._evaluate_column_operation(row, operation.value)
+            else:
+                right_result = self._evaluate_condition(row, operation.value)
+            
             return left_result or right_result
         else:
             return False
@@ -188,7 +278,12 @@ class MockCaseWhen:
         Returns:
             The evaluated value.
         """
-        if hasattr(value, "operation") and hasattr(value, "column"):
+        from .core.literals import MockLiteral
+        
+        if isinstance(value, MockLiteral):
+            # For MockLiteral, return the actual value
+            return value.value
+        elif hasattr(value, "operation") and hasattr(value, "column"):
             # Handle MockColumnOperation (e.g., unary minus, arithmetic operations)
             from mock_spark.functions.base import MockColumnOperation
 
@@ -336,7 +431,9 @@ class ConditionalFunctions:
         return MockCaseWhen(condition=condition)
 
     @staticmethod
-    def assert_true(condition: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+    def assert_true(
+        condition: Union[MockColumn, MockColumnOperation],
+    ) -> MockColumnOperation:
         """Assert that a condition is true, raises error if false.
 
         Args:
@@ -357,7 +454,9 @@ class ConditionalFunctions:
 
     # Priority 2: Conditional/Null Functions
     @staticmethod
-    def ifnull(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def ifnull(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Alias for coalesce(col1, col2) - Returns col2 if col1 is null (PySpark 3.5+).
 
         Args:
@@ -370,7 +469,9 @@ class ConditionalFunctions:
         return ConditionalFunctions.coalesce(col1, col2)
 
     @staticmethod
-    def nullif(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def nullif(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Returns null if col1 equals col2, otherwise returns col1 (PySpark 3.5+).
 
         Args:
@@ -387,5 +488,5 @@ class ConditionalFunctions:
             column1,
             "nullif",
             value=column2,
-            name=f"nullif({column1.name}, {column2.name})"
+            name=f"nullif({column1.name}, {column2.name})",
         )

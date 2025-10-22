@@ -393,17 +393,17 @@ from typing import Any  # noqa: E402
 def __getattr__(name: str) -> Any:
     """
     Custom attribute access to enforce PySpark version compatibility.
-    
+
     This function is called when accessing any attribute that isn't already defined
     in the module. It checks if the requested function is available in the current
     PySpark compatibility mode.
-    
+
     Args:
         name: Name of the function being accessed
-        
+
     Returns:
         The requested function/attribute
-        
+
     Raises:
         AttributeError: If function not available in current version mode
     """
@@ -412,7 +412,7 @@ def __getattr__(name: str) -> Any:
     # Check if this is a known function
     if name in __all__:
         # Check version compatibility
-        if not is_available(name, 'function'):
+        if not is_available(name, "function"):
             version = get_pyspark_version()
             raise AttributeError(
                 f"module 'pyspark.sql.functions' has no attribute '{name}' "
@@ -435,11 +435,23 @@ def __getattr__(name: str) -> Any:
 # Note: Version checking is disabled for now to maintain backward compatibility
 # Use environment variable MOCK_SPARK_PYSPARK_VERSION or call set_pyspark_version() before import
 _CLASS_EXPORTS = {
-    "MockColumn", "MockColumnOperation", "MockLiteral", "ExpressionFunctions",
-    "MockAggregateFunction", "MockCaseWhen", "MockWindowFunction", "MockFunctions",
-    "F", "StringFunctions", "MathFunctions", "AggregateFunctions",
-    "DateTimeFunctions", "ArrayFunctions", "MapFunctions", "UserDefinedFunction",
-    "PandasUDFType"
+    "MockColumn",
+    "MockColumnOperation",
+    "MockLiteral",
+    "ExpressionFunctions",
+    "MockAggregateFunction",
+    "MockCaseWhen",
+    "MockWindowFunction",
+    "MockFunctions",
+    "F",
+    "StringFunctions",
+    "MathFunctions",
+    "AggregateFunctions",
+    "DateTimeFunctions",
+    "ArrayFunctions",
+    "MapFunctions",
+    "UserDefinedFunction",
+    "PandasUDFType",
 }
 
 # Add ALL functions to module namespace unconditionally

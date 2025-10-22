@@ -162,7 +162,9 @@ class MockSparkSession:
         is_mocked = self._createDataFrame_impl != self._original_createDataFrame_impl
         try:
             if not is_mocked and hasattr(df, "withLazy"):
-                lazy_enabled = getattr(self._engine_config, "enable_lazy_evaluation", True)
+                lazy_enabled = getattr(
+                    self._engine_config, "enable_lazy_evaluation", True
+                )
                 df = df.withLazy(lazy_enabled)
         except Exception:
             pass
@@ -198,22 +200,22 @@ class MockSparkSession:
             >>> df = spark.createDataFrame(data, ["name", "age"])
         """
         if not isinstance(data, list):
-            raise IllegalArgumentException("Data must be a list of dictionaries or tuples")
+            raise IllegalArgumentException(
+                "Data must be a list of dictionaries or tuples"
+            )
 
         # Handle DDL schema strings
         if isinstance(schema, str):
             from ...core.ddl_adapter import parse_ddl_schema
+
             schema = parse_ddl_schema(schema)
 
         # Handle list of column names as schema
         if isinstance(schema, list):
-            fields = [MockStructField(name, StringType()) for name in schema]
-            schema = MockStructType(fields)
-
-            # Convert tuples to dictionaries using provided column names
+            # Convert tuples to dictionaries using provided column names first
             if data and isinstance(data[0], tuple):
                 reordered_data = []
-                column_names = [field.name for field in schema.fields]
+                column_names = schema
                 for row in data:
                     if isinstance(row, tuple):
                         row_dict = {column_names[i]: row[i] for i in range(len(row))}
@@ -221,6 +223,14 @@ class MockSparkSession:
                     else:
                         reordered_data.append(row)
                 data = reordered_data
+                
+                # Now infer schema from the converted data
+                from ...core.schema_inference import SchemaInferenceEngine
+                schema, data = SchemaInferenceEngine.infer_from_data(data)
+            else:
+                # For non-tuple data with column names, use StringType as default
+                fields = [MockStructField(name, StringType()) for name in schema]
+                schema = MockStructType(fields)
 
         if schema is None:
             # Infer schema from data using SchemaInferenceEngine
@@ -231,7 +241,9 @@ class MockSparkSession:
                 # Check if data is in expected format
                 sample_row = data[0]
                 if not isinstance(sample_row, (dict, tuple)):
-                    raise IllegalArgumentException("Data must be a list of dictionaries or tuples")
+                    raise IllegalArgumentException(
+                        "Data must be a list of dictionaries or tuples"
+                    )
 
                 if isinstance(sample_row, dict):
                     # Use SchemaInferenceEngine for dictionary data
@@ -284,13 +296,17 @@ class MockSparkSession:
         """Clear tracked DataFrames to free memory accounting."""
         self._performance_tracker.clear_cache()
 
-    def benchmark_operation(self, operation_name: str, func: Any, *args: Any, **kwargs: Any) -> Any:
+    def benchmark_operation(
+        self, operation_name: str, func: Any, *args: Any, **kwargs: Any
+    ) -> Any:
         """Benchmark an operation and record simple telemetry.
 
         Returns the function result. Records duration (s), memory_used (bytes),
         and result_size when possible.
         """
-        return self._performance_tracker.benchmark_operation(operation_name, func, *args, **kwargs)
+        return self._performance_tracker.benchmark_operation(
+            operation_name, func, *args, **kwargs
+        )
 
     def get_benchmark_results(self) -> Dict[str, Dict[str, Any]]:
         """Return a copy of the latest benchmark results."""
@@ -319,15 +335,15 @@ class MockSparkSession:
 
     def sql(self, query: str, *args: Any, **kwargs: Any) -> IDataFrame:
         """Execute SQL query with optional parameters (mockable version).
-        
+
         Args:
             query: SQL query string with optional placeholders.
             *args: Positional parameters for ? placeholders.
             **kwargs: Named parameters for :name placeholders.
-        
+
         Returns:
             DataFrame with query results.
-            
+
         Example:
             >>> spark.sql("SELECT * FROM users WHERE age > ?", 18)
             >>> spark.sql("SELECT * FROM users WHERE age > :min_age", min_age=18)
@@ -355,21 +371,23 @@ class MockSparkSession:
 
         return self._sql_executor.execute(query)
 
-    def _bind_parameters(self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> str:
+    def _bind_parameters(
+        self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]
+    ) -> str:
         """Bind parameters to SQL query safely.
-        
+
         Args:
             query: SQL query with placeholders.
             args: Positional parameters.
             kwargs: Named parameters.
-        
+
         Returns:
             Query with parameters bound.
         """
         # Handle positional parameters (?)
         if args:
             # Count placeholders
-            placeholder_count = query.count('?')
+            placeholder_count = query.count("?")
             if len(args) != placeholder_count:
                 raise ValueError(
                     f"Number of parameters ({len(args)}) does not match "
@@ -379,7 +397,7 @@ class MockSparkSession:
             # Replace each ? with the corresponding parameter
             result = query
             for arg in args:
-                result = result.replace('?', self._format_param(arg), 1)
+                result = result.replace("?", self._format_param(arg), 1)
             query = result
 
         # Handle named parameters (:name)
@@ -394,10 +412,10 @@ class MockSparkSession:
 
     def _format_param(self, value: Any) -> str:
         """Format a parameter value for SQL safely.
-        
+
         Args:
             value: Parameter value.
-        
+
         Returns:
             Formatted parameter string.
         """
@@ -439,7 +457,9 @@ class MockSparkSession:
             >>> df = spark.table("users")
         """
         # Parse table name
-        schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        schema, table = (
+            table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        )
         # Handle global temp views using Spark's convention 'global_temp'
         if schema == "global_temp":
             schema = "global_temp"
@@ -459,6 +479,34 @@ class MockSparkSession:
             from ...spark_types import MockStructType
 
             table_schema = MockStructType([])
+        else:
+            # When reading from a table, reset all fields to nullable=True to match PySpark behavior
+            # Storage formats (Parquet/Delta) typically make columns nullable by default
+            from ...spark_types import MockStructField, MockStructType
+            from ...spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+            
+            updated_fields = []
+            for field in table_schema.fields:
+                # Create new data type with nullable=True
+                if isinstance(field.dataType, BooleanType):
+                    data_type = BooleanType(nullable=True)
+                elif isinstance(field.dataType, IntegerType):
+                    data_type = IntegerType(nullable=True)
+                elif isinstance(field.dataType, LongType):
+                    data_type = LongType(nullable=True)
+                elif isinstance(field.dataType, DoubleType):
+                    data_type = DoubleType(nullable=True)
+                elif isinstance(field.dataType, StringType):
+                    data_type = StringType(nullable=True)
+                else:
+                    # For other types, create with nullable=True
+                    data_type = field.dataType.__class__(nullable=True)
+                
+                # Create new field with nullable=True
+                updated_field = MockStructField(field.name, data_type, nullable=True)
+                updated_fields.append(updated_field)
+            
+            table_schema = MockStructType(updated_fields)
 
         return MockDataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
 
@@ -514,7 +562,9 @@ class MockSparkSession:
         return MockSparkSession(self.app_name)
 
     # Mockable methods for testing
-    def mock_createDataFrame(self, side_effect: Any = None, return_value: Any = None) -> None:
+    def mock_createDataFrame(
+        self, side_effect: Any = None, return_value: Any = None
+    ) -> None:
         """Mock createDataFrame method for testing."""
         if side_effect:
 
@@ -560,7 +610,9 @@ class MockSparkSession:
             self._sql_impl = mock_impl
 
     # Error simulation methods
-    def add_error_rule(self, method_name: str, error_condition: Any, error_exception: Any) -> None:
+    def add_error_rule(
+        self, method_name: str, error_condition: Any, error_exception: Any
+    ) -> None:
         """Add error simulation rule."""
         self._error_rules[method_name] = (error_condition, error_exception)
 

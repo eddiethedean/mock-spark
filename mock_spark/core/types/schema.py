@@ -213,7 +213,9 @@ class ISchemaValidator(ABC):
         pass
 
     @abstractmethod
-    def validate_data_against_schema(self, data: List[Dict[str, Any]], schema: IStructType) -> bool:
+    def validate_data_against_schema(
+        self, data: List[Dict[str, Any]], schema: IStructType
+    ) -> bool:
         """Validate data against schema."""
         pass
 

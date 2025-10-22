@@ -73,7 +73,9 @@ class DataFrameExporter:
         return exporter.to_duckdb(df, connection, table_name)
 
     @staticmethod
-    def _create_duckdb_table(df: "MockDataFrame", connection: Any, table_name: str) -> Any:
+    def _create_duckdb_table(
+        df: "MockDataFrame", connection: Any, table_name: str
+    ) -> Any:
         """Create DuckDB table from MockSpark schema.
 
         Deprecated: Use backend.duckdb.export.DuckDBExporter instead.

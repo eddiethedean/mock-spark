@@ -47,7 +47,9 @@ class DataFrameAssertions:
             raise AssertionError(f"Expected {expected_count} rows, got {actual_count}")
 
     @staticmethod
-    def assert_schema_matches(df: "MockDataFrame", expected_schema: "MockStructType") -> None:
+    def assert_schema_matches(
+        df: "MockDataFrame", expected_schema: "MockStructType"
+    ) -> None:
         """Assert that DataFrame schema matches the expected schema.
 
         Args:
@@ -66,7 +68,9 @@ class DataFrameAssertions:
                 raise AssertionError(f"Schema mismatch: {a} != {b}")
 
     @staticmethod
-    def assert_data_equals(df: "MockDataFrame", expected_data: List[Dict[str, Any]]) -> None:
+    def assert_data_equals(
+        df: "MockDataFrame", expected_data: List[Dict[str, Any]]
+    ) -> None:
         """Assert that DataFrame data equals the expected data.
 
         Args:

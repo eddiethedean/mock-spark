@@ -97,7 +97,9 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "length", name=f"char_length({column.name})")
+        operation = MockColumnOperation(
+            column, "length", name=f"char_length({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -113,7 +115,9 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "length", name=f"character_length({column.name})")
+        operation = MockColumnOperation(
+            column, "length", name=f"character_length({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -247,8 +251,12 @@ class StringFunctions:
         if not columns:
             raise ValueError("At least one column must be provided")
 
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        base_column = (
+            MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        )
+        column_names = [
+            col.name if hasattr(col, "name") else str(col) for col in columns
+        ]
         operation = MockColumnOperation(
             base_column,
             "concat",
@@ -258,7 +266,9 @@ class StringFunctions:
         return operation
 
     @staticmethod
-    def format_string(format_str: str, *columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def format_string(
+        format_str: str, *columns: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Format string using printf-style format string.
 
         Args:
@@ -271,8 +281,12 @@ class StringFunctions:
         if not columns:
             raise ValueError("At least one column must be provided for format_string")
 
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        base_column = (
+            MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        )
+        column_names = [
+            col.name if hasattr(col, "name") else str(col) for col in columns
+        ]
         operation = MockColumnOperation(
             base_column,
             "format_string",
@@ -351,7 +365,9 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "unbase64", name=f"unbase64({column.name})")
+        operation = MockColumnOperation(
+            column, "unbase64", name=f"unbase64({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -453,7 +469,9 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "initcap", name=f"initcap({column.name})")
+        operation = MockColumnOperation(
+            column, "initcap", name=f"initcap({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -472,7 +490,9 @@ class StringFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "soundex", name=f"soundex({column.name})")
+        operation = MockColumnOperation(
+            column, "soundex", name=f"soundex({column.name})"
+        )
         return operation
 
     # URL Functions (PySpark 3.2+)
@@ -562,14 +582,12 @@ class StringFunctions:
             columns[0] if columns else MockColumn(""),
             "concat_ws",
             value=(sep, columns[1:] if len(columns) > 1 else []),
-            name=f"concat_ws({sep}, ...)"
+            name=f"concat_ws({sep}, ...)",
         )
 
     @staticmethod
     def regexp_extract(
-        column: Union[MockColumn, str],
-        pattern: str,
-        idx: int = 0
+        column: Union[MockColumn, str], pattern: str, idx: int = 0
     ) -> MockColumnOperation:
         """Extract a specific group matched by a regex pattern.
 
@@ -591,14 +609,12 @@ class StringFunctions:
             column,
             "regexp_extract",
             value=(pattern, idx),
-            name=f"regexp_extract({column.name}, {pattern}, {idx})"
+            name=f"regexp_extract({column.name}, {pattern}, {idx})",
         )
 
     @staticmethod
     def substring_index(
-        column: Union[MockColumn, str],
-        delim: str,
-        count: int
+        column: Union[MockColumn, str], delim: str, count: int
     ) -> MockColumnOperation:
         """Returns substring before/after count occurrences of delimiter.
 
@@ -620,14 +636,11 @@ class StringFunctions:
             column,
             "substring_index",
             value=(delim, count),
-            name=f"substring_index({column.name}, {delim}, {count})"
+            name=f"substring_index({column.name}, {delim}, {count})",
         )
 
     @staticmethod
-    def format_number(
-        column: Union[MockColumn, str],
-        d: int
-    ) -> MockColumnOperation:
+    def format_number(column: Union[MockColumn, str], d: int) -> MockColumnOperation:
         """Format number with d decimal places and thousands separator.
 
         Args:
@@ -644,17 +657,11 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "format_number",
-            value=d,
-            name=f"format_number({column.name}, {d})"
+            column, "format_number", value=d, name=f"format_number({column.name}, {d})"
         )
 
     @staticmethod
-    def instr(
-        column: Union[MockColumn, str],
-        substr: str
-    ) -> MockColumnOperation:
+    def instr(column: Union[MockColumn, str], substr: str) -> MockColumnOperation:
         """Locate the position of the first occurrence of substr (1-indexed).
 
         Args:
@@ -671,17 +678,12 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "instr",
-            value=substr,
-            name=f"instr({column.name}, {substr})"
+            column, "instr", value=substr, name=f"instr({column.name}, {substr})"
         )
 
     @staticmethod
     def locate(
-        substr: str,
-        column: Union[MockColumn, str],
-        pos: int = 1
+        substr: str, column: Union[MockColumn, str], pos: int = 1
     ) -> MockColumnOperation:
         """Locate the position of substr starting from pos (1-indexed).
 
@@ -703,15 +705,11 @@ class StringFunctions:
             column,
             "locate",
             value=(substr, pos),
-            name=f"locate({substr}, {column.name}, {pos})"
+            name=f"locate({substr}, {column.name}, {pos})",
         )
 
     @staticmethod
-    def lpad(
-        column: Union[MockColumn, str],
-        len: int,
-        pad: str
-    ) -> MockColumnOperation:
+    def lpad(column: Union[MockColumn, str], len: int, pad: str) -> MockColumnOperation:
         """Left-pad string column to length len with pad string.
 
         Args:
@@ -729,18 +727,11 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "lpad",
-            value=(len, pad),
-            name=f"lpad({column.name}, {len}, {pad})"
+            column, "lpad", value=(len, pad), name=f"lpad({column.name}, {len}, {pad})"
         )
 
     @staticmethod
-    def rpad(
-        column: Union[MockColumn, str],
-        len: int,
-        pad: str
-    ) -> MockColumnOperation:
+    def rpad(column: Union[MockColumn, str], len: int, pad: str) -> MockColumnOperation:
         """Right-pad string column to length len with pad string.
 
         Args:
@@ -758,16 +749,12 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "rpad",
-            value=(len, pad),
-            name=f"rpad({column.name}, {len}, {pad})"
+            column, "rpad", value=(len, pad), name=f"rpad({column.name}, {len}, {pad})"
         )
 
     @staticmethod
     def levenshtein(
-        left: Union[MockColumn, str],
-        right: Union[MockColumn, str]
+        left: Union[MockColumn, str], right: Union[MockColumn, str]
     ) -> MockColumnOperation:
         """Compute Levenshtein distance between two strings.
 
@@ -790,7 +777,7 @@ class StringFunctions:
             left,
             "levenshtein",
             value=right,
-            name=f"levenshtein({left.name}, {right.name})"
+            name=f"levenshtein({left.name}, {right.name})",
         )
 
     @staticmethod
@@ -798,7 +785,7 @@ class StringFunctions:
         src: Union[MockColumn, str],
         replace: Union[MockColumn, str],
         pos: Union[MockColumn, int],
-        len: Union[MockColumn, int] = -1
+        len: Union[MockColumn, int] = -1,
     ) -> MockColumnOperation:
         """Replace part of a string with another string starting at a position (PySpark 3.0+).
 
@@ -818,10 +805,7 @@ class StringFunctions:
             src = MockColumn(src)
 
         return MockColumnOperation(
-            src,
-            "overlay",
-            value=(replace, pos, len),
-            name=f"overlay({src.name})"
+            src, "overlay", value=(replace, pos, len), name=f"overlay({src.name})"
         )
 
     @staticmethod
@@ -890,7 +874,7 @@ class StringFunctions:
             columns[0] if columns else MockColumn(""),
             "hash",
             value=columns[1:] if len(columns) > 1 else [],
-            name="hash(...)"
+            name="hash(...)",
         )
 
     @staticmethod
@@ -914,7 +898,7 @@ class StringFunctions:
             columns[0] if columns else MockColumn(""),
             "xxhash64",
             value=columns[1:] if len(columns) > 1 else [],
-            name="xxhash64(...)"
+            name="xxhash64(...)",
         )
 
     @staticmethod
@@ -932,10 +916,7 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "encode",
-            value=charset,
-            name=f"encode({column.name}, {charset})"
+            column, "encode", value=charset, name=f"encode({column.name}, {charset})"
         )
 
     @staticmethod
@@ -953,17 +934,12 @@ class StringFunctions:
             column = MockColumn(column)
 
         return MockColumnOperation(
-            column,
-            "decode",
-            value=charset,
-            name=f"decode({column.name}, {charset})"
+            column, "decode", value=charset, name=f"decode({column.name}, {charset})"
         )
 
     @staticmethod
     def conv(
-        column: Union[MockColumn, str],
-        from_base: int,
-        to_base: int
+        column: Union[MockColumn, str], from_base: int, to_base: int
     ) -> MockColumnOperation:
         """Convert number from one base to another.
 
@@ -982,7 +958,7 @@ class StringFunctions:
             column,
             "conv",
             value=(from_base, to_base),
-            name=f"conv({column.name}, {from_base}, {to_base})"
+            name=f"conv({column.name}, {from_base}, {to_base})",
         )
 
     @staticmethod
@@ -1042,10 +1018,7 @@ class StringFunctions:
             raise ValueError(f"numBits must be 224, 256, 384, or 512, got {numBits}")
 
         return MockColumnOperation(
-            column,
-            "sha2",
-            value=numBits,
-            name=f"sha2({column.name}, {numBits})"
+            column, "sha2", value=numBits, name=f"sha2({column.name}, {numBits})"
         )
 
     @staticmethod
@@ -1069,13 +1042,13 @@ class StringFunctions:
     @staticmethod
     def to_str(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Convert column to string representation (all PySpark versions).
-        
+
         Args:
             column: Column to convert to string
-            
+
         Returns:
             Column operation for string conversion
-            
+
         Example:
             >>> df.select(F.to_str(F.col("value")))
         """

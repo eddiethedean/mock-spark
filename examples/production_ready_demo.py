@@ -41,20 +41,20 @@ from mock_spark.core.exceptions import AnalysisException
 import time
 
 
-def print_section(title):
+def print_section(title: str) -> None:
     """Print a formatted section header."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🎯 {title}")
     print("=" * 60)
 
 
-def print_subsection(title):
+def print_subsection(title: str) -> None:
     """Print a formatted subsection header."""
     print(f"\n📋 {title}")
     print("-" * 40)
 
 
-def main():
+def main() -> None:
     """Demonstrate Mock Spark's production-ready capabilities."""
     print("🚀 Mock Spark Production Ready Demo")
     print("=" * 60)
@@ -101,7 +101,9 @@ def main():
     # Generate realistic test data
     print_subsection("Data Generation")
     data_generator = MockDataGenerator()
-    sample_data = data_generator.create_realistic_data(complex_schema, num_rows=100, seed=42)
+    sample_data = data_generator.create_realistic_data(
+        complex_schema, num_rows=100, seed=42
+    )
     print(f"✓ Generated {len(sample_data)} realistic records")
 
     # Create DataFrame with complex schema
@@ -216,11 +218,15 @@ def main():
 
     # Add error rules
     error_sim.add_rule(
-        "table", lambda name: "error" in name.lower(), AnalysisException("Simulated table error")
+        "table",
+        lambda name: "error" in name.lower(),
+        AnalysisException("Simulated table error"),
     )
 
     error_sim.add_rule(
-        "sql", lambda query: "ERROR" in query.upper(), AnalysisException("Simulated SQL error")
+        "sql",
+        lambda query: "ERROR" in query.upper(),
+        AnalysisException("Simulated SQL error"),
     )
 
     print("✓ Error simulation rules configured")
@@ -267,7 +273,9 @@ def main():
     print(f"✓ Loaded from table: {table_df.count()} rows")
 
     # SQL operations
-    sql_df = spark.sql("SELECT name, is_active FROM employees WHERE is_active = true LIMIT 5")
+    sql_df = spark.sql(
+        "SELECT name, is_active FROM employees WHERE is_active = true LIMIT 5"
+    )
     print("✓ SQL query executed")
     sql_df.show()
 

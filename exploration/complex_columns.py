@@ -152,7 +152,9 @@ try:
 
     # Complex: (val1 > val2) AND status == 'active' AND val1 IS NOT NULL
     complex_cond = (
-        (F.col("val1") > F.col("val2")) & (F.col("status") == "active") & F.col("val1").isNotNull()
+        (F.col("val1") > F.col("val2"))
+        & (F.col("status") == "active")
+        & F.col("val1").isNotNull()
     )
 
     df3_complex = df3.withColumn("complex_check", complex_cond)

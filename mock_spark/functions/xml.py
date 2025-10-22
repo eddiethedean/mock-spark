@@ -268,4 +268,3 @@ class XMLFunctions:
             path,
             name=f"xpath_string({xml.name}, '{path}')",
         )
-

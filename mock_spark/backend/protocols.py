@@ -28,7 +28,9 @@ class QueryExecutor(Protocol):
         """
         ...
 
-    def create_table(self, name: str, schema: MockStructType, data: List[Dict[str, Any]]) -> None:
+    def create_table(
+        self, name: str, schema: MockStructType, data: List[Dict[str, Any]]
+    ) -> None:
         """Create a table with the given schema and data.
 
         Args:
@@ -246,7 +248,7 @@ class StorageBackend(Protocol):
         self, schema: str, table: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata.
-        
+
         Args:
             schema: Schema name
             table: Table name
@@ -266,7 +268,9 @@ class ExportBackend(Protocol):
     different formats and systems (DuckDB, pandas, etc.).
     """
 
-    def to_duckdb(self, df: Any, connection: Any = None, table_name: Optional[str] = None) -> str:
+    def to_duckdb(
+        self, df: Any, connection: Any = None, table_name: Optional[str] = None
+    ) -> str:
         """Export DataFrame to DuckDB.
 
         Args:

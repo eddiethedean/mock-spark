@@ -39,7 +39,9 @@ class DataValidator:
         self.schema = schema
         self.validation_mode = validation_mode
         self.enable_coercion = enable_coercion
-        self._field_types = {f.name: f.dataType.__class__.__name__ for f in schema.fields}
+        self._field_types = {
+            f.name: f.dataType.__class__.__name__ for f in schema.fields
+        }
 
     def validate(self, data: List[Dict[str, Any]]) -> None:
         """
@@ -56,17 +58,23 @@ class DataValidator:
 
         for row in data:
             if not isinstance(row, dict):
-                raise IllegalArgumentException("Strict mode requires dict rows after normalization")
+                raise IllegalArgumentException(
+                    "Strict mode requires dict rows after normalization"
+                )
 
             # Ensure all schema fields present
             for field_name in self._field_types.keys():
                 if field_name not in row:
-                    raise IllegalArgumentException(f"Missing required field '{field_name}' in row")
+                    raise IllegalArgumentException(
+                        f"Missing required field '{field_name}' in row"
+                    )
 
             # Type check each field
             for field_name, value in row.items():
                 if field_name not in self._field_types:
-                    raise IllegalArgumentException(f"Unexpected field '{field_name}' in row")
+                    raise IllegalArgumentException(
+                        f"Unexpected field '{field_name}' in row"
+                    )
 
                 expected_type = self._field_types[field_name]
 
@@ -76,7 +84,9 @@ class DataValidator:
                 # Validate type matches
                 self._validate_value_type(field_name, value, expected_type)
 
-    def _validate_value_type(self, field_name: str, value: Any, expected_type: str) -> None:
+    def _validate_value_type(
+        self, field_name: str, value: Any, expected_type: str
+    ) -> None:
         """Validate a single value matches expected type."""
         actual_type = type(value).__name__
 
@@ -84,7 +94,9 @@ class DataValidator:
         if expected_type in ("LongType", "IntegerType") and isinstance(value, int):
             return
 
-        if expected_type in ("DoubleType", "FloatType") and isinstance(value, (int, float)):
+        if expected_type in ("DoubleType", "FloatType") and isinstance(
+            value, (int, float)
+        ):
             return
 
         if expected_type == "StringType" and isinstance(value, str):
@@ -175,7 +187,9 @@ class DataValidator:
 
 
 # Convenience functions
-def validate_data(data: List[Dict[str, Any]], schema: MockStructType, mode: str = "strict") -> None:
+def validate_data(
+    data: List[Dict[str, Any]], schema: MockStructType, mode: str = "strict"
+) -> None:
     """
     Validate data against schema (convenience function).
 
@@ -191,7 +205,9 @@ def validate_data(data: List[Dict[str, Any]], schema: MockStructType, mode: str 
     validator.validate(data)
 
 
-def coerce_data(data: List[Dict[str, Any]], schema: MockStructType) -> List[Dict[str, Any]]:
+def coerce_data(
+    data: List[Dict[str, Any]], schema: MockStructType
+) -> List[Dict[str, Any]]:
     """
     Coerce data to match schema (convenience function).
 

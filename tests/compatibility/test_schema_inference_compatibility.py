@@ -8,7 +8,10 @@ Uses standard compatibility test fixtures for proper environment setup.
 """
 
 import pytest
-from tests.compatibility.utils.comparison import compare_schemas, assert_dataframes_equal
+from tests.compatibility.utils.comparison import (
+    compare_schemas,
+    assert_dataframes_equal,
+)
 
 
 class TestBasicTypeInference:
@@ -28,9 +31,9 @@ class TestBasicTypeInference:
 
         # Compare schemas
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         # Compare data
         assert_dataframes_equal(mock_df, pyspark_df)
@@ -47,9 +50,9 @@ class TestBasicTypeInference:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         assert_dataframes_equal(mock_df, pyspark_df)
 
@@ -64,9 +67,9 @@ class TestBasicTypeInference:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         assert_dataframes_equal(mock_df, pyspark_df)
 
@@ -86,9 +89,9 @@ class TestNullHandling:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         # Verify nullable is True
         value_field = mock_df.schema.fields[1]  # 'value' field
@@ -140,9 +143,9 @@ class TestComplexTypes:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         assert_dataframes_equal(mock_df, pyspark_df)
 
@@ -157,9 +160,9 @@ class TestComplexTypes:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         assert_dataframes_equal(mock_df, pyspark_df)
 
@@ -179,9 +182,9 @@ class TestSparseData:
         pyspark_df = pyspark_environment["session"].createDataFrame(data)
 
         schema_comparison = compare_schemas(mock_df, pyspark_df)
-        assert schema_comparison[
-            "equivalent"
-        ], f"Schemas don't match: {schema_comparison['errors']}"
+        assert schema_comparison["equivalent"], (
+            f"Schemas don't match: {schema_comparison['errors']}"
+        )
 
         # All columns should be present
         assert set(mock_df.columns) == {"age", "id", "name"}
@@ -195,14 +198,20 @@ class TestSparseData:
 class TestSchemaOverride:
     """Test that explicit schemas work correctly."""
 
-    def test_explicit_schema_overrides_inference(self, mock_environment, pyspark_environment):
+    def test_explicit_schema_overrides_inference(
+        self, mock_environment, pyspark_environment
+    ):
         """Test that explicit schema prevents auto-inference."""
         from mock_spark.spark_types import (
             MockStructType,
             MockStructField,
             IntegerType,
         )
-        from pyspark.sql.types import StructType, StructField, IntegerType as PySparkIntegerType
+        from pyspark.sql.types import (
+            StructType,
+            StructField,
+            IntegerType as PySparkIntegerType,
+        )
 
         data = [{"id": 1, "value": 100}]
 
@@ -221,11 +230,13 @@ class TestSchemaOverride:
         )
 
         mock_df = mock_environment["session"].createDataFrame(data, schema=mock_schema)
-        pyspark_df = pyspark_environment["session"].createDataFrame(data, schema=pyspark_schema)
+        pyspark_df = pyspark_environment["session"].createDataFrame(
+            data, schema=pyspark_schema
+        )
 
         # Should use IntegerType (not inferred LongType)
-        assert (
-            type(mock_df.schema.fields[0].dataType).__name__ == "IntegerType"
-        ), "Should use explicit IntegerType"
+        assert type(mock_df.schema.fields[0].dataType).__name__ == "IntegerType", (
+            "Should use explicit IntegerType"
+        )
 
         assert_dataframes_equal(mock_df, pyspark_df)

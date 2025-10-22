@@ -85,7 +85,10 @@ class TestDateTimeEnhancements:
         )
 
         assert result.count() == 1
-        assert all(col in result.columns for col in ["date", "yr", "mon", "dy", "hr", "min", "sec"])
+        assert all(
+            col in result.columns
+            for col in ["date", "yr", "mon", "dy", "hr", "min", "sec"]
+        )
 
         spark.stop()
 

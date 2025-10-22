@@ -76,7 +76,9 @@ def raise_invalid_argument(param_name: str, value: str, expected: str) -> None:
 
 def raise_unsupported_operation(operation: str) -> None:
     """Raise unsupported operation error."""
-    raise UnsupportedOperationException(f"Operation '{operation}' is not supported in mock mode")
+    raise UnsupportedOperationException(
+        f"Operation '{operation}' is not supported in mock mode"
+    )
 
 
 def raise_parse_error(sql: str, error: str) -> None:

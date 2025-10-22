@@ -176,7 +176,9 @@ class MockDataFrameWriter:
 
             raise IllegalArgumentException("Table name cannot be empty")
 
-        schema, table = table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        schema, table = (
+            table_name.split(".", 1) if "." in table_name else ("default", table_name)
+        )
 
         # Ensure schema exists
         if not self.storage.schema_exists(schema):
@@ -233,10 +235,14 @@ class MockDataFrameWriter:
 
             if is_delta and table_exists:
                 # For Delta append, check mergeSchema option
-                merge_schema = self._options.get("mergeSchema", "false").lower() == "true"
+                merge_schema = (
+                    self._options.get("mergeSchema", "false").lower() == "true"
+                )
                 existing_schema = self.storage.get_table_schema(schema, table)
 
-                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                if existing_schema and not existing_schema.has_same_columns(
+                    self.df.schema
+                ):
                     # Schema mismatch detected
                     if merge_schema:
                         # Merge schemas: add new columns
@@ -259,7 +265,9 @@ class MockDataFrameWriter:
 
                         # Reinsert existing data with nulls
                         if existing_data:
-                            self.storage.insert_data(schema, table, existing_data, mode="append")
+                            self.storage.insert_data(
+                                schema, table, existing_data, mode="append"
+                            )
                     else:
                         # Schema mismatch without mergeSchema - raise error
                         from ..errors import AnalysisException
@@ -273,7 +281,9 @@ class MockDataFrameWriter:
             else:
                 # Non-Delta append: check schema compatibility
                 existing_schema = self.storage.get_table_schema(schema, table)
-                if existing_schema and not existing_schema.has_same_columns(self.df.schema):
+                if existing_schema and not existing_schema.has_same_columns(
+                    self.df.schema
+                ):
                     from ..errors import AnalysisException
 
                     raise AnalysisException(
@@ -317,7 +327,9 @@ class MockDataFrameWriter:
                 version=version,
                 timestamp=datetime.utcnow(),
                 operation=operation,
-                data_snapshot=[row if isinstance(row, dict) else row for row in current_data],
+                data_snapshot=[
+                    row if isinstance(row, dict) else row for row in current_data
+                ],
             )
 
             # Get existing metadata to preserve history

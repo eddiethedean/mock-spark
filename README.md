@@ -58,7 +58,7 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.9.0)
+### Latest (Version 2.10.0)
 
 **CTE Query Optimization & Performance** - Major performance breakthrough with query optimization:
 - ✅ **942 tests passing** - Comprehensive validation across all features (+63 new tests)
@@ -67,14 +67,20 @@ from mock_spark import MockSparkSession as SparkSession
 - ✅ **100% type coverage** - Full mypy validation across 106 source files
 - ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
 
-**New in 2.9.0:**
+**New in 2.10.0:**
+- ✅ **Boolean Literal Support** - Fixed `F.lit(True)` and `F.lit(False)` SQL generation
+  - **Correct SQL output** - Generates `true`/`false` instead of `"True"`/`"False"`
+  - **Table persistence** - `saveAsTable()` and `spark.table()` work correctly with boolean columns
+  - **Type safety** - Proper boolean type inference and schema validation
+- 🎯 **Type Safety Improvements** - Enhanced mypy compatibility and type annotations
+  - **Core library 100% type-safe** - All mock-spark core files pass mypy validation
+  - **Better error messages** - Improved type checking and validation
+  - **Python 3.8 compatibility** - Full support verified with comprehensive testing
 - 🚀 **CTE Query Optimization** - Single-query execution using Common Table Expressions instead of intermediate tables
   - **5-10x faster** for operation chains like `filter().select().withColumn()`
   - Automatic optimization with graceful fallback for complex operations
   - Reduces I/O and memory usage significantly
   - See `docs/guides/cte_optimization.md` for details
-- 🎯 **Bug Fixes** - Literal type handling (proper float/Decimal conversion), schema tracking for lazy evaluation
-- 📚 **Documentation** - Complete CTE optimization guide with performance benchmarks
 
 ### Version 2.7.0 Highlights
 
@@ -232,7 +238,7 @@ def test_large_dataset():
 
 ## Core Features
 
-### 🚀 CTE Query Optimization (New in 2.9.0)
+### 🚀 CTE Query Optimization (New in 2.10.0)
 
 DataFrame operation chains are now automatically optimized using Common Table Expressions:
 
@@ -472,7 +478,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.6.0** - Higher-Order Functions, Lambda Support  
 **v2.7.0** - Extended 3.1/3.3/3.5 Compatibility  
 **v2.8.0** - Iteration Methods, Streaming Support  
-**v2.9.0** - CTE Query Optimization, 5-10x Performance Boost
+**v2.9.0** - CTE Query Optimization, 5-10x Performance Boost  
+**v2.10.0** - Boolean Literal Support, Type Safety Improvements
 
 ---
 

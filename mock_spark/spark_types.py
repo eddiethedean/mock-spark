@@ -56,7 +56,11 @@ class MockDataType:
         self.nullable = nullable
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, self.__class__) and self.nullable == other.nullable
+        # For PySpark compatibility, compare only the type class
+        # nullable is a field-level property, not a type-level property
+        if hasattr(other, '__class__'):
+            return isinstance(other, self.__class__)
+        return False
 
     def __hash__(self) -> int:
         """Hash method to make MockDataType hashable."""
@@ -85,7 +89,9 @@ class MockDataType:
             "MapType": "map",
             "StructType": "struct",
         }
-        return type_mapping.get(self.__class__.__name__, self.__class__.__name__.lower())
+        return type_mapping.get(
+            self.__class__.__name__, self.__class__.__name__.lower()
+        )
 
 
 class StringType(MockDataType):
@@ -160,7 +166,9 @@ class ArrayType(MockDataType):
 class MapType(MockDataType):
     """Mock map type."""
 
-    def __init__(self, key_type: MockDataType, value_type: MockDataType, nullable: bool = True):
+    def __init__(
+        self, key_type: MockDataType, value_type: MockDataType, nullable: bool = True
+    ):
         """Initialize MapType."""
         super().__init__(nullable)
         self.key_type = key_type
@@ -226,14 +234,20 @@ class MockStructField:
         )
 
     def __repr__(self) -> str:
-        default_str = f", default_value={self.default_value!r}" if self.default_value is not None else ""
+        default_str = (
+            f", default_value={self.default_value!r}"
+            if self.default_value is not None
+            else ""
+        )
         return f"MockStructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable}{default_str})"
 
 
 class StructType(MockDataType):
     """Mock struct type."""
 
-    def __init__(self, fields: Optional[List[MockStructField]] = None, nullable: bool = True):
+    def __init__(
+        self, fields: Optional[List[MockStructField]] = None, nullable: bool = True
+    ):
         """Initialize StructType."""
         super().__init__(nullable)
         self.fields = fields or []
@@ -501,14 +515,18 @@ class MockRow:
         """Convert to dictionary (PySpark compatibility)."""
         # Ensure order follows schema if provided
         if self._schema is not None:
-            return {name: self.data.get(name) for name in self._get_field_names_ordered()}
+            return {
+                name: self.data.get(name) for name in self._get_field_names_ordered()
+            }
         return self.data.copy()
 
     def __getattr__(self, name: str) -> Any:
         """Get value by attribute name (PySpark compatibility)."""
         if name in self.data:
             return self.data[name]
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'"
+        )
 
     def __iter__(self) -> Iterator[Any]:
         """Iterate values in schema order if available, else dict order."""
@@ -517,7 +535,9 @@ class MockRow:
 
     def __repr__(self) -> str:
         """String representation matching PySpark format."""
-        values_str = ", ".join(f"{k}={self.data.get(k)}" for k in self._get_field_names_ordered())
+        values_str = ", ".join(
+            f"{k}={self.data.get(k)}" for k in self._get_field_names_ordered()
+        )
         return f"Row({values_str})"
 
     def get(self, key: str, default: Any = None) -> Any:

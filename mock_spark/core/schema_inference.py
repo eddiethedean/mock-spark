@@ -32,7 +32,9 @@ class SchemaInferenceEngine:
     """Engine for inferring schemas from Python data structures."""
 
     @staticmethod
-    def infer_from_data(data: List[Dict[str, Any]]) -> Tuple[MockStructType, List[Dict[str, Any]]]:
+    def infer_from_data(
+        data: List[Dict[str, Any]],
+    ) -> Tuple[MockStructType, List[Dict[str, Any]]]:
         """
         Infer schema from a list of dictionaries.
 
@@ -95,8 +97,9 @@ class SchemaInferenceEngine:
                         f"and {type(inferred_type).__name__}"
                     )
 
-            # All fields are nullable in PySpark's inferred schemas
-            fields.append(MockStructField(key, field_type, nullable=True))
+            # Use the nullable property from the field type if available, otherwise default to True
+            nullable = getattr(field_type, 'nullable', True)
+            fields.append(MockStructField(key, field_type, nullable=nullable))
 
         schema = MockStructType(fields)
 

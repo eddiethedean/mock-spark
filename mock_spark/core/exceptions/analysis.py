@@ -114,18 +114,23 @@ class ColumnNotFoundException(AnalysisException):
                     if len(suggestions) == 1:
                         message += f". Did you mean '{suggestions[0]}'?"
                     else:
-                        suggestions_str = ', '.join(f"'{s}'" for s in suggestions)
+                        suggestions_str = ", ".join(f"'{s}'" for s in suggestions)
                         message += f". Did you mean one of: {suggestions_str}?"
 
         context = {"table_name": table_name, "available_columns": available_columns}
-        super().__init__(message, stackTrace, error_code="COLUMN_NOT_FOUND", context=context)
+        super().__init__(
+            message, stackTrace, error_code="COLUMN_NOT_FOUND", context=context
+        )
         self.column_name = column_name
         self.available_columns = available_columns or []
         self.table_name = table_name
 
     @staticmethod
-    def _find_similar_columns(target: str, columns: List[str], max_suggestions: int = 3) -> List[str]:
+    def _find_similar_columns(
+        target: str, columns: List[str], max_suggestions: int = 3
+    ) -> List[str]:
         """Find similar column names using Levenshtein-like similarity."""
+
         def similarity_score(s1: str, s2: str) -> float:
             """Simple similarity score based on character overlap (0-1)."""
             s1_lower = s1.lower()
@@ -150,16 +155,10 @@ class ColumnNotFoundException(AnalysisException):
             return intersection / union if union > 0 else 0.0
 
         # Score each column and filter by threshold
-        scored_columns = [
-            (col, similarity_score(target, col))
-            for col in columns
-        ]
+        scored_columns = [(col, similarity_score(target, col)) for col in columns]
 
         # Filter columns with score > 0.5 and sort by score
-        similar = [
-            col for col, score in scored_columns
-            if score > 0.5
-        ]
+        similar = [col for col, score in scored_columns if score > 0.5]
 
         # Sort by similarity score (descending)
         similar.sort(key=lambda col: similarity_score(target, col), reverse=True)
@@ -202,7 +201,9 @@ class TableNotFoundException(AnalysisException):
                 message += f". Available tables: {', '.join(available_tables)}"
 
         context = {"database_name": database_name, "available_tables": available_tables}
-        super().__init__(message, stackTrace, error_code="TABLE_NOT_FOUND", context=context)
+        super().__init__(
+            message, stackTrace, error_code="TABLE_NOT_FOUND", context=context
+        )
         self.table_name = table_name
         self.available_tables = available_tables or []
         self.database_name = database_name
@@ -271,9 +272,15 @@ class TypeMismatchException(AnalysisException):
             if operation:
                 message += f" in operation '{operation}'"
 
-        context = {"expected_type": expected_type, "actual_type": actual_type,
-                   "column_name": column_name, "operation": operation}
-        super().__init__(message, stackTrace, error_code="TYPE_MISMATCH", context=context)
+        context = {
+            "expected_type": expected_type,
+            "actual_type": actual_type,
+            "column_name": column_name,
+            "operation": operation,
+        }
+        super().__init__(
+            message, stackTrace, error_code="TYPE_MISMATCH", context=context
+        )
         self.expected_type = expected_type
         self.actual_type = actual_type
         self.column_name = column_name

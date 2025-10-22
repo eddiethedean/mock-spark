@@ -21,9 +21,7 @@ class MetadataFunctions:
             MockColumnOperation representing input_file_name
         """
         return MockColumnOperation(
-            MockLiteral(""),
-            "input_file_name",
-            name="input_file_name()"
+            MockLiteral(""), "input_file_name", name="input_file_name()"
         )
 
     @staticmethod
@@ -36,7 +34,7 @@ class MetadataFunctions:
         return MockColumnOperation(
             MockLiteral(0),
             "monotonically_increasing_id",
-            name="monotonically_increasing_id()"
+            name="monotonically_increasing_id()",
         )
 
     @staticmethod
@@ -47,9 +45,7 @@ class MetadataFunctions:
             MockColumnOperation representing spark_partition_id
         """
         return MockColumnOperation(
-            MockLiteral(0),
-            "spark_partition_id",
-            name="spark_partition_id()"
+            MockLiteral(0), "spark_partition_id", name="spark_partition_id()"
         )
 
     @staticmethod
@@ -93,11 +89,7 @@ class GroupingFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        return MockColumnOperation(
-            column,
-            "grouping",
-            name=f"grouping({column.name})"
-        )
+        return MockColumnOperation(column, "grouping", name=f"grouping({column.name})")
 
     @staticmethod
     def grouping_id(*cols: Union[MockColumn, str]) -> MockColumnOperation:
@@ -120,6 +112,5 @@ class GroupingFunctions:
             columns[0] if columns else MockColumn(""),
             "grouping_id",
             value=columns[1:] if len(columns) > 1 else [],
-            name="grouping_id(...)"
+            name="grouping_id(...)",
         )
-

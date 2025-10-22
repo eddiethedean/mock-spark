@@ -154,7 +154,11 @@ class TestDeltaMerge:
 
         # Target
         target = spark.createDataFrame(
-            [{"id": 1, "active": True}, {"id": 2, "active": True}, {"id": 3, "active": True}]
+            [
+                {"id": 1, "active": True},
+                {"id": 2, "active": True},
+                {"id": 3, "active": True},
+            ]
         )
         target.write.format("delta").saveAsTable("test.target5")
 
@@ -199,8 +203,16 @@ class TestDeltaMerge:
         # Source
         source = spark.createDataFrame(
             [
-                {"id": 1, "category": "A", "value": 100},  # Matches (id=1 AND category=A)
-                {"id": 2, "category": "B", "value": 200},  # Matches (id=2 AND category=B)
+                {
+                    "id": 1,
+                    "category": "A",
+                    "value": 100,
+                },  # Matches (id=1 AND category=A)
+                {
+                    "id": 2,
+                    "category": "B",
+                    "value": 200,
+                },  # Matches (id=2 AND category=B)
                 {"id": 4, "category": "C", "value": 400},  # No match
             ]
         )

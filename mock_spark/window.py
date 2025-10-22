@@ -78,7 +78,9 @@ class MockWindowSpec:
         for col in cols:
             # Check if it's a string or has the name attribute (MockColumn-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
-                raise ValueError(f"Invalid column type: {type(col)}. Must be str or MockColumn")
+                raise ValueError(
+                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                )
 
         self._partition_by = list(cols)
         return self
@@ -101,7 +103,9 @@ class MockWindowSpec:
         for col in cols:
             # Check if it's a string or has the name attribute (MockColumn-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
-                raise ValueError(f"Invalid column type: {type(col)}. Must be str or MockColumn")
+                raise ValueError(
+                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                )
 
         self._order_by = list(cols)
         return self
@@ -148,13 +152,19 @@ class MockWindowSpec:
         """String representation."""
         parts = []
         if self._partition_by:
-            parts.append(f"partitionBy({', '.join(str(col) for col in self._partition_by)})")
+            parts.append(
+                f"partitionBy({', '.join(str(col) for col in self._partition_by)})"
+            )
         if self._order_by:
             parts.append(f"orderBy({', '.join(str(col) for col in self._order_by)})")
         if self._rows_between:
-            parts.append(f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})")
+            parts.append(
+                f"rowsBetween({self._rows_between[0]}, {self._rows_between[1]})"
+            )
         if self._range_between:
-            parts.append(f"rangeBetween({self._range_between[0]}, {self._range_between[1]})")
+            parts.append(
+                f"rangeBetween({self._range_between[0]}, {self._range_between[1]})"
+            )
         return f"MockWindowSpec({', '.join(parts)})"
 
 

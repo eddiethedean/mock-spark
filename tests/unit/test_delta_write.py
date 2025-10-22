@@ -187,9 +187,9 @@ class TestDeltaWriteWithOptions:
         )
 
         # Write with partitioning
-        df.write.format("delta").partitionBy("year", "month").mode("overwrite").saveAsTable(
-            "test.partitioned"
-        )
+        df.write.format("delta").partitionBy("year", "month").mode(
+            "overwrite"
+        ).saveAsTable("test.partitioned")
 
         # Verify table exists and data is correct
         result = spark.table("test.partitioned")

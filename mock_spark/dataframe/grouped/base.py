@@ -8,7 +8,7 @@ operations, maintaining compatibility with PySpark's GroupedData interface.
 from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional
 import statistics
 
-from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
+from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction, MockLiteral
 from ...core.exceptions.analysis import AnalysisException
 
 if TYPE_CHECKING:
@@ -46,6 +46,8 @@ class MockGroupedData:
         Returns:
             New MockDataFrame with aggregated results.
         """
+        from ...functions.core.literals import MockLiteral
+        
         # Materialize the DataFrame if it's lazy
         if self.df.is_lazy:
             self.df = self.df._materialize_if_lazy()
@@ -66,7 +68,9 @@ class MockGroupedData:
             for expr in exprs:
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
-                    result_key, result_value = self._evaluate_string_expression(expr, group_rows)
+                    result_key, result_value = self._evaluate_string_expression(
+                        expr, group_rows
+                    )
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name"):
                     # Handle MockAggregateFunction
@@ -77,9 +81,17 @@ class MockGroupedData:
                         cast(MockAggregateFunction, expr), group_rows
                     )
                     result_row[result_key] = result_value
+                elif isinstance(expr, MockLiteral):
+                    # For literals in aggregation, just use their value
+                    lit_expr = expr
+                    # Use the literal's name as key if it has an alias
+                    result_key = getattr(lit_expr, 'name', str(lit_expr.value))
+                    result_row[result_key] = lit_expr.value
                 elif hasattr(expr, "name"):
                     # Handle MockColumn or MockColumnOperation
-                    result_key, result_value = self._evaluate_column_expression(expr, group_rows)
+                    result_key, result_value = self._evaluate_column_expression(
+                        expr, group_rows
+                    )
                     result_row[result_key] = result_value
 
             result_data.append(result_row)
@@ -92,20 +104,53 @@ class MockGroupedData:
             StringType,
             LongType,
             DoubleType,
+            BooleanType,
         )
 
-        # Create schema based on the first result row
+        # Create schema based on the first result row and expression types
         if result_data:
             fields = []
+            
+            # Track which expressions are literals for proper nullable inference
+            literal_keys = set()
+            for expr in exprs:
+                if isinstance(expr, MockLiteral):
+                    lit_key = getattr(expr, 'name', str(expr.value))
+                    literal_keys.add(lit_key)
+            
             for key, value in result_data[0].items():
                 if key in self.group_columns:
-                    fields.append(MockStructField(key, StringType()))
-                elif isinstance(value, int):
-                    fields.append(MockStructField(key, LongType()))
-                elif isinstance(value, float):
-                    fields.append(MockStructField(key, DoubleType()))
+                    # Use existing schema for group columns
+                    for field in self.df.schema.fields:
+                        if field.name == key:
+                            fields.append(field)
+                            break
                 else:
-                    fields.append(MockStructField(key, StringType()))
+                    # Determine if this is a literal value
+                    is_literal = key in literal_keys
+                    
+                    # Count functions, window ranking functions, and boolean functions are non-nullable in PySpark
+                    # Other aggregations and literals are non-nullable
+                    is_count_function = any(
+                        key.startswith(func) for func in ["count(", "count(1)", "count(DISTINCT", "row_num", "rank", "dense_rank", "dept_row_num", "global_row", "dept_row", "dept_rank"]
+                    )
+                    is_boolean_function = any(
+                        key.startswith(func) for func in ["coalesced_", "is_null_", "is_nan_"]
+                    )
+                    nullable = not (is_literal or is_count_function or is_boolean_function)
+                    
+                    if isinstance(value, bool):
+                        data_type = BooleanType(nullable=nullable)
+                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                    elif isinstance(value, str):
+                        data_type = StringType(nullable=nullable)
+                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                    elif isinstance(value, float):
+                        data_type = DoubleType(nullable=nullable)
+                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                    else:
+                        data_type = LongType(nullable=nullable)
+                        fields.append(MockStructField(key, data_type, nullable=nullable))
             schema = MockStructType(fields)
             return MockDataFrame(result_data, schema)
         else:
@@ -126,21 +171,33 @@ class MockGroupedData:
         """
         if expr.startswith("sum("):
             col_name = expr[4:-1]
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name, 0)
+                for row in group_rows
+                if row.get(col_name) is not None
+            ]
             return expr, sum(values) if values else 0
         elif expr.startswith("avg("):
             col_name = expr[4:-1]
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name, 0)
+                for row in group_rows
+                if row.get(col_name) is not None
+            ]
             return expr, sum(values) / len(values) if values else 0
         elif expr.startswith("count("):
             return expr, len(group_rows)
         elif expr.startswith("max("):
             col_name = expr[4:-1]
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             return expr, max(values) if values else None
         elif expr.startswith("min("):
             col_name = expr[4:-1]
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             return expr, min(values) if values else None
         else:
             return expr, None
@@ -158,7 +215,9 @@ class MockGroupedData:
             Tuple of (result_key, result_value).
         """
         func_name = expr.function_name
-        col_name = getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
+        col_name = (
+            getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
+        )
 
         # Check if the function has an alias set
         has_alias = expr.name != expr._generate_name()
@@ -203,34 +262,47 @@ class MockGroupedData:
                 result_key = alias_name if alias_name else f"count({col_name})"
                 return result_key, len(group_rows)
         elif func_name == "max":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"max({col_name})"
             return result_key, max(values) if values else None
         elif func_name == "min":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"min({col_name})"
             return result_key, min(values) if values else None
         elif func_name == "collect_list":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"collect_list({col_name})"
             return result_key, values
         elif func_name == "collect_set":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"collect_set({col_name})"
             return result_key, list(set(values))
         elif func_name == "first":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"first({col_name})"
             return result_key, values[0] if values else None
         elif func_name == "last":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"last({col_name})"
             return result_key, values[-1] if values else None
         elif func_name == "stddev":
             values = [
                 row.get(col_name)
                 for row in group_rows
-                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                if row.get(col_name) is not None
+                and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"stddev({col_name})"
             if values:
@@ -241,25 +313,31 @@ class MockGroupedData:
             values = [
                 row.get(col_name)
                 for row in group_rows
-                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                if row.get(col_name) is not None
+                and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"variance({col_name})"
             if values:
-                return result_key, (statistics.variance(values) if len(values) > 1 else 0.0)
+                return result_key, (
+                    statistics.variance(values) if len(values) > 1 else 0.0
+                )
             else:
                 return result_key, None
         elif func_name == "skewness":
             values = [
                 row.get(col_name)
                 for row in group_rows
-                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                if row.get(col_name) is not None
+                and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"skewness({col_name})"
             if values and len(values) > 2:
                 mean_val = statistics.mean(values)
                 std_val = statistics.stdev(values)
                 if std_val > 0:
-                    skewness = sum((x - mean_val) ** 3 for x in values) / (len(values) * std_val**3)
+                    skewness = sum((x - mean_val) ** 3 for x in values) / (
+                        len(values) * std_val**3
+                    )
                     return result_key, skewness
                 else:
                     return result_key, 0.0
@@ -269,7 +347,8 @@ class MockGroupedData:
             values = [
                 row.get(col_name)
                 for row in group_rows
-                if row.get(col_name) is not None and isinstance(row.get(col_name), (int, float))
+                if row.get(col_name) is not None
+                and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"kurtosis({col_name})"
             if values and len(values) > 3:
@@ -277,7 +356,9 @@ class MockGroupedData:
                 std_val = statistics.stdev(values)
                 if std_val > 0:
                     kurtosis = (
-                        sum((x - mean_val) ** 4 for x in values) / (len(values) * std_val**4) - 3
+                        sum((x - mean_val) ** 4 for x in values)
+                        / (len(values) * std_val**4)
+                        - 3
                     )
                     return result_key, kurtosis
                 else:
@@ -285,20 +366,30 @@ class MockGroupedData:
             else:
                 return result_key, None
         elif func_name == "bool_and":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"bool_and({col_name})"
             return result_key, all(values) if values else None
         elif func_name == "bool_or":
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"bool_or({col_name})"
             return result_key, any(values) if values else None
         elif func_name == "max_by":
             # max_by(col, ord) - return col value where ord is maximum
             if expr.ord_column is None:
                 return alias_name if alias_name else f"max_by({col_name})", None
-            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else str(expr.ord_column)
+            ord_col_name = (
+                expr.ord_column.name
+                if hasattr(expr.ord_column, "name")
+                else str(expr.ord_column)
+            )
             if group_rows:
-                max_row = max(group_rows, key=lambda r: r.get(ord_col_name, float('-inf')))  # type: ignore[arg-type]
+                max_row = max(
+                    group_rows, key=lambda r: r.get(ord_col_name, float("-inf"))
+                )  # type: ignore[arg-type]
                 result_key = alias_name if alias_name else f"max_by({col_name})"
                 return result_key, max_row.get(col_name)
             return alias_name if alias_name else f"max_by({col_name})", None
@@ -306,98 +397,160 @@ class MockGroupedData:
             # min_by(col, ord) - return col value where ord is minimum
             if expr.ord_column is None:
                 return alias_name if alias_name else f"min_by({col_name})", None
-            ord_col_name = expr.ord_column.name if hasattr(expr.ord_column, "name") else str(expr.ord_column)
+            ord_col_name = (
+                expr.ord_column.name
+                if hasattr(expr.ord_column, "name")
+                else str(expr.ord_column)
+            )
             if group_rows:
-                min_row = min(group_rows, key=lambda r: r.get(ord_col_name, float('inf')))  # type: ignore[arg-type]
+                min_row = min(
+                    group_rows, key=lambda r: r.get(ord_col_name, float("inf"))
+                )  # type: ignore[arg-type]
                 result_key = alias_name if alias_name else f"min_by({col_name})"
                 return result_key, min_row.get(col_name)
             return alias_name if alias_name else f"min_by({col_name})", None
         elif func_name == "count_if":
             # count_if(condition) - count where condition is true
             # The column might be a condition expression (e.g., col > 20)
-            if expr.column is not None and hasattr(expr.column, 'operation'):
+            if expr.column is not None and hasattr(expr.column, "operation"):
                 # This is a condition expression - evaluate it for each row
                 true_count = 0
                 for row in group_rows:
                     # Evaluate the condition expression
                     cond_expr = expr.column  # type: ignore[union-attr]
-                    if hasattr(cond_expr, 'column') and hasattr(cond_expr, 'operation') and hasattr(cond_expr, 'value'):
-                        col_val = row.get(cond_expr.column.name if hasattr(cond_expr.column, 'name') else cond_expr.column)  # type: ignore[union-attr]
-                        comp_val = cond_expr.value.value if hasattr(cond_expr.value, 'value') else cond_expr.value  # type: ignore[union-attr]
+                    if (
+                        hasattr(cond_expr, "column")
+                        and hasattr(cond_expr, "operation")
+                        and hasattr(cond_expr, "value")
+                    ):
+                        col_val = row.get(
+                            cond_expr.column.name
+                            if hasattr(cond_expr.column, "name")
+                            else cond_expr.column
+                        )  # type: ignore[union-attr]
+                        comp_val = (
+                            cond_expr.value.value
+                            if hasattr(cond_expr.value, "value")
+                            else cond_expr.value
+                        )  # type: ignore[union-attr]
 
                         # Evaluate the condition based on the operation
-                        if cond_expr.operation == '>':  # type: ignore[union-attr]
+                        if cond_expr.operation == ">":  # type: ignore[union-attr]
                             if col_val is not None and col_val > comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '<':  # type: ignore[union-attr]
+                        elif cond_expr.operation == "<":  # type: ignore[union-attr]
                             if col_val is not None and col_val < comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '>=':  # type: ignore[union-attr]
+                        elif cond_expr.operation == ">=":  # type: ignore[union-attr]
                             if col_val is not None and col_val >= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '<=':  # type: ignore[union-attr]
+                        elif cond_expr.operation == "<=":  # type: ignore[union-attr]
                             if col_val is not None and col_val <= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == '==':  # type: ignore[union-attr]
+                        elif cond_expr.operation == "==":  # type: ignore[union-attr]
                             if col_val is not None and col_val == comp_val:
                                 true_count += 1
                 result_key = alias_name if alias_name else "count_if"
                 return result_key, true_count
             else:
                 # Simple boolean column
-                values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
-                true_count = sum(1 for v in values if v is True or v == 1 or str(v).lower() == 'true')
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                true_count = sum(
+                    1 for v in values if v is True or v == 1 or str(v).lower() == "true"
+                )
                 result_key = alias_name if alias_name else f"count_if({col_name})"
                 return result_key, true_count
         elif func_name == "any_value":
             # any_value(col) - return any non-null value (non-deterministic)
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"any_value({col_name})"
             return result_key, values[0] if values else None
         elif func_name == "mean":
             # mean(col) - alias for avg
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"mean({col_name})"
             return result_key, statistics.mean(values) if values else None
         elif func_name == "approx_count_distinct":
             # approx_count_distinct(col) - approximate distinct count
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             distinct_count = len(set(values))
-            result_key = alias_name if alias_name else f"approx_count_distinct({col_name})"
+            result_key = (
+                alias_name if alias_name else f"approx_count_distinct({col_name})"
+            )
             return result_key, distinct_count
         elif func_name == "stddev_pop":
             # stddev_pop(col) - population standard deviation
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"stddev_pop({col_name})"
             return result_key, statistics.pstdev(values) if len(values) > 0 else None
         elif func_name == "stddev_samp":
             # stddev_samp(col) - sample standard deviation
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"stddev_samp({col_name})"
             return result_key, statistics.stdev(values) if len(values) > 1 else None
         elif func_name == "var_pop":
             # var_pop(col) - population variance
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"var_pop({col_name})"
             return result_key, statistics.pvariance(values) if len(values) > 0 else None
         elif func_name == "var_samp":
             # var_samp(col) - sample variance
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             result_key = alias_name if alias_name else f"var_samp({col_name})"
             return result_key, statistics.variance(values) if len(values) > 1 else None
         elif func_name == "covar_pop":
             # covar_pop(col1, col2) - population covariance
             # Get both columns
-            if hasattr(expr, 'ord_column') and expr.ord_column is not None:
-                col2_name = expr.ord_column.name if hasattr(expr.ord_column, 'name') else str(expr.ord_column)  # type: ignore[union-attr]
-                values1 = [row.get(col_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
-                values2 = [row.get(col2_name) for row in group_rows if row.get(col_name) is not None and row.get(col2_name) is not None]
+            if hasattr(expr, "ord_column") and expr.ord_column is not None:
+                col2_name = (
+                    expr.ord_column.name
+                    if hasattr(expr.ord_column, "name")
+                    else str(expr.ord_column)
+                )  # type: ignore[union-attr]
+                values1 = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
+                values2 = [
+                    row.get(col2_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
 
                 if len(values1) > 0 and len(values2) > 0:
                     mean1 = statistics.mean(values1)  # type: ignore[arg-type,type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[arg-type,type-var]
-                    covar = sum((x1 - mean1) * (x2 - mean2) for x1, x2 in zip(values1, values2)) / len(values1)  # type: ignore[operator]
-                    result_key = alias_name if alias_name else f"covar_pop({col_name}, {col2_name})"
+                    if mean1 is not None and mean2 is not None:
+                        covar = sum(
+                            (x1 - mean1) * (x2 - mean2)
+                            for x1, x2 in zip(values1, values2)
+                        ) / len(values1)
+                    else:
+                        covar = 0.0
+                    result_key = (
+                        alias_name
+                        if alias_name
+                        else f"covar_pop({col_name}, {col2_name})"
+                    )
                     return result_key, covar
                 else:
                     result_key = alias_name if alias_name else f"covar_pop({col_name})"
@@ -426,21 +579,33 @@ class MockGroupedData:
         expr_name = expr.name
         if expr_name.startswith("sum("):
             col_name = expr_name[4:-1]
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name, 0)
+                for row in group_rows
+                if row.get(col_name) is not None
+            ]
             return expr_name, sum(values) if values else 0
         elif expr_name.startswith("avg("):
             col_name = expr_name[4:-1]
-            values = [row.get(col_name, 0) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name, 0)
+                for row in group_rows
+                if row.get(col_name) is not None
+            ]
             return expr_name, sum(values) / len(values) if values else 0
         elif expr_name.startswith("count("):
             return expr_name, len(group_rows)
         elif expr_name.startswith("max("):
             col_name = expr_name[4:-1]
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             return expr_name, max(values) if values else None
         elif expr_name.startswith("min("):
             col_name = expr_name[4:-1]
-            values = [row.get(col_name) for row in group_rows if row.get(col_name) is not None]
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
             return expr_name, min(values) if values else None
         else:
             return expr_name, None
@@ -457,7 +622,10 @@ class MockGroupedData:
         if not columns:
             return self.agg("sum(1)")
 
-        exprs = [f"sum({col})" if isinstance(col, str) else f"sum({col.name})" for col in columns]
+        exprs = [
+            f"sum({col})" if isinstance(col, str) else f"sum({col.name})"
+            for col in columns
+        ]
         return self.agg(*exprs)
 
     def avg(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
@@ -472,7 +640,10 @@ class MockGroupedData:
         if not columns:
             return self.agg("avg(1)")
 
-        exprs = [f"avg({col})" if isinstance(col, str) else f"avg({col.name})" for col in columns]
+        exprs = [
+            f"avg({col})" if isinstance(col, str) else f"avg({col.name})"
+            for col in columns
+        ]
         return self.agg(*exprs)
 
     def count(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
@@ -491,7 +662,8 @@ class MockGroupedData:
             return self.agg(AggregateFunctions.count())
 
         exprs = [
-            f"count({col})" if isinstance(col, str) else f"count({col.name})" for col in columns
+            f"count({col})" if isinstance(col, str) else f"count({col.name})"
+            for col in columns
         ]
         return self.agg(*exprs)
 
@@ -507,7 +679,10 @@ class MockGroupedData:
         if not columns:
             return self.agg("max(1)")
 
-        exprs = [f"max({col})" if isinstance(col, str) else f"max({col.name})" for col in columns]
+        exprs = [
+            f"max({col})" if isinstance(col, str) else f"max({col.name})"
+            for col in columns
+        ]
         return self.agg(*exprs)
 
     def min(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
@@ -522,7 +697,10 @@ class MockGroupedData:
         if not columns:
             return self.agg("min(1)")
 
-        exprs = [f"min({col})" if isinstance(col, str) else f"min({col.name})" for col in columns]
+        exprs = [
+            f"min({col})" if isinstance(col, str) else f"min({col.name})"
+            for col in columns
+        ]
         return self.agg(*exprs)
 
     def rollup(self, *columns: Union[str, MockColumn]) -> "MockRollupGroupedData":
@@ -575,7 +753,9 @@ class MockGroupedData:
 
         return MockCubeGroupedData(self.df, col_names)
 
-    def pivot(self, pivot_col: str, values: Optional[List[Any]] = None) -> "MockPivotGroupedData":
+    def pivot(
+        self, pivot_col: str, values: Optional[List[Any]] = None
+    ) -> "MockPivotGroupedData":
         """Create pivot grouped data.
 
         Args:
@@ -594,7 +774,11 @@ class MockGroupedData:
         # If values not provided, get unique values from pivot column
         if values is None:
             values = list(
-                set(row.get(pivot_col) for row in self.df.data if row.get(pivot_col) is not None)
+                set(
+                    row.get(pivot_col)
+                    for row in self.df.data
+                    if row.get(pivot_col) is not None
+                )
             )
             values.sort()  # Sort for consistent ordering
 
@@ -602,18 +786,18 @@ class MockGroupedData:
 
     def applyInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
         """Apply a Python native function to each group using pandas DataFrames.
-        
+
         The function should take a pandas DataFrame and return a pandas DataFrame.
         For each group, the group data is passed as a pandas DataFrame to the function
         and the returned pandas DataFrame is used to construct the output rows.
-        
+
         Args:
             func: A function that takes a pandas DataFrame and returns a pandas DataFrame.
             schema: The schema of the output DataFrame (StructType or DDL string).
-        
+
         Returns:
             MockDataFrame: Result of applying the function to each group.
-        
+
         Example:
             >>> def normalize(pdf):
             ...     pdf['normalized'] = (pdf['value'] - pdf['value'].mean()) / pdf['value'].std()
@@ -663,7 +847,10 @@ class MockGroupedData:
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
-            result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
+            result_data = [
+                {str(k): v for k, v in row.items()}
+                for row in combined_pdf.to_dict("records")
+            ]
 
         # Parse schema
         from ...spark_types import MockStructType
@@ -673,31 +860,35 @@ class MockGroupedData:
         if isinstance(schema, str):
             # For DDL string, use schema inference from result data
             # (DDL parsing is complex, so we rely on inference for now)
-            result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.df.schema
+            )
         elif isinstance(schema, MockStructType):
             result_schema = schema
         else:
             # Try to infer schema from result data
-            result_schema = infer_schema_from_data(result_data) if result_data else self.df.schema
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.df.schema
+            )
 
         from ..dataframe import MockDataFrame as MDF
 
-        storage: Any = getattr(self.df, 'storage', None)
+        storage: Any = getattr(self.df, "storage", None)
         return MDF(result_data, result_schema, storage)
 
     def transform(self, func: Any) -> "MockDataFrame":
         """Apply a function to each group and return a DataFrame with the same schema.
-        
+
         This is similar to applyInPandas but preserves the original schema.
         The function should take a pandas DataFrame and return a pandas DataFrame
         with the same columns (though it may add computed columns).
-        
+
         Args:
             func: A function that takes a pandas DataFrame and returns a pandas DataFrame.
-        
+
         Returns:
             MockDataFrame: Result of applying the function to each group.
-        
+
         Example:
             >>> def add_group_stats(pdf):
             ...     pdf['group_mean'] = pdf['value'].mean()
@@ -747,7 +938,7 @@ class MockGroupedData:
                 )
 
             # Put transformed rows back in their original positions
-            transformed_rows = transformed_pdf.to_dict('records')
+            transformed_rows = transformed_pdf.to_dict("records")
             for idx, transformed_row in zip(group_indices[group_key], transformed_rows):
                 # Convert hashable keys to strings for type safety
                 result_rows[idx] = {str(k): v for k, v in transformed_row.items()}
@@ -756,9 +947,11 @@ class MockGroupedData:
         # (or extend it if new columns were added)
         from ...core.schema_inference import infer_schema_from_data
 
-        result_schema = infer_schema_from_data(result_rows) if result_rows else df.schema
+        result_schema = (
+            infer_schema_from_data(result_rows) if result_rows else df.schema
+        )
 
         from ..dataframe import MockDataFrame as MDF
 
-        storage: Any = getattr(self.df, 'storage', None)
+        storage: Any = getattr(self.df, "storage", None)
         return MDF(result_rows, result_schema, storage)

@@ -137,7 +137,9 @@ class MathFunctions:
         return operation
 
     @staticmethod
-    def log(column: Union[MockColumn, str], base: Optional[float] = None) -> MockColumnOperation:
+    def log(
+        column: Union[MockColumn, str], base: Optional[float] = None
+    ) -> MockColumnOperation:
         """Get logarithm.
 
         Args:
@@ -150,7 +152,9 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        name = f"log({base}, {column.name})" if base is not None else f"log({column.name})"
+        name = (
+            f"log({base}, {column.name})" if base is not None else f"log({column.name})"
+        )
         operation = MockColumnOperation(column, "log", base, name=name)
         return operation
 
@@ -329,8 +333,12 @@ class MathFunctions:
         if not columns:
             raise ValueError("At least one column must be provided")
 
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        base_column = (
+            MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        )
+        column_names = [
+            col.name if hasattr(col, "name") else str(col) for col in columns
+        ]
         operation = MockColumnOperation(
             base_column,
             "greatest",
@@ -352,8 +360,12 @@ class MathFunctions:
         if not columns:
             raise ValueError("At least one column must be provided")
 
-        base_column = MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
-        column_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        base_column = (
+            MockColumn(columns[0]) if isinstance(columns[0], str) else columns[0]
+        )
+        column_names = [
+            col.name if hasattr(col, "name") else str(col) for col in columns
+        ]
         operation = MockColumnOperation(
             base_column, "least", columns[1:], name=f"least({', '.join(column_names)})"
         )
@@ -368,7 +380,7 @@ class MathFunctions:
 
         Returns:
             MockColumnOperation representing the acosh function.
-            
+
         Note:
             Input must be >= 1. Returns NaN for invalid inputs.
         """
@@ -397,7 +409,7 @@ class MathFunctions:
 
         Returns:
             MockColumnOperation representing the atanh function.
-            
+
         Note:
             Input must be in range (-1, 1). Returns NaN for invalid inputs.
         """
@@ -444,7 +456,9 @@ class MathFunctions:
         return MockColumnOperation(column, "atan", name=f"atan({column.name})")
 
     @staticmethod
-    def atan2(y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]) -> MockColumnOperation:
+    def atan2(
+        y: Union[MockColumn, str, float, int], x: Union[MockColumn, str, float, int]
+    ) -> MockColumnOperation:
         """Compute 2-argument arctangent (PySpark 3.0+).
 
         Returns the angle theta from the conversion of rectangular coordinates (x, y)
@@ -465,6 +479,7 @@ class MathFunctions:
             y = MockColumn(y)
         elif isinstance(y, (int, float)):
             from mock_spark.functions.core.literals import MockLiteral
+
             y = MockLiteral(y)  # type: ignore[assignment]
 
         return MockColumnOperation(y, "atan2", x, name=f"atan2({y}, {x})")  # type: ignore[arg-type]
@@ -558,7 +573,9 @@ class MathFunctions:
             MockColumnOperation representing the factorial function.
         """
         column = MockColumn(col) if isinstance(col, str) else col
-        return MockColumnOperation(column, "factorial", name=f"factorial({column.name})")
+        return MockColumnOperation(
+            column, "factorial", name=f"factorial({column.name})"
+        )
 
     @staticmethod
     def rand(seed: Optional[int] = None) -> MockColumnOperation:
@@ -571,11 +588,12 @@ class MathFunctions:
             MockColumnOperation representing the rand function.
         """
         from mock_spark.functions.core.literals import MockLiteral
+
         return MockColumnOperation(
             MockLiteral(0),
             "rand",
             value=seed,
-            name=f"rand({seed})" if seed is not None else "rand()"
+            name=f"rand({seed})" if seed is not None else "rand()",
         )
 
     @staticmethod
@@ -589,11 +607,12 @@ class MathFunctions:
             MockColumnOperation representing the randn function.
         """
         from mock_spark.functions.core.literals import MockLiteral
+
         return MockColumnOperation(
             MockLiteral(0),
             "randn",
             value=seed,
-            name=f"randn({seed})" if seed is not None else "randn()"
+            name=f"randn({seed})" if seed is not None else "randn()",
         )
 
     @staticmethod
@@ -622,14 +641,13 @@ class MathFunctions:
         """
         column = MockColumn(col) if isinstance(col, str) else col
         return MockColumnOperation(
-            column,
-            "bround",
-            value=scale,
-            name=f"bround({column.name}, {scale})"
+            column, "bround", value=scale, name=f"bround({column.name}, {scale})"
         )
 
     @staticmethod
-    def hypot(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def hypot(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Compute sqrt(col1^2 + col2^2) (hypotenuse).
 
         Args:
@@ -646,11 +664,13 @@ class MathFunctions:
             column1,
             "hypot",
             value=column2,
-            name=f"hypot({column1.name}, {column2.name})"
+            name=f"hypot({column1.name}, {column2.name})",
         )
 
     @staticmethod
-    def nanvl(col1: Union[MockColumn, str], col2: Union[MockColumn, str]) -> MockColumnOperation:
+    def nanvl(
+        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Returns col1 if not NaN, or col2 if col1 is NaN.
 
         Args:
@@ -667,7 +687,7 @@ class MathFunctions:
             column1,
             "nanvl",
             value=column2,
-            name=f"nanvl({column1.name}, {column2.name})"
+            name=f"nanvl({column1.name}, {column2.name})",
         )
 
     @staticmethod
@@ -732,6 +752,7 @@ class MathFunctions:
         """
         from mock_spark.functions.core.literals import MockLiteral
         import math
+
         return MockColumnOperation(MockLiteral(math.e), "lit", name="E()")
 
     @staticmethod
@@ -743,6 +764,7 @@ class MathFunctions:
         """
         from mock_spark.functions.core.literals import MockLiteral
         import math
+
         return MockColumnOperation(MockLiteral(math.pi), "lit", name="PI()")
 
     @staticmethod
@@ -762,39 +784,37 @@ class MathFunctions:
     @staticmethod
     def toDegrees(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Deprecated alias for degrees (all PySpark versions).
-        
+
         Use degrees instead.
-        
+
         Args:
             column: Angle in radians.
-            
+
         Returns:
             MockColumnOperation representing the degrees conversion.
         """
         import warnings
+
         warnings.warn(
-            "toDegrees is deprecated. Use degrees instead.",
-            FutureWarning,
-            stacklevel=2
+            "toDegrees is deprecated. Use degrees instead.", FutureWarning, stacklevel=2
         )
         return MathFunctions.degrees(column)
 
     @staticmethod
     def toRadians(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Deprecated alias for radians (all PySpark versions).
-        
+
         Use radians instead.
-        
+
         Args:
             column: Angle in degrees.
-            
+
         Returns:
             MockColumnOperation representing the radians conversion.
         """
         import warnings
+
         warnings.warn(
-            "toRadians is deprecated. Use radians instead.",
-            FutureWarning,
-            stacklevel=2
+            "toRadians is deprecated. Use radians instead.", FutureWarning, stacklevel=2
         )
         return MathFunctions.radians(column)

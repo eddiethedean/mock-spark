@@ -24,7 +24,10 @@ class TestDataFrameDuckDBIntegration:
         """Test toPandas() works when pandas is available."""
         # Create test DataFrame
         schema = MockStructType(
-            [MockStructField("name", StringType()), MockStructField("age", IntegerType())]
+            [
+                MockStructField("name", StringType()),
+                MockStructField("age", IntegerType()),
+            ]
         )
 
         data = [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
@@ -47,12 +50,17 @@ class TestDataFrameDuckDBIntegration:
         """Test toPandas() raises ImportError when pandas is missing."""
         # Skip this test - it's testing implementation details about error messages
         # The important thing is toPandas() works when pandas IS installed (tested in other tests)
-        pytest.skip("Error message test skipped after export refactoring - functionality works")
+        pytest.skip(
+            "Error message test skipped after export refactoring - functionality works"
+        )
 
     def test_topandas_empty_dataframe(self):
         """Test toPandas() with empty DataFrame."""
         schema = MockStructType(
-            [MockStructField("name", StringType()), MockStructField("age", IntegerType())]
+            [
+                MockStructField("name", StringType()),
+                MockStructField("age", IntegerType()),
+            ]
         )
 
         df = MockDataFrame([], schema)
@@ -97,7 +105,10 @@ class TestDataFrameDuckDBIntegration:
     def test_toduckdb_data_integrity(self):
         """Test that data is correctly inserted into DuckDB."""
         schema = MockStructType(
-            [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("name", StringType()),
+            ]
         )
 
         data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
@@ -139,7 +150,10 @@ class TestDataFrameDuckDBIntegration:
     def test_toduckdb_empty_dataframe(self):
         """Test toDuckDB() with empty DataFrame."""
         schema = MockStructType(
-            [MockStructField("name", StringType()), MockStructField("age", IntegerType())]
+            [
+                MockStructField("name", StringType()),
+                MockStructField("age", IntegerType()),
+            ]
         )
 
         df = MockDataFrame([], schema)
@@ -153,7 +167,10 @@ class TestDataFrameDuckDBIntegration:
     def test_toduckdb_analytical_operations(self):
         """Test analytical operations on DuckDB table."""
         schema = MockStructType(
-            [MockStructField("department", StringType()), MockStructField("salary", DoubleType())]
+            [
+                MockStructField("department", StringType()),
+                MockStructField("salary", DoubleType()),
+            ]
         )
 
         data = [
@@ -194,7 +211,9 @@ class TestDataFrameDuckDBIntegration:
         # after refactoring to dataframe/export.py. The actual functionality
         # (raising ImportError when duckdb is missing) is verified by the fact
         # that toDuckDB() works in all other tests when duckdb IS installed.
-        pytest.skip("Error message implementation detail - functionality verified elsewhere")
+        pytest.skip(
+            "Error message implementation detail - functionality verified elsewhere"
+        )
 
     def test_duckdb_type_mapping_comprehensive(self):
         """Test comprehensive type mapping from MockSpark to DuckDB."""

@@ -75,7 +75,8 @@ class TestComplexColumns:
 
         # (value < 100 AND category = 'A') OR value > 200
         result = df.filter(
-            ((F.col("value") < 100) & (F.col("category") == "A")) | (F.col("value") > 200)
+            ((F.col("value") < 100) & (F.col("category") == "A"))
+            | (F.col("value") > 200)
         )
 
         assert result.count() == 2

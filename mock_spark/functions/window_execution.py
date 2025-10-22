@@ -33,6 +33,9 @@ class MockWindowFunction:
         else:
             self.column_name = None
         self.name = self._generate_name()
+        
+        # Add column property for compatibility with query executor
+        self.column = getattr(function, "column", None)
 
     def _generate_name(self) -> str:
         """Generate a name for this window function."""

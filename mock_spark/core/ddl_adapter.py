@@ -39,13 +39,13 @@ from ..spark_types import (
 
 def parse_ddl_schema(ddl_string: str) -> MockStructType:
     """Parse DDL and convert to MockStructType.
-    
+
     Args:
         ddl_string: DDL schema string (e.g., "id long, name string")
-    
+
     Returns:
         MockStructType with parsed fields
-    
+
     Raises:
         ValueError: If DDL string is invalid
     """
@@ -55,10 +55,10 @@ def parse_ddl_schema(ddl_string: str) -> MockStructType:
 
 def _convert_struct_type(struct: StructType) -> MockStructType:
     """Convert StructType to MockStructType.
-    
+
     Args:
         struct: Parsed StructType from spark-ddl-parser
-    
+
     Returns:
         MockStructType
     """
@@ -68,27 +68,23 @@ def _convert_struct_type(struct: StructType) -> MockStructType:
 
 def _convert_field(field: StructField) -> MockStructField:
     """Convert StructField to MockStructField.
-    
+
     Args:
         field: Parsed StructField from spark-ddl-parser
-    
+
     Returns:
         MockStructField
     """
     data_type = _convert_data_type(field.data_type)
-    return MockStructField(
-        name=field.name,
-        dataType=data_type,
-        nullable=field.nullable
-    )
+    return MockStructField(name=field.name, dataType=data_type, nullable=field.nullable)
 
 
 def _convert_data_type(data_type: DataType) -> MockDataType:
     """Convert DataType to MockDataType.
-    
+
     Args:
         data_type: Parsed DataType from spark-ddl-parser
-    
+
     Returns:
         MockDataType
     """
@@ -112,10 +108,10 @@ def _convert_data_type(data_type: DataType) -> MockDataType:
 
 def _convert_simple_type(simple_type: SimpleType) -> MockDataType:
     """Convert SimpleType to appropriate MockDataType.
-    
+
     Args:
         simple_type: SimpleType from spark-ddl-parser
-    
+
     Returns:
         MockDataType instance
     """
@@ -135,4 +131,3 @@ def _convert_simple_type(simple_type: SimpleType) -> MockDataType:
 
     type_class = type_mapping.get(simple_type.type_name, StringType)
     return type_class()
-

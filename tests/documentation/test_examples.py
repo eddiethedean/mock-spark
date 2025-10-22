@@ -12,7 +12,9 @@ from pathlib import Path
 class TestExampleScripts:
     """Validate that all example scripts run without errors."""
 
-    @pytest.mark.skip(reason="Requires installed package with all dependencies (sqlmodel)")
+    @pytest.mark.skip(
+        reason="Requires installed package with all dependencies (sqlmodel)"
+    )
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         result = subprocess.run(
@@ -26,7 +28,9 @@ class TestExampleScripts:
         assert "Mock Spark" in result.stdout
         assert "Basic Usage Example" in result.stdout
 
-    @pytest.mark.skip(reason="Requires installed package with all dependencies (sqlmodel)")
+    @pytest.mark.skip(
+        reason="Requires installed package with all dependencies (sqlmodel)"
+    )
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
         result = subprocess.run(

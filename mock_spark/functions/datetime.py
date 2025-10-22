@@ -66,7 +66,9 @@ class DateTimeFunctions:
         from mock_spark.functions.base import MockColumn
 
         dummy_column = MockColumn("__current_date__")
-        operation = MockColumnOperation(dummy_column, "current_date", name="current_date()")
+        operation = MockColumnOperation(
+            dummy_column, "current_date", name="current_date()"
+        )
         return operation
 
     @staticmethod
@@ -162,7 +164,9 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "day", name=f"dayofmonth({column.name})")
+        operation = MockColumnOperation(
+            column, "day", name=f"dayofmonth({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -210,7 +214,9 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "dayofweek", name=f"dayofweek({column.name})")
+        operation = MockColumnOperation(
+            column, "dayofweek", name=f"dayofweek({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -226,7 +232,9 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "dayofyear", name=f"dayofyear({column.name})")
+        operation = MockColumnOperation(
+            column, "dayofyear", name=f"dayofyear({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -242,7 +250,9 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "weekofyear", name=f"weekofyear({column.name})")
+        operation = MockColumnOperation(
+            column, "weekofyear", name=f"weekofyear({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -258,7 +268,9 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "quarter", name=f"quarter({column.name})")
+        operation = MockColumnOperation(
+            column, "quarter", name=f"quarter({column.name})"
+        )
         return operation
 
     @staticmethod
@@ -294,7 +306,9 @@ class DateTimeFunctions:
         return operation
 
     @staticmethod
-    def add_months(column: Union[MockColumn, str], num_months: int) -> MockColumnOperation:
+    def add_months(
+        column: Union[MockColumn, str], num_months: int
+    ) -> MockColumnOperation:
         """Add months to date/timestamp.
 
         Args:
@@ -394,7 +408,10 @@ class DateTimeFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(
-            column, "date_format", format, name=f"date_format({column.name}, '{format}')"
+            column,
+            "date_format",
+            format,
+            name=f"date_format({column.name}, '{format}')",
         )
         return operation
 
@@ -510,6 +527,7 @@ class DateTimeFunctions:
         """Get current timezone."""
         # Create a literal for functions without column input
         from mock_spark.functions.core.literals import MockLiteral
+
         dummy = MockLiteral(1)  # Use literal 1 as dummy input
         return MockColumnOperation(
             dummy,
@@ -518,9 +536,7 @@ class DateTimeFunctions:
         )
 
     @staticmethod
-    def from_utc_timestamp(
-        ts: Union[MockColumn, str], tz: str
-    ) -> MockColumnOperation:
+    def from_utc_timestamp(ts: Union[MockColumn, str], tz: str) -> MockColumnOperation:
         """Convert UTC timestamp to given timezone."""
         if isinstance(ts, str):
             ts = MockColumn(ts)
@@ -533,9 +549,7 @@ class DateTimeFunctions:
         )
 
     @staticmethod
-    def to_utc_timestamp(
-        ts: Union[MockColumn, str], tz: str
-    ) -> MockColumnOperation:
+    def to_utc_timestamp(ts: Union[MockColumn, str], tz: str) -> MockColumnOperation:
         """Convert timestamp from given timezone to UTC."""
         if isinstance(ts, str):
             ts = MockColumn(ts)
@@ -595,7 +609,7 @@ class DateTimeFunctions:
     def make_date(
         year: Union[MockColumn, int],
         month: Union[MockColumn, int],
-        day: Union[MockColumn, int]
+        day: Union[MockColumn, int],
     ) -> MockColumnOperation:
         """Construct a date from year, month, day integers (PySpark 3.0+).
 
@@ -622,11 +636,13 @@ class DateTimeFunctions:
             year_col,  # type: ignore[arg-type]
             "make_date",
             value=(month, day),
-            name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})"
+            name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})",
         )
 
     @staticmethod
-    def date_trunc(format: str, timestamp: Union[MockColumn, str]) -> MockColumnOperation:
+    def date_trunc(
+        format: str, timestamp: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Truncate timestamp to specified unit (year, month, day, hour, etc.).
 
         Args:
@@ -646,11 +662,13 @@ class DateTimeFunctions:
             timestamp,
             "date_trunc",
             value=format,
-            name=f"date_trunc({format}, {timestamp.name})"
+            name=f"date_trunc({format}, {timestamp.name})",
         )
 
     @staticmethod
-    def datediff(end: Union[MockColumn, str], start: Union[MockColumn, str]) -> MockColumnOperation:
+    def datediff(
+        end: Union[MockColumn, str], start: Union[MockColumn, str]
+    ) -> MockColumnOperation:
         """Returns number of days between two dates.
 
         Args:
@@ -669,16 +687,13 @@ class DateTimeFunctions:
             start = MockColumn(start)
 
         return MockColumnOperation(
-            end,
-            "datediff",
-            value=start,
-            name=f"datediff({end.name}, {start.name})"
+            end, "datediff", value=start, name=f"datediff({end.name}, {start.name})"
         )
 
     @staticmethod
     def unix_timestamp(
         timestamp: Optional[Union[MockColumn, str]] = None,
-        format: str = 'yyyy-MM-dd HH:mm:ss'
+        format: str = "yyyy-MM-dd HH:mm:ss",
     ) -> MockColumnOperation:
         """Convert timestamp string to Unix timestamp (seconds since epoch).
 
@@ -694,6 +709,7 @@ class DateTimeFunctions:
         """
         if timestamp is None:
             from mock_spark.functions.core.literals import MockLiteral
+
             timestamp = MockLiteral("current_timestamp")  # type: ignore[assignment]
         elif isinstance(timestamp, str):
             timestamp = MockColumn(timestamp)
@@ -702,7 +718,7 @@ class DateTimeFunctions:
             timestamp,  # type: ignore[arg-type]
             "unix_timestamp",
             value=format,
-            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})"  # type: ignore[union-attr]
+            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})",  # type: ignore[union-attr]
         )
 
     @staticmethod
@@ -721,11 +737,7 @@ class DateTimeFunctions:
         if isinstance(date, str):
             date = MockColumn(date)
 
-        return MockColumnOperation(
-            date,
-            "last_day",
-            name=f"last_day({date.name})"
-        )
+        return MockColumnOperation(date, "last_day", name=f"last_day({date.name})")
 
     @staticmethod
     def next_day(date: Union[MockColumn, str], dayOfWeek: str) -> MockColumnOperation:
@@ -748,7 +760,7 @@ class DateTimeFunctions:
             date,
             "next_day",
             value=dayOfWeek,
-            name=f"next_day({date.name}, {dayOfWeek})"
+            name=f"next_day({date.name}, {dayOfWeek})",
         )
 
     @staticmethod
@@ -769,10 +781,7 @@ class DateTimeFunctions:
             date = MockColumn(date)
 
         return MockColumnOperation(
-            date,
-            "trunc",
-            value=format,
-            name=f"trunc({date.name}, {format})"
+            date, "trunc", value=format, name=f"trunc({date.name}, {format})"
         )
 
     @staticmethod
@@ -792,12 +801,13 @@ class DateTimeFunctions:
             col = MockColumn(col)
         elif isinstance(col, int):
             from mock_spark.functions.core.literals import MockLiteral
+
             col = MockLiteral(col)  # type: ignore[assignment]
 
         return MockColumnOperation(
             col,  # type: ignore[arg-type]
             "timestamp_seconds",
-            name=f"timestamp_seconds({col})"
+            name=f"timestamp_seconds({col})",
         )
 
     @staticmethod
@@ -809,7 +819,7 @@ class DateTimeFunctions:
 
         Returns:
             MockColumnOperation representing the weekday function.
-            
+
         Note:
             Returns 0 for Monday through 6 for Sunday.
         """
@@ -826,7 +836,7 @@ class DateTimeFunctions:
 
         Returns:
             MockColumnOperation representing the extract function.
-            
+
         Example:
             >>> df.select(F.extract("YEAR", F.col("date")))
             >>> df.select(F.extract("MONTH", F.col("timestamp")))
@@ -836,5 +846,5 @@ class DateTimeFunctions:
             column,
             "extract",
             value=field.upper(),
-            name=f"extract({field}, {column.name})"
+            name=f"extract({field}, {column.name})",
         )

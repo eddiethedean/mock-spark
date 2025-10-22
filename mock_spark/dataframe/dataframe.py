@@ -106,26 +106,28 @@ class MockDataFrame:
         self._operations_queue: List[Any] = operations or []
 
     def __repr__(self) -> str:
-        return f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
+        return (
+            f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
+        )
 
     def __getattribute__(self, name: str) -> Any:
         """
         Custom attribute access to enforce PySpark version compatibility for DataFrame methods.
-        
+
         This intercepts all attribute access and checks if public methods (non-underscore)
         are available in the current PySpark compatibility mode.
-        
+
         Args:
             name: Name of the attribute/method being accessed
-            
+
         Returns:
             The requested attribute/method
-            
+
         Raises:
             AttributeError: If method not available in current version mode
         """
         # Always allow access to private/protected attributes and core attributes
-        if name.startswith('_') or name in ['data', 'schema', 'storage', 'is_lazy']:
+        if name.startswith("_") or name in ["data", "schema", "storage", "is_lazy"]:
             return super().__getattribute__(name)
 
         # For public methods, check version compatibility
@@ -136,7 +138,7 @@ class MockDataFrame:
             if callable(attr):
                 from mock_spark._version_compat import is_available, get_pyspark_version
 
-                if not is_available(name, 'dataframe_method'):
+                if not is_available(name, "dataframe_method"):
                     version = get_pyspark_version()
                     raise AttributeError(
                         f"'DataFrame' object has no attribute '{name}' "
@@ -163,7 +165,9 @@ class MockDataFrame:
             Bob     30   60000
             Charlie 35   70000
         """
-        print(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
+        print(
+            f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
+        )
         if not self.data:
             print("(empty)")
             return
@@ -172,7 +176,9 @@ class MockDataFrame:
         display_data = self.data[:n]
 
         # Get column names
-        columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
+        columns = (
+            list(display_data[0].keys()) if display_data else self.schema.fieldNames()
+        )
 
         # Calculate column widths
         col_widths = {}
@@ -229,11 +235,15 @@ class MockDataFrame:
         display_data = self.data[:n]
 
         # Get column names
-        columns = list(display_data[0].keys()) if display_data else self.schema.fieldNames()
+        columns = (
+            list(display_data[0].keys()) if display_data else self.schema.fieldNames()
+        )
 
         # Build markdown table
         lines = []
-        lines.append(f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
+        lines.append(
+            f"MockDataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]"
+        )
         lines.append("")  # Blank line
 
         # Header row
@@ -242,7 +252,9 @@ class MockDataFrame:
 
         # Separator row - use underlines for better visual distinction
         if underline_headers:
-            separator_row = "| " + " | ".join(["=" * len(col) for col in columns]) + " |"
+            separator_row = (
+                "| " + " | ".join(["=" * len(col) for col in columns]) + " |"
+            )
         else:
             separator_row = "| " + " | ".join(["---" for _ in columns]) + " |"
         lines.append(separator_row)
@@ -336,7 +348,9 @@ class MockDataFrame:
         print("MockDataFrame Schema:")
         for field in self.schema.fields:
             nullable = "nullable" if field.nullable else "not nullable"
-            print(f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})")
+            print(
+                f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
+            )
 
     # ---------------------------
     # Test Helpers (Phase 4)
@@ -370,7 +384,13 @@ class MockDataFrame:
         from ..spark_types import (
             MockStructType,
             MockStructField,
+            BooleanType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            StringType,
         )
+        from ..functions.conditional import MockCaseWhen
 
         fields_map = {f.name: f for f in self._schema.fields}
         for op_name, op_val in self._operations_queue:
@@ -395,9 +415,33 @@ class MockDataFrame:
                             new_fields_map.update(fields_map)
                         elif col_name in fields_map:
                             new_fields_map[col_name] = fields_map[col_name]
+                        elif hasattr(col, "value") and hasattr(col, "column_type"):
+                            # For MockLiteral objects - literals are never nullable
+                            # Create a new instance of the data type with nullable=False
+                            from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                            
+                            col_type = col.column_type
+                            if isinstance(col_type, BooleanType):
+                                data_type = BooleanType(nullable=False)
+                            elif isinstance(col_type, IntegerType):
+                                data_type = IntegerType(nullable=False)
+                            elif isinstance(col_type, LongType):
+                                data_type = LongType(nullable=False)
+                            elif isinstance(col_type, DoubleType):
+                                data_type = DoubleType(nullable=False)
+                            elif isinstance(col_type, StringType):
+                                data_type = StringType(nullable=False)
+                            else:
+                                # For other types, create a new instance with nullable=False
+                                data_type = col_type.__class__(nullable=False)
+                            
+                            field = MockStructField(col_name, data_type, nullable=False)
+                            new_fields_map[col_name] = field
                         else:
                             # New column from expression - use StringType as default
-                            new_fields_map[col_name] = MockStructField(col_name, StringType())
+                            new_fields_map[col_name] = MockStructField(
+                                col_name, StringType()
+                            )
                 fields_map = new_fields_map
                 continue
             if op_name == "withColumn":
@@ -417,12 +461,33 @@ class MockDataFrame:
                     else:
                         fields_map[col_name] = MockStructField(col_name, StringType())
                 elif hasattr(col, "value") and hasattr(col, "column_type"):
-                    fields_map[col_name] = MockStructField(col_name, col.column_type)
+                    # For MockLiteral objects - literals are never nullable
+                    # Create a new instance of the data type with nullable=False
+                    from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                    
+                    col_type = col.column_type
+                    if isinstance(col_type, BooleanType):
+                        data_type = BooleanType(nullable=False)
+                    elif isinstance(col_type, IntegerType):
+                        data_type = IntegerType(nullable=False)
+                    elif isinstance(col_type, LongType):
+                        data_type = LongType(nullable=False)
+                    elif isinstance(col_type, DoubleType):
+                        data_type = DoubleType(nullable=False)
+                    elif isinstance(col_type, StringType):
+                        data_type = StringType(nullable=False)
+                    else:
+                        # For other types, create a new instance with nullable=False
+                        data_type = col_type.__class__(nullable=False)
+                    
+                    fields_map[col_name] = MockStructField(col_name, data_type, nullable=False)
                 else:
                     # fallback literal inference
                     if isinstance(col, (int, float)):
                         if isinstance(col, float):
-                            fields_map[col_name] = MockStructField(col_name, DoubleType())
+                            fields_map[col_name] = MockStructField(
+                                col_name, DoubleType()
+                            )
                         else:
                             fields_map[col_name] = MockStructField(col_name, LongType())
                     else:
@@ -430,7 +495,9 @@ class MockDataFrame:
 
         return MockStructType(list(fields_map.values()))
 
-    def select(self, *columns: Union[str, MockColumn, MockLiteral, Any]) -> "MockDataFrame":
+    def select(
+        self, *columns: Union[str, MockColumn, MockLiteral, Any]
+    ) -> "MockDataFrame":
         """Select columns from the DataFrame.
 
         Args:
@@ -455,7 +522,9 @@ class MockDataFrame:
         # Validate column names eagerly (even in lazy mode) to match PySpark behavior
         # But skip validation if there are pending join operations (columns might come from other DF)
         has_pending_joins = (
-            any(op[0] == "join" for op in self._operations_queue) if self.is_lazy else False
+            any(op[0] == "join" for op in self._operations_queue)
+            if self.is_lazy
+            else False
         )
 
         if not has_pending_joins:
@@ -496,9 +565,9 @@ class MockDataFrame:
         # Process columns and handle literals
         col_names = []
         literal_columns: Dict[str, Any] = {}
-        literal_objects: Dict[str, MockLiteral] = (
-            {}
-        )  # Store MockLiteral objects for type information
+        literal_objects: Dict[
+            str, MockLiteral
+        ] = {}  # Store MockLiteral objects for type information
 
         for col in columns:
             if isinstance(col, str):
@@ -557,7 +626,9 @@ class MockDataFrame:
                     for col in columns
                 )  # Handle functions like coalesce
                 and not any(
-                    hasattr(col, "conditions") and hasattr(col, "name") and col.name == col_name
+                    hasattr(col, "conditions")
+                    and hasattr(col, "name")
+                    and col.name == col_name
                     for col in columns
                 )  # Handle MockCaseWhen objects
                 and not self._is_function_call(col_name)
@@ -609,7 +680,10 @@ class MockDataFrame:
                             # Only copy fields that exist in the row (skip window function columns)
                             if field.name in row:
                                 filtered_row[field.name] = row[field.name]
-                    elif hasattr(col, "_original_column") and col._original_column is not None:
+                    elif (
+                        hasattr(col, "_original_column")
+                        and col._original_column is not None
+                    ):
                         # Alias of an existing column: copy value under alias name
                         original_name = col._original_column.name
                         filtered_row[col_name] = row.get(original_name)
@@ -668,7 +742,10 @@ class MockDataFrame:
                         filtered_row[col_name] = evaluated_value
                     else:
                         # Handle aliased columns - get value from original column name
-                        if hasattr(col, "_original_column") and col._original_column is not None:
+                        if (
+                            hasattr(col, "_original_column")
+                            and col._original_column is not None
+                        ):
                             # This is an aliased column, get value from original column
                             original_name = col._original_column.name
                             if original_name in (
@@ -732,15 +809,32 @@ class MockDataFrame:
                 window_functions.append((i, col))
 
         if window_functions:
-            filtered_data = self._evaluate_window_functions(filtered_data, window_functions)
+            filtered_data = self._evaluate_window_functions(
+                filtered_data, window_functions
+            )
 
         # Create new schema
         new_fields = []
         for i, col in enumerate(columns):
             if isinstance(col, MockLiteral):
-                # Handle MockLiteral directly
+                # Handle MockLiteral directly - literals are never nullable
                 col_name = col.name
-                new_fields.append(MockStructField(col_name, col.column_type))
+                # Create a new instance of the data type with nullable=False
+                from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                if isinstance(col.column_type, BooleanType):
+                    data_type = BooleanType(nullable=False)
+                elif isinstance(col.column_type, IntegerType):
+                    data_type = IntegerType(nullable=False)
+                elif isinstance(col.column_type, LongType):
+                    data_type = LongType(nullable=False)
+                elif isinstance(col.column_type, DoubleType):
+                    data_type = DoubleType(nullable=False)
+                elif isinstance(col.column_type, StringType):
+                    data_type = StringType(nullable=False)
+                else:
+                    # For other types, create a new instance with nullable=False
+                    data_type = col.column_type.__class__(nullable=False)
+                new_fields.append(MockStructField(col_name, data_type, nullable=False))
             elif isinstance(col, str):
                 col_name = col
                 if col_name == "*":
@@ -755,6 +849,7 @@ class MockDataFrame:
                     else:
                         # Fallback: infer from Python type
                         from ..spark_types import convert_python_type_to_mock_type
+
                         literal_value = literal_columns[col_name]
                         field_type = convert_python_type_to_mock_type(
                             type(literal_value)
@@ -815,7 +910,9 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
+                    new_fields.append(
+                        MockStructField(col_name, ArrayType(StringType()))
+                    )
                 elif col.operation == "regexp_replace":
                     # Regexp replace function returns StringType
                     new_fields.append(MockStructField(col_name, StringType()))
@@ -962,7 +1059,10 @@ class MockDataFrame:
                         "isnan",
                     ):
                         new_fields.append(MockStructField(col_name, BooleanType()))
-                    elif func_name == "current_timestamp()" or func_name == "current_timestamp":
+                    elif (
+                        func_name == "current_timestamp()"
+                        or func_name == "current_timestamp"
+                    ):
                         new_fields.append(MockStructField(col_name, TimestampType()))
                     elif func_name == "current_date()" or func_name == "current_date":
                         new_fields.append(MockStructField(col_name, DateType()))
@@ -973,7 +1073,10 @@ class MockDataFrame:
                         new_fields.append(MockStructField(col_name, LongType()))
                     elif func_name.startswith("sqrt(") or func_name == "sqrt":
                         new_fields.append(MockStructField(col_name, DoubleType()))
-                    elif func_name.startswith("regexp_replace(") or func_name == "regexp_replace":
+                    elif (
+                        func_name.startswith("regexp_replace(")
+                        or func_name == "regexp_replace"
+                    ):
                         new_fields.append(MockStructField(col_name, StringType()))
                     elif func_name.startswith("split(") or func_name == "split":
                         new_fields.append(MockStructField(col_name, StringType()))
@@ -982,9 +1085,24 @@ class MockDataFrame:
                 elif col_name in literal_columns:
                     # Create field for literal column with correct type
                     if col_name in literal_objects:
-                        # Use the MockLiteral object's column_type
+                        # Use the MockLiteral object's column_type - literals are never nullable
                         literal_obj = literal_objects[col_name]
-                        new_fields.append(MockStructField(col_name, literal_obj.column_type))
+                        # Create a new instance of the data type with nullable=False
+                        from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                        if isinstance(literal_obj.column_type, BooleanType):
+                            data_type = BooleanType(nullable=False)
+                        elif isinstance(literal_obj.column_type, IntegerType):
+                            data_type = IntegerType(nullable=False)
+                        elif isinstance(literal_obj.column_type, LongType):
+                            data_type = LongType(nullable=False)
+                        elif isinstance(literal_obj.column_type, DoubleType):
+                            data_type = DoubleType(nullable=False)
+                        elif isinstance(literal_obj.column_type, StringType):
+                            data_type = StringType(nullable=False)
+                        else:
+                            # For other types, create a new instance with nullable=False
+                            data_type = literal_obj.column_type.__class__(nullable=False)
+                        new_fields.append(MockStructField(col_name, data_type, nullable=False))
                     else:
                         # Fallback to type inference
                         from ..spark_types import (
@@ -997,17 +1115,24 @@ class MockDataFrame:
                         if isinstance(literal_value, int):
                             literal_type_4: MockDataType = IntegerType()
                         else:
-                            literal_type_4 = convert_python_type_to_mock_type(type(literal_value))
+                            literal_type_4 = convert_python_type_to_mock_type(
+                                type(literal_value)
+                            )
                         new_fields.append(MockStructField(col_name, literal_type_4))
                 else:
                     # Use existing field
-                    if hasattr(col, "_original_column") and col._original_column is not None:
+                    if (
+                        hasattr(col, "_original_column")
+                        and col._original_column is not None
+                    ):
                         # This is an aliased column - find the original field and create new field with alias
                         original_name = col._original_column.name
                         for field in self.schema.fields:
                             if field.name == original_name:
                                 # Create new field with alias name but original field's type
-                                new_fields.append(MockStructField(col_name, field.dataType))
+                                new_fields.append(
+                                    MockStructField(col_name, field.dataType)
+                                )
                                 break
                     else:
                         # Regular column - use existing field
@@ -1035,6 +1160,50 @@ class MockDataFrame:
                         if field.name == col_name:
                             new_fields.append(field)
                             break
+            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
+                # Handle MockWindowFunction (e.g., row_number().over(window))
+                col_name = col.name
+                from ..spark_types import IntegerType, DoubleType, StringType, LongType
+
+                # Infer type based on window function
+                if col.function_name in ["row_number", "rank", "dense_rank"]:
+                    # Ranking functions return IntegerType and are non-nullable
+                    new_fields.append(MockStructField(col_name, IntegerType(), nullable=False))
+                elif col.function_name in ["lag", "lead"] and col.column_name:
+                    # Lag/lead functions return the same type as the source column
+                    source_col_name = col.column_name
+                    source_type = None
+                    for field in self.schema.fields:
+                        if field.name == source_col_name:
+                            source_type = field.dataType
+                            break
+                    if source_type:
+                        new_fields.append(MockStructField(col_name, source_type, nullable=False))
+                    else:
+                        # Default to DoubleType if source column not found
+                        new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                elif col.function_name in ["avg", "sum"]:
+                    # Average and sum functions return DoubleType
+                    new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                elif col.function_name in ["count", "countDistinct"]:
+                    # Count functions return LongType
+                    new_fields.append(MockStructField(col_name, LongType(), nullable=False))
+                elif col.function_name in ["max", "min"] and col.column_name:
+                    # Max/min functions return the same type as the source column
+                    source_col_name = col.column_name
+                    source_type = None
+                    for field in self.schema.fields:
+                        if field.name == source_col_name:
+                            source_type = field.dataType
+                            break
+                    if source_type:
+                        new_fields.append(MockStructField(col_name, source_type, nullable=False))
+                    else:
+                        # Default to DoubleType if source column not found
+                        new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                else:
+                    # Default to IntegerType for other window functions
+                    new_fields.append(MockStructField(col_name, IntegerType(), nullable=False))
             elif hasattr(col, "operation") and hasattr(col, "column"):
                 # Handle MockColumnOperation (e.g., upper(col), length(col))
                 col_name = col.name
@@ -1084,7 +1253,9 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
+                    new_fields.append(
+                        MockStructField(col_name, ArrayType(StringType()))
+                    )
                 elif col.operation == "regexp_replace":
                     # Regexp replace function returns StringType
                     new_fields.append(MockStructField(col_name, StringType()))
@@ -1127,75 +1298,18 @@ class MockDataFrame:
                 else:
                     # Default to StringType for other operations
                     new_fields.append(MockStructField(col_name, StringType()))
-            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Handle MockWindowFunction (e.g., row_number().over(window))
-                col_name = col.name
-                from ..spark_types import IntegerType, DoubleType, StringType
-
-                # Infer type based on window function
-                if col.function_name in ["row_number", "rank", "dense_rank"]:
-                    # Ranking functions return IntegerType
-                    new_fields.append(MockStructField(col_name, IntegerType()))
-                elif col.function_name in ["lag", "lead"] and col.column_name:
-                    # Lag/lead functions return the same type as the source column
-                    source_col_name = col.column_name
-                    source_type = None
-                    for field in self.schema.fields:
-                        if field.name == source_col_name:
-                            source_type = field.dataType
-                            break
-                    if source_type:
-                        new_fields.append(MockStructField(col_name, source_type))
-                    else:
-                        # Default to DoubleType if source column not found
-                        new_fields.append(MockStructField(col_name, DoubleType()))
-                elif col.function_name in ["avg", "sum"]:
-                    # Average and sum functions return DoubleType
-                    new_fields.append(MockStructField(col_name, DoubleType()))
-                elif col.function_name in ["count", "countDistinct"]:
-                    # Count functions return LongType
-                    new_fields.append(MockStructField(col_name, LongType()))
-                elif col.function_name in ["max", "min"] and col.column_name:
-                    # Max/min functions return the same type as the source column
-                    source_col_name = col.column_name
-                    source_type = None
-                    for field in self.schema.fields:
-                        if field.name == source_col_name:
-                            source_type = field.dataType
-                            break
-                    if source_type:
-                        new_fields.append(MockStructField(col_name, source_type))
-                    else:
-                        # Default to DoubleType if source column not found
-                        new_fields.append(MockStructField(col_name, DoubleType()))
-                else:
-                    # Default to IntegerType for other window functions
-                    new_fields.append(MockStructField(col_name, IntegerType()))
             elif hasattr(col, "conditions"):
-                # Handle MockCaseWhen objects
+                # Handle MockCaseWhen objects - use the new type inference method
                 col_name = col.name
-                from ..spark_types import StringType, LongType, DoubleType, IntegerType
-
-                # Infer type from the first condition's value
-                if col.conditions:
-                    first_value = col.conditions[0][1]  # First condition's value
-                    if hasattr(first_value, "column") and hasattr(first_value.column, "name"):
-                        # It's a column reference, get its type
-                        source_col_name = first_value.column.name
-                        source_type = None
-                        for field in self.schema.fields:
-                            if field.name == source_col_name:
-                                source_type = field.dataType
-                                break
-                        if source_type:
-                            new_fields.append(MockStructField(col_name, source_type))
-                        else:
-                            new_fields.append(MockStructField(col_name, StringType()))
-                    else:
-                        # It's a literal or operation, default to StringType
-                        new_fields.append(MockStructField(col_name, StringType()))
+                from ..functions.conditional import MockCaseWhen
+                
+                if isinstance(col, MockCaseWhen):
+                    # Infer type from case when result type
+                    inferred_type = col.get_result_type()
+                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
                 else:
-                    # No conditions, default to StringType
+                    # Fallback for other conditional objects
+                    from ..spark_types import StringType
                     new_fields.append(MockStructField(col_name, StringType()))
             elif isinstance(col, MockColumn) and col.name.startswith(
                 (
@@ -1225,7 +1339,9 @@ class MockDataFrame:
                     # Split function returns ArrayType
                     from ..spark_types import ArrayType
 
-                    new_fields.append(MockStructField(col_name, ArrayType(StringType())))
+                    new_fields.append(
+                        MockStructField(col_name, ArrayType(StringType()))
+                    )
                 elif col.name.startswith(("upper(", "lower(", "regexp_replace(")):
                     new_fields.append(MockStructField(col_name, StringType()))
                 else:
@@ -1245,7 +1361,10 @@ class MockDataFrame:
                     # Use existing field
                     # For aliased columns, look up the original column name
                     lookup_name = col_name
-                    if hasattr(col, "_original_column") and col._original_column is not None:
+                    if (
+                        hasattr(col, "_original_column")
+                        and col._original_column is not None
+                    ):
                         lookup_name = col._original_column.name
 
                     for field in self.schema.fields:
@@ -1255,7 +1374,9 @@ class MockDataFrame:
                                 hasattr(col, "_original_column")
                                 and col._original_column is not None
                             ):
-                                new_fields.append(MockStructField(col_name, field.dataType))
+                                new_fields.append(
+                                    MockStructField(col_name, field.dataType)
+                                )
                             else:
                                 new_fields.append(field)
                             break
@@ -1304,7 +1425,7 @@ class MockDataFrame:
                             1 for row in self.data if row.get(col_name) is not None
                         )
                         result_row[agg_col_name] = non_null_count
-                    new_fields.append(MockStructField(agg_col_name, LongType()))
+                    new_fields.append(MockStructField(agg_col_name, LongType(nullable=False)))
                 elif func_name == "sum":
                     if not has_alias:
                         agg_col_name = f"sum({col_name})"
@@ -1327,7 +1448,9 @@ class MockDataFrame:
                             for row in self.data
                             if row.get(col_name) is not None
                         ]
-                        result_row[agg_col_name] = sum(values) / len(values) if values else 0
+                        result_row[agg_col_name] = (
+                            sum(values) / len(values) if values else 0
+                        )
                     else:
                         result_row[agg_col_name] = 0  # type: ignore[unreachable]
                     new_fields.append(MockStructField(agg_col_name, DoubleType()))
@@ -1336,18 +1459,22 @@ class MockDataFrame:
                         agg_col_name = f"count(DISTINCT {col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                            row.get(col_name)
+                            for row in self.data
+                            if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = len(set(values))
                     else:
                         result_row[agg_col_name] = 0  # type: ignore[unreachable]
-                    new_fields.append(MockStructField(agg_col_name, LongType()))
+                    new_fields.append(MockStructField(agg_col_name, LongType(nullable=False)))
                 elif func_name == "max":
                     if not has_alias:
                         agg_col_name = f"max({col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                            row.get(col_name)
+                            for row in self.data
+                            if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = max(values) if values else 0
                     else:
@@ -1358,7 +1485,9 @@ class MockDataFrame:
                         agg_col_name = f"min({col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                            row.get(col_name)
+                            for row in self.data
+                            if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = min(values) if values else 0
                     else:
@@ -1369,7 +1498,9 @@ class MockDataFrame:
                         agg_col_name = f"percentile_approx({col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                            row.get(col_name)
+                            for row in self.data
+                            if row.get(col_name) is not None
                         ]
                         if values:
                             # Mock implementation: return 50th percentile (median)
@@ -1402,7 +1533,9 @@ class MockDataFrame:
                     agg_col_name = f"count(DISTINCT {col_name})"
                     if col_name is not None:
                         values = [
-                            row.get(col_name) for row in self.data if row.get(col_name) is not None
+                            row.get(col_name)
+                            for row in self.data
+                            if row.get(col_name) is not None
                         ]
                         result_row[agg_col_name] = len(set(values)) if values else 0
                     else:
@@ -1429,41 +1562,55 @@ class MockDataFrame:
                 elif col_name.startswith("sum("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col, 0) for row in self.data if row.get(inner_col) is not None
+                        row.get(inner_col, 0)
+                        for row in self.data
+                        if row.get(inner_col) is not None
                     ]
                     # Ensure values are numeric for sum calculation
                     numeric_values = [v for v in values if isinstance(v, (int, float))]
-                    result_row[col_name] = float(sum(numeric_values)) if numeric_values else 0.0
+                    result_row[col_name] = (
+                        float(sum(numeric_values)) if numeric_values else 0.0
+                    )
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("avg("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col, 0) for row in self.data if row.get(inner_col) is not None
+                        row.get(inner_col, 0)
+                        for row in self.data
+                        if row.get(inner_col) is not None
                     ]
                     # Ensure values are numeric for average calculation
                     numeric_values = [v for v in values if isinstance(v, (int, float))]
                     result_row[col_name] = (
-                        float(sum(numeric_values)) / len(numeric_values) if numeric_values else 0.0
+                        float(sum(numeric_values)) / len(numeric_values)
+                        if numeric_values
+                        else 0.0
                     )
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("max("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
+                        row.get(inner_col)
+                        for row in self.data
+                        if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = float(max(values)) if values else 0.0
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("min("):
                     inner_col = col_name[4:-1]
                     values = [
-                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
+                        row.get(inner_col)
+                        for row in self.data
+                        if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = float(min(values)) if values else 0.0
                     new_fields.append(MockStructField(col_name, DoubleType()))
                 elif col_name.startswith("count(DISTINCT"):
                     inner_col = col_name[13:-1]
                     values = [
-                        row.get(inner_col) for row in self.data if row.get(inner_col) is not None
+                        row.get(inner_col)
+                        for row in self.data
+                        if row.get(inner_col) is not None
                     ]
                     result_row[col_name] = len(set(values)) if values else 0
                     new_fields.append(MockStructField(col_name, LongType()))
@@ -1471,22 +1618,44 @@ class MockDataFrame:
         new_schema = MockStructType(new_fields)
         return MockDataFrame([result_row], new_schema, self.storage)
 
-    def filter(self, condition: Union[MockColumnOperation, MockColumn]) -> "MockDataFrame":
+    def filter(
+        self, condition: Union[MockColumnOperation, MockColumn, "MockLiteral"]
+    ) -> "MockDataFrame":
         """Filter rows based on condition."""
         if self.is_lazy:
             return self._queue_op("filter", condition)
+
+        # Handle MockLiteral boolean filtering
+        from ..functions.core.literals import MockLiteral
+        if isinstance(condition, MockLiteral):
+            if isinstance(condition.value, bool):
+                if condition.value:
+                    # lit(True) - return all rows
+                    return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
+                else:
+                    # lit(False) - return no rows
+                    return MockDataFrame([], self.schema, self.storage, is_lazy=False)
+            # For non-boolean literals, treat as truthy check
+            if condition.value:
+                return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
+            else:
+                return MockDataFrame([], self.schema, self.storage, is_lazy=False)
 
         # Validate columns exist
         if isinstance(condition, MockColumn):
             if condition.name not in [field.name for field in self.schema.fields]:
                 raise ColumnNotFoundException(condition.name)
         elif hasattr(condition, "column") and hasattr(condition.column, "name"):
-            if condition.column.name not in [field.name for field in self.schema.fields]:
+            if condition.column.name not in [
+                field.name for field in self.schema.fields
+            ]:
                 raise ColumnNotFoundException(condition.column.name)
 
         if isinstance(condition, MockColumn):
             # Simple column reference - return all non-null rows
-            filtered_data = [row for row in self.data if row.get(condition.name) is not None]
+            filtered_data = [
+                row for row in self.data if row.get(condition.name) is not None
+            ]
         else:
             # Apply condition logic
             filtered_data = self._apply_condition(self.data, condition)
@@ -1541,8 +1710,23 @@ class MockDataFrame:
                 # Default to StringType for unknown operations
                 new_fields.append(MockStructField(col_name, StringType()))
         elif hasattr(col, "value") and hasattr(col, "column_type"):
-            # Handle MockLiteral objects - use their column_type
-            new_fields.append(MockStructField(col_name, col.column_type))
+            # Handle MockLiteral objects - use their column_type, literals are never nullable
+            # Create a new instance of the data type with nullable=False
+            from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+            if isinstance(col.column_type, BooleanType):
+                data_type = BooleanType(nullable=False)
+            elif isinstance(col.column_type, IntegerType):
+                data_type = IntegerType(nullable=False)
+            elif isinstance(col.column_type, LongType):
+                data_type = LongType(nullable=False)
+            elif isinstance(col.column_type, DoubleType):
+                data_type = DoubleType(nullable=False)
+            elif isinstance(col.column_type, StringType):
+                data_type = StringType(nullable=False)
+            else:
+                # For other types, create a new instance with nullable=False
+                data_type = col.column_type.__class__(nullable=False)
+            new_fields.append(MockStructField(col_name, data_type, nullable=False))
         else:
             # For literal values, infer type
             if isinstance(col, (int, float)):
@@ -1572,7 +1756,9 @@ class MockDataFrame:
                 is_lazy=True,
                 operations=self._operations_queue.copy(),
             )
-        return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False, operations=[])
+        return MockDataFrame(
+            self.data, self.schema, self.storage, is_lazy=False, operations=[]
+        )
 
     def _infer_select_schema(self, columns: Any) -> "MockStructType":
         """Infer schema for select operation."""
@@ -1677,7 +1863,9 @@ class MockDataFrame:
 
         return MockCubeGroupedData(self, col_names)
 
-    def agg(self, *exprs: Union[str, MockColumn, MockColumnOperation]) -> "MockDataFrame":
+    def agg(
+        self, *exprs: Union[str, MockColumn, MockColumnOperation]
+    ) -> "MockDataFrame":
         """Aggregate DataFrame without grouping."""
         # Create a single group with all data
         grouped_data = MockGroupedData(self, [])
@@ -1844,10 +2032,12 @@ class MockDataFrame:
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
+            tuple(row.get(field.name) for field in self.schema.fields)
+            for row in self.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields) for row in other.data
+            tuple(row.get(field.name) for field in other.schema.fields)
+            for row in other.data
         ]
 
         # Find common rows
@@ -1876,10 +2066,12 @@ class MockDataFrame:
         """
         # Convert rows to tuples for comparison
         self_rows = [
-            tuple(row.get(field.name) for field in self.schema.fields) for row in self.data
+            tuple(row.get(field.name) for field in self.schema.fields)
+            for row in self.data
         ]
         other_rows = [
-            tuple(row.get(field.name) for field in other.schema.fields) for row in other.data
+            tuple(row.get(field.name) for field in other.schema.fields)
+            for row in other.data
         ]
 
         # Count occurrences in other DataFrame
@@ -1971,9 +2163,9 @@ class MockDataFrame:
 
                         renamed: Optional[str] = None
                         for new_field in new_fields:
-                            if new_field.name.endswith("_right") and new_field.name.startswith(
-                                field.name
-                            ):
+                            if new_field.name.endswith(
+                                "_right"
+                            ) and new_field.name.startswith(field.name):
                                 renamed = new_field.name
                                 break
                     if renamed is not None:
@@ -2145,7 +2337,9 @@ class MockDataFrame:
         # Create table with schema first
         self.storage.create_table("default", name, self.schema.fields)
         # Then insert data
-        dict_data = [row.asDict() if hasattr(row, "asDict") else row for row in self.data]
+        dict_data = [
+            row.asDict() if hasattr(row, "asDict") else row for row in self.data
+        ]
         self.storage.insert_data("default", name, dict_data)
 
     def createTempView(self, name: str) -> None:
@@ -2194,19 +2388,21 @@ class MockDataFrame:
 
         # Logical operations
         if operation in ["and", "&"]:
-            return self._evaluate_condition(row, condition.column) and self._evaluate_condition(
-                row, condition.value
-            )
+            return self._evaluate_condition(
+                row, condition.column
+            ) and self._evaluate_condition(row, condition.value)
         elif operation in ["or", "|"]:
-            return self._evaluate_condition(row, condition.column) or self._evaluate_condition(
-                row, condition.value
-            )
+            return self._evaluate_condition(
+                row, condition.column
+            ) or self._evaluate_condition(row, condition.value)
         elif operation in ["not", "!"]:
             return not self._evaluate_condition(row, condition.column)
 
         return False
 
-    def _evaluate_comparison(self, col_value: Any, operation: str, condition_value: Any) -> bool:
+    def _evaluate_comparison(
+        self, col_value: Any, operation: str, condition_value: Any
+    ) -> bool:
         """Evaluate comparison operations."""
         if col_value is None:
             return operation == "!="  # Only != returns True for null values
@@ -2241,7 +2437,9 @@ class MockDataFrame:
         """Evaluate IN operation."""
         return col_value in values if col_value is not None else False
 
-    def _evaluate_between_operation(self, col_value: Any, bounds: Tuple[Any, Any]) -> bool:
+    def _evaluate_between_operation(
+        self, col_value: Any, bounds: Tuple[Any, Any]
+    ) -> bool:
         """Evaluate BETWEEN operation."""
         if col_value is None:
             return False
@@ -2249,11 +2447,15 @@ class MockDataFrame:
         lower, upper = bounds
         return bool(lower <= col_value <= upper)
 
-    def _evaluate_column_expression(self, row: Dict[str, Any], column_expression: Any) -> Any:
+    def _evaluate_column_expression(
+        self, row: Dict[str, Any], column_expression: Any
+    ) -> Any:
         """Evaluate a column expression for a single row."""
         if isinstance(column_expression, MockColumn):
             return self._evaluate_mock_column(row, column_expression)
-        elif hasattr(column_expression, "operation") and hasattr(column_expression, "column"):
+        elif hasattr(column_expression, "operation") and hasattr(
+            column_expression, "column"
+        ):
             return self._evaluate_column_operation(row, column_expression)
         else:
             return self._evaluate_direct_value(column_expression)
@@ -2316,13 +2518,19 @@ class MockDataFrame:
         """Evaluate a direct value."""
         return value
 
-    def _evaluate_arithmetic_operation(self, row: Dict[str, Any], operation: Any) -> Any:
+    def _evaluate_arithmetic_operation(
+        self, row: Dict[str, Any], operation: Any
+    ) -> Any:
         """Evaluate arithmetic operations on columns."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
 
         # Extract left value from row
-        left_value = row.get(operation.column.name) if hasattr(operation.column, "name") else None
+        left_value = (
+            row.get(operation.column.name)
+            if hasattr(operation.column, "name")
+            else None
+        )
 
         # Extract right value - handle MockColumn, MockLiteral, or primitive values
         right_value = operation.value
@@ -2364,7 +2572,9 @@ class MockDataFrame:
             return None
 
         # Evaluate the column expression (could be a nested operation)
-        if hasattr(operation.column, "operation") and hasattr(operation.column, "column"):
+        if hasattr(operation.column, "operation") and hasattr(
+            operation.column, "column"
+        ):
             # The column is itself a MockColumnOperation, evaluate it first
             value = self._evaluate_column_expression(row, operation.column)
         else:
@@ -2388,7 +2598,11 @@ class MockDataFrame:
             if hasattr(operation, "value") and isinstance(operation.value, list):
                 for i, col in enumerate(operation.value):
                     # Check if it's a MockLiteral object
-                    if hasattr(col, "value") and hasattr(col, "name") and hasattr(col, "data_type"):
+                    if (
+                        hasattr(col, "value")
+                        and hasattr(col, "name")
+                        and hasattr(col, "data_type")
+                    ):
                         # This is a MockLiteral
                         col_value = col.value
                     elif hasattr(col, "name"):
@@ -2551,7 +2765,11 @@ class MockDataFrame:
         elif func_name == "sqrt":
             import math
 
-            return math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
+            return (
+                math.sqrt(value)
+                if isinstance(value, (int, float)) and value >= 0
+                else None
+            )
         elif func_name == "ascii":
             if value is None:
                 return None
@@ -2580,7 +2798,11 @@ class MockDataFrame:
         elif func_name == "regexp_replace":
             if value is None:
                 return None
-            pattern = operation.value[0] if isinstance(operation.value, tuple) else operation.value
+            pattern = (
+                operation.value[0]
+                if isinstance(operation.value, tuple)
+                else operation.value
+            )
             replacement = (
                 operation.value[1]
                 if isinstance(operation.value, tuple) and len(operation.value) > 1
@@ -2599,7 +2821,9 @@ class MockDataFrame:
                 if cast_type.lower() in ["double", "float"]:
                     return float(value)
                 elif cast_type.lower() in ["int", "integer", "long", "bigint"]:
-                    return int(float(value))  # Convert via float to handle decimal strings
+                    return int(
+                        float(value)
+                    )  # Convert via float to handle decimal strings
                 elif cast_type.lower() in ["string", "varchar"]:
                     return str(value)
                 else:
@@ -2610,7 +2834,9 @@ class MockDataFrame:
         else:
             return value
 
-    def _evaluate_function_call_by_name(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_function_call_by_name(
+        self, row: Dict[str, Any], col_name: str
+    ) -> Any:
         """Evaluate function calls by parsing the function name."""
         if col_name.startswith("coalesce("):
             # Parse coalesce arguments: coalesce(col1, col2, ...)
@@ -2661,7 +2887,11 @@ class MockDataFrame:
 
             if "value" in col_name:
                 value = row.get("value")
-                return math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
+                return (
+                    math.sqrt(value)
+                    if isinstance(value, (int, float)) and value >= 0
+                    else None
+                )
         elif col_name.startswith("to_date("):
             # Parse to_date argument: to_date(col)
             import re
@@ -2845,11 +3075,15 @@ class MockDataFrame:
 
                     if partition_by_cols:
                         # Handle partitioning - group by partition columns
-                        partition_groups: Dict[Any, List[Dict[str, Any]]] = {}
+                        partition_groups: Dict[Any, List[int]] = {}
                         for i, row in enumerate(result_data):
                             # Create partition key
                             partition_key = tuple(
-                                (row.get(col.name) if hasattr(col, "name") else row.get(str(col)))
+                                (
+                                    row.get(col.name)
+                                    if hasattr(col, "name")
+                                    else row.get(str(col))
+                                )
                                 for col in partition_by_cols
                             )
                             if partition_key not in partition_groups:
@@ -2860,15 +3094,21 @@ class MockDataFrame:
                         for partition_indices in partition_groups.values():
                             if order_by_cols:
                                 # Sort within partition by order by columns using corrected ordering logic
-                                sorted_partition_indices = self._apply_ordering_to_indices(
-                                    result_data, partition_indices, order_by_cols  # type: ignore[arg-type]
+                                sorted_partition_indices = (
+                                    self._apply_ordering_to_indices(
+                                        result_data,
+                                        partition_indices,
+                                        order_by_cols,
+                                    )
                                 )
                             else:
                                 # No order by - use original order within partition
                                 sorted_partition_indices = partition_indices  # type: ignore[assignment]
 
                             # Assign row numbers starting from 1 within each partition
-                            for i, original_index in enumerate(sorted_partition_indices):
+                            for i, original_index in enumerate(
+                                sorted_partition_indices
+                            ):
                                 result_data[original_index][col_name] = i + 1
                     elif order_by_cols:
                         # No partitioning, just sort by order by columns using corrected ordering logic
@@ -2889,10 +3129,14 @@ class MockDataFrame:
                         result_data[i][col_name] = i + 1
             elif window_func.function_name == "lag":
                 # Handle lag function - get previous row value
-                self._evaluate_lag_lead(result_data, window_func, col_name, is_lead=False)
+                self._evaluate_lag_lead(
+                    result_data, window_func, col_name, is_lead=False
+                )
             elif window_func.function_name == "lead":
                 # Handle lead function - get next row value
-                self._evaluate_lag_lead(result_data, window_func, col_name, is_lead=True)
+                self._evaluate_lag_lead(
+                    result_data, window_func, col_name, is_lead=True
+                )
             elif window_func.function_name in ["rank", "dense_rank"]:
                 # Handle rank and dense_rank functions
                 self._evaluate_rank_functions(result_data, window_func, col_name)
@@ -2905,7 +3149,9 @@ class MockDataFrame:
                 "min",
             ]:
                 # Handle aggregate window functions
-                self._evaluate_aggregate_window_functions(result_data, window_func, col_name)
+                self._evaluate_aggregate_window_functions(
+                    result_data, window_func, col_name
+                )
             else:
                 # For other window functions, assign None for now
                 for row in result_data:
@@ -2963,7 +3209,9 @@ class MockDataFrame:
             else:
                 # No partitioning, apply to entire dataset with ordering
                 all_indices = list(range(len(data)))
-                ordered_indices = self._apply_ordering_to_indices(data, all_indices, order_by_cols)
+                ordered_indices = self._apply_ordering_to_indices(
+                    data, all_indices, order_by_cols
+                )
                 self._apply_lag_lead_to_partition(
                     data,
                     ordered_indices,
@@ -3009,7 +3257,8 @@ class MockDataFrame:
 
         # Check if any column has desc operation
         has_desc = any(
-            hasattr(col, "operation") and col.operation == "desc" for col in order_by_cols
+            hasattr(col, "operation") and col.operation == "desc"
+            for col in order_by_cols
         )
 
         # Sort indices based on the ordering
@@ -3192,12 +3441,18 @@ class MockDataFrame:
                     ordered_indices = self._apply_ordering_to_indices(
                         data, partition_indices, order_by_cols
                     )
-                    self._apply_aggregate_to_partition(data, ordered_indices, window_func, col_name)
+                    self._apply_aggregate_to_partition(
+                        data, ordered_indices, window_func, col_name
+                    )
             else:
                 # No partitioning, apply to entire dataset with ordering
                 all_indices = list(range(len(data)))
-                ordered_indices = self._apply_ordering_to_indices(data, all_indices, order_by_cols)
-                self._apply_aggregate_to_partition(data, ordered_indices, window_func, col_name)
+                ordered_indices = self._apply_ordering_to_indices(
+                    data, all_indices, order_by_cols
+                )
+                self._apply_aggregate_to_partition(
+                    data, ordered_indices, window_func, col_name
+                )
         else:
             # No window spec, apply to entire dataset
             all_indices = list(range(len(data)))
@@ -3266,18 +3521,23 @@ class MockDataFrame:
 
     def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
-        # Evaluate each condition in order
+        # Use the MockCaseWhen's own evaluate method
+        if hasattr(case_when_obj, 'evaluate'):
+            return case_when_obj.evaluate(row)
+        
+        # Fallback to manual evaluation
         for condition, value in case_when_obj.conditions:
             if self._evaluate_case_when_condition(row, condition):
                 return self._evaluate_value(row, value)
-
-        # Return else value if no condition matches
+        
         if case_when_obj.else_value is not None:
             return self._evaluate_value(row, case_when_obj.else_value)
-
+        
         return None
 
-    def _evaluate_case_when_condition(self, row: Dict[str, Any], condition: Any) -> bool:
+    def _evaluate_case_when_condition(
+        self, row: Dict[str, Any], condition: Any
+    ) -> bool:
         """Evaluate a CASE WHEN condition for a row."""
         if hasattr(condition, "operation") and hasattr(condition, "column"):
             # Handle MockColumnOperation conditions
@@ -3345,16 +3605,18 @@ class MockDataFrame:
         data = self.data
         schema_obj = self.schema
         self.storage.create_table("global_temp", name, schema_obj)
-        self.storage.insert_data("global_temp", name, [row for row in data], mode="overwrite")
+        self.storage.insert_data(
+            "global_temp", name, [row for row in data], mode="overwrite"
+        )
 
     def createOrReplaceGlobalTempView(self, name: str) -> None:
         """Create or replace a global temporary view (all PySpark versions).
-        
+
         Unlike createGlobalTempView, this method does not raise an error if the view already exists.
-        
+
         Args:
             name: Name of the global temp view
-            
+
         Example:
             >>> df.createOrReplaceGlobalTempView("my_global_view")
             >>> spark.sql("SELECT * FROM global_temp.my_global_view")
@@ -3371,19 +3633,21 @@ class MockDataFrame:
         data = self.data
         schema_obj = self.schema
         self.storage.create_table("global_temp", name, schema_obj)
-        self.storage.insert_data("global_temp", name, [row for row in data], mode="overwrite")
+        self.storage.insert_data(
+            "global_temp", name, [row for row in data], mode="overwrite"
+        )
 
     def colRegex(self, colName: str) -> MockColumn:
         """Select columns matching a regex pattern (all PySpark versions).
-        
+
         The regex pattern should be wrapped in backticks: `pattern`
-        
+
         Args:
             colName: Regex pattern wrapped in backticks, e.g. "`.*id`"
-            
+
         Returns:
             Column expression that can be used in select()
-            
+
         Example:
             >>> df = spark.createDataFrame([{"user_id": 1, "post_id": 2, "name": "Alice"}])
             >>> df.select(df.colRegex("`.*id`")).show()  # Selects user_id and post_id
@@ -3414,25 +3678,25 @@ class MockDataFrame:
         self,
         to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
         value: Optional[Union[int, float, str, List[Any]]] = None,
-        subset: Optional[List[str]] = None
+        subset: Optional[List[str]] = None,
     ) -> "MockDataFrame":
         """Replace values in DataFrame (all PySpark versions).
-        
+
         Args:
             to_replace: Value(s) to replace - can be scalar, list, or dict
             value: Replacement value(s) - required if to_replace is not a dict
             subset: Optional list of columns to limit replacement to
-            
+
         Returns:
             New DataFrame with replaced values
-            
+
         Examples:
             >>> # Replace with dict mapping
             >>> df.replace({'A': 'X', 'B': 'Y'})
-            
+
             >>> # Replace list of values with single value
             >>> df.replace([1, 2], 99, subset=['col1'])
-            
+
             >>> # Replace single value
             >>> df.replace(1, 99)
         """
@@ -3589,7 +3853,9 @@ class MockDataFrame:
 
         if withReplacement:
             # Sample with replacement
-            sampled_indices = [random.randint(0, total_rows - 1) for _ in range(num_rows)]
+            sampled_indices = [
+                random.randint(0, total_rows - 1) for _ in range(num_rows)
+            ]
             sampled_data = [self.data[i] for i in sampled_indices]
         else:
             # Sample without replacement
@@ -3618,7 +3884,9 @@ class MockDataFrame:
             raise IllegalArgumentException("Weights must have at least 2 elements")
 
         if abs(sum(weights) - 1.0) > 1e-6:
-            raise IllegalArgumentException(f"Weights must sum to 1.0, got {sum(weights)}")
+            raise IllegalArgumentException(
+                f"Weights must sum to 1.0, got {sum(weights)}"
+            )
 
         if any(w < 0 for w in weights):
             raise IllegalArgumentException("All weights must be non-negative")
@@ -3715,7 +3983,9 @@ class MockDataFrame:
                     "summary": col,
                     "count": str(len(values)),
                     "mean": str(round(statistics.mean(values), 4)),
-                    "stddev": str(round(statistics.stdev(values) if len(values) > 1 else 0.0, 4)),
+                    "stddev": str(
+                        round(statistics.stdev(values) if len(values) > 1 else 0.0, 4)
+                    ),
                     "min": str(min(values)),
                     "max": str(max(values)),
                 }
@@ -3791,7 +4061,9 @@ class MockDataFrame:
                     elif stat == "mean":
                         stats_row[stat] = str(round(statistics.mean(values), 4))
                     elif stat == "stddev":
-                        stats_row[stat] = str(round(statistics.stdev(values) if n > 1 else 0.0, 4))
+                        stats_row[stat] = str(
+                            round(statistics.stdev(values) if n > 1 else 0.0, 4)
+                        )
                     elif stat == "min":
                         stats_row[stat] = str(values_sorted[0])
                     elif stat == "max":
@@ -3820,20 +4092,22 @@ class MockDataFrame:
         result_schema = MockStructType(result_fields)
         return MockDataFrame(result_data, result_schema, self.storage)
 
-    def mapPartitions(self, func: Any, preservesPartitioning: bool = False) -> "MockDataFrame":
+    def mapPartitions(
+        self, func: Any, preservesPartitioning: bool = False
+    ) -> "MockDataFrame":
         """Apply a function to each partition of the DataFrame.
-        
+
         For mock-spark, we treat the entire DataFrame as a single partition.
         The function receives an iterator of Row objects and should return
         an iterator of Row objects.
-        
+
         Args:
             func: A function that takes an iterator of Rows and returns an iterator of Rows.
             preservesPartitioning: Whether the function preserves partitioning (unused in mock-spark).
-        
+
         Returns:
             MockDataFrame: Result of applying the function.
-        
+
         Example:
             >>> def add_index(iterator):
             ...     for i, row in enumerate(iterator):
@@ -3871,25 +4145,27 @@ class MockDataFrame:
         # Infer schema from result data
         from ..core.schema_inference import infer_schema_from_data
 
-        result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+        result_schema = (
+            infer_schema_from_data(result_data) if result_data else self.schema
+        )
 
         return MockDataFrame(result_data, result_schema, self.storage)
 
     def mapInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
         """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames.
-        
+
         For mock-spark, we treat the entire DataFrame as a single partition.
         The function receives an iterator yielding pandas DataFrames and should
         return an iterator yielding pandas DataFrames.
-        
+
         Args:
             func: A function that takes an iterator of pandas DataFrames and returns
                   an iterator of pandas DataFrames.
             schema: The schema of the output DataFrame (StructType or DDL string).
-        
+
         Returns:
             MockDataFrame: Result of applying the function.
-        
+
         Example:
             >>> def multiply_by_two(iterator):
             ...     for pdf in iterator:
@@ -3936,7 +4212,10 @@ class MockDataFrame:
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
-            result_data = [{str(k): v for k, v in row.items()} for row in combined_pdf.to_dict('records')]
+            result_data = [
+                {str(k): v for k, v in row.items()}
+                for row in combined_pdf.to_dict("records")
+            ]
 
         # Parse schema
         from ..spark_types import MockStructType
@@ -3946,26 +4225,30 @@ class MockDataFrame:
         if isinstance(schema, str):
             # For DDL string, use schema inference from result data
             # (DDL parsing is complex, so we rely on inference for now)
-            result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.schema
+            )
         elif isinstance(schema, MockStructType):
             result_schema = schema
         else:
             # Try to infer schema from result data
-            result_schema = infer_schema_from_data(result_data) if result_data else self.schema
+            result_schema = (
+                infer_schema_from_data(result_data) if result_data else self.schema
+            )
 
         return MockDataFrame(result_data, result_schema, self.storage)
 
     def transform(self, func: Any) -> "MockDataFrame":
         """Apply a function to transform a DataFrame.
-        
+
         This enables functional programming style transformations on DataFrames.
-        
+
         Args:
             func: Function that takes a MockDataFrame and returns a MockDataFrame.
-        
+
         Returns:
             MockDataFrame: The result of applying the function to this DataFrame.
-        
+
         Example:
             >>> def add_id(df):
             ...     return df.withColumn("id", F.monotonically_increasing_id())
@@ -3986,16 +4269,16 @@ class MockDataFrame:
         valueColumnName: str = "value",
     ) -> "MockDataFrame":
         """Unpivot columns into rows (opposite of pivot).
-        
+
         Args:
             ids: Column(s) to keep as identifiers (not unpivoted).
             values: Column(s) to unpivot into rows.
             variableColumnName: Name for the column containing variable names.
             valueColumnName: Name for the column containing values.
-        
+
         Returns:
             MockDataFrame: Unpivoted DataFrame.
-        
+
         Example:
             >>> df.unpivot(
             ...     ids=["id", "name"],
@@ -4050,7 +4333,9 @@ class MockDataFrame:
         for id_col in id_cols:
             for field in materialized.schema.fields:
                 if field.name == id_col:
-                    fields.append(MockStructField(id_col, field.dataType, field.nullable))
+                    fields.append(
+                        MockStructField(id_col, field.dataType, field.nullable)
+                    )
                     break
 
         # Add variable column (always string)
@@ -4069,7 +4354,7 @@ class MockDataFrame:
 
     def inputFiles(self) -> List[str]:
         """Return list of input files for this DataFrame (PySpark 3.1+).
-        
+
         Returns:
             Empty list (mock DataFrames don't have file inputs)
         """
@@ -4078,12 +4363,12 @@ class MockDataFrame:
 
     def sameSemantics(self, other: "MockDataFrame") -> bool:
         """Check if this DataFrame has the same semantics as another (PySpark 3.1+).
-        
+
         Simplified implementation that checks schema and data equality.
-        
+
         Args:
             other: Another DataFrame to compare
-            
+
         Returns:
             True if semantically equivalent, False otherwise
         """
@@ -4099,9 +4384,9 @@ class MockDataFrame:
 
     def semanticHash(self) -> int:
         """Return semantic hash of this DataFrame (PySpark 3.1+).
-        
+
         Simplified implementation based on schema.
-        
+
         Returns:
             Hash value representing DataFrame semantics
         """
@@ -4110,12 +4395,14 @@ class MockDataFrame:
         return hash(schema_str)
 
     # Priority 1: Critical DataFrame Method Aliases
-    def where(self, condition: Union[MockColumnOperation, MockColumn]) -> "MockDataFrame":
+    def where(
+        self, condition: Union[MockColumnOperation, MockColumn]
+    ) -> "MockDataFrame":
         """Alias for filter() - Filter rows based on condition (all PySpark versions).
-        
+
         Args:
             condition: Boolean condition to filter rows
-            
+
         Returns:
             Filtered DataFrame
         """
@@ -4123,11 +4410,11 @@ class MockDataFrame:
 
     def sort(self, *columns: Union[str, MockColumn], **kwargs: Any) -> "MockDataFrame":
         """Alias for orderBy() - Sort DataFrame by columns (all PySpark versions).
-        
+
         Args:
             *columns: Column names or Column objects to sort by
             **kwargs: Additional sort options (e.g., ascending)
-            
+
         Returns:
             Sorted DataFrame
         """
@@ -4135,13 +4422,13 @@ class MockDataFrame:
 
     def toDF(self, *cols: str) -> "MockDataFrame":
         """Rename columns of DataFrame (all PySpark versions).
-        
+
         Args:
             *cols: New column names
-            
+
         Returns:
             DataFrame with renamed columns
-            
+
         Raises:
             ValueError: If number of columns doesn't match
         """
@@ -4162,18 +4449,20 @@ class MockDataFrame:
         old_names = [field.name for field in self.schema.fields]
         new_data = []
         for row in self.data:
-            new_row = {new_name: row[old_name] for new_name, old_name in zip(cols, old_names)}
+            new_row = {
+                new_name: row[old_name] for new_name, old_name in zip(cols, old_names)
+            }
             new_data.append(new_row)
 
         return MockDataFrame(new_data, new_schema, self.storage, is_lazy=False)
 
     def groupby(self, *cols: Union[str, MockColumn], **kwargs: Any) -> MockGroupedData:
         """Lowercase alias for groupBy() (all PySpark versions).
-        
+
         Args:
             *cols: Column names or Column objects to group by
             **kwargs: Additional grouping options
-            
+
         Returns:
             MockGroupedData object
         """
@@ -4181,10 +4470,10 @@ class MockDataFrame:
 
     def drop_duplicates(self, subset: Optional[List[str]] = None) -> "MockDataFrame":
         """Alias for dropDuplicates() (all PySpark versions).
-        
+
         Args:
             subset: Optional list of column names to consider for deduplication
-            
+
         Returns:
             DataFrame with duplicates removed
         """
@@ -4192,33 +4481,33 @@ class MockDataFrame:
 
     def unionAll(self, other: "MockDataFrame") -> "MockDataFrame":
         """Deprecated alias for union() - Use union() instead (all PySpark versions).
-        
+
         Args:
             other: DataFrame to union with
-            
+
         Returns:
             Union of both DataFrames
-            
+
         Note:
             Deprecated in PySpark 2.0+, use union() instead
         """
         import warnings
+
         warnings.warn(
-            "unionAll is deprecated. Use union instead.",
-            FutureWarning,
-            stacklevel=2
+            "unionAll is deprecated. Use union instead.", FutureWarning, stacklevel=2
         )
         return self.union(other)
 
     def subtract(self, other: "MockDataFrame") -> "MockDataFrame":
         """Return rows in this DataFrame but not in another (all PySpark versions).
-        
+
         Args:
             other: DataFrame to subtract
-            
+
         Returns:
             DataFrame with rows from this DataFrame that are not in other
         """
+
         # Convert rows to tuples for comparison
         def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
             return tuple(row.get(field.name) for field in self.schema.fields)
@@ -4233,8 +4522,7 @@ class MockDataFrame:
         result_data = []
         for row_tuple in result_tuples:
             row_dict = {
-                field.name: value
-                for field, value in zip(self.schema.fields, row_tuple)
+                field.name: value for field, value in zip(self.schema.fields, row_tuple)
             }
             result_data.append(row_dict)
 
@@ -4242,24 +4530,29 @@ class MockDataFrame:
 
     def alias(self, alias: str) -> "MockDataFrame":
         """Give DataFrame an alias for join operations (all PySpark versions).
-        
+
         Args:
             alias: Alias name
-            
+
         Returns:
             DataFrame with alias set
         """
         # Store alias in a special attribute
-        result = MockDataFrame(self.data, self.schema, self.storage, is_lazy=self.is_lazy)
+        result = MockDataFrame(
+            self.data, self.schema, self.storage, is_lazy=self.is_lazy
+        )
         result._alias = alias  # type: ignore
         return result
 
-    def withColumns(self, colsMap: Dict[str, Union[MockColumn, MockColumnOperation, MockLiteral, Any]]) -> "MockDataFrame":
+    def withColumns(
+        self,
+        colsMap: Dict[str, Union[MockColumn, MockColumnOperation, MockLiteral, Any]],
+    ) -> "MockDataFrame":
         """Add or replace multiple columns at once (PySpark 3.3+).
-        
+
         Args:
             colsMap: Dictionary mapping column names to column expressions
-            
+
         Returns:
             DataFrame with new/replaced columns
         """
@@ -4270,15 +4563,18 @@ class MockDataFrame:
 
     # Priority 3: Common DataFrame Methods
     def approxQuantile(
-        self, col: Union[str, List[str]], probabilities: List[float], relativeError: float
+        self,
+        col: Union[str, List[str]],
+        probabilities: List[float],
+        relativeError: float,
     ) -> Union[List[float], List[List[float]]]:
         """Calculate approximate quantiles (all PySpark versions).
-        
+
         Args:
             col: Column name or list of column names
             probabilities: List of quantile probabilities (0.0 to 1.0)
             relativeError: Relative error for approximation (0.0 for exact)
-            
+
         Returns:
             List of quantile values, or list of lists if multiple columns
         """
@@ -4291,7 +4587,7 @@ class MockDataFrame:
                 if val is not None:
                     values_list.append(float(val))
             if not values_list:
-                return [float('nan')] * len(probabilities)
+                return [float("nan")] * len(probabilities)
             return [float(np.percentile(values_list, p * 100)) for p in probabilities]
 
         if isinstance(col, str):
@@ -4301,19 +4597,22 @@ class MockDataFrame:
 
     def cov(self, col1: str, col2: str) -> float:
         """Calculate covariance between two columns (all PySpark versions).
-        
+
         Args:
             col1: First column name
             col2: Second column name
-            
+
         Returns:
             Covariance value
         """
         import numpy as np
 
         # Filter rows where both values are not None and extract numeric values
-        pairs = [(row.get(col1), row.get(col2)) for row in self.data
-                 if row.get(col1) is not None and row.get(col2) is not None]
+        pairs = [
+            (row.get(col1), row.get(col2))
+            for row in self.data
+            if row.get(col1) is not None and row.get(col2) is not None
+        ]
 
         if not pairs:
             return 0.0
@@ -4325,11 +4624,11 @@ class MockDataFrame:
 
     def crosstab(self, col1: str, col2: str) -> "MockDataFrame":
         """Calculate cross-tabulation (all PySpark versions).
-        
+
         Args:
             col1: First column name (rows)
             col2: Second column name (columns)
-            
+
         Returns:
             DataFrame with cross-tabulation
         """
@@ -4363,13 +4662,15 @@ class MockDataFrame:
 
         return MockDataFrame(result_data, result_schema, self.storage, is_lazy=False)
 
-    def freqItems(self, cols: List[str], support: Optional[float] = None) -> "MockDataFrame":
+    def freqItems(
+        self, cols: List[str], support: Optional[float] = None
+    ) -> "MockDataFrame":
         """Find frequent items (all PySpark versions).
-        
+
         Args:
             cols: List of column names
             support: Minimum support threshold (default 0.01)
-            
+
         Returns:
             DataFrame with frequent items for each column
         """
@@ -4389,20 +4690,23 @@ class MockDataFrame:
 
         # Build schema
         from ..spark_types import ArrayType
-        fields = [MockStructField(f"{col}_freqItems", ArrayType(StringType())) for col in cols]
+
+        fields = [
+            MockStructField(f"{col}_freqItems", ArrayType(StringType())) for col in cols
+        ]
         result_schema = MockStructType(fields)
 
         return MockDataFrame([result_row], result_schema, self.storage, is_lazy=False)
 
     def hint(self, name: str, *parameters: Any) -> "MockDataFrame":
         """Provide query optimization hints (all PySpark versions).
-        
+
         This is a no-op in mock-spark as there's no query optimizer.
-        
+
         Args:
             name: Hint name
             *parameters: Hint parameters
-            
+
         Returns:
             Same DataFrame (no-op)
         """
@@ -4411,10 +4715,10 @@ class MockDataFrame:
 
     def intersectAll(self, other: "MockDataFrame") -> "MockDataFrame":
         """Return intersection with duplicates (PySpark 3.0+).
-        
+
         Args:
             other: DataFrame to intersect with
-            
+
         Returns:
             DataFrame with common rows (preserving duplicates)
         """
@@ -4442,7 +4746,7 @@ class MockDataFrame:
 
     def isEmpty(self) -> bool:
         """Check if DataFrame is empty (PySpark 3.3+).
-        
+
         Returns:
             True if DataFrame has no rows
         """
@@ -4452,16 +4756,17 @@ class MockDataFrame:
         self, col: str, fractions: Dict[Any, float], seed: Optional[int] = None
     ) -> "MockDataFrame":
         """Stratified sampling (all PySpark versions).
-        
+
         Args:
             col: Column to stratify by
             fractions: Dict mapping stratum values to sampling fractions
             seed: Random seed
-            
+
         Returns:
             Sampled DataFrame
         """
         import random
+
         if seed is not None:
             random.seed(seed)
 
@@ -4476,10 +4781,10 @@ class MockDataFrame:
 
     def withColumnsRenamed(self, colsMap: Dict[str, str]) -> "MockDataFrame":
         """Rename multiple columns (PySpark 3.4+).
-        
+
         Args:
             colsMap: Dictionary mapping old column names to new names
-            
+
         Returns:
             DataFrame with renamed columns
         """
@@ -4490,7 +4795,7 @@ class MockDataFrame:
 
     def foreach(self, f: Any) -> None:
         """Apply function to each row (action, all PySpark versions).
-        
+
         Args:
             f: Function to apply to each Row
         """
@@ -4499,7 +4804,7 @@ class MockDataFrame:
 
     def foreachPartition(self, f: Any) -> None:
         """Apply function to each partition (action, all PySpark versions).
-        
+
         Args:
             f: Function to apply to each partition Iterator[Row]
         """
@@ -4509,14 +4814,14 @@ class MockDataFrame:
     def repartitionByRange(
         self,
         numPartitions: Union[int, str, "MockColumn"],
-        *cols: Union[str, "MockColumn"]
+        *cols: Union[str, "MockColumn"],
     ) -> "MockDataFrame":
         """Repartition by range of column values (all PySpark versions).
-        
+
         Args:
             numPartitions: Number of partitions or first column if string/Column
             *cols: Columns to partition by
-            
+
         Returns:
             New DataFrame repartitioned by range (mock: sorted)
         """
@@ -4528,16 +4833,14 @@ class MockDataFrame:
             return self.orderBy(numPartitions, *cols)
 
     def sortWithinPartitions(
-        self,
-        *cols: Union[str, "MockColumn"],
-        **kwargs: Any
+        self, *cols: Union[str, "MockColumn"], **kwargs: Any
     ) -> "MockDataFrame":
         """Sort within partitions (all PySpark versions).
-        
+
         Args:
             *cols: Columns to sort by
             **kwargs: Additional arguments (ascending, etc.)
-            
+
         Returns:
             New DataFrame sorted within partitions (mock: equivalent to orderBy)
         """
@@ -4546,10 +4849,10 @@ class MockDataFrame:
 
     def toLocalIterator(self, prefetchPartitions: bool = False) -> Any:
         """Return iterator over rows (all PySpark versions).
-        
+
         Args:
             prefetchPartitions: Whether to prefetch partitions (ignored in mock)
-            
+
         Returns:
             Iterator over Row objects
         """
@@ -4557,10 +4860,10 @@ class MockDataFrame:
 
     def localCheckpoint(self, eager: bool = True) -> "MockDataFrame":
         """Local checkpoint to truncate lineage (all PySpark versions).
-        
+
         Args:
             eager: Whether to checkpoint eagerly
-            
+
         Returns:
             Same DataFrame with truncated lineage
         """
@@ -4571,23 +4874,19 @@ class MockDataFrame:
 
     def isLocal(self) -> bool:
         """Check if running in local mode (all PySpark versions).
-        
+
         Returns:
             True if running in local mode (mock: always True)
         """
         return True
 
-    def withWatermark(
-        self,
-        eventTime: str,
-        delayThreshold: str
-    ) -> "MockDataFrame":
+    def withWatermark(self, eventTime: str, delayThreshold: str) -> "MockDataFrame":
         """Define watermark for streaming (all PySpark versions).
-        
+
         Args:
             eventTime: Column name for event time
             delayThreshold: Delay threshold (e.g., "1 hour")
-            
+
         Returns:
             DataFrame with watermark defined (mock: returns self unchanged)
         """
@@ -4602,26 +4901,26 @@ class MockDataFrame:
         ids: Optional[List[str]] = None,
         values: Optional[List[str]] = None,
         variableColumnName: str = "variable",
-        valueColumnName: str = "value"
+        valueColumnName: str = "value",
     ) -> "MockDataFrame":
         """Unpivot DataFrame from wide to long format (PySpark 3.4+).
-        
+
         Args:
             ids: List of column names to use as identifier columns
             values: List of column names to unpivot (None = all non-id columns)
             variableColumnName: Name for the variable column
             valueColumnName: Name for the value column
-            
+
         Returns:
             New DataFrame in long format
-            
+
         Example:
             >>> df = spark.createDataFrame([{"id": 1, "A": 10, "B": 20}])
             >>> df.melt(ids=["id"], values=["A", "B"]).show()
         """
         id_cols = ids or []
         value_cols = values or [c for c in self.columns if c not in id_cols]
-        
+
         result_data = []
         for row in self.data:
             for val_col in value_cols:
@@ -4629,43 +4928,46 @@ class MockDataFrame:
                 new_row[variableColumnName] = val_col
                 new_row[valueColumnName] = row.get(val_col)
                 result_data.append(new_row)
-        
+
         # Build new schema - find fields by name
         fields = []
         for col in id_cols:
             field = [f for f in self.schema.fields if f.name == col][0]
             fields.append(MockStructField(col, field.dataType))
-        
+
         fields.append(MockStructField(variableColumnName, StringType()))
-        
+
         # Use first value column's type for value column (or StringType as fallback)
         if value_cols:
-            first_value_field = [f for f in self.schema.fields if f.name == value_cols[0]][0]
+            first_value_field = [
+                f for f in self.schema.fields if f.name == value_cols[0]
+            ][0]
             value_type = first_value_field.dataType
         else:
             value_type = StringType()
         fields.append(MockStructField(valueColumnName, value_type))
-        
+
         return MockDataFrame(result_data, MockStructType(fields), self.storage)
 
     def to(self, schema: Union[str, MockStructType]) -> "MockDataFrame":
         """Apply schema with casting (PySpark 3.4+).
-        
+
         Args:
             schema: Target schema (DDL string or MockStructType)
-            
+
         Returns:
             New DataFrame with schema applied
-            
+
         Example:
             >>> df.to("id: long, name: string")
         """
         if isinstance(schema, str):
             from mock_spark.core.ddl_adapter import parse_ddl_schema
+
             target_schema = parse_ddl_schema(schema)
         else:
             target_schema = schema
-        
+
         # Cast columns to match target schema
         result_data = []
         for row in self.data:
@@ -4675,19 +4977,21 @@ class MockDataFrame:
                     # Type casting would happen here in real implementation
                     new_row[field.name] = row[field.name]
             result_data.append(new_row)
-        
+
         return MockDataFrame(result_data, target_schema, self.storage)
 
-    def withMetadata(self, columnName: str, metadata: Dict[str, Any]) -> "MockDataFrame":
+    def withMetadata(
+        self, columnName: str, metadata: Dict[str, Any]
+    ) -> "MockDataFrame":
         """Attach metadata to a column (PySpark 3.3+).
-        
+
         Args:
             columnName: Name of the column to attach metadata to
             metadata: Dictionary of metadata key-value pairs
-            
+
         Returns:
             New DataFrame with metadata attached
-            
+
         Example:
             >>> df.withMetadata("id", {"comment": "User identifier"})
         """
@@ -4697,41 +5001,38 @@ class MockDataFrame:
             if field.name == columnName:
                 # Create new field with metadata
                 new_field = MockStructField(
-                    field.name,
-                    field.dataType,
-                    field.nullable,
-                    metadata
+                    field.name, field.dataType, field.nullable, metadata
                 )
                 new_fields.append(new_field)
             else:
                 new_fields.append(field)
-        
+
         new_schema = MockStructType(new_fields)
         return MockDataFrame(self.data, new_schema, self.storage)
 
     def observe(self, name: str, *exprs: "MockColumn") -> "MockDataFrame":
         """Define observation metrics (PySpark 3.3+).
-        
+
         Args:
             name: Name of the observation
             *exprs: Column expressions to observe
-            
+
         Returns:
             Same DataFrame with observation registered
-            
+
         Example:
             >>> df.observe("metrics", F.count(F.lit(1)).alias("count"))
         """
         # In mock implementation, observations don't affect behavior
         # Preserve existing observations and add new ones
         new_df = MockDataFrame(self.data, self.schema, self.storage)
-        
+
         # Copy existing observations if any
-        if hasattr(self, '_observations'):
+        if hasattr(self, "_observations"):
             new_df._observations = dict(self._observations)  # type: ignore
         else:
             new_df._observations = {}  # type: ignore
-        
+
         new_df._observations[name] = exprs  # type: ignore
         return new_df
 

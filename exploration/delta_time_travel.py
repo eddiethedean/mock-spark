@@ -124,7 +124,9 @@ try:
     try:
         print("\nAttempting to read version 999 (doesn't exist):")
         bad_version = (
-            spark.read.format("delta").option("versionAsOf", "999").table("test.versioned")
+            spark.read.format("delta")
+            .option("versionAsOf", "999")
+            .table("test.versioned")
         )
         bad_version.show()
     except Exception as e:

@@ -43,7 +43,9 @@ def create_corrupted_data(
     Returns:
         List of dictionaries representing the corrupted data.
     """
-    return MockDataGenerator.create_corrupted_data(schema, corruption_rate, num_rows, seed)
+    return MockDataGenerator.create_corrupted_data(
+        schema, corruption_rate, num_rows, seed
+    )
 
 
 def create_realistic_data(

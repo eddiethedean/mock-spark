@@ -347,7 +347,7 @@ class MemoryStorageManager(IStorageManager):
 
     def close(self) -> None:
         """Close storage backend and clean up resources.
-        
+
         For in-memory storage, this is a no-op as there are no external resources.
         """
         pass

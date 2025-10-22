@@ -35,7 +35,13 @@ Example:
 
 from typing import Union
 from mock_spark.functions.base import MockAggregateFunction, MockColumn
-from mock_spark.spark_types import LongType, DoubleType, BooleanType, StringType, IntegerType
+from mock_spark.spark_types import (
+    LongType,
+    DoubleType,
+    BooleanType,
+    StringType,
+    IntegerType,
+)
 
 
 class AggregateFunctions:
@@ -305,7 +311,9 @@ class AggregateFunctions:
         return MockAggregateFunction(column, "bool_or", BooleanType())
 
     @staticmethod
-    def max_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+    def max_by(
+        column: Union[MockColumn, str], ord: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
         """Return value associated with the maximum of ord column (PySpark 3.1+).
 
         Args:
@@ -323,7 +331,9 @@ class AggregateFunctions:
         return col_func
 
     @staticmethod
-    def min_by(column: Union[MockColumn, str], ord: Union[MockColumn, str]) -> MockAggregateFunction:
+    def min_by(
+        column: Union[MockColumn, str], ord: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
         """Return value associated with the minimum of ord column (PySpark 3.1+).
 
         Args:
@@ -437,7 +447,9 @@ class AggregateFunctions:
         return MockAggregateFunction(column, "var_samp", DoubleType())
 
     @staticmethod
-    def covar_pop(column1: Union[MockColumn, str], column2: Union[MockColumn, str]) -> MockAggregateFunction:
+    def covar_pop(
+        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
+    ) -> MockAggregateFunction:
         """Returns population covariance.
 
         Args:
@@ -479,7 +491,9 @@ class AggregateFunctions:
         return MockAggregateFunction(column, "mode", StringType())
 
     @staticmethod
-    def percentile(column: Union[MockColumn, str], percentage: float) -> MockAggregateFunction:
+    def percentile(
+        column: Union[MockColumn, str], percentage: float
+    ) -> MockAggregateFunction:
         """Returns the exact percentile value (PySpark 3.5+).
 
         Args:
@@ -497,40 +511,42 @@ class AggregateFunctions:
     @staticmethod
     def approxCountDistinct(*cols: Union[MockColumn, str]) -> MockAggregateFunction:
         """Deprecated alias for approx_count_distinct (all PySpark versions).
-        
+
         Use approx_count_distinct instead.
-        
+
         Args:
             cols: Columns to count distinct values for.
-            
+
         Returns:
             MockAggregateFunction for approximate distinct count.
         """
         import warnings
+
         warnings.warn(
             "approxCountDistinct is deprecated. Use approx_count_distinct instead.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return AggregateFunctions.approx_count_distinct(*cols)
 
     @staticmethod
     def sumDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
         """Deprecated alias for sum_distinct (PySpark 3.2+).
-        
+
         Use sum_distinct instead (or sum(distinct(col)) for earlier versions).
-        
+
         Args:
             column: Numeric column to sum.
-            
+
         Returns:
             MockAggregateFunction for distinct sum.
         """
         import warnings
+
         warnings.warn(
             "sumDistinct is deprecated. Use sum with distinct instead.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         # For mock implementation, create sum_distinct aggregate
         return MockAggregateFunction(column, "sum_distinct", DoubleType())

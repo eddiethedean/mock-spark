@@ -10,6 +10,7 @@ import pytest
 try:
     from pyspark.sql import SparkSession
     import pyspark.sql.functions as F_real
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
@@ -24,10 +25,9 @@ def real_spark():
     if not PYSPARK_AVAILABLE:
         pytest.skip("PySpark not available")
 
-    spark = SparkSession.builder \
-        .appName("test_array_30") \
-        .master("local[1]") \
-        .getOrCreate()
+    spark = (
+        SparkSession.builder.appName("test_array_30").master("local[1]").getOrCreate()
+    )
 
     yield spark
     spark.stop()
@@ -48,10 +48,14 @@ class TestArrayCompat:
         data = [{"a": 1, "b": 2, "c": 3}, {"a": 4, "b": 5, "c": 6}]
 
         real_df = real_spark.createDataFrame(data)
-        real_result = real_df.select(F_real.array(F_real.col("a"), F_real.col("b"), F_real.col("c")).alias("arr")).collect()
+        real_result = real_df.select(
+            F_real.array(F_real.col("a"), F_real.col("b"), F_real.col("c")).alias("arr")
+        ).collect()
 
         mock_df = mock_spark.createDataFrame(data)
-        mock_result = mock_df.select(F_mock.array(F_mock.col("a"), F_mock.col("b"), F_mock.col("c")).alias("arr")).collect()
+        mock_result = mock_df.select(
+            F_mock.array(F_mock.col("a"), F_mock.col("b"), F_mock.col("c")).alias("arr")
+        ).collect()
 
         for i in range(len(data)):
             real_arr = real_result[i]["arr"]
@@ -60,6 +64,7 @@ class TestArrayCompat:
             # Convert mock result if it's a string
             if isinstance(mock_arr, str):
                 import ast
+
                 mock_arr = ast.literal_eval(mock_arr)
 
             assert len(real_arr) == len(mock_arr)
@@ -76,10 +81,14 @@ class TestArrayRepeatCompat:
         data = [{"value": "test"}, {"value": "hello"}]
 
         real_df = real_spark.createDataFrame(data)
-        real_result = real_df.select(F_real.array_repeat(F_real.col("value"), 3).alias("arr")).collect()
+        real_result = real_df.select(
+            F_real.array_repeat(F_real.col("value"), 3).alias("arr")
+        ).collect()
 
         mock_df = mock_spark.createDataFrame(data)
-        mock_result = mock_df.select(F_mock.array_repeat(F_mock.col("value"), 3).alias("arr")).collect()
+        mock_result = mock_df.select(
+            F_mock.array_repeat(F_mock.col("value"), 3).alias("arr")
+        ).collect()
 
         for i in range(len(data)):
             real_arr = real_result[i]["arr"]
@@ -87,6 +96,7 @@ class TestArrayRepeatCompat:
 
             if isinstance(mock_arr, str):
                 import ast
+
                 mock_arr = ast.literal_eval(mock_arr)
 
             assert len(real_arr) == len(mock_arr) == 3
@@ -102,16 +112,21 @@ class TestSortArrayCompat:
         data = [{"values": [3, 1, 2, 5, 4]}]
 
         real_df = real_spark.createDataFrame(data)
-        real_result = real_df.select(F_real.sort_array(F_real.col("values")).alias("sorted")).collect()
+        real_result = real_df.select(
+            F_real.sort_array(F_real.col("values")).alias("sorted")
+        ).collect()
 
         mock_df = mock_spark.createDataFrame(data)
-        mock_result = mock_df.select(F_mock.sort_array(F_mock.col("values")).alias("sorted")).collect()
+        mock_result = mock_df.select(
+            F_mock.sort_array(F_mock.col("values")).alias("sorted")
+        ).collect()
 
         real_arr = real_result[0]["sorted"]
         mock_arr = mock_result[0]["sorted"]
 
         if isinstance(mock_arr, str):
             import ast
+
             mock_arr = ast.literal_eval(mock_arr)
 
         # Both should be sorted [1, 2, 3, 4, 5]
@@ -122,18 +137,22 @@ class TestSortArrayCompat:
         data = [{"values": [3, 1, 2, 5, 4]}]
 
         real_df = real_spark.createDataFrame(data)
-        real_result = real_df.select(F_real.sort_array(F_real.col("values"), asc=False).alias("sorted")).collect()
+        real_result = real_df.select(
+            F_real.sort_array(F_real.col("values"), asc=False).alias("sorted")
+        ).collect()
 
         mock_df = mock_spark.createDataFrame(data)
-        mock_result = mock_df.select(F_mock.sort_array(F_mock.col("values"), asc=False).alias("sorted")).collect()
+        mock_result = mock_df.select(
+            F_mock.sort_array(F_mock.col("values"), asc=False).alias("sorted")
+        ).collect()
 
         real_arr = real_result[0]["sorted"]
         mock_arr = mock_result[0]["sorted"]
 
         if isinstance(mock_arr, str):
             import ast
+
             mock_arr = ast.literal_eval(mock_arr)
 
         # Both should be sorted [5, 4, 3, 2, 1]
         assert [str(x) for x in real_arr] == [str(x) for x in mock_arr]
-

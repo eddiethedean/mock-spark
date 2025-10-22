@@ -26,9 +26,7 @@ class TestURLFunctionsUnit:
         data = [{"text": "hello world"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.url_encode(F.col("text")).alias("encoded")
-        ).collect()
+        result = df.select(F.url_encode(F.col("text")).alias("encoded")).collect()
 
         # Should have %20 or + for space
         assert "hello" in result[0]["encoded"]
@@ -39,9 +37,7 @@ class TestURLFunctionsUnit:
         data = [{"encoded": "hello%20world"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.url_decode(F.col("encoded")).alias("decoded")
-        ).collect()
+        result = df.select(F.url_decode(F.col("encoded")).alias("decoded")).collect()
 
         assert "hello world" == result[0]["decoded"] or "hello" in result[0]["decoded"]
 
@@ -70,9 +66,7 @@ class TestMiscFunctionsUnit:
         data = [{"date": "2024-01-01"}]
         df = spark.createDataFrame(data)
 
-        result = df.select(
-            F.dayname(F.col("date")).alias("day")
-        ).collect()
+        result = df.select(F.dayname(F.col("date")).alias("day")).collect()
 
         # Should return "Monday" or similar
         assert isinstance(result[0]["day"], str)
@@ -85,10 +79,7 @@ class TestMiscFunctionsUnit:
         df = spark.createDataFrame(data)
 
         # Should succeed without error
-        result = df.select(
-            F.assert_true(F.col("value") > 5).alias("check")
-        ).collect()
+        result = df.select(F.assert_true(F.col("value") > 5).alias("check")).collect()
 
         # If it passes, we should get a result
         assert len(result) == 1
-

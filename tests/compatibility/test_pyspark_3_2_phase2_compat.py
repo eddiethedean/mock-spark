@@ -11,12 +11,14 @@ try:
     from pyspark.sql import SparkSession  # noqa: F401
     from pyspark.sql import functions as PySparkF  # noqa: F401
     import pandas as pd  # noqa: F401
+
     PYSPARK_AVAILABLE = True
     PANDAS_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
     try:
         import pandas as pd  # noqa: F401
+
         PANDAS_AVAILABLE = True
     except ImportError:
         PANDAS_AVAILABLE = False
@@ -47,12 +49,11 @@ class TestPandasAPICompat:
 
         def multiply_by_two(iterator):
             for pdf in iterator:
-                pdf['value'] = pdf['value'] * 2
+                pdf["value"] = pdf["value"] * 2
                 yield pdf
 
         result = mock_df.mapInPandas(
-            multiply_by_two,
-            schema="category string, value double"
+            multiply_by_two, schema="category string, value double"
         )
 
         collected = result.collect()
@@ -64,17 +65,16 @@ class TestPandasAPICompat:
         mock_df = self.mock_spark.createDataFrame(self.test_data)
 
         def normalize(pdf):
-            mean = pdf['value'].mean()
-            std = pdf['value'].std()
+            mean = pdf["value"].mean()
+            std = pdf["value"].std()
             if std > 0:
-                pdf['normalized'] = (pdf['value'] - mean) / std
+                pdf["normalized"] = (pdf["value"] - mean) / std
             else:
-                pdf['normalized'] = 0.0
+                pdf["normalized"] = 0.0
             return pdf
 
         result = mock_df.groupBy("category").applyInPandas(
-            normalize,
-            schema="category string, value double, normalized double"
+            normalize, schema="category string, value double, normalized double"
         )
 
         collected = result.collect()
@@ -85,7 +85,7 @@ class TestPandasAPICompat:
         mock_df = self.mock_spark.createDataFrame(self.test_data)
 
         def add_group_mean(pdf):
-            pdf['group_mean'] = pdf['value'].mean()
+            pdf["group_mean"] = pdf["value"].mean()
             return pdf
 
         result = mock_df.groupBy("category").transform(add_group_mean)
@@ -163,7 +163,7 @@ class TestUnpivotCompat:
             ids=["id", "name"],
             values=["Q1", "Q2", "Q3", "Q4"],
             variableColumnName="quarter",
-            valueColumnName="sales"
+            valueColumnName="sales",
         )
 
         collected = result.collect()
@@ -188,7 +188,7 @@ class TestUnpivotCompat:
             ids="id",
             values=["Q1", "Q2"],
             variableColumnName="quarter",
-            valueColumnName="sales"
+            valueColumnName="sales",
         )
 
         collected = result.collect()
@@ -206,15 +206,21 @@ class TestDefaultColumnsCompat:
 
     def test_default_value_in_schema(self):
         """Test that schema supports default values."""
-        from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+        from mock_spark.spark_types import (
+            MockStructType,
+            MockStructField,
+            StringType,
+            IntegerType,
+        )
 
-        schema = MockStructType([
-            MockStructField("id", IntegerType()),
-            MockStructField("status", StringType(), default_value="active"),
-        ])
+        schema = MockStructType(
+            [
+                MockStructField("id", IntegerType()),
+                MockStructField("status", StringType(), default_value="active"),
+            ]
+        )
 
         # Check that default_value is stored
         status_field = schema.fields[1]
         assert status_field.default_value == "active"
         assert status_field.name == "status"
-

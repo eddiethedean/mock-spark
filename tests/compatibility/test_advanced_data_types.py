@@ -10,7 +10,9 @@ from tests.compatibility.utils.comparison import assert_dataframes_equal
 class TestComplexDataTypes:
     """Test complex data type support."""
 
-    def test_array_type_creation(self, mock_complex_dataframe, pyspark_complex_dataframe):
+    def test_array_type_creation(
+        self, mock_complex_dataframe, pyspark_complex_dataframe
+    ):
         """Test ArrayType data creation and access."""
         try:
             # Test that complex data types are properly created
@@ -25,15 +27,17 @@ class TestComplexDataTypes:
                 f for f in pyspark_schema.fields if "array" in str(f.dataType).lower()
             ]
 
-            assert len(mock_array_fields) == len(
-                pyspark_array_fields
-            ), "Array type field count mismatch"
+            assert len(mock_array_fields) == len(pyspark_array_fields), (
+                "Array type field count mismatch"
+            )
 
             # Test data access
             mock_data = mock_complex_dataframe.collect()
             pyspark_data = pyspark_complex_dataframe.collect()
 
-            assert len(mock_data) == len(pyspark_data), "Complex data row count mismatch"
+            assert len(mock_data) == len(pyspark_data), (
+                "Complex data row count mismatch"
+            )
 
         except Exception as e:
             # Complex data types should now be implemented
@@ -47,18 +51,24 @@ class TestComplexDataTypes:
             pyspark_schema = pyspark_complex_dataframe.schema
 
             # Check that map fields exist in both schemas
-            mock_map_fields = [f for f in mock_schema.fields if "map" in str(f.dataType).lower()]
+            mock_map_fields = [
+                f for f in mock_schema.fields if "map" in str(f.dataType).lower()
+            ]
             pyspark_map_fields = [
                 f for f in pyspark_schema.fields if "map" in str(f.dataType).lower()
             ]
 
-            assert len(mock_map_fields) == len(pyspark_map_fields), "Map type field count mismatch"
+            assert len(mock_map_fields) == len(pyspark_map_fields), (
+                "Map type field count mismatch"
+            )
 
         except Exception as e:
             # Complex data types should now be implemented
             raise AssertionError(f"Complex data types should be implemented: {e}")
 
-    def test_struct_type_creation(self, mock_complex_dataframe, pyspark_complex_dataframe):
+    def test_struct_type_creation(
+        self, mock_complex_dataframe, pyspark_complex_dataframe
+    ):
         """Test StructType nested data creation and access."""
         try:
             # Test that struct fields exist
@@ -73,9 +83,9 @@ class TestComplexDataTypes:
                 f for f in pyspark_schema.fields if "struct" in str(f.dataType).lower()
             ]
 
-            assert len(mock_struct_fields) == len(
-                pyspark_struct_fields
-            ), "Struct type field count mismatch"
+            assert len(mock_struct_fields) == len(pyspark_struct_fields), (
+                "Struct type field count mismatch"
+            )
 
         except Exception as e:
             # Complex data types should now be implemented
@@ -140,7 +150,9 @@ class TestAdvancedSQLFunctions:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.isnull(pyspark_functions.col("name")).alias("is_null_name"),
+                pyspark_functions.isnull(pyspark_functions.col("name")).alias(
+                    "is_null_name"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -154,11 +166,15 @@ class TestAdvancedSQLFunctions:
         try:
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
-                mock_functions.isnan(mock_functions.col("salary")).alias("is_nan_salary"),
+                mock_functions.isnan(mock_functions.col("salary")).alias(
+                    "is_nan_salary"
+                ),
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.isnan(pyspark_functions.col("salary")).alias("is_nan_salary"),
+                pyspark_functions.isnan(pyspark_functions.col("salary")).alias(
+                    "is_nan_salary"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -224,7 +240,9 @@ class TestStringAdvancedFunctions:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.trim(pyspark_functions.col("name")).alias("trimmed_name"),
+                pyspark_functions.trim(pyspark_functions.col("name")).alias(
+                    "trimmed_name"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -238,15 +256,15 @@ class TestStringAdvancedFunctions:
         try:
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
-                mock_functions.regexp_replace(mock_functions.col("name"), "e", "X").alias(
-                    "replaced_name"
-                ),
+                mock_functions.regexp_replace(
+                    mock_functions.col("name"), "e", "X"
+                ).alias("replaced_name"),
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.regexp_replace(pyspark_functions.col("name"), "e", "X").alias(
-                    "replaced_name"
-                ),
+                pyspark_functions.regexp_replace(
+                    pyspark_functions.col("name"), "e", "X"
+                ).alias("replaced_name"),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -260,7 +278,9 @@ class TestStringAdvancedFunctions:
         try:
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
-                mock_functions.split(mock_functions.col("department"), " ").alias("split_dept"),
+                mock_functions.split(mock_functions.col("department"), " ").alias(
+                    "split_dept"
+                ),
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
@@ -284,11 +304,15 @@ class TestMathematicalAdvancedFunctions:
         try:
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
-                mock_functions.ceil(mock_functions.col("salary") / 1000).alias("salary_k"),
+                mock_functions.ceil(mock_functions.col("salary") / 1000).alias(
+                    "salary_k"
+                ),
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.ceil(pyspark_functions.col("salary") / 1000).alias("salary_k"),
+                pyspark_functions.ceil(pyspark_functions.col("salary") / 1000).alias(
+                    "salary_k"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -302,11 +326,15 @@ class TestMathematicalAdvancedFunctions:
         try:
             mock_result = mock_dataframe.select(
                 mock_functions.col("*"),
-                mock_functions.floor(mock_functions.col("salary") / 1000).alias("salary_k"),
+                mock_functions.floor(mock_functions.col("salary") / 1000).alias(
+                    "salary_k"
+                ),
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.floor(pyspark_functions.col("salary") / 1000).alias("salary_k"),
+                pyspark_functions.floor(pyspark_functions.col("salary") / 1000).alias(
+                    "salary_k"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):
@@ -324,7 +352,9 @@ class TestMathematicalAdvancedFunctions:
             )
             pyspark_result = pyspark_dataframe.select(
                 pyspark_functions.col("*"),
-                pyspark_functions.sqrt(pyspark_functions.col("salary")).alias("sqrt_salary"),
+                pyspark_functions.sqrt(pyspark_functions.col("salary")).alias(
+                    "sqrt_salary"
+                ),
             )
             assert_dataframes_equal(mock_result, pyspark_result)
         except (AttributeError, NotImplementedError):

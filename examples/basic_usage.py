@@ -12,7 +12,7 @@ from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
 
 
-def main():
+def main() -> None:
     """Demonstrate basic Mock Spark usage."""
     print("🚀 Mock Spark - Basic Usage Example")
     print("=" * 60)
@@ -74,7 +74,9 @@ def main():
     # 6. Window Functions
     print("\n6️⃣  Window Functions...")
     window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
-    ranked = df.select("name", "dept", "salary", F.row_number().over(window_spec).alias("rank"))
+    ranked = df.select(
+        "name", "dept", "salary", F.row_number().over(window_spec).alias("rank")
+    )
     print("   ✓ Salary rankings by department:")
     ranked.show()
 
@@ -95,7 +97,9 @@ def main():
     print("\n8️⃣  SQL Queries...")
     df.createOrReplaceTempView("employees")
     # Simple SQL query
-    sql_result = spark.sql("SELECT name, dept, salary FROM employees WHERE salary > 80000")
+    sql_result = spark.sql(
+        "SELECT name, dept, salary FROM employees WHERE salary > 80000"
+    )
     print("   ✓ SQL query result (salary > 80k):")
     sql_result.show()
 
@@ -103,7 +107,9 @@ def main():
     print("\n9️⃣  Lazy Evaluation...")
     # Transformations are queued (not executed)
     lazy_result = (
-        df.filter(F.col("salary") > 70000).select("name", "salary").orderBy(F.desc("salary"))
+        df.filter(F.col("salary") > 70000)
+        .select("name", "salary")
+        .orderBy(F.desc("salary"))
     )
     print("   ✓ Transformations queued (not executed yet)")
 

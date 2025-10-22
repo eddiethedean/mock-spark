@@ -37,7 +37,9 @@ class TestDeltaAPICompatibility:
         assert hasattr(PySparkDeltaTable, "forPath")
         assert hasattr(MockDeltaTable, "forPath")
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore - use file-based Delta in standalone tests")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore - use file-based Delta in standalone tests"
+    )
     def test_delta_instance_methods_exist(self, pyspark_env):
         """Test that Delta table instances have the same API methods."""
         # Create a real Delta table for PySpark
@@ -51,13 +53,23 @@ class TestDeltaAPICompatibility:
         mock_dt = MockDeltaTable(mock_spark, "mock.test")
 
         # Verify both have same instance methods
-        for method in ["toDF", "delete", "update", "merge", "vacuum", "history", "alias"]:
+        for method in [
+            "toDF",
+            "delete",
+            "update",
+            "merge",
+            "vacuum",
+            "history",
+            "alias",
+        ]:
             assert hasattr(pyspark_dt, method), f"PySpark missing {method}"
             assert hasattr(mock_dt, method), f"Mock missing {method}"
 
         mock_spark.stop()
 
-    @pytest.mark.skip(reason="saveAsTable() requires Hive metastore - use file-based Delta in standalone tests")
+    @pytest.mark.skip(
+        reason="saveAsTable() requires Hive metastore - use file-based Delta in standalone tests"
+    )
     def test_delta_todf_returns_dataframe(self, pyspark_env):
         """Test that toDF() returns DataFrame in both."""
         data = [{"id": 1}]
@@ -134,7 +146,8 @@ def pyspark_env():
         .config("spark.jars.packages", "io.delta:delta-core_2.12:2.0.2")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
-            "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
         .config("spark.ui.enabled", "false")
         .config("spark.sql.warehouse.dir", warehouse_dir)

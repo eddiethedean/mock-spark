@@ -6,6 +6,7 @@ import random
 from datetime import datetime, timedelta
 import time
 
+
 def test_quickstart():
     """Test quickstart notebook code."""
     print("Testing Quickstart Tutorial...")
@@ -16,11 +17,41 @@ def test_quickstart():
 
     # Step 2: Create DataFrame
     data = [
-        {"order_id": 1, "customer": "Alice", "product": "Laptop", "quantity": 1, "price": 1200},
-        {"order_id": 2, "customer": "Bob", "product": "Mouse", "quantity": 2, "price": 25},
-        {"order_id": 3, "customer": "Alice", "product": "Keyboard", "quantity": 1, "price": 100},
-        {"order_id": 4, "customer": "Charlie", "product": "Monitor", "quantity": 2, "price": 300},
-        {"order_id": 5, "customer": "Bob", "product": "Laptop", "quantity": 1, "price": 1200},
+        {
+            "order_id": 1,
+            "customer": "Alice",
+            "product": "Laptop",
+            "quantity": 1,
+            "price": 1200,
+        },
+        {
+            "order_id": 2,
+            "customer": "Bob",
+            "product": "Mouse",
+            "quantity": 2,
+            "price": 25,
+        },
+        {
+            "order_id": 3,
+            "customer": "Alice",
+            "product": "Keyboard",
+            "quantity": 1,
+            "price": 100,
+        },
+        {
+            "order_id": 4,
+            "customer": "Charlie",
+            "product": "Monitor",
+            "quantity": 2,
+            "price": 300,
+        },
+        {
+            "order_id": 5,
+            "customer": "Bob",
+            "product": "Laptop",
+            "quantity": 1,
+            "price": 1200,
+        },
     ]
     df = spark.createDataFrame(data)
     assert df.count() == 5
@@ -35,10 +66,14 @@ def test_quickstart():
     print(f"✅ Filter works: {high_value_orders.count()} high-value orders")
 
     # Step 4: Aggregations
-    customer_revenue = df_with_total.groupBy("customer").agg(
-        F.sum("total").alias("total_revenue"),
-        F.count("order_id").alias("order_count")
-    ).orderBy(F.desc("total_revenue"))
+    customer_revenue = (
+        df_with_total.groupBy("customer")
+        .agg(
+            F.sum("total").alias("total_revenue"),
+            F.count("order_id").alias("order_count"),
+        )
+        .orderBy(F.desc("total_revenue"))
+    )
     assert customer_revenue.count() == 3
     print(f"✅ Aggregations work: {customer_revenue.count()} customers")
 
@@ -71,7 +106,9 @@ def test_quickstart():
             "product": random.choice(products),
             "quantity": random.randint(1, 5),
             "price": random.randint(10, 1500),
-            "order_date": (start_date + timedelta(days=random.randint(0, 90))).strftime("%Y-%m-%d")
+            "order_date": (start_date + timedelta(days=random.randint(0, 90))).strftime(
+                "%Y-%m-%d"
+            ),
         }
         for i in range(100)
     ]
@@ -82,8 +119,7 @@ def test_quickstart():
     # Performance test
     start_time = time.time()
     result = (
-        large_df
-        .withColumn("total", F.col("quantity") * F.col("price"))
+        large_df.withColumn("total", F.col("quantity") * F.col("price"))
         .filter(F.col("total") > 100)
         .groupBy("customer", "product")
         .agg(F.sum("total").alias("revenue"))
@@ -108,7 +144,13 @@ def test_dataframe_operations():
         {"emp_id": 1, "name": "Alice", "dept_id": 10, "salary": 80000, "city": "NYC"},
         {"emp_id": 2, "name": "Bob", "dept_id": 20, "salary": 75000, "city": "LA"},
         {"emp_id": 3, "name": "Charlie", "dept_id": 10, "salary": 90000, "city": "NYC"},
-        {"emp_id": 4, "name": "Diana", "dept_id": 30, "salary": 85000, "city": "Chicago"},
+        {
+            "emp_id": 4,
+            "name": "Diana",
+            "dept_id": 30,
+            "salary": 85000,
+            "city": "Chicago",
+        },
         {"emp_id": 5, "name": "Eve", "dept_id": 20, "salary": 95000, "city": "LA"},
     ]
 
@@ -174,6 +216,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         exit(1)
-

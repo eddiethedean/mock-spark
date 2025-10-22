@@ -8,7 +8,7 @@ Current Status: 535 tests passing (100% pass rate) | Production Ready | Version 
 from mock_spark import MockSparkSession, F
 
 
-def main():
+def main() -> None:
     """Demonstrate Mock Spark functionality."""
     print("🚀 Mock Spark Example Usage")
     print("=" * 40)

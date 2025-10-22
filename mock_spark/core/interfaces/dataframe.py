@@ -103,7 +103,9 @@ class IDataFrame(ABC):
         pass
 
     @abstractmethod
-    def unionByName(self, other: "IDataFrame", allowMissingColumns: bool = False) -> "IDataFrame":
+    def unionByName(
+        self, other: "IDataFrame", allowMissingColumns: bool = False
+    ) -> "IDataFrame":
         """Union by column names."""
         pass
 

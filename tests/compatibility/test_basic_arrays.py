@@ -10,13 +10,19 @@ import pytest
 try:
     from pyspark.sql import SparkSession  # noqa: F401
     from pyspark.sql import functions as PySparkF  # noqa: F401
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
 
 from mock_spark import MockSparkSession
 from mock_spark import functions as F
-from mock_spark.spark_types import MockStructType, MockStructField, ArrayType, IntegerType
+from mock_spark.spark_types import (
+    MockStructType,
+    MockStructField,
+    ArrayType,
+    IntegerType,
+)
 
 
 @pytest.mark.fast
@@ -30,9 +36,7 @@ class TestBasicArrayFunctionsUnit:
         schema = MockStructType([MockStructField("nums", ArrayType(IntegerType()))])
         df = spark.createDataFrame(data, schema)
 
-        result = df.select(
-            F.array_compact(F.col("nums")).alias("compact")
-        ).collect()
+        result = df.select(F.array_compact(F.col("nums")).alias("compact")).collect()
 
         assert result[0]["compact"] == [1, 2, 3]
 
@@ -43,9 +47,7 @@ class TestBasicArrayFunctionsUnit:
         schema = MockStructType([MockStructField("nums", ArrayType(IntegerType()))])
         df = spark.createDataFrame(data, schema)
 
-        result = df.select(
-            F.slice(F.col("nums"), 2, 3).alias("sliced")
-        ).collect()
+        result = df.select(F.slice(F.col("nums"), 2, 3).alias("sliced")).collect()
 
         assert result[0]["sliced"] == [2, 3, 4]
 
@@ -58,7 +60,7 @@ class TestBasicArrayFunctionsUnit:
 
         result = df.select(
             F.element_at(F.col("nums"), 1).alias("first"),
-            F.element_at(F.col("nums"), -1).alias("last")
+            F.element_at(F.col("nums"), -1).alias("last"),
         ).collect()
 
         assert result[0]["first"] == 10
@@ -71,9 +73,7 @@ class TestBasicArrayFunctionsUnit:
         schema = MockStructType([MockStructField("nums", ArrayType(IntegerType()))])
         df = spark.createDataFrame(data, schema)
 
-        result = df.select(
-            F.array_append(F.col("nums"), 4).alias("appended")
-        ).collect()
+        result = df.select(F.array_append(F.col("nums"), 4).alias("appended")).collect()
 
         assert result[0]["appended"] == [1, 2, 3, 4]
 
@@ -110,9 +110,7 @@ class TestBasicArrayFunctionsUnit:
         schema = MockStructType([MockStructField("nums", ArrayType(IntegerType()))])
         df = spark.createDataFrame(data, schema)
 
-        result = df.select(
-            F.array_size(F.col("nums")).alias("size")
-        ).collect()
+        result = df.select(F.array_size(F.col("nums")).alias("size")).collect()
 
         assert result[0]["size"] == 5
 
@@ -123,23 +121,20 @@ class TestBasicArrayFunctionsUnit:
         schema = MockStructType([MockStructField("nums", ArrayType(IntegerType()))])
         df = spark.createDataFrame(data, schema)
 
-        result = df.select(
-            F.array_sort(F.col("nums")).alias("sorted")
-        ).collect()
+        result = df.select(F.array_sort(F.col("nums")).alias("sorted")).collect()
 
         assert result[0]["sorted"] == [1, 1, 2, 3, 4, 5, 6, 9]
 
     def test_arrays_overlap(self):
         """Test arrays_overlap checks for common elements."""
         spark = MockSparkSession("test")
-        data = [
-            {"a": [1, 2, 3], "b": [3, 4, 5]},
-            {"a": [1, 2, 3], "b": [4, 5, 6]}
-        ]
-        schema = MockStructType([
-            MockStructField("a", ArrayType(IntegerType())),
-            MockStructField("b", ArrayType(IntegerType()))
-        ])
+        data = [{"a": [1, 2, 3], "b": [3, 4, 5]}, {"a": [1, 2, 3], "b": [4, 5, 6]}]
+        schema = MockStructType(
+            [
+                MockStructField("a", ArrayType(IntegerType())),
+                MockStructField("b", ArrayType(IntegerType())),
+            ]
+        )
         df = spark.createDataFrame(data, schema)
 
         result = df.select(
@@ -148,4 +143,3 @@ class TestBasicArrayFunctionsUnit:
 
         assert result[0]["overlap"] is True  # Has 3 in common
         assert result[1]["overlap"] is False  # No common elements
-

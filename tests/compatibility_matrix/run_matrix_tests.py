@@ -18,6 +18,7 @@ from typing import List, Optional, Tuple
 @dataclass
 class TestResult:
     """Result of a single compatibility test."""
+
     python_version: str
     pyspark_version: str
     java_version: str
@@ -40,10 +41,10 @@ class CompatibilityTester:
         Returns list of (version, java_version) tuples.
         """
         return [
-            ("3.2.4", "11"),   # Latest 3.2.x
-            ("3.3.4", "11"),   # Latest 3.3.x
-            ("3.4.3", "11"),   # Latest 3.4.x
-            ("3.5.1", "17"),   # Latest 3.5.x (requires Java 17)
+            ("3.2.4", "11"),  # Latest 3.2.x
+            ("3.3.4", "11"),  # Latest 3.3.x
+            ("3.4.3", "11"),  # Latest 3.4.x
+            ("3.5.1", "17"),  # Latest 3.5.x (requires Java 17)
             # ("4.0.0", "17"), # PySpark 4.0 if available (commented out for now)
         ]
 
@@ -83,18 +84,28 @@ class CompatibilityTester:
         """Build Docker image for specific version combination."""
         image_name = f"mock-spark-test:py{python_version}-spark{pyspark_version}"
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Building image: {image_name}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         cmd = [
             "docker",
             "build",
-            "--build-arg", f"PYTHON_VERSION={python_version}",
-            "--build-arg", f"PYSPARK_VERSION={pyspark_version}",
-            "--build-arg", f"JAVA_VERSION={java_version}",
-            "-f", str(self.project_root / "tests" / "compatibility_matrix" / "Dockerfile.template"),
-            "-t", image_name,
+            "--build-arg",
+            f"PYTHON_VERSION={python_version}",
+            "--build-arg",
+            f"PYSPARK_VERSION={pyspark_version}",
+            "--build-arg",
+            f"JAVA_VERSION={java_version}",
+            "-f",
+            str(
+                self.project_root
+                / "tests"
+                / "compatibility_matrix"
+                / "Dockerfile.template"
+            ),
+            "-t",
+            image_name,
             str(self.project_root),
         ]
 
@@ -118,9 +129,9 @@ class CompatibilityTester:
         """Run tests in Docker container."""
         image_name = f"mock-spark-test:py{python_version}-spark{pyspark_version}"
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Running tests: Python {python_version} + PySpark {pyspark_version}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         start_time = time.time()
 
@@ -128,7 +139,8 @@ class CompatibilityTester:
             "docker",
             "run",
             "--rm",
-            "--name", f"mock-spark-test-{python_version}-{pyspark_version}".replace(".", "-"),
+            "--name",
+            f"mock-spark-test-{python_version}-{pyspark_version}".replace(".", "-"),
             image_name,
         ]
 
@@ -192,18 +204,22 @@ class CompatibilityTester:
         total_combinations = len(combinations)
         current = 0
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("Mock-Spark Compatibility Matrix Test (Working Combinations Only)")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"Testing {total_combinations} working combinations")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
         for python_version, pyspark_version, java_version in combinations:
             current += 1
-            print(f"\n[{current}/{total_combinations}] Testing Python {python_version} + PySpark {pyspark_version}")
+            print(
+                f"\n[{current}/{total_combinations}] Testing Python {python_version} + PySpark {pyspark_version}"
+            )
 
             # Build image
-            if not self.build_docker_image(python_version, pyspark_version, java_version):
+            if not self.build_docker_image(
+                python_version, pyspark_version, java_version
+            ):
                 result = TestResult(
                     python_version=python_version,
                     pyspark_version=pyspark_version,
@@ -233,7 +249,7 @@ class CompatibilityTester:
         lines.append("# Mock-Spark Compatibility Matrix")
         lines.append("")
         lines.append(f"**Generated:** {timestamp}  ")
-        lines.append(f"**Total test time:** {total_time/60:.1f} minutes  ")
+        lines.append(f"**Total test time:** {total_time / 60:.1f} minutes  ")
         lines.append("")
         lines.append("## Summary")
         lines.append("")
@@ -248,15 +264,23 @@ class CompatibilityTester:
         # Matrix table
         lines.append("## Compatibility Matrix")
         lines.append("")
-        lines.append("| Python | " + " | ".join(f"PySpark {v}" for v in pyspark_versions) + " |")
-        lines.append("|--------|" + "|".join(["---------" for _ in pyspark_versions]) + "|")
+        lines.append(
+            "| Python | " + " | ".join(f"PySpark {v}" for v in pyspark_versions) + " |"
+        )
+        lines.append(
+            "|--------|" + "|".join(["---------" for _ in pyspark_versions]) + "|"
+        )
 
         for py_ver in python_versions:
             row = [f"**{py_ver}**"]
             for spark_ver in pyspark_versions:
                 result = next(
-                    (r for r in self.results if r.python_version == py_ver and r.pyspark_version == spark_ver),
-                    None
+                    (
+                        r
+                        for r in self.results
+                        if r.python_version == py_ver and r.pyspark_version == spark_ver
+                    ),
+                    None,
                 )
                 if result:
                     if result.success:
@@ -271,9 +295,13 @@ class CompatibilityTester:
         lines.append("## Detailed Results")
         lines.append("")
 
-        for result in sorted(self.results, key=lambda r: (r.python_version, r.pyspark_version)):
+        for result in sorted(
+            self.results, key=lambda r: (r.python_version, r.pyspark_version)
+        ):
             status = "✓ PASS" if result.success else "✗ FAIL"
-            lines.append(f"### Python {result.python_version} + PySpark {result.pyspark_version} (Java {result.java_version})")
+            lines.append(
+                f"### Python {result.python_version} + PySpark {result.pyspark_version} (Java {result.java_version})"
+            )
             lines.append(f"**Status:** {status}  ")
             lines.append(f"**Duration:** {result.duration:.2f}s  ")
 
@@ -290,9 +318,9 @@ class CompatibilityTester:
         """Save compatibility report to file."""
         report = self.generate_report()
         output_path.write_text(report)
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Compatibility report saved to: {output_path}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
 
 def main():
@@ -309,6 +337,7 @@ def main():
     except Exception as e:
         print(f"\n\nUnexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
@@ -319,13 +348,14 @@ def main():
     # Print summary
     passed = sum(1 for r in tester.results if r.success)
     failed = len(tester.results) - passed
-    print(f"\n{'='*70}")
-    print(f"Test Summary: {passed} passed, {failed} failed out of {len(tester.results)} combinations")
-    print(f"{'='*70}\n")
+    print(f"\n{'=' * 70}")
+    print(
+        f"Test Summary: {passed} passed, {failed} failed out of {len(tester.results)} combinations"
+    )
+    print(f"{'=' * 70}\n")
 
     sys.exit(0 if failed == 0 else 1)
 
 
 if __name__ == "__main__":
     main()
-

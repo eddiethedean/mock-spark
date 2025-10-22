@@ -231,7 +231,9 @@ class TestColumnFunctions:
         """Test column aliasing."""
         df = spark.createDataFrame(sample_data)
 
-        result = df.select(F.col("name").alias("employee_name"), F.col("age").alias("employee_age"))
+        result = df.select(
+            F.col("name").alias("employee_name"), F.col("age").alias("employee_age")
+        )
         assert result.count() == 4
 
         # Check that the data contains the aliased columns
@@ -270,7 +272,9 @@ class TestColumnFunctions:
         df = spark.createDataFrame(data_with_nulls)
 
         result = df.select(
-            F.coalesce(F.col("name"), F.col("nickname"), F.col("display_name")).alias("final_name")
+            F.coalesce(F.col("name"), F.col("nickname"), F.col("display_name")).alias(
+                "final_name"
+            )
         )
         assert result.count() == 3
         assert "final_name" in result.columns

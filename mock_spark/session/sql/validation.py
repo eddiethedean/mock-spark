@@ -179,7 +179,9 @@ class MockSQLValidator:
         # Check for reserved keyword usage
         tokens = self._tokenize(query)
         for token in tokens:
-            if token.upper() in self._reserved_keywords and not self._is_quoted(token, query):
+            if token.upper() in self._reserved_keywords and not self._is_quoted(
+                token, query
+            ):
                 # This is a basic check - in real implementation would be more sophisticated
                 pass
 
@@ -291,7 +293,9 @@ class MockSQLValidator:
         # Simple check - in real implementation would be more sophisticated
         return f"'{token}'" in query or f'"{token}"' in query
 
-    def validate_schema(self, query: str, schema_info: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate_schema(
+        self, query: str, schema_info: Dict[str, Any]
+    ) -> Tuple[bool, List[str]]:
         """Validate query against schema information.
 
         Args:

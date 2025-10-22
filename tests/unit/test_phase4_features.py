@@ -76,13 +76,20 @@ def create_dataframe_from_schema_string(session, schema_string, row_count=10):
 
 def test_dataframe_test_helpers():
     from mock_spark import MockSparkSession
-    from mock_spark.spark_types import MockStructType, MockStructField, LongType, StringType
+    from mock_spark.spark_types import (
+        MockStructType,
+        MockStructField,
+        LongType,
+        StringType,
+    )
 
     spark = MockSparkSession()
     schema = MockStructType(
         [MockStructField("id", LongType()), MockStructField("name", StringType())]
     )
-    df = spark.createDataFrame([{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], schema)
+    df = spark.createDataFrame(
+        [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], schema
+    )
 
     # Helpers should not raise
     df.assert_has_columns(["id", "name"])
@@ -116,7 +123,11 @@ def test_plugin_hooks_modify_data():
                     schema = schema + ["added"]
             else:
                 try:
-                    from mock_spark.spark_types import MockStructField, LongType, MockStructType
+                    from mock_spark.spark_types import (
+                        MockStructField,
+                        LongType,
+                        MockStructType,
+                    )
 
                     if isinstance(schema, MockStructType):
                         names = [f.name for f in schema.fields]

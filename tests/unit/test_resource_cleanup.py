@@ -9,7 +9,11 @@ import pytest
 import gc
 import weakref
 from mock_spark import MockSparkSession
-from mock_spark.backend.duckdb import DuckDBStorageManager, DuckDBMaterializer, SQLAlchemyMaterializer
+from mock_spark.backend.duckdb import (
+    DuckDBStorageManager,
+    DuckDBMaterializer,
+    SQLAlchemyMaterializer,
+)
 
 
 class TestSessionCleanup:
@@ -28,7 +32,9 @@ class TestSessionCleanup:
         session.stop()
 
         # Verify storage connection is closed
-        assert storage.connection is None, "Storage connection should be None after stop()"
+        assert storage.connection is None, (
+            "Storage connection should be None after stop()"
+        )
 
     def test_multiple_sessions_isolated(self):
         """Test that multiple sessions don't interfere with each other."""
@@ -117,7 +123,10 @@ class TestDuckDBStorageManagerCleanup:
             )
 
             schema = MockStructType(
-                [MockStructField("id", IntegerType()), MockStructField("name", StringType())]
+                [
+                    MockStructField("id", IntegerType()),
+                    MockStructField("name", StringType()),
+                ]
             )
             storage.create_table("default", "test_table", schema)
             storage.insert_data("default", "test_table", [{"id": 1, "name": "test"}])
@@ -151,7 +160,9 @@ class TestDuckDBStorageManagerCleanup:
                 "SELECT current_setting('temp_directory')"
             ).fetchone()
             # If we get here, the setting exists and should be empty
-            assert result[0] == "", "temp_directory should be empty to prevent disk spillover"
+            assert result[0] == "", (
+                "temp_directory should be empty to prevent disk spillover"
+            )
         except:  # noqa: E722
             # Setting might not be available in all DuckDB versions, that's okay
             pass
@@ -443,8 +454,12 @@ class TestConfigurableMemoryAndSpillover:
         """Test that allowing spillover creates unique temp directories."""
         import os
 
-        session1 = MockSparkSession("test_spillover_1", max_memory="1GB", allow_disk_spillover=True)
-        session2 = MockSparkSession("test_spillover_2", max_memory="1GB", allow_disk_spillover=True)
+        session1 = MockSparkSession(
+            "test_spillover_1", max_memory="1GB", allow_disk_spillover=True
+        )
+        session2 = MockSparkSession(
+            "test_spillover_2", max_memory="1GB", allow_disk_spillover=True
+        )
 
         # Get temp directories
         temp_dir1 = session1.storage._temp_dir
@@ -471,8 +486,12 @@ class TestConfigurableMemoryAndSpillover:
 
     def test_spillover_sessions_isolated(self):
         """Test that sessions with spillover enabled remain isolated."""
-        session1 = MockSparkSession("test_iso_1", max_memory="1GB", allow_disk_spillover=True)
-        session2 = MockSparkSession("test_iso_2", max_memory="1GB", allow_disk_spillover=True)
+        session1 = MockSparkSession(
+            "test_iso_1", max_memory="1GB", allow_disk_spillover=True
+        )
+        session2 = MockSparkSession(
+            "test_iso_2", max_memory="1GB", allow_disk_spillover=True
+        )
 
         # Create data in both sessions
         data1 = [{"id": 1, "name": "session1"}]

@@ -61,17 +61,17 @@ class MockLiteral(IColumn):
         elif isinstance(value, bool):
             from ...spark_types import BooleanType
 
-            return BooleanType()
+            return BooleanType(nullable=False)
         elif isinstance(value, int):
             from ...spark_types import IntegerType
 
-            return IntegerType()
+            return IntegerType(nullable=False)
         elif isinstance(value, float):
             from ...spark_types import DoubleType
 
-            return DoubleType()
+            return DoubleType(nullable=False)
         elif isinstance(value, str):
-            return StringType()
+            return StringType(nullable=False)
         elif isinstance(value, list):
             from ...spark_types import ArrayType
 

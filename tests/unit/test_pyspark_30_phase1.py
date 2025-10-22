@@ -26,7 +26,9 @@ class TestArrayFunctions30:
         data = [{"tags": ["a", "b", "c"]}, {"tags": ["d", "e"]}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.array_contains(F.col("tags"), "b").alias("has_b")).collect()
+        result = df.select(
+            F.array_contains(F.col("tags"), "b").alias("has_b")
+        ).collect()
         assert result[0]["has_b"] is True
         assert result[1]["has_b"] is False
 
@@ -48,7 +50,9 @@ class TestArrayFunctions30:
         assert result[0]["min_val"] == 1
         assert result[1]["min_val"] == 2
 
-    @pytest.mark.skip(reason="explode requires special DataFrame restructuring - deferred")
+    @pytest.mark.skip(
+        reason="explode requires special DataFrame restructuring - deferred"
+    )
     def test_explode(self):
         """Test explode function."""
         data = [{"tags": ["a", "b"]}, {"tags": ["c"]}]
@@ -69,7 +73,9 @@ class TestArrayFunctions30:
         assert result[0]["count"] == 3
         assert result[1]["count"] == 1
 
-    @pytest.mark.skip(reason="flatten implementation needs aggregation context - deferred")
+    @pytest.mark.skip(
+        reason="flatten implementation needs aggregation context - deferred"
+    )
     def test_flatten(self):
         """Test flatten function."""
         data = [{"nested": [[1, 2], [3, 4]]}, {"nested": [[5]]}]
@@ -100,7 +106,9 @@ class TestStringFunctions30:
         data = [{"first": "John", "last": "Doe"}, {"first": "Jane", "last": "Smith"}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.concat_ws(" ", F.col("first"), F.col("last")).alias("fullname")).collect()
+        result = df.select(
+            F.concat_ws(" ", F.col("first"), F.col("last")).alias("fullname")
+        ).collect()
         assert result[0]["fullname"] == "John Doe"
         assert result[1]["fullname"] == "Jane Smith"
 
@@ -109,29 +117,42 @@ class TestStringFunctions30:
         data = [{"email": "user@example.com"}, {"email": "admin@test.org"}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.regexp_extract(F.col("email"), r"(.+)@(.+)", 1).alias("username")).collect()
+        result = df.select(
+            F.regexp_extract(F.col("email"), r"(.+)@(.+)", 1).alias("username")
+        ).collect()
         assert result[0]["username"] == "user"
         assert result[1]["username"] == "admin"
 
-    @pytest.mark.skip(reason="substring_index array slice/join needs refinement - deferred")
+    @pytest.mark.skip(
+        reason="substring_index array slice/join needs refinement - deferred"
+    )
     def test_substring_index(self):
         """Test substring_index function."""
         data = [{"path": "/home/user/docs"}, {"path": "/var/log/app"}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.substring_index(F.col("path"), "/", 2).alias("prefix")).collect()
+        result = df.select(
+            F.substring_index(F.col("path"), "/", 2).alias("prefix")
+        ).collect()
         assert result[0]["prefix"] == "/home"
         assert result[1]["prefix"] == "/var"
 
-    @pytest.mark.skip(reason="format_number formatting needs precise DuckDB implementation - deferred")
+    @pytest.mark.skip(
+        reason="format_number formatting needs precise DuckDB implementation - deferred"
+    )
     def test_format_number(self):
         """Test format_number function."""
         data = [{"amount": 1234567.89}, {"amount": 98765.4}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.format_number(F.col("amount"), 2).alias("formatted")).collect()
+        result = df.select(
+            F.format_number(F.col("amount"), 2).alias("formatted")
+        ).collect()
         # format_number adds thousands separator
-        assert "1,234,567.89" in result[0]["formatted"] or result[0]["formatted"] == "1234567.89"
+        assert (
+            "1,234,567.89" in result[0]["formatted"]
+            or result[0]["formatted"] == "1234567.89"
+        )
 
     def test_instr(self):
         """Test instr function."""
@@ -149,7 +170,9 @@ class TestStringFunctions30:
 
         result = df.select(F.locate("o", F.col("text")).alias("pos")).collect()
         assert result[0]["pos"] == 5  # First 'o' in "hello"
-        assert result[1]["pos"] == 0  # No 'o' in "apache spark" ... wait, there's no 'o'? Let me fix
+        assert (
+            result[1]["pos"] == 0
+        )  # No 'o' in "apache spark" ... wait, there's no 'o'? Let me fix
 
     def test_lpad(self):
         """Test lpad function."""
@@ -174,7 +197,9 @@ class TestStringFunctions30:
         data = [{"word1": "kitten", "word2": "sitting"}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.levenshtein(F.col("word1"), F.col("word2")).alias("distance")).collect()
+        result = df.select(
+            F.levenshtein(F.col("word1"), F.col("word2")).alias("distance")
+        ).collect()
         assert result[0]["distance"] == 3  # kitten -> sitting requires 3 edits
 
 
@@ -284,7 +309,9 @@ class TestMathFunctions30:
         assert isinstance(result[0]["random"], (int, float))
         assert 0.0 <= result[0]["random"] <= 1.0
 
-    @pytest.mark.skip(reason="randn needs proper normal distribution implementation - deferred")
+    @pytest.mark.skip(
+        reason="randn needs proper normal distribution implementation - deferred"
+    )
     def test_randn(self):
         """Test randn (normal distribution random) function."""
         df = self.spark.createDataFrame([{"id": 1}, {"id": 2}])
@@ -323,17 +350,23 @@ class TestDateTimeFunctions30:
         data = [{"ts": datetime(2024, 3, 15, 14, 30, 45)}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.date_trunc("month", F.col("ts")).alias("truncated")).collect()
+        result = df.select(
+            F.date_trunc("month", F.col("ts")).alias("truncated")
+        ).collect()
         # Should truncate to first of month
         assert str(result[0]["truncated"]).startswith("2024-03-01")
 
-    @pytest.mark.skip(reason="datediff has SQL reserved word conflict - needs column name escaping - deferred")
+    @pytest.mark.skip(
+        reason="datediff has SQL reserved word conflict - needs column name escaping - deferred"
+    )
     def test_datediff(self):
         """Test datediff function."""
         data = [{"start": date(2024, 1, 1), "end": date(2024, 1, 11)}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.datediff(F.col("end"), F.col("start")).alias("days")).collect()
+        result = df.select(
+            F.datediff(F.col("end"), F.col("start")).alias("days")
+        ).collect()
         assert result[0]["days"] == 10
 
     def test_unix_timestamp(self):
@@ -341,7 +374,9 @@ class TestDateTimeFunctions30:
         data = [{"ts_str": "2024-01-01"}]
         df = self.spark.createDataFrame(data)
 
-        result = df.select(F.unix_timestamp(F.col("ts_str"), "yyyy-MM-dd").alias("unix_ts")).collect()
+        result = df.select(
+            F.unix_timestamp(F.col("ts_str"), "yyyy-MM-dd").alias("unix_ts")
+        ).collect()
         # Just check it's a reasonable Unix timestamp (should be > 1700000000 for 2024)
         assert result[0]["unix_ts"] > 1700000000
 
@@ -371,4 +406,3 @@ class TestDateTimeFunctions30:
 
         result = df.select(F.trunc(F.col("date"), "year").alias("truncated")).collect()
         assert str(result[0]["truncated"]) == "2024-01-01"
-

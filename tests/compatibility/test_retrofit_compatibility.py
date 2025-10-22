@@ -1,4 +1,3 @@
-
 from tests.compatibility.utils.comparison import compare_dataframes
 
 
@@ -50,7 +49,9 @@ def test_lazy_materialization_equivalence():
     # Mock lazy pipeline
     mock = MockSparkSession("compat")
     mock_df = mock.createDataFrame(base_data)
-    mock_lazy = mock_df.withLazy(True).filter(F.col("id") > 1).withColumn("greet", F.lit("hi"))
+    mock_lazy = (
+        mock_df.withLazy(True).filter(F.col("id") > 1).withColumn("greet", F.lit("hi"))
+    )
 
     # PySpark eager pipeline
     spark = SparkSession.builder.appName("compat").getOrCreate()
