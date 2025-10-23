@@ -315,9 +315,18 @@ class DuckDBSchema(ISchema):
         return duckdb_table
 
     def table_exists(self, table: str) -> bool:
-        """Check if table exists using SQLAlchemy Inspector."""
-        inspector = inspect(self.engine)
-        return inspector.has_table(table)
+        """Check if table exists using table registry."""
+        # Check if table exists in our registry first
+        if table in self.tables:
+            return True
+        
+        # Fallback to SQLAlchemy inspector for tables created outside our system
+        try:
+            inspector = inspect(self.engine)
+            return inspector.has_table(table, schema=self.name)
+        except Exception:
+            # If schema parameter doesn't work, try without it
+            return inspector.has_table(table)
 
     def drop_table(self, table: str) -> None:
         """Drop a table using SQLAlchemy."""
@@ -407,6 +416,9 @@ class DuckDBStorageManager(IStorageManager):
         self.schemas["default"] = DuckDBSchema(
             "default", self.connection, None, self.engine
         )
+        
+        # Track current schema
+        self._current_schema = "default"
 
         # Enable extensions using DuckDB Python API (zero raw SQL)
         try:
@@ -606,3 +618,85 @@ class DuckDBStorageManager(IStorageManager):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()
+
+    def cleanup_temp_tables(self) -> None:
+        """Clean up temporary tables to free memory."""
+        try:
+            # Drop all temporary tables
+            result = self.connection.execute("SHOW TABLES").fetchall()
+            for table_info in result:
+                table_name = table_info[0]
+                if table_name.startswith('temp_'):
+                    self.connection.execute(f"DROP TABLE IF EXISTS {table_name}")
+        except Exception:
+            pass
+
+    def optimize_storage(self) -> None:
+        """Optimize storage by cleaning up and compacting data."""
+        try:
+            # Analyze tables for better query planning
+            result = self.connection.execute("SHOW TABLES").fetchall()
+            for table_info in result:
+                table_name = table_info[0]
+                self.connection.execute(f"ANALYZE {table_name}")
+        except Exception:
+            pass
+
+    def get_memory_usage(self) -> Dict[str, Any]:
+        """Get current memory usage statistics."""
+        try:
+            import psutil
+            import os
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
+            return {
+                'rss': memory_info.rss,
+                'vms': memory_info.vms,
+                'percent': process.memory_percent(),
+                'available': psutil.virtual_memory().available,
+                'total': psutil.virtual_memory().total
+            }
+        except Exception:
+            return {'rss': 0, 'vms': 0, 'percent': 0, 'available': 0, 'total': 0}
+
+    def force_garbage_collection(self) -> None:
+        """Force garbage collection to free memory."""
+        import gc
+        gc.collect()
+
+    def get_table_sizes(self) -> Dict[str, int]:
+        """Get estimated sizes of all tables."""
+        sizes = {}
+        try:
+            result = self.connection.execute("SHOW TABLES").fetchall()
+            for table_info in result:
+                table_name = table_info[0]
+                # Get row count as size estimate
+                count_result = self.connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                sizes[table_name] = count_result[0] if count_result else 0
+        except Exception:
+            pass
+        return sizes
+
+    def cleanup_old_tables(self, max_age_hours: int = 24) -> int:
+        """Clean up tables older than specified age."""
+        # For in-memory storage, this is not applicable
+        # But we can clean up temporary tables
+        if self.is_in_memory:
+            self.cleanup_temp_tables()
+            return 0
+        
+        # For persistent storage, we could implement age-based cleanup
+        # For now, just clean up temp tables
+        self.cleanup_temp_tables()
+        return 0
+
+    def set_current_schema(self, schema: str) -> None:
+        """Set the current schema."""
+        if schema not in self.schemas:
+            raise ValueError(f"Schema '{schema}' does not exist")
+        self._current_schema = schema
+
+    def get_current_schema(self) -> str:
+        """Get the current schema."""
+        return self._current_schema

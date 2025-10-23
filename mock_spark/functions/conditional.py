@@ -11,6 +11,104 @@ if TYPE_CHECKING:
     from mock_spark.spark_types import MockDataType
 
 
+def validate_rule(column: Union[MockColumn, str], rule: Union[str, List]) -> MockColumn:
+    """Convert validation rule to column expression.
+    
+    Args:
+        column: The column to validate.
+        rule: Validation rule as string or list.
+        
+    Returns:
+        MockColumn expression for the validation rule.
+        
+    Raises:
+        ValueError: If rule is not recognized.
+    """
+    if isinstance(column, str):
+        column = MockColumn(column)
+    
+    if isinstance(rule, str):
+        # String rules
+        if rule == "not_null":
+            return column.isNotNull()
+        elif rule == "positive":
+            return column > 0
+        elif rule == "non_negative":
+            return column >= 0
+        elif rule == "negative":
+            return column < 0
+        elif rule == "non_positive":
+            return column <= 0
+        elif rule == "non_zero":
+            return column != 0
+        elif rule == "zero":
+            return column == 0
+        else:
+            raise ValueError(f"Unknown string validation rule: {rule}")
+    elif isinstance(rule, list):
+        # List rules: ["operator", arg1, arg2, ...]
+        if not rule:
+            raise ValueError("Empty rule list")
+            
+        op = rule[0]
+        if op == "gt":
+            if len(rule) < 2:
+                raise ValueError("gt rule requires a value")
+            return column > rule[1]
+        elif op == "gte":
+            if len(rule) < 2:
+                raise ValueError("gte rule requires a value")
+            return column >= rule[1]
+        elif op == "lt":
+            if len(rule) < 2:
+                raise ValueError("lt rule requires a value")
+            return column < rule[1]
+        elif op == "lte":
+            if len(rule) < 2:
+                raise ValueError("lte rule requires a value")
+            return column <= rule[1]
+        elif op == "eq":
+            if len(rule) < 2:
+                raise ValueError("eq rule requires a value")
+            return column == rule[1]
+        elif op == "ne":
+            if len(rule) < 2:
+                raise ValueError("ne rule requires a value")
+            return column != rule[1]
+        elif op == "between":
+            if len(rule) < 3:
+                raise ValueError("between rule requires two values")
+            return column.between(rule[1], rule[2])
+        elif op == "in":
+            if len(rule) < 2:
+                raise ValueError("in rule requires a list of values")
+            return column.isin(rule[1])
+        elif op == "not_in":
+            if len(rule) < 2:
+                raise ValueError("not_in rule requires a list of values")
+            return ~column.isin(rule[1])
+        elif op == "contains":
+            if len(rule) < 2:
+                raise ValueError("contains rule requires a value")
+            return column.contains(rule[1])
+        elif op == "starts_with":
+            if len(rule) < 2:
+                raise ValueError("starts_with rule requires a value")
+            return column.startswith(rule[1])
+        elif op == "ends_with":
+            if len(rule) < 2:
+                raise ValueError("ends_with rule requires a value")
+            return column.endswith(rule[1])
+        elif op == "regex":
+            if len(rule) < 2:
+                raise ValueError("regex rule requires a pattern")
+            return column.rlike(rule[1])
+        else:
+            raise ValueError(f"Unknown list validation rule: {op}")
+    else:
+        raise ValueError(f"Unknown validation rule type: {type(rule)}")
+
+
 class MockCaseWhen:
     """Represents a CASE WHEN expression.
 

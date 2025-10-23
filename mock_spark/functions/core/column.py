@@ -175,6 +175,18 @@ class MockColumn:
         """Regular expression pattern matching."""
         return MockColumnOperation(self, "rlike", pattern)
 
+    def contains(self, literal: str) -> "MockColumnOperation":
+        """Check if column contains the literal string."""
+        return MockColumnOperation(self, "contains", literal)
+
+    def startswith(self, literal: str) -> "MockColumnOperation":
+        """Check if column starts with the literal string."""
+        return MockColumnOperation(self, "startswith", literal)
+
+    def endswith(self, literal: str) -> "MockColumnOperation":
+        """Check if column ends with the literal string."""
+        return MockColumnOperation(self, "endswith", literal)
+
     def alias(self, name: str) -> "MockColumn":
         """Create an alias for the column."""
         aliased_column = MockColumn(name, self.column_type)
@@ -212,6 +224,14 @@ class MockColumn:
 
         return MockWindowFunction(self, window_spec)
 
+    def count(self) -> "MockColumnOperation":
+        """Count non-null values in this column.
+        
+        Returns:
+            MockColumnOperation representing the count operation.
+        """
+        return MockColumnOperation(self, "count", None)
+
 
 class MockColumnOperation(IColumn):
     """Represents a column operation (comparison, arithmetic, etc.).
@@ -245,12 +265,43 @@ class MockColumnOperation(IColumn):
     @property
     def name(self) -> str:
         """Get column name."""
+        # If there's an alias, use it
+        if hasattr(self, '_alias_name') and self._alias_name:
+            return self._alias_name
+        # For datetime and comparison operations, use the SQL representation
+        if self.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter", "to_date", "to_timestamp", "==", "!=", "<", ">", "<=", ">="]:
+            return str(self)
         return self._name
 
     @name.setter
     def name(self, value: str) -> None:
         """Set column name."""
         self._name = value
+
+    def __str__(self) -> str:
+        """Generate SQL representation of this operation."""
+        # For datetime functions, generate proper SQL
+        if self.operation in ["hour", "minute", "second"]:
+            return f"extract({self.operation} from TRY_CAST({self.column.name} AS TIMESTAMP))"
+        elif self.operation in ["year", "month", "day", "dayofmonth"]:
+            part = "day" if self.operation == "dayofmonth" else self.operation
+            return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
+        elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
+            return f"extract({self.operation} from TRY_CAST({self.column.name} AS DATE))"
+        elif self.operation in ["to_date", "to_timestamp"]:
+            if self.value is not None:
+                return f"STRPTIME({self.column.name}, '{self.value}')"
+            else:
+                target_type = "DATE" if self.operation == "to_date" else "TIMESTAMP"
+                return f"TRY_CAST({self.column.name} AS {target_type})"
+        elif self.operation in ["==", "!=", "<", ">", "<=", ">="]:
+            # For comparison operations, generate proper SQL
+            left = str(self.column) if hasattr(self.column, '__str__') else self.column.name
+            right = str(self.value) if self.value is not None else "NULL"
+            return f"({left} {self.operation} {right})"
+        else:
+            # For other operations, use the generated name
+            return self._generate_name()
 
     def _generate_name(self) -> str:
         """Generate a name for this operation."""
@@ -261,18 +312,21 @@ class MockColumnOperation(IColumn):
         else:
             value_str = str(self.value)
 
+        # Handle column reference - use str() to get proper SQL for MockColumnOperation
+        column_ref = str(self.column) if hasattr(self.column, '__str__') else self.column.name
+        
         if self.operation == "==":
-            return f"{self.column.name} = {value_str}"
+            return f"{column_ref} = {value_str}"
         elif self.operation == "!=":
-            return f"{self.column.name} != {value_str}"
+            return f"{column_ref} != {value_str}"
         elif self.operation == "<":
-            return f"{self.column.name} < {value_str}"
+            return f"{column_ref} < {value_str}"
         elif self.operation == "<=":
-            return f"{self.column.name} <= {value_str}"
+            return f"{column_ref} <= {value_str}"
         elif self.operation == ">":
-            return f"{self.column.name} > {value_str}"
+            return f"{column_ref} > {value_str}"
         elif self.operation == ">=":
-            return f"{self.column.name} >= {value_str}"
+            return f"{column_ref} >= {value_str}"
         elif self.operation == "+":
             return f"({self.column.name} + {value_str})"
         elif self.operation == "-":
@@ -313,8 +367,9 @@ class MockColumnOperation(IColumn):
     def alias(self, name: str) -> "MockColumnOperation":
         """Create an alias for this operation."""
         aliased_operation = MockColumnOperation(
-            self.column, self.operation, self.value, name
+            self.column, self.operation, self.value
         )
+        aliased_operation._alias_name = name
         return aliased_operation
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]

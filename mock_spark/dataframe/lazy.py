@@ -5,7 +5,7 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, List, Optional, Dict, TYPE_CHECKING
 from ..spark_types import StringType, MockStructField, DoubleType, LongType, IntegerType, BooleanType, MockDataType, MockStructType, ArrayType
 
 if TYPE_CHECKING:
@@ -15,6 +15,22 @@ if TYPE_CHECKING:
 
 class LazyEvaluationEngine:
     """Handles lazy evaluation and materialization for DataFrames."""
+
+    def __init__(self, enable_optimization: bool = True):
+        """Initialize lazy evaluation engine.
+        
+        Args:
+            enable_optimization: Whether to enable query optimization
+        """
+        self.enable_optimization = enable_optimization
+        self._optimizer = None
+        if enable_optimization:
+            try:
+                from ..optimizer import QueryOptimizer
+                self._optimizer = QueryOptimizer()
+            except ImportError:
+                # Fallback if optimizer is not available
+                self._optimizer = None
 
     @staticmethod
     def queue_operation(
@@ -46,6 +62,78 @@ class LazyEvaluationEngine:
             is_lazy=True,
             operations=df._operations_queue + [(op_name, payload)],
         )
+
+    def optimize_operations(self, operations: List[tuple]) -> List[tuple]:
+        """Optimize operations using the query optimizer.
+        
+        Args:
+            operations: List of (operation_name, payload) tuples
+            
+        Returns:
+            Optimized list of operations
+        """
+        if not self.enable_optimization or self._optimizer is None:
+            return operations
+        
+        try:
+            # Convert operations to optimizer format
+            optimizer_ops = self._convert_to_optimizer_operations(operations)
+            
+            # Apply optimization
+            optimized_ops = self._optimizer.optimize(optimizer_ops)
+            
+            # Convert back to original format
+            return self._convert_from_optimizer_operations(optimized_ops)
+        except Exception:
+            # If optimization fails, return original operations
+            return operations
+
+    def _convert_to_optimizer_operations(self, operations: List[tuple]) -> List[Any]:
+        """Convert operations to optimizer format."""
+        from ..optimizer.query_optimizer import Operation, OperationType
+        
+        optimizer_ops = []
+        for op_name, payload in operations:
+            if op_name == "select":
+                optimizer_ops.append(Operation(
+                    type=OperationType.SELECT,
+                    columns=payload if isinstance(payload, list) else [payload],
+                    predicates=[],
+                    join_conditions=[],
+                    group_by_columns=[],
+                    order_by_columns=[],
+                    limit_count=None,
+                    window_specs=[],
+                    metadata={}
+                ))
+            elif op_name == "filter":
+                optimizer_ops.append(Operation(
+                    type=OperationType.FILTER,
+                    columns=[],
+                    predicates=[{"column": str(payload), "operator": "=", "value": True}],
+                    join_conditions=[],
+                    group_by_columns=[],
+                    order_by_columns=[],
+                    limit_count=None,
+                    window_specs=[],
+                    metadata={}
+                ))
+            # Add more operation types as needed
+        
+        return optimizer_ops
+
+    def _convert_from_optimizer_operations(self, optimizer_ops: List[Any]) -> List[tuple]:
+        """Convert optimizer operations back to original format."""
+        operations = []
+        for op in optimizer_ops:
+            if op.type == OperationType.SELECT:
+                operations.append(("select", op.columns))
+            elif op.type == OperationType.FILTER:
+                for pred in op.predicates:
+                    operations.append(("filter", pred["column"]))
+            # Add more operation types as needed
+        
+        return operations
 
     @staticmethod
     def materialize(df: "MockDataFrame") -> "MockDataFrame":

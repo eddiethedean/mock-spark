@@ -25,6 +25,9 @@ from ..spark_types import (
     BooleanType,
     ArrayType,
     MapType,
+    BinaryType,
+    DateType,
+    TimestampType,
 )
 
 
@@ -141,6 +144,8 @@ class SchemaInferenceEngine:
             return LongType()  # PySpark uses Long for all Python ints
         elif isinstance(value, float):
             return DoubleType()  # PySpark uses Double for all Python floats
+        elif isinstance(value, bytes):
+            return BinaryType()
         elif isinstance(value, list):
             # ArrayType - infer element type from first non-null element
             element_type = StringType()  # Default
@@ -153,8 +158,44 @@ class SchemaInferenceEngine:
             # MapType - PySpark infers dicts as MapType (not StructType!)
             # Assume string keys and string values for simplicity
             return MapType(StringType(), StringType())
+        elif isinstance(value, str):
+            # Try to detect date/timestamp strings
+            if SchemaInferenceEngine._is_date_string(value):
+                return DateType()
+            elif SchemaInferenceEngine._is_timestamp_string(value):
+                return TimestampType()
+            return StringType()
         else:
+            # Check for datetime objects
+            if hasattr(value, 'date') and hasattr(value, 'time'):
+                return TimestampType()
             return StringType()  # Default fallback
+
+    @staticmethod
+    def _is_date_string(value: str) -> bool:
+        """Check if string looks like a date."""
+        import re
+        # Common date patterns
+        date_patterns = [
+            r'^\d{4}-\d{2}-\d{2}$',  # YYYY-MM-DD
+            r'^\d{2}/\d{2}/\d{4}$',  # MM/DD/YYYY
+            r'^\d{2}-\d{2}-\d{4}$',  # MM-DD-YYYY
+            r'^\d{4}/\d{2}/\d{2}$',  # YYYY/MM/DD
+        ]
+        return any(re.match(pattern, value) for pattern in date_patterns)
+
+    @staticmethod
+    def _is_timestamp_string(value: str) -> bool:
+        """Check if string looks like a timestamp."""
+        import re
+        # Common timestamp patterns
+        timestamp_patterns = [
+            r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$',  # YYYY-MM-DD HH:MM:SS
+            r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',  # YYYY-MM-DDTHH:MM:SS
+            r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$',  # YYYY-MM-DD HH:MM:SS.microseconds
+            r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$',  # YYYY-MM-DDTHH:MM:SS.microseconds
+        ]
+        return any(re.match(pattern, value) for pattern in timestamp_patterns)
 
 
 # Convenience functions for external use

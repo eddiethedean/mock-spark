@@ -53,6 +53,7 @@ from ..core.exceptions import (
     PySparkValueError,
 )
 from ..core.exceptions.analysis import ColumnNotFoundException, AnalysisException
+from ..core.exceptions.operation import MockSparkColumnNotFoundError
 from .writer import MockDataFrameWriter
 
 
@@ -149,6 +150,95 @@ class MockDataFrame:
         except AttributeError:
             # Re-raise if attribute truly doesn't exist
             raise
+
+    def __getattr__(self, name: str) -> MockColumn:
+        """Enable df.column_name syntax for column access (PySpark compatibility)."""
+        # Avoid infinite recursion - access object.__getattribute__ directly
+        try:
+            columns = object.__getattribute__(self, 'columns')
+            if name in columns:
+                # Use F.col to create MockColumn
+                from mock_spark.functions import F
+                return F.col(name)
+        except AttributeError:
+            pass
+        
+        # If not a column, raise standard AttributeError
+        available_cols = getattr(self, 'columns', [])
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'. "
+            f"Available columns: {available_cols}"
+        )
+
+    def _validate_column_exists(self, column_name: str, operation: str) -> None:
+        """Validate that a column exists in the DataFrame."""
+        if column_name not in self.columns:
+            from mock_spark.core.exceptions.operation import MockSparkColumnNotFoundError
+            raise MockSparkColumnNotFoundError(column_name, self.columns)
+
+    def _validate_columns_exist(self, column_names: list, operation: str) -> None:
+        """Validate that multiple columns exist in the DataFrame."""
+        missing_columns = [col for col in column_names if col not in self.columns]
+        if missing_columns:
+            from mock_spark.core.exceptions.operation import MockSparkColumnNotFoundError
+            raise MockSparkColumnNotFoundError(missing_columns[0], self.columns)
+
+    def _validate_filter_expression(self, condition, operation: str) -> None:
+        """Validate filter expression before execution."""
+        # Skip validation for empty dataframes - they can filter on any column
+        if len(self.columns) == 0:
+            return
+            
+        # Skip validation for complex expressions - let SQL generation handle them
+        # Only validate simple column references
+        
+        # Skip validation for operations that create complex expressions
+        if hasattr(condition, 'operation') and condition.operation in ['between', 'and', 'or', '&', '|', 'isin', 'not_in', '!']:
+            # These are complex expressions that may combine multiple columns, skip validation
+            return
+        
+        if hasattr(condition, 'column') and hasattr(condition.column, 'name'):
+            # Check if this is a complex operation before validating
+            if hasattr(condition, 'operation') and condition.operation in ['between', 'and', 'or', '&', '|', 'isin', 'not_in', '!']:
+                return
+            # Simple column reference
+            self._validate_column_exists(condition.column.name, operation)
+        elif hasattr(condition, 'name') and not hasattr(condition, 'operation') and not hasattr(condition, 'value') and not hasattr(condition, 'data_type'):
+            # Simple column reference without operation, value, or data_type (not a literal)
+            self._validate_column_exists(condition.name, operation)
+        # For complex expressions (with operations, literals, etc.), skip validation
+        # as they will be handled by SQL generation
+
+    def _validate_expression_columns(self, expression, operation: str) -> None:
+        """Validate column references in complex expressions."""
+        if isinstance(expression, MockColumnOperation):
+            # Check if this is a column reference
+            if hasattr(expression, 'column') and isinstance(expression.column, MockColumn):
+                self._validate_column_exists(expression.column.name, operation)
+            
+            # Recursively validate nested expressions
+            if hasattr(expression, 'column') and isinstance(expression.column, MockColumnOperation):
+                self._validate_expression_columns(expression.column, operation)
+            if hasattr(expression, 'value') and isinstance(expression.value, MockColumnOperation):
+                self._validate_expression_columns(expression.value, operation)
+        elif isinstance(expression, MockColumn):
+            # Check if this is an aliased column with an original column reference
+            if hasattr(expression, '_original_column') and expression._original_column is not None:
+                # This is an aliased column - validate the original column
+                if isinstance(expression._original_column, MockColumn):
+                    self._validate_column_exists(expression._original_column.name, operation)
+                elif isinstance(expression._original_column, MockColumnOperation):
+                    self._validate_expression_columns(expression._original_column, operation)
+            elif hasattr(expression, 'column') and isinstance(expression.column, MockColumn):
+                # This is a column operation - validate the column reference
+                self._validate_column_exists(expression.column.name, operation)
+
+    def _execute_with_debug(self, operation: str, sql: str):
+        """Execute with optional debug logging."""
+        if hasattr(self.storage, 'get_config') and self.storage.get_config('debug_mode', False):
+            print(f"[DEBUG] Operation: {operation}")
+            print(f"[DEBUG] SQL: {sql}")
+        # Execute...
 
     def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a clean table format.
@@ -549,11 +639,21 @@ class MockDataFrame:
                 if isinstance(col, str) and col != "*":
                     # Check if column exists
                     if col not in self.columns:
-                        from ..core.exceptions import AnalysisException
+                        from ..core.exceptions.operation import MockSparkColumnNotFoundError
 
-                        raise AnalysisException(
-                            f"Column '{col}' not found. Available columns: {self.columns}"
-                        )
+                        raise MockSparkColumnNotFoundError(col, self.columns)
+                elif isinstance(col, MockColumn):
+                    if hasattr(col, 'operation'):
+                        # Complex expression - validate column references
+                        self._validate_expression_columns(col, "select")
+                    else:
+                        # Simple column reference - validate
+                        if col.name not in self.columns:
+                            from ..core.exceptions.operation import MockSparkColumnNotFoundError
+                            raise MockSparkColumnNotFoundError(col.name, self.columns)
+                elif isinstance(col, MockColumnOperation):
+                    # Complex expression - validate column references
+                    self._validate_expression_columns(col, "select")
 
         # Support lazy evaluation
         if self.is_lazy:
@@ -1682,6 +1782,9 @@ class MockDataFrame:
         self, condition: Union[MockColumnOperation, MockColumn, "MockLiteral"]
     ) -> "MockDataFrame":
         """Filter rows based on condition."""
+        # Pre-validation: validate filter expression
+        self._validate_filter_expression(condition, "filter")
+        
         if self.is_lazy:
             return self._queue_op("filter", condition)
 
@@ -1733,6 +1836,15 @@ class MockDataFrame:
         col: Union[MockColumn, MockColumnOperation, MockLiteral, Any],
     ) -> "MockDataFrame":
         """Add or replace column."""
+        # Validate column references in expressions
+        if isinstance(col, MockColumn) and not hasattr(col, 'operation'):
+            # Simple column reference - validate
+            self._validate_column_exists(col.name, "withColumn")
+        elif isinstance(col, MockColumnOperation):
+            # Complex expression - validate column references
+            self._validate_expression_columns(col, "withColumn")
+        # For MockLiteral and other cases, skip validation
+        
         if self.is_lazy:
             return self._queue_op("withColumn", (col_name, col))
         new_data = []
@@ -1896,7 +2008,8 @@ class MockDataFrame:
         # Validate that all columns exist
         for col_name in col_names:
             if col_name not in [field.name for field in self.schema.fields]:
-                raise ColumnNotFoundException(col_name)
+                available_columns = [field.name for field in self.schema.fields]
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
 
         # Support lazy evaluation - queue the operation but return a grouped data object
         if self.is_lazy:
@@ -1957,6 +2070,13 @@ class MockDataFrame:
         self, *exprs: Union[str, MockColumn, MockColumnOperation]
     ) -> "MockDataFrame":
         """Aggregate DataFrame without grouping."""
+        # Validate column references in expressions
+        for expr in exprs:
+            if hasattr(expr, "column_name") and expr.column_name:
+                self._validate_column_exists(expr.column_name, "agg")
+            elif hasattr(expr, "column") and hasattr(expr.column, "name"):
+                self._validate_column_exists(expr.column.name, "agg")
+        
         # Create a single group with all data
         grouped_data = MockGroupedData(self, [])
         return grouped_data.agg(*exprs)

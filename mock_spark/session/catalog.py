@@ -93,6 +93,7 @@ class MockCatalog:
             storage: Storage manager instance.
         """
         self.storage = storage
+        self._cached_tables = set()  # Track cached tables
 
     def listDatabases(self) -> List[MockDatabase]:
         """List all databases.
@@ -101,6 +102,28 @@ class MockCatalog:
             List of MockDatabase objects.
         """
         return [MockDatabase(name) for name in self.storage.list_schemas()]
+
+    def setCurrentDatabase(self, dbName: str) -> None:
+        """Set current/active database.
+        
+        Args:
+            dbName: Database name to set as current.
+            
+        Raises:
+            AnalysisException: If database does not exist.
+        """
+        if not self.storage.schema_exists(dbName):
+            from mock_spark.core.exceptions.analysis import AnalysisException
+            raise AnalysisException(f"Database '{dbName}' does not exist")
+        self.storage.set_current_schema(dbName)
+
+    def currentDatabase(self) -> str:
+        """Get current database name.
+        
+        Returns:
+            Current database name.
+        """
+        return self.storage.get_current_schema()
 
     def createDatabase(self, name: str, ignoreIfExists: bool = True) -> None:
         """Create a database.
@@ -172,12 +195,12 @@ class MockCatalog:
                     raise
                 raise AnalysisException(f"Failed to drop database '{name}': {str(e)}")
 
-    def tableExists(self, dbName: str, tableName: str) -> bool:
+    def tableExists(self, tableName: str, dbName: Optional[str] = None) -> bool:
         """Check if table exists.
 
         Args:
-            dbName: Database name.
-            tableName: Table name.
+            tableName: Table name or qualified name (schema.table).
+            dbName: Optional database name. Uses current database if None.
 
         Returns:
             True if table exists, False otherwise.
@@ -186,6 +209,14 @@ class MockCatalog:
             IllegalArgumentException: If names are not strings or are empty.
             AnalysisException: If there's an error checking table existence.
         """
+        # Handle qualified table names (schema.table)
+        if '.' in tableName and dbName is None:
+            parts = tableName.split('.', 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+        
+        if dbName is None:
+            dbName = self.storage.get_current_schema()
         if not isinstance(dbName, str):
             raise IllegalArgumentException("Database name must be a string")
 
@@ -207,19 +238,21 @@ class MockCatalog:
                 f"Failed to check table existence '{dbName}.{tableName}': {str(e)}"
             )
 
-    def listTables(self, dbName: str) -> List[str]:
+    def listTables(self, dbName: Optional[str] = None) -> List[MockTable]:
         """List tables in database.
 
         Args:
-            dbName: Database name.
+            dbName: Optional database name. Uses current database if None.
 
         Returns:
-            List of table names.
+            List of MockTable objects.
 
         Raises:
             IllegalArgumentException: If dbName is not a string or is empty.
             AnalysisException: If database doesn't exist or there's an error.
         """
+        if dbName is None:
+            dbName = self.storage.get_current_schema()
         if not isinstance(dbName, str):
             raise IllegalArgumentException("Database name must be a string")
 
@@ -230,7 +263,8 @@ class MockCatalog:
             raise AnalysisException(f"Database '{dbName}' does not exist")
 
         try:
-            return self.storage.list_tables(dbName)
+            table_names = self.storage.list_tables(dbName)
+            return [MockTable(name, dbName) for name in table_names]
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
@@ -262,39 +296,138 @@ class MockCatalog:
         """Drop table.
 
         Args:
-            tableName: Table name.
+            tableName: Table name or qualified name (schema.table).
+
+        Raises:
+            IllegalArgumentException: If table name is invalid.
+            AnalysisException: If table doesn't exist or can't be dropped.
         """
-        # Mock implementation - in real Spark this would drop a table
-        pass
+        if not isinstance(tableName, str):
+            raise IllegalArgumentException("Table name must be a string")
+        
+        if not tableName:
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        # Handle qualified table names (schema.table)
+        if '.' in tableName:
+            parts = tableName.split('.', 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+            else:
+                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+        else:
+            dbName = self.storage.get_current_schema()
+
+        try:
+            # Check if table exists first
+            if not self.storage.table_exists(dbName, tableName):
+                raise AnalysisException(f"Table '{dbName}.{tableName}' does not exist")
+            
+            # Drop the table from storage
+            self.storage.drop_table(dbName, tableName)
+        except Exception as e:
+            if isinstance(e, (AnalysisException, IllegalArgumentException)):
+                raise
+            raise AnalysisException(
+                f"Failed to drop table '{dbName}.{tableName}': {str(e)}"
+            )
 
     def isCached(self, tableName: str) -> bool:
         """Check if table is cached.
 
         Args:
-            tableName: Table name.
+            tableName: Table name or qualified name (schema.table).
 
         Returns:
             True if table is cached, False otherwise.
+
+        Raises:
+            IllegalArgumentException: If table name is invalid.
         """
-        return False  # Mock implementation
+        if not isinstance(tableName, str):
+            raise IllegalArgumentException("Table name must be a string")
+        
+        if not tableName:
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        # Handle qualified table names (schema.table)
+        if '.' in tableName:
+            parts = tableName.split('.', 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+                qualified_name = f"{dbName}.{tableName}"
+            else:
+                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+        else:
+            dbName = self.storage.get_current_schema()
+            qualified_name = f"{dbName}.{tableName}"
+
+        return qualified_name in self._cached_tables
 
     def cacheTable(self, tableName: str) -> None:
         """Cache table.
 
         Args:
-            tableName: Table name.
+            tableName: Table name or qualified name (schema.table).
+
+        Raises:
+            IllegalArgumentException: If table name is invalid.
+            AnalysisException: If table doesn't exist.
         """
-        # Mock implementation - in real Spark this would cache a table
-        pass
+        if not isinstance(tableName, str):
+            raise IllegalArgumentException("Table name must be a string")
+        
+        if not tableName:
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        # Handle qualified table names (schema.table)
+        if '.' in tableName:
+            parts = tableName.split('.', 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+                qualified_name = f"{dbName}.{tableName}"
+            else:
+                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+        else:
+            dbName = self.storage.get_current_schema()
+            qualified_name = f"{dbName}.{tableName}"
+
+        # Check if table exists
+        if not self.storage.table_exists(dbName, tableName):
+            raise AnalysisException(f"Table '{qualified_name}' does not exist")
+
+        # Add to cache
+        self._cached_tables.add(qualified_name)
 
     def uncacheTable(self, tableName: str) -> None:
         """Uncache table.
 
         Args:
-            tableName: Table name.
+            tableName: Table name or qualified name (schema.table).
+
+        Raises:
+            IllegalArgumentException: If table name is invalid.
         """
-        # Mock implementation - in real Spark this would uncache a table
-        pass
+        if not isinstance(tableName, str):
+            raise IllegalArgumentException("Table name must be a string")
+        
+        if not tableName:
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        # Handle qualified table names (schema.table)
+        if '.' in tableName:
+            parts = tableName.split('.', 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+                qualified_name = f"{dbName}.{tableName}"
+            else:
+                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+        else:
+            dbName = self.storage.get_current_schema()
+            qualified_name = f"{dbName}.{tableName}"
+
+        # Remove from cache
+        self._cached_tables.discard(qualified_name)
 
     def refreshTable(self, tableName: str) -> None:
         """Refresh table.

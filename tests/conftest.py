@@ -56,6 +56,12 @@ def isolated_session():
     gc.collect()
 
 
+@pytest.fixture
+def spark(mock_spark_session):
+    """Alias for mock_spark_session to match common test patterns."""
+    return mock_spark_session
+
+
 @pytest.fixture(scope="session")
 def delta_spark_session():
     """Create a PySpark session with Delta Lake configured.

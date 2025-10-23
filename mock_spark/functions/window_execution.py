@@ -30,6 +30,14 @@ class MockWindowFunction:
             self.column_name = self.column_name.name
         elif self.column_name and isinstance(self.column_name, str):
             self.column_name = self.column_name
+        elif self.column_name and hasattr(self.column_name, "column"):
+            # Handle MockColumn objects
+            if hasattr(self.column_name.column, "name"):
+                self.column_name = self.column_name.column.name
+            elif isinstance(self.column_name.column, str):
+                self.column_name = self.column_name.column
+            else:
+                self.column_name = None
         else:
             self.column_name = None
         self.name = self._generate_name()
@@ -80,6 +88,14 @@ class MockWindowFunction:
             return self._evaluate_cume_dist(data)
         elif self.function_name == "percent_rank":
             return self._evaluate_percent_rank(data)
+        elif self.function_name == "first":
+            return self._evaluate_first(data)
+        elif self.function_name == "last":
+            return self._evaluate_last(data)
+        elif self.function_name == "sum":
+            return self._evaluate_sum(data)
+        elif self.function_name == "avg":
+            return self._evaluate_avg(data)
         else:
             return [None] * len(data)
 
@@ -189,3 +205,95 @@ class MockWindowFunction:
             return []
         n = len(data)
         return [i / (n - 1) if n > 1 else 0.0 for i in range(n)]
+
+    def _evaluate_first(self, data: List[dict]) -> List[Any]:
+        """Evaluate first() window function."""
+        if not data:
+            return []
+        
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+        
+        # Get the first value
+        first_value = None
+        for row in data:
+            if col_name in row and row[col_name] is not None:
+                first_value = row[col_name]
+                break
+        
+        return [first_value] * len(data)
+
+    def _evaluate_last(self, data: List[dict]) -> List[Any]:
+        """Evaluate last() window function."""
+        if not data:
+            return []
+        
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+        
+        # Get the last value
+        last_value = None
+        for row in reversed(data):
+            if col_name in row and row[col_name] is not None:
+                last_value = row[col_name]
+                break
+        
+        return [last_value] * len(data)
+
+    def _evaluate_sum(self, data: List[dict]) -> List[Any]:
+        """Evaluate sum() window function."""
+        if not data:
+            return []
+        
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+        
+        # Calculate sum for each position
+        result = []
+        running_sum = 0
+        
+        for row in data:
+            if col_name in row and row[col_name] is not None:
+                try:
+                    running_sum += float(row[col_name])
+                except (ValueError, TypeError):
+                    pass
+            result.append(running_sum)
+        
+        return result
+
+    def _evaluate_avg(self, data: List[dict]) -> List[Any]:
+        """Evaluate avg() window function."""
+        if not data:
+            return []
+        
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+        
+        # Calculate average for each position
+        result = []
+        running_sum = 0
+        count = 0
+        
+        for row in data:
+            if col_name in row and row[col_name] is not None:
+                try:
+                    running_sum += float(row[col_name])
+                    count += 1
+                except (ValueError, TypeError):
+                    pass
+            
+            if count > 0:
+                result.append(running_sum / count)
+            else:
+                result.append(None)
+        
+        return result

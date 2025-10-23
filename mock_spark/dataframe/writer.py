@@ -177,7 +177,7 @@ class MockDataFrameWriter:
             raise IllegalArgumentException("Table name cannot be empty")
 
         schema, table = (
-            table_name.split(".", 1) if "." in table_name else ("default", table_name)
+            table_name.split(".", 1) if "." in table_name else (self.storage.get_current_schema(), table_name)
         )
 
         # Ensure schema exists

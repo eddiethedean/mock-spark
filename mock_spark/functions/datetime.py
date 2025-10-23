@@ -111,11 +111,8 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        name = (
-            f"to_timestamp({column.name}, '{format}')"
-            if format is not None
-            else f"to_timestamp({column.name})"
-        )
+        # Generate a simple name for the operation
+        name = f"to_timestamp_{column.name}"
         operation = MockColumnOperation(column, "to_timestamp", format, name=name)
         return operation
 

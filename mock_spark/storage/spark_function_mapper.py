@@ -65,6 +65,7 @@ DATETIME_FUNCTIONS: Dict[str, str] = {
     "month": "month",
     "day": "day",
     "dayofmonth": "day",
+    "dayofweek": "dayofweek",
     "hour": "hour",
     "minute": "minute",
     "second": "second",

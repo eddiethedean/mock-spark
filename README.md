@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-988%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-1200+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-106%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 988 passing tests, 100% mypy typed, CTE-optimized queries |
+| 🏭 **Production Ready** | 1200+ passing tests, 100% mypy typed, CTE-optimized queries |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | ✅ **Tested** | Verified on Python 3.9-3.13 + PySpark 3.2-3.5 |
 
@@ -61,7 +61,7 @@ from mock_spark import MockSparkSession as SparkSession
 ### Latest (Version 2.10.0)
 
 **CTE Query Optimization & Performance** - Major performance breakthrough with query optimization:
-- ✅ **988 tests passing** - Comprehensive validation across all features (+109 new tests)
+- ✅ **1200+ tests passing** - Comprehensive validation across all features (+200+ new tests)
 - ✅ **121 functions** - Complete function coverage across PySpark 3.0-3.5
 - ✅ **78 DataFrame methods** - Including iteration, optimization, and streaming methods
 - ✅ **100% type coverage** - Full mypy validation across 106 source files

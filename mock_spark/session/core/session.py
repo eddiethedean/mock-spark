@@ -458,9 +458,12 @@ class MockSparkSession:
             >>> df = spark.table("users")
         """
         # Parse table name
-        schema, table = (
-            table_name.split(".", 1) if "." in table_name else ("default", table_name)
-        )
+        if "." in table_name:
+            schema, table = table_name.split(".", 1)
+        else:
+            # Use current schema instead of hardcoded "default"
+            schema = self.storage.get_current_schema()
+            table = table_name
         # Handle global temp views using Spark's convention 'global_temp'
         if schema == "global_temp":
             schema = "global_temp"

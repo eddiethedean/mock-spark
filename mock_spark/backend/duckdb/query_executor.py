@@ -26,6 +26,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     literal,
+    literal_column,
     insert,
     text,
 )
@@ -35,6 +36,13 @@ from mock_spark.spark_types import (
     MockRow,
 )
 from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
+from mock_spark.core.exceptions.operation import (
+    MockSparkOperationError,
+    MockSparkSQLGenerationError,
+    MockSparkQueryExecutionError,
+    MockSparkColumnNotFoundError,
+    MockSparkTypeMismatchError,
+)
 
 
 class SQLAlchemyMaterializer:
@@ -46,6 +54,82 @@ class SQLAlchemyMaterializer:
         self._temp_table_counter = 0
         self._created_tables: Dict[str, Any] = {}  # Track created tables
         self.metadata = MetaData()
+
+    def _convert_java_to_duckdb_format(self, java_format: str) -> str:
+        """Convert Java SimpleDateFormat to DuckDB strptime format."""
+        # Common Java to DuckDB format conversions
+        format_map = {
+            'yyyy': '%Y',  # 4-digit year
+            'yy': '%y',    # 2-digit year
+            'MM': '%m',    # Month (01-12)
+            'M': '%m',     # Month (1-12)
+            'dd': '%d',    # Day (01-31)
+            'd': '%d',     # Day (1-31)
+            'HH': '%H',    # Hour (00-23)
+            'H': '%H',     # Hour (0-23)
+            'hh': '%I',    # Hour (01-12)
+            'h': '%I',     # Hour (1-12)
+            'mm': '%M',    # Minute (00-59)
+            'm': '%M',     # Minute (0-59)
+            'ss': '%S',    # Second (00-59)
+            's': '%S',     # Second (0-59)
+            'SSS': '%f',   # Millisecond (000-999)
+            'a': '%p',     # AM/PM
+            'E': '%a',     # Day of week (abbreviated)
+            'EEEE': '%A',  # Day of week (full)
+            'z': '%Z',     # Timezone
+            'Z': '%z',     # Timezone offset
+        }
+        
+        # Replace Java format patterns with DuckDB equivalents
+        duckdb_format = java_format
+        for java_pattern, duckdb_pattern in format_map.items():
+            duckdb_format = duckdb_format.replace(java_pattern, duckdb_pattern)
+        
+        return duckdb_format
+
+    def _translate_duckdb_error(self, error: Exception, context: dict) -> Exception:
+        """Translate DuckDB errors to helpful MockSpark errors."""
+        error_msg = str(error).lower()
+        
+        if "syntax error" in error_msg or "parser error" in error_msg:
+            operation = context.get('operation', 'unknown')
+            column = context.get('column', 'unknown')
+            return MockSparkOperationError(
+                operation=operation,
+                column=column,
+                issue="SQL syntax error in generated query",
+                suggestion="Check column types and operation compatibility"
+            )
+        elif "column" in error_msg and "not found" in error_msg:
+            # Extract column name from error message
+            import re
+            match = re.search(r"column ['\"]([^'\"]+)['\"]", error_msg)
+            column_name = match.group(1) if match else "unknown"
+            available_columns = context.get('available_columns', [])
+            return MockSparkColumnNotFoundError(column_name, available_columns)
+        elif "type" in error_msg and ("mismatch" in error_msg or "incompatible" in error_msg):
+            operation = context.get('operation', 'unknown')
+            return MockSparkTypeMismatchError(
+                operation=operation,
+                expected_type=context.get('expected_type', 'unknown'),
+                actual_type=context.get('actual_type', 'unknown'),
+                column=context.get('column', '')
+            )
+        elif "function" in error_msg and "not found" in error_msg:
+            operation = context.get('operation', 'unknown')
+            return MockSparkSQLGenerationError(
+                operation=operation,
+                sql_fragment=context.get('sql_fragment', ''),
+                error=str(error)
+            )
+        else:
+            # Generic query execution error
+            return MockSparkQueryExecutionError(
+                sql=context.get('sql', ''),
+                error=str(error),
+                context=context
+            )
 
     def materialize(
         self,
@@ -680,13 +764,19 @@ class SQLAlchemyMaterializer:
 
                         sql_type = type_mapping.get(type_name, "VARCHAR")
 
-                        # Build CAST expression
+                        # Build CAST expression with special handling for date arithmetic
                         try:
                             source_column = source_table_obj.c[col.column.name]
-                            # Use raw SQL with AS clause since text expressions don't support .label()
-                            cast_sql = (
-                                f"CAST({col.column.name} AS {sql_type}) AS {col.name}"
-                            )
+                            
+                            # Special handling for date/timestamp to long (epoch conversion)
+                            if sql_type == "BIGINT" and type_name in ["long", "bigint", "LongType", "BigIntType"]:
+                                # Check if source is date/timestamp - convert to epoch seconds
+                                # DuckDB: EXTRACT(EPOCH FROM timestamp) or UNIX_TIMESTAMP(date)
+                                cast_sql = f"TRY_CAST(EXTRACT(EPOCH FROM TRY_CAST({col.column.name} AS TIMESTAMP)) AS BIGINT) AS {col.name}"
+                            else:
+                                # Use TRY_CAST for safer type conversion
+                                cast_sql = f"TRY_CAST({col.column.name} AS {sql_type}) AS {col.name}"
+                            
                             select_columns.append(text(cast_sql))
                             # Infer column type based on cast target
                             if sql_type in ["INTEGER", "BIGINT"]:
@@ -772,6 +862,16 @@ class SQLAlchemyMaterializer:
                             func_expr = func.floor(source_column)
                         elif col.function_name == "sqrt":
                             func_expr = func.sqrt(source_column)
+                        elif col.function_name in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter"]:
+                            # Handle datetime functions using raw SQL with proper type casting
+                            datetime_sql = self._expression_to_sql(col)
+                            # Use text() instead of literal_column() to ensure proper SQL generation
+                            func_expr = text(datetime_sql)
+                        elif col.function_name in ["to_date", "to_timestamp", "date_format", "from_unixtime"]:
+                            # Handle other datetime functions using raw SQL
+                            datetime_sql = self._expression_to_sql(col)
+                            # Use literal_column() to avoid SQLAlchemy escaping issues with format strings
+                            func_expr = literal_column(datetime_sql)
                         else:
                             # Map PySpark function names to DuckDB function names
                             function_mapping = {
@@ -3044,6 +3144,23 @@ class SQLAlchemyMaterializer:
                             new_columns.append(
                                 Column(col.name, Integer, primary_key=False)
                             )
+                        elif col.function_name in [
+                            "hour",
+                            "minute",
+                            "second",
+                            "year",
+                            "month",
+                            "day",
+                            "dayofmonth",
+                            "dayofweek",
+                            "dayofyear",
+                            "weekofyear",
+                            "quarter",
+                        ]:
+                            # Datetime extraction functions return integers
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                         elif col.function_name == "zip_with":
                             # zip_with returns array - try to infer element type
                             from sqlalchemy import ARRAY
@@ -3127,6 +3244,21 @@ class SQLAlchemyMaterializer:
         target_table_obj = Table(target_table, self.metadata, *new_columns)
         target_table_obj.create(self.engine, checkfirst=True)
         self._created_tables[target_table] = target_table_obj
+
+        # Build alias mapping for complex expressions
+        alias_map = {}
+        for col in columns:
+            if hasattr(col, 'name') and hasattr(col, 'column'):
+                # This is an aliased expression
+                alias_map[col.name] = col
+            elif isinstance(col, MockColumnOperation) and hasattr(col, '_alias_name'):
+                alias_map[col._alias_name] = col
+            elif hasattr(col, 'name') and hasattr(col, 'operation'):
+                # This is a function expression with a name
+                alias_map[col.name] = col
+
+        # Store alias mapping in target table for later reference
+        target_table_obj._alias_map = alias_map
 
         # Execute select and insert results
         with Session(self.engine) as session:
@@ -3924,10 +4056,24 @@ class SQLAlchemyMaterializer:
         # Select all existing columns plus the window function result
         existing_cols = ", ".join([f'"{c.name}"' for c in source_table_obj.columns])
 
+        # Extract ORDER BY from window spec
+        order_clause = ""
+        if hasattr(window_func.window_spec, "_order_by") and window_func.window_spec._order_by:
+            order_parts = []
+            for col in window_func.window_spec._order_by:
+                if isinstance(col, MockColumnOperation) and col.operation == "desc":
+                    order_parts.append(f'"{col.column.name}" DESC')
+                elif hasattr(col, 'name'):
+                    order_parts.append(f'"{col.name}"')
+                elif isinstance(col, str):
+                    order_parts.append(f'"{col}"')
+            if order_parts:
+                order_clause = f" ORDER BY {', '.join(order_parts)}"
+
         sql = f"""
         INSERT INTO {target_table}
         SELECT {existing_cols}, {func_call} as {col_name}
-        FROM {source_table}
+        FROM {source_table}{order_clause}
         """
 
         # Execute SQL
@@ -4017,6 +4163,8 @@ class SQLAlchemyMaterializer:
                 "dayofyear",
                 "weekofyear",
                 "quarter",
+                "date_format",
+                "from_unixtime",
             ]:
                 datetime_sql = self._expression_to_sql(col)
                 from sqlalchemy import literal_column
@@ -4186,15 +4334,27 @@ class SQLAlchemyMaterializer:
 
         # Add WHEN conditions
         for condition, value in case_when_obj.conditions:
-            # Convert condition to SQL
-            condition_sql = self._condition_to_sql(condition, source_table_obj)
-            # Convert value to SQL
-            value_sql = self._value_to_sql(value)
+            # Convert condition to SQL - check if it's a complex expression
+            if isinstance(condition, MockColumnOperation):
+                # Generate raw SQL without quoting for complex expressions
+                condition_sql = self._expression_to_sql(condition)
+            else:
+                condition_sql = self._condition_to_sql(condition, source_table_obj)
+            
+            # Convert value to SQL - handle MockLiteral with boolean values specially
+            if hasattr(value, 'value') and isinstance(value.value, bool):
+                value_sql = 'TRUE' if value.value else 'FALSE'
+            else:
+                value_sql = self._value_to_sql(value)
             sql_parts.append(f"WHEN {condition_sql} THEN {value_sql}")
 
         # Add ELSE clause if default_value is set
         if case_when_obj.default_value is not None:
-            else_sql = self._value_to_sql(case_when_obj.default_value)
+            # Update the ELSE clause to handle boolean MockLiterals
+            if hasattr(case_when_obj.default_value, 'value') and isinstance(case_when_obj.default_value.value, bool):
+                else_sql = 'TRUE' if case_when_obj.default_value.value else 'FALSE'
+            else:
+                else_sql = self._value_to_sql(case_when_obj.default_value)
             sql_parts.append(f"ELSE {else_sql}")
 
         sql_parts.append("END")
@@ -4209,6 +4369,32 @@ class SQLAlchemyMaterializer:
             # Handle column operations like F.col("age") > 30
             column_name = condition.column.name
             value = condition.value
+
+            # Handle between operation
+            if condition.function_name == "between":
+                if isinstance(value, tuple) and len(value) == 2:
+                    lower, upper = value
+                    return f'"{column_name}" BETWEEN {lower} AND {upper}'
+                else:
+                    raise ValueError(f"Invalid between operation: {condition}")
+            
+            # Handle isin operation
+            elif condition.function_name == "isin":
+                if isinstance(value, list):
+                    # Convert list to SQL IN clause
+                    value_list = ", ".join(str(v) for v in value)
+                    return f'"{column_name}" IN ({value_list})'
+                else:
+                    raise ValueError(f"Invalid isin operation: {condition}")
+            
+            # Handle not_in operation
+            elif condition.function_name == "not_in":
+                if isinstance(value, list):
+                    # Convert list to SQL NOT IN clause
+                    value_list = ", ".join(str(v) for v in value)
+                    return f'"{column_name}" NOT IN ({value_list})'
+                else:
+                    raise ValueError(f"Invalid not_in operation: {condition}")
 
             # Convert value to SQL
             value_sql = self._value_to_sql(value)
@@ -4225,6 +4411,35 @@ class SQLAlchemyMaterializer:
                 return f'"{column_name}" >= {value_sql}'
             elif condition.function_name == "<=" or condition.function_name == "le":
                 return f'"{column_name}" <= {value_sql}'
+            elif condition.function_name == "&":
+                # Handle AND operation
+                left_sql = self._condition_to_sql(condition.column, source_table_obj)
+                right_sql = self._condition_to_sql(condition.value, source_table_obj)
+                return f"({left_sql}) AND ({right_sql})"
+            elif condition.function_name == "|":
+                # Handle OR operation
+                left_sql = self._condition_to_sql(condition.column, source_table_obj)
+                right_sql = self._condition_to_sql(condition.value, source_table_obj)
+                return f"({left_sql}) OR ({right_sql})"
+        elif hasattr(condition, "operation") and hasattr(condition, "column") and hasattr(condition, "value"):
+            # Handle MockColumnOperation objects (like between, &, |)
+            column_name = condition.column.name
+            if condition.operation == "between":
+                if isinstance(condition.value, tuple) and len(condition.value) == 2:
+                    lower, upper = condition.value
+                    return f'"{column_name}" BETWEEN {lower} AND {upper}'
+                else:
+                    raise ValueError(f"Invalid between operation: {condition}")
+            elif condition.operation == "&":
+                # Handle AND operation
+                left_sql = self._condition_to_sql(condition.column, source_table_obj)
+                right_sql = self._condition_to_sql(condition.value, source_table_obj)
+                return f"({left_sql}) AND ({right_sql})"
+            elif condition.operation == "|":
+                # Handle OR operation
+                left_sql = self._condition_to_sql(condition.column, source_table_obj)
+                right_sql = self._condition_to_sql(condition.value, source_table_obj)
+                return f"({left_sql}) OR ({right_sql})"
         return str(condition)
 
     def _value_to_sql(self, value: Any) -> str:
@@ -4233,9 +4448,19 @@ class SQLAlchemyMaterializer:
             return "NULL"
         elif isinstance(value, bool):
             # Handle booleans BEFORE str check (bool is subclass of int)
-            return "true" if value else "false"
+            return "TRUE" if value else "FALSE"
         elif isinstance(value, str):
-            return f"'{value}'"
+            # Check if this looks like a date literal
+            import re
+            if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+                # Date literal - cast it
+                return f"DATE '{value}'"
+            elif re.match(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', value):
+                # Timestamp literal - cast it
+                return f"TIMESTAMP '{value}'"
+            else:
+                # Regular string
+                return f"'{value}'"
         elif isinstance(value, (int, float)):
             return str(value)
         elif (
@@ -4366,6 +4591,9 @@ class SQLAlchemyMaterializer:
                             )
                         else:
                             result_dict[column.name] = bool(value)
+                    elif isinstance(column.type, DateTime) and value is not None:
+                        # Preserve datetime/timestamp types - don't convert to string
+                        result_dict[column.name] = value
                     else:
                         result_dict[column.name] = value
                 mock_rows.append(MockRow(result_dict))
@@ -4412,7 +4640,11 @@ class SQLAlchemyMaterializer:
                 elif condition.operation == "!":
                     # Logical NOT operation
                     expr = self._condition_to_sqlalchemy(table_obj, condition.column)
-                    return ~expr
+                    if expr is not None:
+                        return ~expr
+                    else:
+                        # Handle case where the inner expression is not supported
+                        return None
                 elif condition.operation == "isnull":
                     # IS NULL operation
                     left = self._column_to_sqlalchemy(table_obj, condition.column)
@@ -4421,6 +4653,35 @@ class SQLAlchemyMaterializer:
                     # IS NOT NULL operation
                     left = self._column_to_sqlalchemy(table_obj, condition.column)
                     return left.isnot(None)
+                elif condition.operation == "contains":
+                    # String contains operation
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    return left.like(f"%{condition.value}%")
+                elif condition.operation == "startswith":
+                    # String starts with operation
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    return left.like(f"{condition.value}%")
+                elif condition.operation == "endswith":
+                    # String ends with operation
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    return left.like(f"%{condition.value}")
+                elif condition.operation == "regex":
+                    # Regular expression operation - use DuckDB's regexp_matches function
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    from sqlalchemy import func
+                    return func.regexp_matches(left, condition.value)
+                elif condition.operation == "rlike":
+                    # Regular expression operation (alias for regex) - use DuckDB's regexp_matches function
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    from sqlalchemy import func
+                    return func.regexp_matches(left, condition.value)
+                elif condition.operation == "isin":
+                    # IN operation
+                    left = self._column_to_sqlalchemy(table_obj, condition.column)
+                    if isinstance(condition.value, list):
+                        return left.in_(condition.value)
+                    else:
+                        return None
         elif isinstance(condition, MockColumn):
             return table_obj.c[condition.name]
 
@@ -4808,6 +5069,9 @@ class SQLAlchemyMaterializer:
     def _expression_to_sql(self, expr: Any) -> str:
         """Convert an expression to SQL."""
         if isinstance(expr, str):
+            # If it's already SQL (contains function calls), return as-is
+            if any(func in expr.upper() for func in ['STRPTIME', 'STRFTIME', 'EXTRACT', 'CAST', 'TRY_CAST', 'TO_TIMESTAMP', 'TO_DATE']):
+                return expr
             return f'"{expr}"'
         elif hasattr(expr, "conditions") and hasattr(expr, "default_value"):
             # Handle MockCaseWhen objects
@@ -4831,23 +5095,34 @@ class SQLAlchemyMaterializer:
                     return f"(+{left})"
                 # Handle datetime functions
                 elif expr.operation in ["to_date", "to_timestamp"]:
-                    # DuckDB: CAST(column AS DATE/TIMESTAMP)
-                    target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
-                    return f"CAST({left} AS {target_type})"
+                    # Handle format strings for to_date and to_timestamp
+                    if hasattr(expr, 'value') and expr.value is not None:
+                        # Has format string - use STRPTIME
+                        format_str = expr.value
+                        # Convert Java format to DuckDB format
+                        duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                        return f"STRPTIME({left}, '{duckdb_format}')"
+                    else:
+                        # No format - use TRY_CAST for safer conversion
+                        target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
+                        return f"TRY_CAST({left} AS {target_type})"
                 elif expr.operation in ["hour", "minute", "second"]:
-                    # DuckDB: extract(part from timestamp)
-                    return f"extract({expr.operation} from CAST({left} AS TIMESTAMP))"
+                    # DuckDB: extract(part from timestamp) - TRY_CAST handles both strings and timestamps
+                    # Cast to integer to ensure proper type
+                    return f"CAST(extract({expr.operation} from TRY_CAST({left} AS TIMESTAMP)) AS INTEGER)"
                 elif expr.operation in ["year", "month", "day", "dayofmonth"]:
-                    # DuckDB: extract(part from date)
+                    # DuckDB: extract(part from date) - TRY_CAST handles both strings and dates
+                    # Cast to integer to ensure proper type
                     part = "day" if expr.operation == "dayofmonth" else expr.operation
-                    return f"extract({part} from CAST({left} AS DATE))"
+                    return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) AS INTEGER)"
                 elif expr.operation in [
                     "dayofweek",
                     "dayofyear",
                     "weekofyear",
                     "quarter",
                 ]:
-                    # DuckDB date part extraction
+                    # DuckDB date part extraction - TRY_CAST handles both strings and dates
+                    # Cast to integer to ensure proper type
                     part_map = {
                         "dayofweek": "dow",
                         "dayofyear": "doy",
@@ -4855,18 +5130,72 @@ class SQLAlchemyMaterializer:
                         "quarter": "quarter",
                     }
                     part = part_map.get(expr.operation, expr.operation)
-                    return f"extract({part} from CAST({left} AS DATE))"
+                    return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) AS INTEGER)"
+                elif expr.operation == "date_format":
+                    # DuckDB: strftime function for date formatting
+                    if hasattr(expr, 'value') and expr.value is not None:
+                        format_str = expr.value
+                        # Convert Java format to DuckDB format
+                        duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                        return f"strftime(TRY_CAST({left} AS TIMESTAMP), '{duckdb_format}')"
+                    else:
+                        return f"strftime(TRY_CAST({left} AS TIMESTAMP), '%Y-%m-%d')"
+                elif expr.operation == "from_unixtime":
+                    # DuckDB: from_unixtime function
+                    if hasattr(expr, 'value') and expr.value is not None:
+                        format_str = expr.value
+                        # Convert Java format to DuckDB format
+                        duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                        return f"strftime(to_timestamp({left}), '{duckdb_format}')"
+                    else:
+                        return f"to_timestamp({left})"
+                elif expr.operation == "to_timestamp":
+                    # DuckDB: to_timestamp function - use STRPTIME for parsing
+                    if hasattr(expr, 'value') and expr.value is not None:
+                        format_str = expr.value
+                        # Convert Java format to DuckDB format
+                        duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                        return f"STRPTIME({left}, '{duckdb_format}')"
+                    else:
+                        return f"TRY_CAST({left} AS TIMESTAMP)"
+                elif expr.operation == "to_date":
+                    # DuckDB: to_date function - use STRPTIME for parsing
+                    if hasattr(expr, 'value') and expr.value is not None:
+                        format_str = expr.value
+                        # Convert Java format to DuckDB format
+                        duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                        return f"STRPTIME({left}, '{duckdb_format}')::DATE"
+                    else:
+                        return f"TRY_CAST({left} AS DATE)"
                 else:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"
 
             # Handle arithmetic operations like MockColumnOperation
             # For column references in expressions, don't quote them
-            left = self._column_to_sql(expr.column)
+            # Check if the left side is a MockColumnOperation to avoid recursion
+            if isinstance(expr.column, MockColumnOperation):
+                left = self._expression_to_sql(expr.column)
+            else:
+                left = self._column_to_sql(expr.column)
             right = self._value_to_sql(expr.value)
 
+            # Handle string operations
+            if expr.operation == "contains":
+                return f"({left} LIKE '%{right[1:-1]}%')"  # Remove quotes from right
+            elif expr.operation == "startswith":
+                return f"({left} LIKE '{right[1:-1]}%')"  # Remove quotes from right
+            elif expr.operation == "endswith":
+                return f"({left} LIKE '%{right[1:-1]}')"  # Remove quotes from right
+            elif expr.operation == "between":
+                # Handle BETWEEN operation: column BETWEEN lower AND upper
+                if isinstance(expr.value, tuple) and len(expr.value) == 2:
+                    lower, upper = expr.value
+                    return f"({left} BETWEEN {lower} AND {upper})"
+                else:
+                    raise ValueError(f"Invalid between operation: {expr}")
             # Handle comparison operations
-            if expr.operation == "==":
+            elif expr.operation == "==":
                 # Handle NULL comparisons specially
                 if right == "NULL":
                     return f"({left} IS NULL)"
@@ -4884,6 +5213,34 @@ class SQLAlchemyMaterializer:
                 return f"({left} >= {right})"
             elif expr.operation == "<=":
                 return f"({left} <= {right})"
+            # Handle datetime functions with format strings
+            elif expr.operation == "to_timestamp":
+                # DuckDB: to_timestamp function - use STRPTIME for parsing
+                if hasattr(expr, 'value') and expr.value is not None:
+                    format_str = expr.value
+                    # Convert Java format to DuckDB format
+                    duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                    return f"STRPTIME({left}, '{duckdb_format}')"
+                else:
+                    return f"TRY_CAST({left} AS TIMESTAMP)"
+            elif expr.operation == "to_date":
+                # DuckDB: to_date function - use STRPTIME for parsing
+                if hasattr(expr, 'value') and expr.value is not None:
+                    format_str = expr.value
+                    # Convert Java format to DuckDB format
+                    duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                    return f"STRPTIME({left}, '{duckdb_format}')::DATE"
+                else:
+                    return f"TRY_CAST({left} AS DATE)"
+            elif expr.operation == "date_format":
+                # DuckDB: strftime function for date formatting
+                if hasattr(expr, 'value') and expr.value is not None:
+                    format_str = expr.value
+                    # Convert Java format to DuckDB format
+                    duckdb_format = self._convert_java_to_duckdb_format(format_str)
+                    return f"strftime(TRY_CAST({left} AS TIMESTAMP), '{duckdb_format}')"
+                else:
+                    return f"strftime(TRY_CAST({left} AS TIMESTAMP), '%Y-%m-%d')"
             # Handle arithmetic operations
             elif expr.operation == "*":
                 return f"({left} * {right})"
@@ -4907,13 +5264,20 @@ class SQLAlchemyMaterializer:
             return str(expr)
 
     def _column_to_sql(self, expr: Any) -> str:
-        """Convert a column reference to SQL without quotes for expressions."""
+        """Convert a column reference to SQL with quotes for expressions."""
         if isinstance(expr, str):
-            return expr
+            return f'"{expr}"'
         elif hasattr(expr, "name"):
-            return expr.name
+            # Check if this is referencing an aliased expression
+            # In that case, use the alias name directly
+            if hasattr(expr, '_alias_name') and expr._alias_name:
+                return f'"{expr._alias_name}"'
+            return f'"{expr.name}"'
+        elif isinstance(expr, MockColumnOperation):
+            # This is a complex expression - generate SQL for it
+            return self._expression_to_sql(expr)
         else:
-            return str(expr)
+            return f'"{str(expr)}"'
 
     def _build_cte_query(
         self, source_table_name: str, operations: List[Tuple[str, Any]]
