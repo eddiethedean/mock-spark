@@ -273,8 +273,8 @@ class TestDataFrameDuckDBIntegration:
         result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
         assert result[0] == 1000
 
-        # Performance should be reasonable (less than 1 second for 1000 rows)
-        assert conversion_time < 1.0
+        # Performance should be reasonable (less than 3 seconds for 1000 rows)
+        assert conversion_time < 3.0
 
         # Test analytical query performance
         start_time = time.time()

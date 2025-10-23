@@ -6,6 +6,7 @@ for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
 from typing import Any, List, TYPE_CHECKING
+from ..spark_types import StringType, MockStructField, DoubleType, LongType, IntegerType, BooleanType, MockDataType, MockStructType, ArrayType
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame
@@ -83,8 +84,8 @@ class LazyEvaluationEngine:
                 return MockDataFrame(
                     materialized_data,
                     df.schema,
-                    df.storage,
-                    is_lazy=False,  # type: ignore[has-type]
+                    df.storage,  # type: ignore[has-type]
+                    is_lazy=False,
                 )
             finally:
                 materializer.close()
@@ -106,7 +107,7 @@ class LazyEvaluationEngine:
         Returns:
             List of dictionaries with proper types
         """
-        from ..spark_types import ArrayType, IntegerType, LongType, DoubleType
+        from ..spark_types import ArrayType
 
         materialized_data = []
         for row in rows:
@@ -221,15 +222,6 @@ class LazyEvaluationEngine:
             Inferred schema for selected columns
         """
         from ..functions import MockAggregateFunction
-        from ..spark_types import (
-            ArrayType,
-            DoubleType,
-            IntegerType,
-            LongType,
-            MockStructField,
-            MockStructType,
-            StringType,
-        )
 
         new_fields = []
         for col in columns:
@@ -280,7 +272,6 @@ class LazyEvaluationEngine:
                     )
                 elif col.operation in ["isnull", "isnotnull", "isnan"]:
                     # Boolean operations - always return BooleanType and are non-nullable
-                    from ..spark_types import BooleanType
 
                     new_fields.append(
                         MockStructField(col_name, BooleanType(), nullable=False)
@@ -288,7 +279,7 @@ class LazyEvaluationEngine:
                 elif col.operation == "coalesce":
                     # Coalesce with a non-null literal fallback is non-nullable
                     # Determine the result type from the first argument
-                    source_type: MockDataType = StringType()
+                    source_type: Any = StringType()
                     if hasattr(col, "column") and hasattr(col.column, "name"):
                         # Find source column type
                         for field in df.schema.fields:
@@ -335,7 +326,6 @@ class LazyEvaluationEngine:
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
                 # Handle MockWindowFunction (e.g., rank().over(window))
                 col_name = col.name
-                from ..spark_types import IntegerType, DoubleType, LongType, StringType
 
                 # Window functions that are non-nullable
                 non_nullable_window_functions = {
@@ -354,7 +344,7 @@ class LazyEvaluationEngine:
                     # Lag/lead can return null (out of bounds)
                     if col.column_name:
                         # Find source column type
-                        source_type2: MockDataType = StringType()
+                        source_type2: Any = StringType()
                         for field in df.schema.fields:
                             if field.name == col.column_name:
                                 source_type2 = field.dataType
@@ -386,14 +376,6 @@ class LazyEvaluationEngine:
                 # Handle MockLiteral objects - literals are never nullable
                 col_name = col.name
                 # Use the literal's data_type and explicitly set nullable=False
-                from ..spark_types import (
-                    BooleanType,
-                    IntegerType,
-                    LongType,
-                    DoubleType,
-                    StringType,
-                    MockDataType,
-                )
 
                 data_type = col.data_type
                 # Create a new instance of the data type with nullable=False

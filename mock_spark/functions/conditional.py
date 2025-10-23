@@ -4,8 +4,11 @@ Conditional functions for Mock Spark.
 This module contains conditional functions including CASE WHEN expressions.
 """
 
-from typing import Any, List, Union
+from typing import Any, List, Union, TYPE_CHECKING
 from mock_spark.functions.base import MockColumn, MockColumnOperation
+
+if TYPE_CHECKING:
+    from mock_spark.spark_types import MockDataType
 
 
 class MockCaseWhen:

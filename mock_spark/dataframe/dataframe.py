@@ -426,7 +426,7 @@ class MockDataFrame:
                             )
 
                             col_type = col.column_type
-                            data_type: MockDataType
+                            data_type3: Any
                             if isinstance(col_type, BooleanType):
                                 data_type3 = BooleanType(nullable=False)
                             elif isinstance(col_type, IntegerType):
@@ -441,7 +441,9 @@ class MockDataFrame:
                                 # For other types, create a new instance with nullable=False
                                 data_type3 = col_type.__class__(nullable=False)
 
-                            field = MockStructField(col_name, data_type3, nullable=False)
+                            field = MockStructField(
+                                col_name, data_type3, nullable=False
+                            )
                             new_fields_map[col_name] = field
                         else:
                             # New column from expression - use StringType as default
@@ -843,7 +845,7 @@ class MockDataFrame:
                     StringType,
                 )
 
-                data_type: MockDataType
+                data_type: Any
                 if isinstance(col.column_type, BooleanType):
                     data_type = BooleanType(nullable=False)
                 elif isinstance(col.column_type, IntegerType):
@@ -1119,7 +1121,7 @@ class MockDataFrame:
                             StringType,
                         )
 
-                        data_type3: MockDataType
+                        data_type3: Any
                         if isinstance(literal_obj.column_type, BooleanType):
                             data_type3 = BooleanType(nullable=False)
                         elif isinstance(literal_obj.column_type, IntegerType):

@@ -240,6 +240,7 @@ class MockColumnOperation(IColumn):
         self.value = value
         self._name = name or self._generate_name()
         self.function_name = operation
+        self.return_type: Optional[Any] = None  # Type hint for return type
 
     @property
     def name(self) -> str:
