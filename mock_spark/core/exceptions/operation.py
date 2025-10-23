@@ -125,7 +125,7 @@ class MockSparkQueryExecutionError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkColumnNotFoundError(MockSparkException):
+class MockSparkColumnNotFoundError(MockSparkException, AttributeError):
     """Raised when a column is not found."""
     
     def __init__(self, column_name: str, available_columns: list):
@@ -138,8 +138,7 @@ class MockSparkColumnNotFoundError(MockSparkException):
         self.column_name = column_name
         self.available_columns = available_columns
         
-        msg = f"Column '{column_name}' not found\n"
-        msg += f"Available columns: {', '.join(available_columns)}"
+        msg = f"'MockDataFrame' object has no attribute '{column_name}'. Available columns: {', '.join(available_columns)}"
         super().__init__(msg)
 
 

@@ -1,0 +1,82 @@
+🧪 Running Mock Spark Test Suite
+=================================
+
+Starting Step 1: Unit tests...
+
+📋 Step 1: Unit tests (parallel, 8 cores)
+=================================
+🔍 Running tests...
+✅ Passed: 691
+❌ Failed: 36
+⏭️ Skipped: 26
+⚠️ Errors: 0
+⚠️ Some tests failed or had errors
+📋 Recent failures:
+  FAILED tests/unit/test_type_inference.py::TestTypeCastingEdgeCases::test_casting_with_boolean_edge_cases
+  FAILED tests/unit/test_error_messages.py::TestErrorMessages::test_multiple_column_errors
+  FAILED tests/unit/test_error_messages.py::TestErrorMessages::test_error_message_format
+❌ Step 1 failed with exit code 1
+Starting Step 2: Delta tests...
+
+📋 Step 2: Delta tests (serial)
+=================================
+🔍 Running tests...
+⚠️ Could not parse test results
+Last 10 lines of output:
+  mock_spark/storage/serialization/json.py              39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+  mock_spark/storage/spark_function_mapper.py           29     11    62%   241-251, 259, 264, 269-270
+  mock_spark/storage/sql_translator.py                 415    389     6%   55-58, 73-96, 110-124, 129-295, 303-309, 314-345, 352-380, 385-402, 406, 413, 432-522, 528-664, 668-685, 689-700, 704-728
+  mock_spark/storage/sqlalchemy_helpers.py              78     61    22%   37-82, 95-127, 145-153, 166-180, 198-209, 222-223, 237-238, 252-253, 268, 285, 291, 299, 305
+  mock_spark/window.py                                  61     40    34%   58-61, 75-86, 100-111, 126-130, 145-149, 153-168, 191, 196, 201, 206
+  --------------------------------------------------------------------------------
+  TOTAL                                              16067  12272    24%
+  Coverage HTML written to dir htmlcov
+  Coverage XML written to file coverage.xml
+  =========================== 753 deselected in 4.98s ============================
+✅ Passed: 00
+❌ Failed: 00
+⏭️ Skipped: 00
+⚠️ Errors: 00
+🎉 All tests passed!
+❌ Step 2 failed with exit code 5
+Starting Step 3: Performance tests...
+
+📋 Step 3: Performance tests (serial)
+=================================
+🔍 Running tests...
+⚠️ Could not parse test results
+Last 10 lines of output:
+  mock_spark/storage/serialization/json.py              39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+  mock_spark/storage/spark_function_mapper.py           29     11    62%   241-251, 259, 264, 269-270
+  mock_spark/storage/sql_translator.py                 415    389     6%   55-58, 73-96, 110-124, 129-295, 303-309, 314-345, 352-380, 385-402, 406, 413, 432-522, 528-664, 668-685, 689-700, 704-728
+  mock_spark/storage/sqlalchemy_helpers.py              78     61    22%   37-82, 95-127, 145-153, 166-180, 198-209, 222-223, 237-238, 252-253, 268, 285, 291, 299, 305
+  mock_spark/window.py                                  61     40    34%   58-61, 75-86, 100-111, 126-130, 145-149, 153-168, 191, 196, 201, 206
+  --------------------------------------------------------------------------------
+  TOTAL                                              16067  12272    24%
+  Coverage HTML written to dir htmlcov
+  Coverage XML written to file coverage.xml
+  =========================== 753 deselected in 3.31s ============================
+✅ Passed: 00
+❌ Failed: 00
+⏭️ Skipped: 00
+⚠️ Errors: 00
+🎉 All tests passed!
+❌ Step 3 failed with exit code 5
+
+=================================
+📊 Test Suite Summary
+=================================
+
+❌ Non-Delta tests: FAILED (exit code: 1)
+❌ Delta tests: FAILED (exit code: 5)
+❌ Performance tests: FAILED (exit code: 5)
+
+Configuration:
+• Non-Delta tests: Run in parallel with 8 cores (loadfile distribution)
+• Delta tests: Run serially with isolated Spark sessions
+• Performance tests: Run serially for stable timing measurements
+
+Note: --dist loadfile ensures each worker processes complete test files,
+      preventing PySpark session conflicts in compatibility tests.
+
+❌ Test suite FAILED

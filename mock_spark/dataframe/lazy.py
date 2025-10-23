@@ -54,6 +54,8 @@ class LazyEvaluationEngine:
             new_schema = LazyEvaluationEngine._infer_select_schema(df, payload)
         elif op_name == "join":
             new_schema = LazyEvaluationEngine._infer_join_schema(df, payload)
+        elif op_name == "withColumn":
+            new_schema = LazyEvaluationEngine._infer_withcolumn_schema(df, payload)
 
         return MockDataFrame(
             df.data,
@@ -340,10 +342,14 @@ class LazyEvaluationEngine:
                         # String type name, convert to actual type
                         if cast_type.lower() in ["double", "float"]:
                             new_fields.append(MockStructField(col_name, DoubleType()))
-                        elif cast_type.lower() in ["int", "integer", "long", "bigint"]:
+                        elif cast_type.lower() in ["int", "integer"]:
+                            new_fields.append(MockStructField(col_name, IntegerType()))
+                        elif cast_type.lower() in ["long", "bigint"]:
                             new_fields.append(MockStructField(col_name, LongType()))
                         elif cast_type.lower() in ["string", "varchar"]:
                             new_fields.append(MockStructField(col_name, StringType()))
+                        elif cast_type.lower() in ["boolean", "bool"]:
+                            new_fields.append(MockStructField(col_name, BooleanType()))
                         else:
                             new_fields.append(MockStructField(col_name, StringType()))
                     else:
@@ -555,6 +561,70 @@ class LazyEvaluationEngine:
         for field in other_df.schema.fields:
             if not any(f.name == field.name for f in new_fields):
                 new_fields.append(field)
+
+        return MockStructType(new_fields)
+
+    @staticmethod
+    def _infer_withcolumn_schema(df: "MockDataFrame", withcolumn_params: Any) -> "MockStructType":
+        """Infer schema for withColumn operation.
+
+        Args:
+            df: Source DataFrame
+            withcolumn_params: withColumn parameters (col_name, col)
+
+        Returns:
+            Inferred schema after withColumn
+        """
+        from ..spark_types import MockStructType, MockStructField, BooleanType, IntegerType, LongType, DoubleType, StringType, DateType, TimestampType, DecimalType
+        from ..functions.core.column import MockColumnOperation
+
+        col_name, col = withcolumn_params
+
+        # Start with all existing fields except the one being added/replaced
+        new_fields = [field for field in df.schema.fields if field.name != col_name]
+
+        # Infer the type of the new column
+        if isinstance(col, MockColumnOperation) and hasattr(col, "operation") and col.operation == "cast":
+            # Cast operation - use the target data type from col.value
+            cast_type = col.value
+            if isinstance(cast_type, str):
+                # String type name, convert to actual type
+                if cast_type.lower() in ["double", "float"]:
+                    new_fields.append(MockStructField(col_name, DoubleType()))
+                elif cast_type.lower() in ["int", "integer"]:
+                    new_fields.append(MockStructField(col_name, IntegerType()))
+                elif cast_type.lower() in ["long", "bigint"]:
+                    new_fields.append(MockStructField(col_name, LongType()))
+                elif cast_type.lower() in ["string", "varchar"]:
+                    new_fields.append(MockStructField(col_name, StringType()))
+                elif cast_type.lower() in ["boolean", "bool"]:
+                    new_fields.append(MockStructField(col_name, BooleanType()))
+                elif cast_type.lower() in ["date"]:
+                    new_fields.append(MockStructField(col_name, DateType()))
+                elif cast_type.lower() in ["timestamp"]:
+                    new_fields.append(MockStructField(col_name, TimestampType()))
+                elif cast_type.lower().startswith("decimal"):
+                    # Parse decimal(10,2) format
+                    import re
+                    match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
+                    if match:
+                        precision, scale = int(match.group(1)), int(match.group(2))
+                        new_fields.append(MockStructField(col_name, DecimalType(precision, scale)))
+                    else:
+                        new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
+                else:
+                    # Default to StringType for unknown types
+                    new_fields.append(MockStructField(col_name, StringType()))
+            else:
+                # Already a MockDataType object
+                if hasattr(cast_type, '__class__'):
+                    new_fields.append(MockStructField(col_name, cast_type.__class__(nullable=True)))
+                else:
+                    new_fields.append(MockStructField(col_name, cast_type))
+        else:
+            # For other column types, default to StringType
+            # TODO: Add more sophisticated type inference for other operations
+            new_fields.append(MockStructField(col_name, StringType()))
 
         return MockStructType(new_fields)
 

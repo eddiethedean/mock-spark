@@ -46,12 +46,9 @@ class DateTimeFunctions:
         Returns:
             MockColumnOperation representing the current_timestamp function.
         """
-        # Create a special column for functions without input
-        from mock_spark.functions.base import MockColumn
-
-        dummy_column = MockColumn("__current_timestamp__")
+        # Create a MockColumnOperation without a column (None for functions without input)
         operation = MockColumnOperation(
-            dummy_column, "current_timestamp", name="current_timestamp()"
+            None, "current_timestamp", name="current_timestamp()"
         )
         return operation
 
@@ -62,12 +59,9 @@ class DateTimeFunctions:
         Returns:
             MockColumnOperation representing the current_date function.
         """
-        # Create a special column for functions without input
-        from mock_spark.functions.base import MockColumn
-
-        dummy_column = MockColumn("__current_date__")
+        # Create a MockColumnOperation without a column (None for functions without input)
         operation = MockColumnOperation(
-            dummy_column, "current_date", name="current_date()"
+            None, "current_date", name="current_date()"
         )
         return operation
 

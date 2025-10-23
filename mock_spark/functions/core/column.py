@@ -63,6 +63,10 @@ class MockColumn:
         """Hash method to make MockColumn hashable."""
         return hash((self.name, self.column_type))
 
+    def __str__(self) -> str:
+        """Return string representation of column for SQL generation."""
+        return self.name
+
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
         if isinstance(other, MockColumn):
@@ -299,6 +303,9 @@ class MockColumnOperation(IColumn):
             left = str(self.column) if hasattr(self.column, '__str__') else self.column.name
             right = str(self.value) if self.value is not None else "NULL"
             return f"({left} {self.operation} {right})"
+        elif self.operation == "cast":
+            # For cast operations, use the generated name which handles proper SQL syntax
+            return self._generate_name()
         else:
             # For other operations, use the generated name
             return self._generate_name()
@@ -313,7 +320,14 @@ class MockColumnOperation(IColumn):
             value_str = str(self.value)
 
         # Handle column reference - use str() to get proper SQL for MockColumnOperation
-        column_ref = str(self.column) if hasattr(self.column, '__str__') else self.column.name
+        if self.column is None:
+            # For functions without column input (like current_date, current_timestamp)
+            return self.operation + "()"
+        # Handle MockColumn objects properly
+        if hasattr(self.column, 'name'):
+            column_ref = self.column.name
+        else:
+            column_ref = str(self.column)
         
         if self.operation == "==":
             return f"{column_ref} = {value_str}"
@@ -360,7 +374,33 @@ class MockColumnOperation(IColumn):
         elif self.operation == "desc":
             return f"{self.column.name} DESC"
         elif self.operation == "cast":
-            return f"CAST({self.column.name} AS {self.value})"
+            # Map PySpark type names to DuckDB/SQL type names
+            type_mapping = {
+                "int": "INTEGER",
+                "integer": "INTEGER",
+                "long": "BIGINT",
+                "bigint": "BIGINT",
+                "double": "DOUBLE",
+                "float": "FLOAT",
+                "string": "VARCHAR",
+                "varchar": "VARCHAR",
+                "boolean": "BOOLEAN",
+                "bool": "BOOLEAN",
+                "date": "DATE",
+                "timestamp": "TIMESTAMP",
+            }
+            if isinstance(self.value, str):
+                sql_type = type_mapping.get(self.value.lower(), self.value.upper())
+            else:
+                # If value is a MockDataType, use its SQL representation
+                sql_type = str(self.value)
+            return f"CAST({self.column.name} AS {sql_type})"
+        elif self.operation == "from_unixtime":
+            # Handle from_unixtime function properly
+            if self.value is not None:
+                return f"from_unixtime({self.column.name}, '{self.value}')"
+            else:
+                return f"from_unixtime({self.column.name})"
         else:
             return f"{self.column.name} {self.operation} {self.value}"
 

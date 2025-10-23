@@ -6,8 +6,9 @@ providing database-agnostic query building that works with any SQLAlchemy backen
 """
 
 from typing import Any, Dict, List, Optional, Union, Tuple
-from sqlalchemy import select, Table, and_, or_, func, literal
+from sqlalchemy import select, Table, and_, or_, func, literal, cast as sa_cast
 from sqlalchemy.sql import Select
+from sqlalchemy.types import Integer, Float, String, Boolean, BigInteger, Date, DateTime
 
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
 from ..spark_types import MockStructType
@@ -163,6 +164,7 @@ class SQLAlchemyQueryBuilder:
             "%": lambda left, right: left % right,
             "&": lambda left, right: and_(left, right),
             "|": lambda left, right: or_(left, right),
+            "cast": lambda left, right: self._handle_cast(left, right),
         }
 
         operation_func = operation_map.get(op.operation)
@@ -170,6 +172,22 @@ class SQLAlchemyQueryBuilder:
             return operation_func(left, right)
 
         return literal(str(op))
+
+    def _handle_cast(self, column, target_type):
+        """Convert cast to SQLAlchemy cast."""
+        type_map = {
+            "int": Integer, "integer": Integer,
+            "long": BigInteger, "bigint": BigInteger,
+            "double": Float, "float": Float,
+            "string": String, "varchar": String,
+            "boolean": Boolean, "bool": Boolean,
+            "date": Date, "timestamp": DateTime
+        }
+        if isinstance(target_type, str):
+            sa_type = type_map.get(target_type.lower(), String)()
+        else:
+            sa_type = String()  # fallback
+        return sa_cast(column, sa_type)
 
     def _value_to_sqlalchemy(self, value: Any) -> Any:
         """Convert a value to SQLAlchemy literal or expression."""
