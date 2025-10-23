@@ -33,7 +33,7 @@ class MockWindowFunction:
         else:
             self.column_name = None
         self.name = self._generate_name()
-        
+
         # Add column property for compatibility with query executor
         self.column = getattr(function, "column", None)
 
@@ -111,8 +111,18 @@ class MockWindowFunction:
             value = row.get(col_name)
             values.append((value, i))  # (value, original_index)
 
-        # Sort by value (ascending by default)
-        values.sort(key=lambda x: x[0] if x[0] is not None else float("inf"))
+        # Check if ordering is descending
+        is_desc = False
+        if hasattr(order_col, "operation") and order_col.operation == "desc":
+            is_desc = True
+
+        # Sort by value (check for DESC)
+        if is_desc:
+            values.sort(
+                key=lambda x: x[0] if x[0] is not None else float("-inf"), reverse=True
+            )
+        else:
+            values.sort(key=lambda x: x[0] if x[0] is not None else float("inf"))
 
         # Assign ranks (PySpark rank behavior: same rank for ties, skip ranks after ties)
         ranks = [0] * len(data)

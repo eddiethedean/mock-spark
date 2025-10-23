@@ -480,9 +480,16 @@ class SQLAlchemyMaterializer:
                     # Build CASE WHEN SQL expression
                     case_expr = self._build_case_when_sql(col, source_table_obj)
                     select_columns.append(text(case_expr))
-                    
+
                     # Infer the correct column type from MockCaseWhen
-                    from ...spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                    from ...spark_types import (
+                        BooleanType,
+                        IntegerType,
+                        LongType,
+                        DoubleType,
+                        StringType,
+                    )
+
                     inferred_type = col.get_result_type()
                     if isinstance(inferred_type, BooleanType):
                         new_columns.append(Column(col.name, Boolean, primary_key=False))
@@ -3298,7 +3305,9 @@ class SQLAlchemyMaterializer:
 
                 # Add appropriate column type
                 if col.function_name in ["count", "countDistinct", "count_if"]:
-                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    new_columns.append(
+                        Column(col.name, Integer, primary_key=False, nullable=False)
+                    )
                 elif col.function_name in ["bool_and", "bool_or"]:
                     new_columns.append(Column(col.name, Boolean, primary_key=False))
                 elif col.function_name == "sum":
@@ -3457,19 +3466,25 @@ class SQLAlchemyMaterializer:
                         col.window_spec, source_table_obj
                     )
                     select_parts.append(f"ROW_NUMBER() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    new_columns.append(
+                        Column(col.name, Integer, primary_key=False, nullable=False)
+                    )
                 elif col.function_name == "rank":
                     window_sql = self._window_spec_to_sql(
                         col.window_spec, source_table_obj
                     )
                     select_parts.append(f"RANK() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    new_columns.append(
+                        Column(col.name, Integer, primary_key=False, nullable=False)
+                    )
                 elif col.function_name == "dense_rank":
                     window_sql = self._window_spec_to_sql(
                         col.window_spec, source_table_obj
                     )
                     select_parts.append(f"DENSE_RANK() OVER ({window_sql})")
-                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    new_columns.append(
+                        Column(col.name, Integer, primary_key=False, nullable=False)
+                    )
                 else:
                     # Generic window function - handle parameters
                     window_sql = self._window_spec_to_sql(
@@ -3588,8 +3603,16 @@ class SQLAlchemyMaterializer:
                             )
 
                     # Window ranking functions never return NULL
-                    if col.function_name in ["row_number", "rank", "dense_rank", "cume_dist", "percent_rank"]:
-                        new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    if col.function_name in [
+                        "row_number",
+                        "rank",
+                        "dense_rank",
+                        "cume_dist",
+                        "percent_rank",
+                    ]:
+                        new_columns.append(
+                            Column(col.name, Integer, primary_key=False, nullable=False)
+                        )
                     else:
                         new_columns.append(Column(col.name, Integer, primary_key=False))
             elif (
@@ -3737,7 +3760,9 @@ class SQLAlchemyMaterializer:
 
                 # Add column with appropriate type
                 if col.function_name == "count":
-                    new_columns.append(Column(col.name, Integer, primary_key=False, nullable=False))
+                    new_columns.append(
+                        Column(col.name, Integer, primary_key=False, nullable=False)
+                    )
                 elif col.function_name == "sum":
                     # Preserve source column type for SUM
                     column_name = (
@@ -5117,14 +5142,18 @@ class SQLAlchemyMaterializer:
                 else:
                     select_parts.append(f'{col.value} AS "{col_name}"')
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Window function - can't get source_table_obj, skip window spec for now
+                # Window function - convert window spec to SQL
                 func_name = col.function_name.upper()
                 if col.column is None or col.column == "*":
                     col_expr = "*"
                 else:
                     col_expr = f'"{col.column.name}"'
-                # Simplified window spec without source_table_obj
-                select_parts.append(f'{func_name}({col_expr}) OVER () AS "{col_name}"')
+
+                # Convert window spec to SQL
+                window_sql = self._window_spec_to_sql(col.window_spec, None)
+                select_parts.append(
+                    f'{func_name}({col_expr}) OVER ({window_sql}) AS "{col_name}"'
+                )
             elif hasattr(col, "operation"):
                 # Expression
                 expr_sql = self._expression_to_sql(col)

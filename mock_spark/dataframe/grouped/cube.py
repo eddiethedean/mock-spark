@@ -43,6 +43,9 @@ class MockCubeGroupedData(MockGroupedData):
         """
         result_data = []
 
+        # Track which result keys are from count/rank functions (non-nullable)
+        non_nullable_keys = set()
+
         # Generate all possible combinations of columns (2^n combinations)
         for r in range(len(self.cube_columns) + 1):
             for combo in itertools.combinations(self.cube_columns, r):
@@ -62,6 +65,9 @@ class MockCubeGroupedData(MockGroupedData):
                             result_key, result_value = self._evaluate_string_expression(
                                 expr, filtered_rows
                             )
+                            # Check if this is a count function
+                            if expr.startswith("count("):
+                                non_nullable_keys.add(result_key)
                             result_row[result_key] = result_value
                         elif hasattr(expr, "function_name"):
                             from typing import cast
@@ -72,6 +78,9 @@ class MockCubeGroupedData(MockGroupedData):
                                     cast(MockAggregateFunction, expr), filtered_rows
                                 )
                             )
+                            # Check if this is a count function
+                            if expr.function_name == "count":
+                                non_nullable_keys.add(result_key)
                             result_row[result_key] = result_value
                         elif hasattr(expr, "name"):
                             result_key, result_value = self._evaluate_column_expression(
@@ -105,6 +114,9 @@ class MockCubeGroupedData(MockGroupedData):
                                 result_key, result_value = (
                                     self._evaluate_string_expression(expr, group_rows)
                                 )
+                                # Check if this is a count function
+                                if expr.startswith("count("):
+                                    non_nullable_keys.add(result_key)
                                 result_row[result_key] = result_value
                             elif hasattr(expr, "function_name"):
                                 from typing import cast
@@ -115,6 +127,9 @@ class MockCubeGroupedData(MockGroupedData):
                                         cast(MockAggregateFunction, expr), group_rows
                                     )
                                 )
+                                # Check if this is a count function
+                                if expr.function_name == "count":
+                                    non_nullable_keys.add(result_key)
                                 result_row[result_key] = result_value
                             elif hasattr(expr, "name"):
                                 result_key, result_value = (
@@ -143,20 +158,47 @@ class MockCubeGroupedData(MockGroupedData):
                 fields.append(MockStructField(key, StringType()))
             else:
                 # Count functions, window ranking functions, and boolean functions are non-nullable in PySpark
-                is_count_function = any(
-                    key.startswith(func) for func in ["count(", "count(1)", "count(DISTINCT", "row_num", "rank", "dense_rank", "dept_row_num", "global_row", "dept_row", "dept_rank"]
+                is_count_function = key in non_nullable_keys or any(
+                    key.startswith(func)
+                    for func in [
+                        "count(",
+                        "count(1)",
+                        "count(DISTINCT",
+                        "count_if",
+                        "row_number",
+                        "rank",
+                        "dense_rank",
+                        "row_num",
+                        "dept_row_num",
+                        "global_row",
+                        "dept_row",
+                        "dept_rank",
+                    ]
                 )
                 is_boolean_function = any(
-                    key.startswith(func) for func in ["coalesced_", "is_null_", "is_nan_"]
+                    key.startswith(func)
+                    for func in ["coalesced_", "is_null_", "is_nan_"]
                 )
                 nullable = not (is_count_function or is_boolean_function)
-                
+
                 if isinstance(value, int):
-                    fields.append(MockStructField(key, LongType(nullable=nullable), nullable=nullable))
+                    fields.append(
+                        MockStructField(
+                            key, LongType(nullable=nullable), nullable=nullable
+                        )
+                    )
                 elif isinstance(value, float):
-                    fields.append(MockStructField(key, DoubleType(nullable=nullable), nullable=nullable))
+                    fields.append(
+                        MockStructField(
+                            key, DoubleType(nullable=nullable), nullable=nullable
+                        )
+                    )
                 else:
                     # Fallback for any other type
-                    fields.append(MockStructField(key, StringType(nullable=nullable), nullable=nullable))
+                    fields.append(
+                        MockStructField(
+                            key, StringType(nullable=nullable), nullable=nullable
+                        )
+                    )
         schema = MockStructType(fields)
         return MockDataFrame(result_data, schema)

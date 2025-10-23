@@ -100,34 +100,39 @@ class MockCaseWhen:
         """Infer the result type from condition values."""
         from ..spark_types import BooleanType, IntegerType, StringType, DoubleType
         from .core.literals import MockLiteral
-        
+
         # Check all condition values and default value
         all_values = [v for _, v in self.conditions]
         if self.default_value is not None:
             all_values.append(self.default_value)
-        
+
         # Check if all values are literals (which are never nullable)
         all_literals = all(
-            isinstance(val, MockLiteral) or val is None 
-            for val in all_values
+            isinstance(val, MockLiteral) or val is None for val in all_values
         )
-        
+
         for val in all_values:
             if val is not None:
                 if isinstance(val, MockLiteral):
                     # For MockLiteral, create a new instance with correct nullable
                     data_type = val.data_type
                     if isinstance(data_type, BooleanType):
-                        return BooleanType(nullable=False)  # Literals are never nullable
+                        return BooleanType(
+                            nullable=False
+                        )  # Literals are never nullable
                     elif isinstance(data_type, IntegerType):
-                        return IntegerType(nullable=False)  # Literals are never nullable
+                        return IntegerType(
+                            nullable=False
+                        )  # Literals are never nullable
                     elif isinstance(data_type, DoubleType):
                         return DoubleType(nullable=False)  # Literals are never nullable
                     elif isinstance(data_type, StringType):
                         return StringType(nullable=False)  # Literals are never nullable
                     else:
                         # For other types, create with correct nullable
-                        return data_type.__class__(nullable=False)  # Literals are never nullable
+                        return data_type.__class__(
+                            nullable=False
+                        )  # Literals are never nullable
                 elif isinstance(val, bool):
                     return BooleanType(nullable=False)  # Literals are never nullable
                 elif isinstance(val, int):
@@ -139,6 +144,7 @@ class MockCaseWhen:
                 elif hasattr(val, "operation") and hasattr(val, "column"):
                     # Handle MockColumnOperation - check the operation type
                     from ..spark_types import LongType
+
                     if val.operation in ["+", "-", "*", "/", "%", "abs"]:
                         # Arithmetic operations return LongType
                         return LongType(nullable=False)
@@ -148,7 +154,7 @@ class MockCaseWhen:
                     else:
                         # Default to StringType for other operations
                         return StringType(nullable=False)
-        
+
         # Default to LongType for arithmetic operations, not BooleanType
         return LongType(nullable=not all_literals)
 
@@ -228,12 +234,12 @@ class MockCaseWhen:
                 left_result = self._evaluate_column_operation(row, operation.column)
             else:
                 left_result = self._evaluate_condition(row, operation.column)
-            
+
             if hasattr(operation.value, "operation"):
                 right_result = self._evaluate_column_operation(row, operation.value)
             else:
                 right_result = self._evaluate_condition(row, operation.value)
-            
+
             return left_result and right_result
         elif operation.operation == "|":
             # Prevent infinite recursion - check if operands are operations
@@ -241,12 +247,12 @@ class MockCaseWhen:
                 left_result = self._evaluate_column_operation(row, operation.column)
             else:
                 left_result = self._evaluate_condition(row, operation.column)
-            
+
             if hasattr(operation.value, "operation"):
                 right_result = self._evaluate_column_operation(row, operation.value)
             else:
                 right_result = self._evaluate_condition(row, operation.value)
-            
+
             return left_result or right_result
         else:
             return False
@@ -279,7 +285,7 @@ class MockCaseWhen:
             The evaluated value.
         """
         from .core.literals import MockLiteral
-        
+
         if isinstance(value, MockLiteral):
             # For MockLiteral, return the actual value
             return value.value

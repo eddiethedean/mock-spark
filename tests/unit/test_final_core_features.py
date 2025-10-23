@@ -98,7 +98,6 @@ class TestToStrFunction:
 class TestMapInPandas:
     """Test mapInPandas DataFrame method."""
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_mapinpandas_basic_transformation(self, spark):
         """Test mapInPandas with basic transformation."""
         pytest.importorskip("pandas")
@@ -120,7 +119,6 @@ class TestMapInPandas:
         assert data[1]["value"] == 40
         assert data[2]["value"] == 60
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_mapinpandas_with_schema_string(self, spark):
         """Test mapInPandas with DDL schema string."""
         pytest.importorskip("pandas")
@@ -161,7 +159,6 @@ class TestMapInPandas:
 
         assert data[0]["b"] == 999
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_mapinpandas_iterator_pattern(self, spark):
         """Test mapInPandas with proper iterator pattern."""
         pytest.importorskip("pandas")
@@ -182,7 +179,6 @@ class TestMapInPandas:
         assert all("doubled" in row for row in data)
         assert data[2]["doubled"] == 4
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_mapinpandas_complex_transformation(self, spark):
         """Test mapInPandas with complex pandas operations."""
         pytest.importorskip("pandas")
@@ -230,7 +226,6 @@ class TestMapInPandas:
         with pytest.raises(ImportError, match="pandas is required for mapInPandas"):
             df.mapInPandas(transform, "id: int")
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_mapinpandas_empty_dataframe(self, spark):
         """Test mapInPandas with empty DataFrame."""
         pytest.importorskip("pandas")

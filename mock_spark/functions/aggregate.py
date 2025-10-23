@@ -57,7 +57,7 @@ class AggregateFunctions:
         Returns:
             MockAggregateFunction representing the count function.
         """
-        return MockAggregateFunction(column, "count", LongType())
+        return MockAggregateFunction(column, "count", LongType(nullable=False))
 
     @staticmethod
     def sum(column: Union[MockColumn, str]) -> MockAggregateFunction:
@@ -213,7 +213,7 @@ class AggregateFunctions:
         Returns:
             MockAggregateFunction representing the countDistinct function.
         """
-        return MockAggregateFunction(column, "countDistinct", LongType())
+        return MockAggregateFunction(column, "countDistinct", LongType(nullable=False))
 
     @staticmethod
     def percentile_approx(

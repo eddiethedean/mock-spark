@@ -58,7 +58,7 @@ class MockDataType:
     def __eq__(self, other: Any) -> bool:
         # For PySpark compatibility, compare only the type class
         # nullable is a field-level property, not a type-level property
-        if hasattr(other, '__class__'):
+        if hasattr(other, "__class__"):
             return isinstance(other, self.__class__)
         return False
 

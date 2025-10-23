@@ -374,7 +374,6 @@ class TestEdgeCases:
         with pytest.raises(ValueError, match="must have same length"):
             df.replace([1, 2, 3], [10, 20])
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser for DDL schema parsing")
     def test_replace_empty_dataframe(self, spark):
         """Test replace on empty DataFrame."""
         df = spark.createDataFrame([], schema="x INT, y STRING")

@@ -223,9 +223,10 @@ class MockSparkSession:
                     else:
                         reordered_data.append(row)
                 data = reordered_data
-                
+
                 # Now infer schema from the converted data
                 from ...core.schema_inference import SchemaInferenceEngine
+
                 schema, data = SchemaInferenceEngine.infer_from_data(data)
             else:
                 # For non-tuple data with column names, use StringType as default
@@ -483,11 +484,19 @@ class MockSparkSession:
             # When reading from a table, reset all fields to nullable=True to match PySpark behavior
             # Storage formats (Parquet/Delta) typically make columns nullable by default
             from ...spark_types import MockStructField, MockStructType
-            from ...spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
-            
+            from ...spark_types import (
+                BooleanType,
+                IntegerType,
+                LongType,
+                DoubleType,
+                StringType,
+                MockDataType,
+            )
+
             updated_fields = []
             for field in table_schema.fields:
                 # Create new data type with nullable=True
+                data_type: MockDataType
                 if isinstance(field.dataType, BooleanType):
                     data_type = BooleanType(nullable=True)
                 elif isinstance(field.dataType, IntegerType):
@@ -501,11 +510,11 @@ class MockSparkSession:
                 else:
                     # For other types, create with nullable=True
                     data_type = field.dataType.__class__(nullable=True)
-                
+
                 # Create new field with nullable=True
                 updated_field = MockStructField(field.name, data_type, nullable=True)
                 updated_fields.append(updated_field)
-            
+
             table_schema = MockStructType(updated_fields)
 
         return MockDataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]

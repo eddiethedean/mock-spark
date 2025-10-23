@@ -98,7 +98,7 @@ class SchemaInferenceEngine:
                     )
 
             # Use the nullable property from the field type if available, otherwise default to True
-            nullable = getattr(field_type, 'nullable', True)
+            nullable = getattr(field_type, "nullable", True)
             fields.append(MockStructField(key, field_type, nullable=nullable))
 
         schema = MockStructType(fields)

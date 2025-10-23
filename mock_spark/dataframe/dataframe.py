@@ -38,7 +38,7 @@ from ..spark_types import (
     StringType,
     LongType,
     DoubleType,
-    IntegerType,
+    MockDataType,
 )
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
 from ..storage import MemoryStorageManager
@@ -390,7 +390,6 @@ class MockDataFrame:
             DoubleType,
             StringType,
         )
-        from ..functions.conditional import MockCaseWhen
 
         fields_map = {f.name: f for f in self._schema.fields}
         for op_name, op_val in self._operations_queue:
@@ -418,24 +417,31 @@ class MockDataFrame:
                         elif hasattr(col, "value") and hasattr(col, "column_type"):
                             # For MockLiteral objects - literals are never nullable
                             # Create a new instance of the data type with nullable=False
-                            from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
-                            
+                            from ..spark_types import (
+                                BooleanType,
+                                IntegerType,
+                                LongType,
+                                DoubleType,
+                                StringType,
+                            )
+
                             col_type = col.column_type
+                            data_type: MockDataType
                             if isinstance(col_type, BooleanType):
-                                data_type = BooleanType(nullable=False)
+                                data_type3 = BooleanType(nullable=False)
                             elif isinstance(col_type, IntegerType):
-                                data_type = IntegerType(nullable=False)
+                                data_type3 = IntegerType(nullable=False)
                             elif isinstance(col_type, LongType):
-                                data_type = LongType(nullable=False)
+                                data_type3 = LongType(nullable=False)
                             elif isinstance(col_type, DoubleType):
-                                data_type = DoubleType(nullable=False)
+                                data_type3 = DoubleType(nullable=False)
                             elif isinstance(col_type, StringType):
-                                data_type = StringType(nullable=False)
+                                data_type3 = StringType(nullable=False)
                             else:
                                 # For other types, create a new instance with nullable=False
-                                data_type = col_type.__class__(nullable=False)
-                            
-                            field = MockStructField(col_name, data_type, nullable=False)
+                                data_type3 = col_type.__class__(nullable=False)
+
+                            field = MockStructField(col_name, data_type3, nullable=False)
                             new_fields_map[col_name] = field
                         else:
                             # New column from expression - use StringType as default
@@ -463,24 +469,33 @@ class MockDataFrame:
                 elif hasattr(col, "value") and hasattr(col, "column_type"):
                     # For MockLiteral objects - literals are never nullable
                     # Create a new instance of the data type with nullable=False
-                    from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
-                    
+                    from ..spark_types import (
+                        BooleanType,
+                        IntegerType,
+                        LongType,
+                        DoubleType,
+                        StringType,
+                    )
+
                     col_type = col.column_type
+                    data_type2: MockDataType
                     if isinstance(col_type, BooleanType):
-                        data_type = BooleanType(nullable=False)
+                        data_type2 = BooleanType(nullable=False)
                     elif isinstance(col_type, IntegerType):
-                        data_type = IntegerType(nullable=False)
+                        data_type2 = IntegerType(nullable=False)
                     elif isinstance(col_type, LongType):
-                        data_type = LongType(nullable=False)
+                        data_type2 = LongType(nullable=False)
                     elif isinstance(col_type, DoubleType):
-                        data_type = DoubleType(nullable=False)
+                        data_type2 = DoubleType(nullable=False)
                     elif isinstance(col_type, StringType):
-                        data_type = StringType(nullable=False)
+                        data_type2 = StringType(nullable=False)
                     else:
                         # For other types, create a new instance with nullable=False
-                        data_type = col_type.__class__(nullable=False)
-                    
-                    fields_map[col_name] = MockStructField(col_name, data_type, nullable=False)
+                        data_type2 = col_type.__class__(nullable=False)
+
+                    fields_map[col_name] = MockStructField(
+                        col_name, data_type2, nullable=False
+                    )
                 else:
                     # fallback literal inference
                     if isinstance(col, (int, float)):
@@ -820,7 +835,15 @@ class MockDataFrame:
                 # Handle MockLiteral directly - literals are never nullable
                 col_name = col.name
                 # Create a new instance of the data type with nullable=False
-                from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                from ..spark_types import (
+                    BooleanType,
+                    IntegerType,
+                    LongType,
+                    DoubleType,
+                    StringType,
+                )
+
+                data_type: MockDataType
                 if isinstance(col.column_type, BooleanType):
                     data_type = BooleanType(nullable=False)
                 elif isinstance(col.column_type, IntegerType):
@@ -1088,21 +1111,33 @@ class MockDataFrame:
                         # Use the MockLiteral object's column_type - literals are never nullable
                         literal_obj = literal_objects[col_name]
                         # Create a new instance of the data type with nullable=False
-                        from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+                        from ..spark_types import (
+                            BooleanType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            StringType,
+                        )
+
+                        data_type3: MockDataType
                         if isinstance(literal_obj.column_type, BooleanType):
-                            data_type = BooleanType(nullable=False)
+                            data_type3 = BooleanType(nullable=False)
                         elif isinstance(literal_obj.column_type, IntegerType):
-                            data_type = IntegerType(nullable=False)
+                            data_type3 = IntegerType(nullable=False)
                         elif isinstance(literal_obj.column_type, LongType):
-                            data_type = LongType(nullable=False)
+                            data_type3 = LongType(nullable=False)
                         elif isinstance(literal_obj.column_type, DoubleType):
-                            data_type = DoubleType(nullable=False)
+                            data_type3 = DoubleType(nullable=False)
                         elif isinstance(literal_obj.column_type, StringType):
-                            data_type = StringType(nullable=False)
+                            data_type3 = StringType(nullable=False)
                         else:
                             # For other types, create a new instance with nullable=False
-                            data_type = literal_obj.column_type.__class__(nullable=False)
-                        new_fields.append(MockStructField(col_name, data_type, nullable=False))
+                            data_type3 = literal_obj.column_type.__class__(
+                                nullable=False
+                            )
+                        new_fields.append(
+                            MockStructField(col_name, data_type3, nullable=False)
+                        )
                     else:
                         # Fallback to type inference
                         from ..spark_types import (
@@ -1168,7 +1203,9 @@ class MockDataFrame:
                 # Infer type based on window function
                 if col.function_name in ["row_number", "rank", "dense_rank"]:
                     # Ranking functions return IntegerType and are non-nullable
-                    new_fields.append(MockStructField(col_name, IntegerType(), nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, IntegerType(), nullable=False)
+                    )
                 elif col.function_name in ["lag", "lead"] and col.column_name:
                     # Lag/lead functions return the same type as the source column
                     source_col_name = col.column_name
@@ -1178,16 +1215,24 @@ class MockDataFrame:
                             source_type = field.dataType
                             break
                     if source_type:
-                        new_fields.append(MockStructField(col_name, source_type, nullable=False))
+                        new_fields.append(
+                            MockStructField(col_name, source_type, nullable=False)
+                        )
                     else:
                         # Default to DoubleType if source column not found
-                        new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                        new_fields.append(
+                            MockStructField(col_name, DoubleType(), nullable=False)
+                        )
                 elif col.function_name in ["avg", "sum"]:
                     # Average and sum functions return DoubleType
-                    new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, DoubleType(), nullable=False)
+                    )
                 elif col.function_name in ["count", "countDistinct"]:
                     # Count functions return LongType
-                    new_fields.append(MockStructField(col_name, LongType(), nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, LongType(), nullable=False)
+                    )
                 elif col.function_name in ["max", "min"] and col.column_name:
                     # Max/min functions return the same type as the source column
                     source_col_name = col.column_name
@@ -1197,13 +1242,19 @@ class MockDataFrame:
                             source_type = field.dataType
                             break
                     if source_type:
-                        new_fields.append(MockStructField(col_name, source_type, nullable=False))
+                        new_fields.append(
+                            MockStructField(col_name, source_type, nullable=False)
+                        )
                     else:
                         # Default to DoubleType if source column not found
-                        new_fields.append(MockStructField(col_name, DoubleType(), nullable=False))
+                        new_fields.append(
+                            MockStructField(col_name, DoubleType(), nullable=False)
+                        )
                 else:
                     # Default to IntegerType for other window functions
-                    new_fields.append(MockStructField(col_name, IntegerType(), nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, IntegerType(), nullable=False)
+                    )
             elif hasattr(col, "operation") and hasattr(col, "column"):
                 # Handle MockColumnOperation (e.g., upper(col), length(col))
                 col_name = col.name
@@ -1302,14 +1353,17 @@ class MockDataFrame:
                 # Handle MockCaseWhen objects - use the new type inference method
                 col_name = col.name
                 from ..functions.conditional import MockCaseWhen
-                
+
                 if isinstance(col, MockCaseWhen):
                     # Infer type from case when result type
                     inferred_type = col.get_result_type()
-                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, inferred_type, nullable=False)
+                    )
                 else:
                     # Fallback for other conditional objects
                     from ..spark_types import StringType
+
                     new_fields.append(MockStructField(col_name, StringType()))
             elif isinstance(col, MockColumn) and col.name.startswith(
                 (
@@ -1425,7 +1479,9 @@ class MockDataFrame:
                             1 for row in self.data if row.get(col_name) is not None
                         )
                         result_row[agg_col_name] = non_null_count
-                    new_fields.append(MockStructField(agg_col_name, LongType(nullable=False)))
+                    new_fields.append(
+                        MockStructField(agg_col_name, LongType(), nullable=False)
+                    )
                 elif func_name == "sum":
                     if not has_alias:
                         agg_col_name = f"sum({col_name})"
@@ -1466,7 +1522,9 @@ class MockDataFrame:
                         result_row[agg_col_name] = len(set(values))
                     else:
                         result_row[agg_col_name] = 0  # type: ignore[unreachable]
-                    new_fields.append(MockStructField(agg_col_name, LongType(nullable=False)))
+                    new_fields.append(
+                        MockStructField(agg_col_name, LongType(), nullable=False)
+                    )
                 elif func_name == "max":
                     if not has_alias:
                         agg_col_name = f"max({col_name})"
@@ -1627,17 +1685,22 @@ class MockDataFrame:
 
         # Handle MockLiteral boolean filtering
         from ..functions.core.literals import MockLiteral
+
         if isinstance(condition, MockLiteral):
             if isinstance(condition.value, bool):
                 if condition.value:
                     # lit(True) - return all rows
-                    return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
+                    return MockDataFrame(
+                        self.data, self.schema, self.storage, is_lazy=False
+                    )
                 else:
                     # lit(False) - return no rows
                     return MockDataFrame([], self.schema, self.storage, is_lazy=False)
             # For non-boolean literals, treat as truthy check
             if condition.value:
-                return MockDataFrame(self.data, self.schema, self.storage, is_lazy=False)
+                return MockDataFrame(
+                    self.data, self.schema, self.storage, is_lazy=False
+                )
             else:
                 return MockDataFrame([], self.schema, self.storage, is_lazy=False)
 
@@ -1682,15 +1745,32 @@ class MockDataFrame:
             elif hasattr(col, "value") and hasattr(col, "column_type"):
                 # Handle MockLiteral objects
                 new_row[col_name] = col.value
+            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
+                # Handle MockWindowFunction (e.g., rank().over(window))
+                # Window functions need to be evaluated across all rows
+                # For now, we'll handle this after processing all rows
+                new_row[col_name] = None  # Placeholder, will be filled later
             else:
                 new_row[col_name] = col
 
             new_data.append(new_row)
 
+        # Handle window functions if present
+        if hasattr(col, "function_name") and hasattr(col, "window_spec"):
+            window_functions = [(0, col)]  # (col_index, window_func)
+            new_data = self._evaluate_window_functions(new_data, window_functions)
+
         # Update schema
         new_fields = [field for field in self.schema.fields if field.name != col_name]
 
         # Determine the correct type for the new column
+        from ..spark_types import (
+            BooleanType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            StringType,
+        )
 
         if isinstance(col, (MockColumn, MockColumnOperation)):
             # For arithmetic operations, determine type based on the operation
@@ -1712,7 +1792,15 @@ class MockDataFrame:
         elif hasattr(col, "value") and hasattr(col, "column_type"):
             # Handle MockLiteral objects - use their column_type, literals are never nullable
             # Create a new instance of the data type with nullable=False
-            from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
+            from ..spark_types import (
+                BooleanType,
+                IntegerType,
+                LongType,
+                DoubleType,
+                StringType,
+            )
+
+            data_type: MockDataType
             if isinstance(col.column_type, BooleanType):
                 data_type = BooleanType(nullable=False)
             elif isinstance(col.column_type, IntegerType):
@@ -3522,17 +3610,17 @@ class MockDataFrame:
     def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
         # Use the MockCaseWhen's own evaluate method
-        if hasattr(case_when_obj, 'evaluate'):
+        if hasattr(case_when_obj, "evaluate"):
             return case_when_obj.evaluate(row)
-        
+
         # Fallback to manual evaluation
         for condition, value in case_when_obj.conditions:
             if self._evaluate_case_when_condition(row, condition):
                 return self._evaluate_value(row, value)
-        
+
         if case_when_obj.else_value is not None:
             return self._evaluate_value(row, case_when_obj.else_value)
-        
+
         return None
 
     def _evaluate_case_when_condition(

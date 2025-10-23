@@ -1024,11 +1024,13 @@ class MockFunctions:
         """Row number window function."""
         # Create a special column for functions without input
         from mock_spark.functions.base import MockColumn
+        from mock_spark.spark_types import IntegerType
 
         dummy_column = MockColumn("__row_number__")
         operation = MockColumnOperation(dummy_column, "row_number")
         operation.name = "row_number()"
         operation.function_name = "row_number"
+        operation.return_type = IntegerType(nullable=False)
         return operation
 
     @staticmethod

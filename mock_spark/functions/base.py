@@ -54,10 +54,32 @@ class MockAggregateFunction:
         """
         self.column = column
         self.function_name = function_name
-        self.data_type = data_type or StringType()
+        self.data_type = self._configure_data_type(data_type)
         self.name = self._generate_name()
         # Optional attributes for specific functions
         self.ord_column: Optional[Union[MockColumn, str]] = None  # For max_by, min_by
+
+    def _configure_data_type(self, data_type: Optional[MockDataType]) -> MockDataType:
+        """Configure data type with appropriate nullability based on function type."""
+        if not data_type:
+            return StringType()
+
+        # Functions that always return non-nullable results in PySpark
+        non_nullable_functions = {
+            "count",
+            "countDistinct",
+            "row_number",
+            "rank",
+            "dense_rank",
+            "isNull",
+            "isnan",
+            "coalesce",
+        }
+
+        if self.function_name in non_nullable_functions:
+            data_type.nullable = False
+
+        return data_type
 
     @property
     def column_name(self) -> str:

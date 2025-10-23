@@ -118,7 +118,6 @@ class TestToSchema:
         assert "b" in data[0]
         assert "c" not in data[0]  # Column c should be dropped
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_to_with_ddl_string(self, spark):
         """Test to() with DDL schema string."""
         df = spark.createDataFrame([{"id": 1, "name": "Alice", "extra": "data"}])

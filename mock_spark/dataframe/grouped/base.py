@@ -5,10 +5,14 @@ This module provides the core MockGroupedData class for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional
+from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional, Set
 import statistics
 
-from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction, MockLiteral
+from ...functions import (
+    MockColumn,
+    MockColumnOperation,
+    MockAggregateFunction,
+)
 from ...core.exceptions.analysis import AnalysisException
 
 if TYPE_CHECKING:
@@ -47,7 +51,7 @@ class MockGroupedData:
             New MockDataFrame with aggregated results.
         """
         from ...functions.core.literals import MockLiteral
-        
+
         # Materialize the DataFrame if it's lazy
         if self.df.is_lazy:
             self.df = self.df._materialize_if_lazy()
@@ -60,6 +64,9 @@ class MockGroupedData:
                 groups[group_key] = []
             groups[group_key].append(row)
 
+        # Track which result keys are from count/rank functions (non-nullable)
+        non_nullable_keys = set()
+
         # Apply aggregations
         result_data = []
         for group_key, group_rows in groups.items():
@@ -71,6 +78,9 @@ class MockGroupedData:
                     result_key, result_value = self._evaluate_string_expression(
                         expr, group_rows
                     )
+                    # Check if this is a count function
+                    if expr.startswith("count("):
+                        non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name"):
                     # Handle MockAggregateFunction
@@ -80,12 +90,15 @@ class MockGroupedData:
                     result_key, result_value = self._evaluate_aggregate_function(
                         cast(MockAggregateFunction, expr), group_rows
                     )
+                    # Check if this is a count function
+                    if expr.function_name == "count":
+                        non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
                 elif isinstance(expr, MockLiteral):
                     # For literals in aggregation, just use their value
                     lit_expr = expr
                     # Use the literal's name as key if it has an alias
-                    result_key = getattr(lit_expr, 'name', str(lit_expr.value))
+                    result_key = getattr(lit_expr, "name", str(lit_expr.value))
                     result_row[result_key] = lit_expr.value
                 elif hasattr(expr, "name"):
                     # Handle MockColumn or MockColumnOperation
@@ -105,19 +118,20 @@ class MockGroupedData:
             LongType,
             DoubleType,
             BooleanType,
+            MockDataType,
         )
 
         # Create schema based on the first result row and expression types
         if result_data:
             fields = []
-            
+
             # Track which expressions are literals for proper nullable inference
-            literal_keys = set()
+            literal_keys: Set[str] = set()
             for expr in exprs:
                 if isinstance(expr, MockLiteral):
-                    lit_key = getattr(expr, 'name', str(expr.value))
+                    lit_key = getattr(expr, "name", str(expr.value))
                     literal_keys.add(lit_key)
-            
+
             for key, value in result_data[0].items():
                 if key in self.group_columns:
                     # Use existing schema for group columns
@@ -128,29 +142,54 @@ class MockGroupedData:
                 else:
                     # Determine if this is a literal value
                     is_literal = key in literal_keys
-                    
+
                     # Count functions, window ranking functions, and boolean functions are non-nullable in PySpark
                     # Other aggregations and literals are non-nullable
-                    is_count_function = any(
-                        key.startswith(func) for func in ["count(", "count(1)", "count(DISTINCT", "row_num", "rank", "dense_rank", "dept_row_num", "global_row", "dept_row", "dept_rank"]
+                    is_count_function = key in non_nullable_keys or any(
+                        key.startswith(func)
+                        for func in [
+                            "count(",
+                            "count(1)",
+                            "count(DISTINCT",
+                            "count_if",
+                            "row_number",
+                            "rank",
+                            "dense_rank",
+                            "row_num",
+                            "dept_row_num",
+                            "global_row",
+                            "dept_row",
+                            "dept_rank",
+                        ]
                     )
                     is_boolean_function = any(
-                        key.startswith(func) for func in ["coalesced_", "is_null_", "is_nan_"]
+                        key.startswith(func)
+                        for func in ["coalesced_", "is_null_", "is_nan_"]
                     )
-                    nullable = not (is_literal or is_count_function or is_boolean_function)
-                    
+                    nullable = not (
+                        is_literal or is_count_function or is_boolean_function
+                    )
+
                     if isinstance(value, bool):
                         data_type = BooleanType(nullable=nullable)
-                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                        fields.append(
+                            MockStructField(key, data_type, nullable=nullable)
+                        )
                     elif isinstance(value, str):
-                        data_type = StringType(nullable=nullable)
-                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                        str_data_type: MockDataType = StringType(nullable=nullable)
+                        fields.append(
+                            MockStructField(key, str_data_type, nullable=nullable)
+                        )
                     elif isinstance(value, float):
-                        data_type = DoubleType(nullable=nullable)
-                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                        float_data_type: MockDataType = DoubleType(nullable=nullable)
+                        fields.append(
+                            MockStructField(key, float_data_type, nullable=nullable)
+                        )
                     else:
-                        data_type = LongType(nullable=nullable)
-                        fields.append(MockStructField(key, data_type, nullable=nullable))
+                        long_data_type: MockDataType = LongType(nullable=nullable)
+                        fields.append(
+                            MockStructField(key, long_data_type, nullable=nullable)
+                        )
             schema = MockStructType(fields)
             return MockDataFrame(result_data, schema)
         else:

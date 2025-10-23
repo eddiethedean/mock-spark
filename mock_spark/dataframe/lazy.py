@@ -220,14 +220,15 @@ class LazyEvaluationEngine:
         Returns:
             Inferred schema for selected columns
         """
+        from ..functions import MockAggregateFunction
         from ..spark_types import (
-            StringType,
-            LongType,
+            ArrayType,
             DoubleType,
             IntegerType,
+            LongType,
             MockStructField,
             MockStructType,
-            ArrayType,
+            StringType,
         )
 
         new_fields = []
@@ -277,17 +278,126 @@ class LazyEvaluationEngine:
                     new_fields.append(
                         MockStructField(col_name, ArrayType(StringType()))
                     )
+                elif col.operation in ["isnull", "isnotnull", "isnan"]:
+                    # Boolean operations - always return BooleanType and are non-nullable
+                    from ..spark_types import BooleanType
+
+                    new_fields.append(
+                        MockStructField(col_name, BooleanType(), nullable=False)
+                    )
+                elif col.operation == "coalesce":
+                    # Coalesce with a non-null literal fallback is non-nullable
+                    # Determine the result type from the first argument
+                    source_type: MockDataType = StringType()
+                    if hasattr(col, "column") and hasattr(col.column, "name"):
+                        # Find source column type
+                        for field in df.schema.fields:
+                            if field.name == col.column.name:
+                                source_type = field.dataType
+                                break
+                    # Mark as non-nullable if there's a literal fallback
+                    new_fields.append(
+                        MockStructField(col_name, source_type, nullable=False)
+                    )
                 else:
                     # Default to StringType for unknown operations
                     new_fields.append(MockStructField(col_name, StringType()))
+            elif isinstance(col, MockAggregateFunction):
+                # Handle aggregate functions - set proper nullability
+                col_name = col.name
+
+                # Determine nullable based on function type
+                non_nullable_functions = {
+                    "count",
+                    "countDistinct",
+                    "count_if",
+                    "row_number",
+                    "rank",
+                    "dense_rank",
+                }
+
+                nullable = col.function_name not in non_nullable_functions
+
+                # Use provided data type or default to LongType for counts, DoubleType otherwise
+                if col.data_type:
+                    data_type = col.data_type
+                    if hasattr(data_type, "nullable"):
+                        data_type.nullable = nullable
+                elif col.function_name in {"count", "countDistinct", "count_if"}:
+                    data_type = LongType(nullable=nullable)
+                else:
+                    data_type = DoubleType(nullable=nullable)
+
+                new_fields.append(
+                    MockStructField(col_name, data_type, nullable=nullable)
+                )
+
+            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
+                # Handle MockWindowFunction (e.g., rank().over(window))
+                col_name = col.name
+                from ..spark_types import IntegerType, DoubleType, LongType, StringType
+
+                # Window functions that are non-nullable
+                non_nullable_window_functions = {
+                    "row_number",
+                    "rank",
+                    "dense_rank",
+                }
+
+                # Determine type and nullability based on function
+                if col.function_name in non_nullable_window_functions:
+                    # Ranking functions return IntegerType and are non-nullable
+                    new_fields.append(
+                        MockStructField(col_name, IntegerType(), nullable=False)
+                    )
+                elif col.function_name in ["lag", "lead"]:
+                    # Lag/lead can return null (out of bounds)
+                    if col.column_name:
+                        # Find source column type
+                        source_type2: MockDataType = StringType()
+                        for field in df.schema.fields:
+                            if field.name == col.column_name:
+                                source_type2 = field.dataType
+                                break
+                        new_fields.append(
+                            MockStructField(col_name, source_type2, nullable=True)
+                        )
+                    else:
+                        new_fields.append(
+                            MockStructField(col_name, StringType(), nullable=True)
+                        )
+                elif col.function_name in ["sum", "avg", "min", "max"]:
+                    # Aggregate window functions - nullable
+                    new_fields.append(
+                        MockStructField(col_name, DoubleType(), nullable=True)
+                    )
+                elif col.function_name in ["count", "countDistinct"]:
+                    # Count functions are non-nullable
+                    new_fields.append(
+                        MockStructField(col_name, LongType(), nullable=False)
+                    )
+                else:
+                    # Default for other window functions
+                    new_fields.append(
+                        MockStructField(col_name, DoubleType(), nullable=True)
+                    )
+
             elif hasattr(col, "value") and hasattr(col, "data_type"):
                 # Handle MockLiteral objects - literals are never nullable
                 col_name = col.name
                 # Use the literal's data_type and explicitly set nullable=False
-                from ..spark_types import BooleanType, IntegerType, LongType, DoubleType, StringType
-                
+                from ..spark_types import (
+                    BooleanType,
+                    IntegerType,
+                    LongType,
+                    DoubleType,
+                    StringType,
+                    MockDataType,
+                )
+
                 data_type = col.data_type
                 # Create a new instance of the data type with nullable=False
+                data_type_non_null: MockDataType
                 if isinstance(data_type, BooleanType):
                     data_type_non_null = BooleanType(nullable=False)
                 elif isinstance(data_type, IntegerType):
@@ -301,17 +411,21 @@ class LazyEvaluationEngine:
                 else:
                     # For other types, create a new instance with nullable=False
                     data_type_non_null = data_type.__class__(nullable=False)
-                
-                new_fields.append(MockStructField(col_name, data_type_non_null, nullable=False))
+
+                new_fields.append(
+                    MockStructField(col_name, data_type_non_null, nullable=False)
+                )
             elif hasattr(col, "conditions") and hasattr(col, "default_value"):
                 # Handle MockCaseWhen objects - use get_result_type() method
                 col_name = col.name
                 from ..functions.conditional import MockCaseWhen
-                
+
                 if isinstance(col, MockCaseWhen):
                     # Use the proper type inference method
                     inferred_type = col.get_result_type()
-                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, inferred_type, nullable=False)
+                    )
                 else:
                     # Fallback for other conditional objects
                     new_fields.append(MockStructField(col_name, IntegerType()))
@@ -319,11 +433,13 @@ class LazyEvaluationEngine:
                 # Handle MockCaseWhen objects that didn't match the first condition
                 col_name = col.name
                 from ..functions.conditional import MockCaseWhen
-                
+
                 if isinstance(col, MockCaseWhen):
                     # Use the proper type inference method
                     inferred_type = col.get_result_type()
-                    new_fields.append(MockStructField(col_name, inferred_type, nullable=False))
+                    new_fields.append(
+                        MockStructField(col_name, inferred_type, nullable=False)
+                    )
                 else:
                     # Default to StringType for unknown operations
                     new_fields.append(MockStructField(col_name, StringType()))

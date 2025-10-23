@@ -232,7 +232,6 @@ class TestToLocalIterator:
         assert len(rows) == 3
         assert rows[0].value == 0
 
-    @pytest.mark.skip(reason="Requires spark_ddl_parser dependency")
     def test_toLocalIterator_empty_dataframe(self, spark):
         """Test toLocalIterator with empty DataFrame."""
         df = spark.createDataFrame([], schema="id: int, name: string")
