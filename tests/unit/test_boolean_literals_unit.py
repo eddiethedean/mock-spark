@@ -1,5 +1,5 @@
 """
-Unit tests for boolean literal support in Mock-Spark 2.10.0.
+Unit tests for boolean literal support in Mock-Spark 2.11.0.
 
 Tests the specific SQL generation fix that was causing:
 "Binder Error: Referenced column 'true' not found in FROM clause!"

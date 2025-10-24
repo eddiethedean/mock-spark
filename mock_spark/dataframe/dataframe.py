@@ -39,6 +39,9 @@ from ..spark_types import (
     LongType,
     DoubleType,
     MockDataType,
+    IntegerType,
+    ArrayType,
+    MapType,
 )
 from ..functions import MockColumn, MockColumnOperation, MockLiteral
 from ..storage import MemoryStorageManager
@@ -155,85 +158,160 @@ class MockDataFrame:
         """Enable df.column_name syntax for column access (PySpark compatibility)."""
         # Avoid infinite recursion - access object.__getattribute__ directly
         try:
-            columns = object.__getattribute__(self, 'columns')
+            columns = object.__getattribute__(self, "columns")
             if name in columns:
                 # Use F.col to create MockColumn
                 from mock_spark.functions import F
+
                 return F.col(name)
         except AttributeError:
             pass
-        
+
         # If not a column, raise MockSparkColumnNotFoundError for better error messages
-        available_cols = getattr(self, 'columns', [])
+        available_cols = getattr(self, "columns", [])
         from mock_spark.core.exceptions.operation import MockSparkColumnNotFoundError
+
         raise MockSparkColumnNotFoundError(name, available_cols)
 
     def _validate_column_exists(self, column_name: str, operation: str) -> None:
         """Validate that a column exists in the DataFrame."""
         if column_name not in self.columns:
-            from mock_spark.core.exceptions.operation import MockSparkColumnNotFoundError
+            from mock_spark.core.exceptions.operation import (
+                MockSparkColumnNotFoundError,
+            )
+
             raise MockSparkColumnNotFoundError(column_name, self.columns)
 
     def _validate_columns_exist(self, column_names: list, operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
         missing_columns = [col for col in column_names if col not in self.columns]
         if missing_columns:
-            from mock_spark.core.exceptions.operation import MockSparkColumnNotFoundError
+            from mock_spark.core.exceptions.operation import (
+                MockSparkColumnNotFoundError,
+            )
+
             raise MockSparkColumnNotFoundError(missing_columns[0], self.columns)
 
-    def _validate_filter_expression(self, condition, operation: str) -> None:
+    def _validate_filter_expression(self, condition: Any, operation: str) -> None:
         """Validate filter expression before execution."""
         # Skip validation for empty dataframes - they can filter on any column
         if len(self.columns) == 0:
             return
-            
+
         # Skip validation for complex expressions - let SQL generation handle them
         # Only validate simple column references
-        
+
         # Skip validation for operations that create complex expressions
-        if hasattr(condition, 'operation') and condition.operation in ['between', 'and', 'or', '&', '|', 'isin', 'not_in', '!']:
+        if hasattr(condition, "operation") and condition.operation in [
+            "between",
+            "and",
+            "or",
+            "&",
+            "|",
+            "isin",
+            "not_in",
+            "!",
+        ]:
             # These are complex expressions that may combine multiple columns, skip validation
             return
-        
-        if hasattr(condition, 'column') and hasattr(condition.column, 'name'):
+
+        if hasattr(condition, "column") and hasattr(condition.column, "name"):
             # Check if this is a complex operation before validating
-            if hasattr(condition, 'operation') and condition.operation in ['between', 'and', 'or', '&', '|', 'isin', 'not_in', '!']:
+            if hasattr(condition, "operation") and condition.operation in [
+                "between",
+                "and",
+                "or",
+                "&",
+                "|",
+                "isin",
+                "not_in",
+                "!",
+            ]:
                 return
             # Simple column reference
             self._validate_column_exists(condition.column.name, operation)
-        elif hasattr(condition, 'name') and not hasattr(condition, 'operation') and not hasattr(condition, 'value') and not hasattr(condition, 'data_type'):
+        elif (
+            hasattr(condition, "name")
+            and not hasattr(condition, "operation")
+            and not hasattr(condition, "value")
+            and not hasattr(condition, "data_type")
+        ):
             # Simple column reference without operation, value, or data_type (not a literal)
             self._validate_column_exists(condition.name, operation)
         # For complex expressions (with operations, literals, etc.), skip validation
         # as they will be handled by SQL generation
 
-    def _validate_expression_columns(self, expression, operation: str) -> None:
+    def _validate_expression_columns(self, expression: Any, operation: str) -> None:
         """Validate column references in complex expressions."""
+        # Check if we're in lazy materialization mode by looking at the call stack
+        import inspect
+
+        frame = inspect.currentframe()
+        in_lazy_materialization = False
+        try:
+            # Walk up the call stack to see if we're in lazy materialization
+            while frame:
+                if frame.f_code.co_name == "_materialize_manual":
+                    in_lazy_materialization = True
+                    break
+                frame = frame.f_back
+        finally:
+            del frame
+
         if isinstance(expression, MockColumnOperation):
             # Check if this is a column reference
-            if hasattr(expression, 'column') and isinstance(expression.column, MockColumn):
-                self._validate_column_exists(expression.column.name, operation)
-            
+            if hasattr(expression, "column"):
+                # Check if it's a MockDataFrame (has 'data' attribute) - skip validation
+                if hasattr(expression.column, "data") and hasattr(
+                    expression.column, "schema"
+                ):
+                    pass  # Skip MockDataFrame objects
+                elif isinstance(expression.column, MockColumn):
+                    if not in_lazy_materialization:
+                        self._validate_column_exists(expression.column.name, operation)
+
             # Recursively validate nested expressions
-            if hasattr(expression, 'column') and isinstance(expression.column, MockColumnOperation):
+            if hasattr(expression, "column") and isinstance(
+                expression.column, MockColumnOperation
+            ):
                 self._validate_expression_columns(expression.column, operation)
-            if hasattr(expression, 'value') and isinstance(expression.value, MockColumnOperation):
+            if hasattr(expression, "value") and isinstance(
+                expression.value, MockColumnOperation
+            ):
                 self._validate_expression_columns(expression.value, operation)
         elif isinstance(expression, MockColumn):
             # Check if this is an aliased column with an original column reference
-            if hasattr(expression, '_original_column') and expression._original_column is not None:
+            if (
+                hasattr(expression, "_original_column")
+                and expression._original_column is not None
+            ):
                 # This is an aliased column - validate the original column
-                if isinstance(expression._original_column, MockColumn):
-                    self._validate_column_exists(expression._original_column.name, operation)
+                # Check if it's a MockDataFrame first
+                if hasattr(expression._original_column, "data") and hasattr(
+                    expression._original_column, "schema"
+                ):
+                    pass  # Skip MockDataFrame objects
+                elif isinstance(expression._original_column, MockColumn):
+                    if not in_lazy_materialization:
+                        self._validate_column_exists(
+                            expression._original_column.name, operation
+                        )
                 elif isinstance(expression._original_column, MockColumnOperation):
-                    self._validate_expression_columns(expression._original_column, operation)
-            elif hasattr(expression, 'column') and isinstance(expression.column, MockColumn):
+                    self._validate_expression_columns(
+                        expression._original_column, operation
+                    )
+            elif hasattr(expression, "column") and isinstance(
+                expression.column, MockColumn
+            ):
                 # This is a column operation - validate the column reference
-                self._validate_column_exists(expression.column.name, operation)
+                if not in_lazy_materialization:
+                    self._validate_column_exists(expression.column.name, operation)
 
-    def _execute_with_debug(self, operation: str, sql: str):
+    def _execute_with_debug(self, operation: str, sql: str) -> None:
         """Execute with optional debug logging."""
-        if hasattr(self.storage, 'get_config') and self.storage.get_config('debug_mode', False):
+        if hasattr(self.storage, "get_config") and self.storage.get_config(
+            "debug_mode", False
+        ):
             print(f"[DEBUG] Operation: {operation}")
             print(f"[DEBUG] SQL: {sql}")
         # Execute...
@@ -534,10 +612,43 @@ class MockDataFrame:
                             )
                             new_fields_map[col_name] = field
                         else:
-                            # New column from expression - use StringType as default
-                            new_fields_map[col_name] = MockStructField(
-                                col_name, StringType()
-                            )
+                            # New column from expression - infer type based on operation
+                            if hasattr(col, "operation"):
+                                operation = getattr(col, "operation", None)
+                                if operation == "datediff":
+                                    new_fields_map[col_name] = MockStructField(
+                                        col_name, IntegerType()
+                                    )
+                                elif operation == "months_between":
+                                    new_fields_map[col_name] = MockStructField(
+                                        col_name, DoubleType()
+                                    )
+                                elif operation in [
+                                    "hour",
+                                    "minute",
+                                    "second",
+                                    "day",
+                                    "dayofmonth",
+                                    "month",
+                                    "year",
+                                    "quarter",
+                                    "dayofweek",
+                                    "dayofyear",
+                                    "weekofyear",
+                                ]:
+                                    new_fields_map[col_name] = MockStructField(
+                                        col_name, IntegerType()
+                                    )
+                                else:
+                                    # Default to StringType for unknown operations
+                                    new_fields_map[col_name] = MockStructField(
+                                        col_name, StringType()
+                                    )
+                            else:
+                                # No operation attribute - default to StringType
+                                new_fields_map[col_name] = MockStructField(
+                                    col_name, StringType()
+                                )
                 fields_map = new_fields_map
                 continue
             if op_name == "withColumn":
@@ -550,55 +661,131 @@ class MockDataFrame:
                         if isinstance(cast_type, str):
                             # String type name, convert to actual type
                             if cast_type.lower() in ["double", "float"]:
-                                fields_map[col_name] = MockStructField(col_name, DoubleType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, DoubleType()
+                                )
                             elif cast_type.lower() in ["int", "integer"]:
-                                fields_map[col_name] = MockStructField(col_name, IntegerType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, IntegerType()
+                                )
                             elif cast_type.lower() in ["long", "bigint"]:
-                                fields_map[col_name] = MockStructField(col_name, LongType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, LongType()
+                                )
                             elif cast_type.lower() in ["string", "varchar"]:
-                                fields_map[col_name] = MockStructField(col_name, StringType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, StringType()
+                                )
                             elif cast_type.lower() in ["boolean", "bool"]:
-                                fields_map[col_name] = MockStructField(col_name, BooleanType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, BooleanType()
+                                )
                             elif cast_type.lower() in ["date"]:
                                 from ..spark_types import DateType
-                                fields_map[col_name] = MockStructField(col_name, DateType())
+
+                                fields_map[col_name] = MockStructField(
+                                    col_name, DateType()
+                                )
                             elif cast_type.lower() in ["timestamp"]:
                                 from ..spark_types import TimestampType
-                                fields_map[col_name] = MockStructField(col_name, TimestampType())
+
+                                fields_map[col_name] = MockStructField(
+                                    col_name, TimestampType()
+                                )
                             elif cast_type.lower().startswith("decimal"):
                                 # Parse decimal(10,2) format
                                 import re
                                 from ..spark_types import DecimalType
-                                match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
+
+                                match = re.match(
+                                    r"decimal\((\d+),(\d+)\)", cast_type.lower()
+                                )
                                 if match:
-                                    precision, scale = int(match.group(1)), int(match.group(2))
-                                    fields_map[col_name] = MockStructField(col_name, DecimalType(precision, scale))
+                                    precision, scale = (
+                                        int(match.group(1)),
+                                        int(match.group(2)),
+                                    )
+                                    fields_map[col_name] = MockStructField(
+                                        col_name, DecimalType(precision, scale)
+                                    )
                                 else:
-                                    fields_map[col_name] = MockStructField(col_name, DecimalType(10, 2))
+                                    fields_map[col_name] = MockStructField(
+                                        col_name, DecimalType(10, 2)
+                                    )
                             elif cast_type.lower().startswith("array<"):
                                 # Parse array<element_type> format
                                 from ..spark_types import ArrayType
-                                element_type_str = cast_type[6:-1]  # Extract between "array<" and ">"
-                                element_type = self._parse_cast_type_string(element_type_str)
-                                fields_map[col_name] = MockStructField(col_name, ArrayType(element_type))
+
+                                element_type_str = cast_type[
+                                    6:-1
+                                ]  # Extract between "array<" and ">"
+                                element_type = self._parse_cast_type_string(
+                                    element_type_str
+                                )
+                                fields_map[col_name] = MockStructField(
+                                    col_name, ArrayType(element_type)
+                                )
                             elif cast_type.lower().startswith("map<"):
                                 # Parse map<key_type,value_type> format
                                 from ..spark_types import MapType
+
                                 types = cast_type[4:-1].split(",", 1)
-                                key_type = self._parse_cast_type_string(types[0].strip())
-                                value_type = self._parse_cast_type_string(types[1].strip())
-                                fields_map[col_name] = MockStructField(col_name, MapType(key_type, value_type))
+                                key_type = self._parse_cast_type_string(
+                                    types[0].strip()
+                                )
+                                value_type = self._parse_cast_type_string(
+                                    types[1].strip()
+                                )
+                                fields_map[col_name] = MockStructField(
+                                    col_name, MapType(key_type, value_type)
+                                )
                             else:
                                 # Default to StringType for unknown types
-                                fields_map[col_name] = MockStructField(col_name, StringType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, StringType()
+                                )
                         else:
                             # Already a MockDataType object
-                            if hasattr(cast_type, '__class__'):
-                                fields_map[col_name] = MockStructField(col_name, cast_type.__class__(nullable=True))
+                            if hasattr(cast_type, "__class__"):
+                                fields_map[col_name] = MockStructField(
+                                    col_name, cast_type.__class__(nullable=True)
+                                )
                             else:
-                                fields_map[col_name] = MockStructField(col_name, cast_type)
+                                fields_map[col_name] = MockStructField(
+                                    col_name, cast_type
+                                )
                     elif getattr(col, "operation", None) in ["+", "-", "*", "/", "%"]:
-                        fields_map[col_name] = MockStructField(col_name, LongType())
+                        # Arithmetic operations - infer type from operands
+                        left_type = None
+                        right_type = None
+
+                        # Get left operand type
+                        if hasattr(col.column, "name"):
+                            for field in self._schema.fields:
+                                if field.name == col.column.name:
+                                    left_type = field.dataType
+                                    break
+
+                        # Get right operand type
+                        if (
+                            hasattr(col, "value")
+                            and col.value is not None
+                            and hasattr(col.value, "name")
+                        ):
+                            for field in self._schema.fields:
+                                if field.name == col.value.name:
+                                    right_type = field.dataType
+                                    break
+
+                        # If either operand is DoubleType, result is DoubleType
+                        if (left_type and isinstance(left_type, DoubleType)) or (
+                            right_type and isinstance(right_type, DoubleType)
+                        ):
+                            fields_map[col_name] = MockStructField(
+                                col_name, DoubleType()
+                            )
+                        else:
+                            fields_map[col_name] = MockStructField(col_name, LongType())
                     elif getattr(col, "operation", None) in ["abs"]:
                         fields_map[col_name] = MockStructField(col_name, LongType())
                     elif getattr(col, "operation", None) in ["length"]:
@@ -606,18 +793,48 @@ class MockDataFrame:
                     elif getattr(col, "operation", None) in ["round"]:
                         # round() should return the same type as its input
                         # If input is integer, return LongType; if double, return DoubleType
-                        if hasattr(col.column, "operation") and col.column.operation == "cast":
+                        if (
+                            hasattr(col.column, "operation")
+                            and col.column.operation == "cast"
+                        ):
                             # If the input is a cast operation, check the target type
                             cast_type = getattr(col.column, "value", "string")
-                            if isinstance(cast_type, str) and cast_type.lower() in ["int", "integer"]:
-                                fields_map[col_name] = MockStructField(col_name, LongType())
+                            if isinstance(cast_type, str) and cast_type.lower() in [
+                                "int",
+                                "integer",
+                            ]:
+                                fields_map[col_name] = MockStructField(
+                                    col_name, LongType()
+                                )
                             else:
-                                fields_map[col_name] = MockStructField(col_name, DoubleType())
+                                fields_map[col_name] = MockStructField(
+                                    col_name, DoubleType()
+                                )
                         else:
                             # Default to DoubleType for other cases
-                            fields_map[col_name] = MockStructField(col_name, DoubleType())
+                            fields_map[col_name] = MockStructField(
+                                col_name, DoubleType()
+                            )
                     elif getattr(col, "operation", None) in ["upper", "lower"]:
                         fields_map[col_name] = MockStructField(col_name, StringType())
+                    elif getattr(col, "operation", None) == "datediff":
+                        fields_map[col_name] = MockStructField(col_name, IntegerType())
+                    elif getattr(col, "operation", None) == "months_between":
+                        fields_map[col_name] = MockStructField(col_name, DoubleType())
+                    elif getattr(col, "operation", None) in [
+                        "hour",
+                        "minute",
+                        "second",
+                        "day",
+                        "dayofmonth",
+                        "month",
+                        "year",
+                        "quarter",
+                        "dayofweek",
+                        "dayofyear",
+                        "weekofyear",
+                    ]:
+                        fields_map[col_name] = MockStructField(col_name, IntegerType())
                     else:
                         fields_map[col_name] = MockStructField(col_name, StringType())
                 elif hasattr(col, "value") and hasattr(col, "column_type"):
@@ -701,21 +918,31 @@ class MockDataFrame:
                 if isinstance(col, str) and col != "*":
                     # Check if column exists
                     if col not in self.columns:
-                        from ..core.exceptions.operation import MockSparkColumnNotFoundError
+                        from ..core.exceptions.operation import (
+                            MockSparkColumnNotFoundError,
+                        )
 
                         raise MockSparkColumnNotFoundError(col, self.columns)
                 elif isinstance(col, MockColumn):
-                    if hasattr(col, 'operation'):
+                    if hasattr(col, "operation"):
                         # Complex expression - validate column references
                         self._validate_expression_columns(col, "select")
                     else:
                         # Simple column reference - validate
                         if col.name not in self.columns:
-                            from ..core.exceptions.operation import MockSparkColumnNotFoundError
+                            from ..core.exceptions.operation import (
+                                MockSparkColumnNotFoundError,
+                            )
+
                             raise MockSparkColumnNotFoundError(col.name, self.columns)
                 elif isinstance(col, MockColumnOperation):
                     # Complex expression - validate column references
-                    self._validate_expression_columns(col, "select")
+                    # Skip validation for function operations that will be evaluated later
+                    if not (
+                        hasattr(col, "operation")
+                        and col.operation in ["months_between", "datediff"]
+                    ):
+                        self._validate_expression_columns(col, "select")
 
         # Support lazy evaluation
         if self.is_lazy:
@@ -849,7 +1076,7 @@ class MockDataFrame:
                 elif hasattr(col, "conditions"):
                     # Handle MockCaseWhen objects
                     col_name = col.name
-                    evaluated_value = self._evaluate_case_when(row, col)
+                    evaluated_value = self._evaluate_column_expression(row, col)
                     filtered_row[col_name] = evaluated_value
                 elif isinstance(col, MockColumn):
                     col_name = col.name
@@ -1066,10 +1293,16 @@ class MockDataFrame:
                 elif col.operation == "round":
                     # round() should return the same type as its input
                     # If input is integer, return LongType; if double, return DoubleType
-                    if hasattr(col.column, "operation") and col.column.operation == "cast":
+                    if (
+                        hasattr(col.column, "operation")
+                        and col.column.operation == "cast"
+                    ):
                         # If the input is a cast operation, check the target type
                         cast_type = getattr(col.column, "value", "string")
-                        if isinstance(cast_type, str) and cast_type.lower() in ["int", "integer"]:
+                        if isinstance(cast_type, str) and cast_type.lower() in [
+                            "int",
+                            "integer",
+                        ]:
                             new_fields.append(MockStructField(col_name, LongType()))
                         else:
                             new_fields.append(MockStructField(col_name, DoubleType()))
@@ -1080,23 +1313,29 @@ class MockDataFrame:
                     # Arithmetic operations - infer type from operands
                     left_type = None
                     right_type = None
-                    
+
                     # Get left operand type
                     if hasattr(col.column, "name"):
                         for field in self.schema.fields:
                             if field.name == col.column.name:
                                 left_type = field.dataType
                                 break
-                    
+
                     # Get right operand type
-                    if hasattr(col, "value") and col.value is not None and hasattr(col.value, "name"):
+                    if (
+                        hasattr(col, "value")
+                        and col.value is not None
+                        and hasattr(col.value, "name")
+                    ):
                         for field in self.schema.fields:
                             if field.name == col.value.name:
                                 right_type = field.dataType
                                 break
-                    
+
                     # If either operand is DoubleType, result is DoubleType
-                    if (left_type and isinstance(left_type, DoubleType)) or (right_type and isinstance(right_type, DoubleType)):
+                    if (left_type and isinstance(left_type, DoubleType)) or (
+                        right_type and isinstance(right_type, DoubleType)
+                    ):
                         new_fields.append(MockStructField(col_name, DoubleType()))
                     else:
                         new_fields.append(MockStructField(col_name, LongType()))
@@ -1142,36 +1381,63 @@ class MockDataFrame:
                             new_fields.append(MockStructField(col_name, StringType()))
                         elif cast_type.lower() in ["boolean", "bool"]:
                             from ..spark_types import BooleanType
+
                             new_fields.append(MockStructField(col_name, BooleanType()))
                         elif cast_type.lower() in ["date"]:
                             from ..spark_types import DateType
+
                             new_fields.append(MockStructField(col_name, DateType()))
                         elif cast_type.lower() in ["timestamp"]:
                             from ..spark_types import TimestampType
-                            new_fields.append(MockStructField(col_name, TimestampType()))
+
+                            new_fields.append(
+                                MockStructField(col_name, TimestampType())
+                            )
                         elif cast_type.lower().startswith("decimal"):
                             # Parse decimal(10,2) format
                             import re
                             from ..spark_types import DecimalType
-                            match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
+
+                            match = re.match(
+                                r"decimal\((\d+),(\d+)\)", cast_type.lower()
+                            )
                             if match:
-                                precision, scale = int(match.group(1)), int(match.group(2))
-                                new_fields.append(MockStructField(col_name, DecimalType(precision, scale)))
+                                precision, scale = (
+                                    int(match.group(1)),
+                                    int(match.group(2)),
+                                )
+                                new_fields.append(
+                                    MockStructField(
+                                        col_name, DecimalType(precision, scale)
+                                    )
+                                )
                             else:
-                                new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
+                                new_fields.append(
+                                    MockStructField(col_name, DecimalType(10, 2))
+                                )
                         elif cast_type.lower().startswith("array<"):
                             # Parse array<element_type> format
                             from ..spark_types import ArrayType
-                            element_type_str = cast_type[6:-1]  # Extract between "array<" and ">"
-                            element_type = self._parse_cast_type_string(element_type_str)
-                            new_fields.append(MockStructField(col_name, ArrayType(element_type)))
+
+                            element_type_str = cast_type[
+                                6:-1
+                            ]  # Extract between "array<" and ">"
+                            element_type = self._parse_cast_type_string(
+                                element_type_str
+                            )
+                            new_fields.append(
+                                MockStructField(col_name, ArrayType(element_type))
+                            )
                         elif cast_type.lower().startswith("map<"):
                             # Parse map<key_type,value_type> format
                             from ..spark_types import MapType
+
                             types = cast_type[4:-1].split(",", 1)
                             key_type = self._parse_cast_type_string(types[0].strip())
                             value_type = self._parse_cast_type_string(types[1].strip())
-                            new_fields.append(MockStructField(col_name, MapType(key_type, value_type)))
+                            new_fields.append(
+                                MockStructField(col_name, MapType(key_type, value_type))
+                            )
                         else:
                             new_fields.append(MockStructField(col_name, StringType()))
                     else:
@@ -1490,10 +1756,16 @@ class MockDataFrame:
                 elif col.operation == "round":
                     # round() should return the same type as its input
                     # If input is integer, return LongType; if double, return DoubleType
-                    if hasattr(col.column, "operation") and col.column.operation == "cast":
+                    if (
+                        hasattr(col.column, "operation")
+                        and col.column.operation == "cast"
+                    ):
                         # If the input is a cast operation, check the target type
                         cast_type = getattr(col.column, "value", "string")
-                        if isinstance(cast_type, str) and cast_type.lower() in ["int", "integer"]:
+                        if isinstance(cast_type, str) and cast_type.lower() in [
+                            "int",
+                            "integer",
+                        ]:
                             new_fields.append(MockStructField(col_name, LongType()))
                         else:
                             new_fields.append(MockStructField(col_name, DoubleType()))
@@ -1504,23 +1776,29 @@ class MockDataFrame:
                     # Arithmetic operations - infer type from operands
                     left_type = None
                     right_type = None
-                    
+
                     # Get left operand type
                     if hasattr(col.column, "name"):
                         for field in self.schema.fields:
                             if field.name == col.column.name:
                                 left_type = field.dataType
                                 break
-                    
+
                     # Get right operand type
-                    if hasattr(col, "value") and col.value is not None and hasattr(col.value, "name"):
+                    if (
+                        hasattr(col, "value")
+                        and col.value is not None
+                        and hasattr(col.value, "name")
+                    ):
                         for field in self.schema.fields:
                             if field.name == col.value.name:
                                 right_type = field.dataType
                                 break
-                    
+
                     # If either operand is DoubleType, result is DoubleType
-                    if (left_type and isinstance(left_type, DoubleType)) or (right_type and isinstance(right_type, DoubleType)):
+                    if (left_type and isinstance(left_type, DoubleType)) or (
+                        right_type and isinstance(right_type, DoubleType)
+                    ):
                         new_fields.append(MockStructField(col_name, DoubleType()))
                     else:
                         new_fields.append(MockStructField(col_name, LongType()))
@@ -1566,36 +1844,63 @@ class MockDataFrame:
                             new_fields.append(MockStructField(col_name, StringType()))
                         elif cast_type.lower() in ["boolean", "bool"]:
                             from ..spark_types import BooleanType
+
                             new_fields.append(MockStructField(col_name, BooleanType()))
                         elif cast_type.lower() in ["date"]:
                             from ..spark_types import DateType
+
                             new_fields.append(MockStructField(col_name, DateType()))
                         elif cast_type.lower() in ["timestamp"]:
                             from ..spark_types import TimestampType
-                            new_fields.append(MockStructField(col_name, TimestampType()))
+
+                            new_fields.append(
+                                MockStructField(col_name, TimestampType())
+                            )
                         elif cast_type.lower().startswith("decimal"):
                             # Parse decimal(10,2) format
                             import re
                             from ..spark_types import DecimalType
-                            match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
+
+                            match = re.match(
+                                r"decimal\((\d+),(\d+)\)", cast_type.lower()
+                            )
                             if match:
-                                precision, scale = int(match.group(1)), int(match.group(2))
-                                new_fields.append(MockStructField(col_name, DecimalType(precision, scale)))
+                                precision, scale = (
+                                    int(match.group(1)),
+                                    int(match.group(2)),
+                                )
+                                new_fields.append(
+                                    MockStructField(
+                                        col_name, DecimalType(precision, scale)
+                                    )
+                                )
                             else:
-                                new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
+                                new_fields.append(
+                                    MockStructField(col_name, DecimalType(10, 2))
+                                )
                         elif cast_type.lower().startswith("array<"):
                             # Parse array<element_type> format
                             from ..spark_types import ArrayType
-                            element_type_str = cast_type[6:-1]  # Extract between "array<" and ">"
-                            element_type = self._parse_cast_type_string(element_type_str)
-                            new_fields.append(MockStructField(col_name, ArrayType(element_type)))
+
+                            element_type_str = cast_type[
+                                6:-1
+                            ]  # Extract between "array<" and ">"
+                            element_type = self._parse_cast_type_string(
+                                element_type_str
+                            )
+                            new_fields.append(
+                                MockStructField(col_name, ArrayType(element_type))
+                            )
                         elif cast_type.lower().startswith("map<"):
                             # Parse map<key_type,value_type> format
                             from ..spark_types import MapType
+
                             types = cast_type[4:-1].split(",", 1)
                             key_type = self._parse_cast_type_string(types[0].strip())
                             value_type = self._parse_cast_type_string(types[1].strip())
-                            new_fields.append(MockStructField(col_name, MapType(key_type, value_type)))
+                            new_fields.append(
+                                MockStructField(col_name, MapType(key_type, value_type))
+                            )
                         else:
                             new_fields.append(MockStructField(col_name, StringType()))
                     else:
@@ -1799,28 +2104,60 @@ class MockDataFrame:
                     if not has_alias:
                         agg_col_name = f"max({col_name})"
                     if col_name is not None:
-                        values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
-                        ]
-                        result_row[agg_col_name] = max(values) if values else 0
+                        # Check if this is a complex expression (MockColumnOperation)
+                        if hasattr(col, "column") and hasattr(col.column, "operation"):
+                            # Evaluate the expression for each row
+                            values = []
+                            for row_data in self.data:
+                                try:
+                                    expr_result = self._evaluate_column_expression(
+                                        row_data, col.column
+                                    )
+                                    if expr_result is not None:
+                                        values.append(expr_result)
+                                except (ValueError, TypeError, AttributeError):
+                                    pass
+                            result_row[agg_col_name] = max(values) if values else None
+                        else:
+                            # Simple column reference
+                            values = [
+                                row.get(col_name)
+                                for row in self.data
+                                if row.get(col_name) is not None
+                            ]
+                            result_row[agg_col_name] = max(values) if values else None
                     else:
-                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
-                    new_fields.append(MockStructField(agg_col_name, DoubleType()))
+                        result_row[agg_col_name] = None
+                    new_fields.append(MockStructField(agg_col_name, IntegerType()))
                 elif func_name == "min":
                     if not has_alias:
                         agg_col_name = f"min({col_name})"
                     if col_name is not None:
-                        values = [
-                            row.get(col_name)
-                            for row in self.data
-                            if row.get(col_name) is not None
-                        ]
-                        result_row[agg_col_name] = min(values) if values else 0
+                        # Check if this is a complex expression (MockColumnOperation)
+                        if hasattr(col, "column") and hasattr(col.column, "operation"):
+                            # Evaluate the expression for each row
+                            values = []
+                            for row_data in self.data:
+                                try:
+                                    expr_result = self._evaluate_column_expression(
+                                        row_data, col.column
+                                    )
+                                    if expr_result is not None:
+                                        values.append(expr_result)
+                                except (ValueError, TypeError, AttributeError):
+                                    pass
+                            result_row[agg_col_name] = min(values) if values else None
+                        else:
+                            # Simple column reference
+                            values = [
+                                row.get(col_name)
+                                for row in self.data
+                                if row.get(col_name) is not None
+                            ]
+                            result_row[agg_col_name] = min(values) if values else None
                     else:
-                        result_row[agg_col_name] = 0  # type: ignore[unreachable]
-                    new_fields.append(MockStructField(agg_col_name, DoubleType()))
+                        result_row[agg_col_name] = None
+                    new_fields.append(MockStructField(agg_col_name, IntegerType()))
                 elif func_name == "percentile_approx":
                     if not has_alias:
                         agg_col_name = f"percentile_approx({col_name})"
@@ -1952,7 +2289,7 @@ class MockDataFrame:
         """Filter rows based on condition."""
         # Pre-validation: validate filter expression
         self._validate_filter_expression(condition, "filter")
-        
+
         if self.is_lazy:
             return self._queue_op("filter", condition)
 
@@ -1977,15 +2314,13 @@ class MockDataFrame:
             else:
                 return MockDataFrame([], self.schema, self.storage, is_lazy=False)
 
-        # Validate columns exist
+        # Validate columns exist - use the proper validation method for complex expressions
         if isinstance(condition, MockColumn):
             if condition.name not in [field.name for field in self.schema.fields]:
                 raise ColumnNotFoundException(condition.name)
-        elif hasattr(condition, "column") and hasattr(condition.column, "name"):
-            if condition.column.name not in [
-                field.name for field in self.schema.fields
-            ]:
-                raise ColumnNotFoundException(condition.column.name)
+        elif isinstance(condition, MockColumnOperation):
+            # For complex expressions, use the proper validation method
+            self._validate_expression_columns(condition, "filter")
 
         if isinstance(condition, MockColumn):
             # Simple column reference - return all non-null rows
@@ -2005,14 +2340,14 @@ class MockDataFrame:
     ) -> "MockDataFrame":
         """Add or replace column."""
         # Validate column references in expressions
-        if isinstance(col, MockColumn) and not hasattr(col, 'operation'):
+        if isinstance(col, MockColumn) and not hasattr(col, "operation"):
             # Simple column reference - validate
             self._validate_column_exists(col.name, "withColumn")
         elif isinstance(col, MockColumnOperation):
             # Complex expression - validate column references
             self._validate_expression_columns(col, "withColumn")
         # For MockLiteral and other cases, skip validation
-        
+
         if self.is_lazy:
             return self._queue_op("withColumn", (col_name, col))
         new_data = []
@@ -2074,6 +2409,7 @@ class MockDataFrame:
                         new_fields.append(MockStructField(col_name, StringType()))
                     elif cast_type.lower() in ["boolean", "bool"]:
                         from ..spark_types import BooleanType
+
                         new_fields.append(MockStructField(col_name, BooleanType()))
                     elif cast_type.lower() in ["date"]:
                         new_fields.append(MockStructField(col_name, DateType()))
@@ -2082,37 +2418,84 @@ class MockDataFrame:
                     elif cast_type.lower().startswith("decimal"):
                         # Parse decimal(10,2) format
                         import re
+
                         match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
                         if match:
                             precision, scale = int(match.group(1)), int(match.group(2))
-                            new_fields.append(MockStructField(col_name, DecimalType(precision, scale)))
+                            new_fields.append(
+                                MockStructField(col_name, DecimalType(precision, scale))
+                            )
                         else:
-                            new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
+                            new_fields.append(
+                                MockStructField(col_name, DecimalType(10, 2))
+                            )
                     elif cast_type.lower().startswith("array<"):
                         # Parse array<element_type> format
-                        element_type_str = cast_type[6:-1]  # Extract between "array<" and ">"
+                        element_type_str = cast_type[
+                            6:-1
+                        ]  # Extract between "array<" and ">"
                         element_type = self._parse_cast_type_string(element_type_str)
-                        new_fields.append(MockStructField(col_name, ArrayType(element_type)))
+                        new_fields.append(
+                            MockStructField(col_name, ArrayType(element_type))
+                        )
                     elif cast_type.lower().startswith("map<"):
                         # Parse map<key_type,value_type> format
                         types = cast_type[4:-1].split(",", 1)
                         key_type = self._parse_cast_type_string(types[0].strip())
                         value_type = self._parse_cast_type_string(types[1].strip())
-                        new_fields.append(MockStructField(col_name, MapType(key_type, value_type)))
+                        new_fields.append(
+                            MockStructField(col_name, MapType(key_type, value_type))
+                        )
                     else:
                         # Default to StringType for unknown types
                         new_fields.append(MockStructField(col_name, StringType()))
                 else:
                     # Already a MockDataType object
-                    if hasattr(cast_type, '__class__'):
-                        new_fields.append(MockStructField(col_name, cast_type.__class__(nullable=True)))
+                    if hasattr(cast_type, "__class__"):
+                        new_fields.append(
+                            MockStructField(
+                                col_name, cast_type.__class__(nullable=True)
+                            )
+                        )
                     else:
                         new_fields.append(MockStructField(col_name, cast_type))
             # For arithmetic operations, determine type based on the operation
-            elif hasattr(col, "operation") and col.operation in ["+", "-", "*", "/", "%"]:
-                # Arithmetic operations typically return LongType or DoubleType
-                # For now, use LongType for integer arithmetic
-                new_fields.append(MockStructField(col_name, LongType()))
+            elif hasattr(col, "operation") and col.operation in [
+                "+",
+                "-",
+                "*",
+                "/",
+                "%",
+            ]:
+                # Arithmetic operations - infer type from operands
+                left_type = None
+                right_type = None
+
+                # Get left operand type
+                if hasattr(col.column, "name"):
+                    for field in self.schema.fields:
+                        if field.name == col.column.name:
+                            left_type = field.dataType
+                            break
+
+                # Get right operand type
+                if (
+                    hasattr(col, "value")
+                    and col.value is not None
+                    and hasattr(col.value, "name")
+                ):
+                    for field in self.schema.fields:
+                        if field.name == col.value.name:
+                            right_type = field.dataType
+                            break
+
+                # If either operand is DoubleType, result is DoubleType
+                if (left_type and isinstance(left_type, DoubleType)) or (
+                    right_type and isinstance(right_type, DoubleType)
+                ):
+                    new_fields.append(MockStructField(col_name, DoubleType()))
+                else:
+                    new_fields.append(MockStructField(col_name, LongType()))
             elif hasattr(col, "operation") and col.operation in ["abs"]:
                 new_fields.append(MockStructField(col_name, LongType()))
             elif hasattr(col, "operation") and col.operation in ["length"]:
@@ -2121,6 +2504,24 @@ class MockDataFrame:
                 new_fields.append(MockStructField(col_name, DoubleType()))
             elif hasattr(col, "operation") and col.operation in ["upper", "lower"]:
                 new_fields.append(MockStructField(col_name, StringType()))
+            elif hasattr(col, "operation") and col.operation == "datediff":
+                new_fields.append(MockStructField(col_name, IntegerType()))
+            elif hasattr(col, "operation") and col.operation == "months_between":
+                new_fields.append(MockStructField(col_name, DoubleType()))
+            elif hasattr(col, "operation") and col.operation in [
+                "hour",
+                "minute",
+                "second",
+                "day",
+                "dayofmonth",
+                "month",
+                "year",
+                "quarter",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+            ]:
+                new_fields.append(MockStructField(col_name, IntegerType()))
             else:
                 # Default to StringType for unknown operations
                 new_fields.append(MockStructField(col_name, StringType()))
@@ -2299,18 +2700,23 @@ class MockDataFrame:
                 continue
             elif hasattr(expr, "column_name") and expr.column_name:
                 # Validate simple column references
-                if (isinstance(expr.column_name, str) and 
-                    not expr.column_name.startswith('(') and 
-                    expr.column_name != "*"):
+                if (
+                    isinstance(expr.column_name, str)
+                    and not expr.column_name.startswith("(")
+                    and expr.column_name != "*"
+                ):
                     self._validate_column_exists(expr.column_name, "agg")
                 # Skip validation for complex expressions like conditions and special cases
             elif hasattr(expr, "column") and hasattr(expr.column, "name"):
                 # For aggregate functions, only validate if it's a simple column reference
                 # Complex expressions (like conditions) should not be validated as column names
-                if isinstance(expr.column, str) or (hasattr(expr.column, '__class__') and expr.column.__class__.__name__ == "MockColumn"):
+                if isinstance(expr.column, str) or (
+                    hasattr(expr.column, "__class__")
+                    and expr.column.__class__.__name__ == "MockColumn"
+                ):
                     self._validate_column_exists(expr.column.name, "agg")
                 # Skip validation for complex expressions like MockColumnOperation
-        
+
         # Create a single group with all data
         grouped_data = MockGroupedData(self, [])
         return grouped_data.agg(*exprs)
@@ -2895,12 +3301,44 @@ class MockDataFrame:
         self, row: Dict[str, Any], column_expression: Any
     ) -> Any:
         """Evaluate a column expression for a single row."""
-        if isinstance(column_expression, MockColumn):
+        # Handle MockCaseWhen (when/otherwise expressions)
+        from ..functions.conditional import MockCaseWhen
+
+        if isinstance(column_expression, MockCaseWhen):
+            # Evaluate each condition in order
+            for condition, value in column_expression.conditions:
+                condition_result = self._evaluate_column_expression(row, condition)
+                if condition_result:
+                    # Return the value (evaluate if it's an expression)
+                    if isinstance(value, (MockColumn, MockColumnOperation)):
+                        return self._evaluate_column_expression(row, value)
+                    return value
+
+            # No condition matched, return default value
+            if column_expression.default_value is not None:
+                if isinstance(
+                    column_expression.default_value, (MockColumn, MockColumnOperation)
+                ):
+                    return self._evaluate_column_expression(
+                        row, column_expression.default_value
+                    )
+                return column_expression.default_value
+
+            return None
+        elif isinstance(column_expression, MockColumn):
             return self._evaluate_mock_column(row, column_expression)
         elif hasattr(column_expression, "operation") and hasattr(
             column_expression, "column"
         ):
             return self._evaluate_column_operation(row, column_expression)
+        elif hasattr(column_expression, "value") and hasattr(column_expression, "name"):
+            # It's a MockLiteral - evaluate it
+            return self._evaluate_value(row, column_expression)
+        elif isinstance(column_expression, str) and column_expression.startswith(
+            "CAST("
+        ):
+            # It's a string representation of a cast operation - this shouldn't happen
+            return None
         else:
             return self._evaluate_direct_value(column_expression)
 
@@ -2955,8 +3393,42 @@ class MockDataFrame:
         """Evaluate a MockColumnOperation."""
         if operation.operation in ["+", "-", "*", "/", "%"]:
             return self._evaluate_arithmetic_operation(row, operation)
+        elif operation.operation in ["==", "!=", "<", ">", "<=", ">="]:
+            return self._evaluate_comparison_operation(row, operation)
         else:
             return self._evaluate_function_call(row, operation)
+
+    def _evaluate_comparison_operation(
+        self, row: Dict[str, Any], operation: Any
+    ) -> Any:
+        """Evaluate comparison operations like ==, !=, <, >, <=, >=."""
+        if not hasattr(operation, "operation") or not hasattr(operation, "column"):
+            return None
+
+        # Extract left value - evaluate the column expression
+        left_value = self._evaluate_column_expression(row, operation.column)
+
+        # Extract right value - evaluate the value expression
+        right_value = self._evaluate_column_expression(row, operation.value)
+
+        if left_value is None or right_value is None:
+            return None
+
+        # Perform the comparison
+        if operation.operation == "==":
+            return left_value == right_value
+        elif operation.operation == "!=":
+            return left_value != right_value
+        elif operation.operation == "<":
+            return left_value < right_value
+        elif operation.operation == ">":
+            return left_value > right_value
+        elif operation.operation == "<=":
+            return left_value <= right_value
+        elif operation.operation == ">=":
+            return left_value >= right_value
+        else:
+            return None
 
     def _evaluate_direct_value(self, value: Any) -> Any:
         """Evaluate a direct value."""
@@ -2969,24 +3441,11 @@ class MockDataFrame:
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
 
-        # Extract left value from row
-        left_value = (
-            row.get(operation.column.name)
-            if hasattr(operation.column, "name")
-            else None
-        )
+        # Extract left value - evaluate the column expression (handles cast operations)
+        left_value = self._evaluate_column_expression(row, operation.column)
 
-        # Extract right value - handle MockColumn, MockLiteral, or primitive values
-        right_value = operation.value
-        if hasattr(right_value, "name") and hasattr(right_value, "__class__"):
-            # It's a MockColumn - get value from row
-            if hasattr(right_value, "name"):
-                right_value = row.get(right_value.name)
-            else:
-                right_value = None
-        elif hasattr(right_value, "value"):
-            # It's a MockLiteral - get the actual value
-            right_value = right_value.value
+        # Extract right value - evaluate the value expression (handles cast operations)
+        right_value = self._evaluate_column_expression(row, operation.value)
 
         if operation.operation == "-" and operation.value is None:
             # Unary minus operation
@@ -3022,13 +3481,18 @@ class MockDataFrame:
             # The column is itself a MockColumnOperation, evaluate it first
             value = self._evaluate_column_expression(row, operation.column)
         else:
-            # Simple column reference
-            column_name = (
-                operation.column.name
-                if hasattr(operation.column, "name")
-                else str(operation.column)
-            )
-            value = row.get(column_name)
+            # Simple column reference or literal
+            if hasattr(operation.column, "value") and hasattr(operation.column, "name"):
+                # It's a MockLiteral - evaluate it
+                value = self._evaluate_value(row, operation.column)
+            else:
+                # Regular column reference
+                column_name = (
+                    operation.column.name
+                    if hasattr(operation.column, "name")
+                    else str(operation.column)
+                )
+                value = row.get(column_name)
 
         func_name = operation.operation
 
@@ -3263,15 +3727,36 @@ class MockDataFrame:
             if isinstance(cast_type, str):
                 # String type name, convert value
                 if cast_type.lower() in ["double", "float"]:
-                    return float(value)
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        return None
                 elif cast_type.lower() in ["int", "integer"]:
-                    return int(
-                        float(value)
-                    )  # Convert via float to handle decimal strings
+                    try:
+                        return int(
+                            float(value)
+                        )  # Convert via float to handle decimal strings
+                    except (ValueError, TypeError):
+                        return None
                 elif cast_type.lower() in ["long", "bigint"]:
-                    return int(
-                        float(value)
-                    )  # Convert via float to handle decimal strings
+                    # Special handling for timestamp to long (unix timestamp)
+                    if isinstance(value, str):
+                        import datetime as dt_module
+
+                        try:
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace(" ", "T").split(".")[0]
+                            )
+                            result = int(dt.timestamp())
+                            return result
+                        except (ValueError, TypeError, AttributeError):
+                            pass
+                    # Regular integer cast
+                    try:
+                        result = int(float(value))
+                        return result
+                    except (ValueError, TypeError, OverflowError):
+                        return None
                 elif cast_type.lower() in ["string", "varchar"]:
                     return str(value)
                 else:
@@ -3279,6 +3764,125 @@ class MockDataFrame:
             else:
                 # Type object, use appropriate conversion
                 return value
+        elif func_name in [
+            "hour",
+            "minute",
+            "second",
+            "day",
+            "dayofmonth",
+            "month",
+            "year",
+            "quarter",
+            "dayofweek",
+            "dayofyear",
+            "weekofyear",
+        ]:
+            if value is None:
+                return None
+
+            import datetime as dt_module
+
+            # Parse timestamp string
+            if isinstance(value, str):
+                try:
+                    dt = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
+                except (ValueError, TypeError, AttributeError):
+                    return None
+            else:
+                dt = value
+
+            # Extract the appropriate component
+            if func_name == "hour":
+                return dt.hour
+            elif func_name in ["minute", "second"]:
+                return getattr(dt, func_name.lower())
+            elif func_name in ["day", "dayofmonth"]:
+                return dt.day
+            elif func_name == "month":
+                return dt.month
+            elif func_name == "year":
+                return dt.year
+            elif func_name == "quarter":
+                return (dt.month - 1) // 3 + 1
+            elif func_name == "dayofweek":
+                # Sunday=1, Monday=2, ..., Saturday=7
+                return (dt.weekday() + 2) % 7 or 7
+            elif func_name == "dayofyear":
+                return dt.timetuple().tm_yday
+            elif func_name == "weekofyear":
+                return dt.isocalendar()[1]
+
+            return None
+        elif func_name == "datediff":
+            # Get the second date from the operation's value attribute
+            date2_col = getattr(operation, "value", None)
+            if date2_col is None:
+                return None
+
+            # Evaluate the second date
+            date2_value = self._evaluate_column_expression(row, date2_col)
+
+            if value is None or date2_value is None:
+                return None
+
+            import datetime as dt_module
+
+            # Parse both dates
+            try:
+                if isinstance(value, str):
+                    d1 = dt_module.datetime.fromisoformat(
+                        value.replace(" ", "T").split(".")[0]
+                    )
+                else:
+                    d1 = value
+
+                if isinstance(date2_value, str):
+                    d2 = dt_module.datetime.fromisoformat(
+                        date2_value.replace(" ", "T").split(".")[0]
+                    )
+                else:
+                    d2 = date2_value
+
+                # Return day difference
+                return (d1.date() - d2.date()).days
+            except (ValueError, TypeError, AttributeError):
+                return None
+        elif func_name == "months_between":
+            # Similar structure to datediff
+            date2_col = getattr(operation, "value", None)
+            if date2_col is None:
+                return None
+
+            date2_value = self._evaluate_value(row, date2_col)
+
+            if value is None or date2_value is None:
+                return None
+
+            import datetime as dt_module
+
+            try:
+                if isinstance(value, str):
+                    d1 = dt_module.datetime.fromisoformat(
+                        value.replace(" ", "T").split(".")[0]
+                    )
+                else:
+                    d1 = value
+
+                if isinstance(date2_value, str):
+                    d2 = dt_module.datetime.fromisoformat(
+                        date2_value.replace(" ", "T").split(".")[0]
+                    )
+                else:
+                    d2 = date2_value
+
+                # Calculate months difference
+                months = (d1.year - d2.year) * 12 + (d1.month - d2.month)
+                # Add fractional month based on days
+                days_diff = (d1.day - d2.day) / 31.0
+                result = months + days_diff
+                return result
+            except (ValueError, TypeError, AttributeError):
+                return None
         else:
             return value
 
@@ -3343,7 +3947,7 @@ class MockDataFrame:
         elif col_name.startswith("to_date("):
             # Parse to_date argument: to_date(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             # Extract column name from function call
             match = re.search(r"to_date\(([^)]+)\)", col_name)
@@ -3354,17 +3958,19 @@ class MockDataFrame:
                     try:
                         # Try to parse as datetime first, then extract date
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
                             return dt.date()
                         elif hasattr(value, "date"):
                             return value.date()
-                    except:  # noqa: E722
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("to_timestamp("):
             # Parse to_timestamp argument: to_timestamp(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             # Extract column name from function call
             match = re.search(r"to_timestamp\(([^)]+)\)", col_name)
@@ -3374,14 +3980,16 @@ class MockDataFrame:
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-                    except:  # noqa: E722
+                            return dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("hour("):
             # Parse hour argument: hour(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             match = re.search(r"hour\(([^)]+)\)", col_name)
             if match:
@@ -3390,17 +3998,19 @@ class MockDataFrame:
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
                             return dt.hour
                         elif hasattr(value, "hour"):
                             return value.hour
-                    except:  # noqa: E722
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("day("):
             # Parse day argument: day(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             match = re.search(r"day\(([^)]+)\)", col_name)
             if match:
@@ -3409,17 +4019,19 @@ class MockDataFrame:
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
                             return dt.day
                         elif hasattr(value, "day"):
                             return value.day
-                    except:  # noqa: E722
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("month("):
             # Parse month argument: month(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             match = re.search(r"month\(([^)]+)\)", col_name)
             if match:
@@ -3428,17 +4040,19 @@ class MockDataFrame:
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
                             return dt.month
                         elif hasattr(value, "month"):
                             return value.month
-                    except:  # noqa: E722
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("year("):
             # Parse year argument: year(col)
             import re
-            from datetime import datetime
+            import datetime as dt_module
 
             match = re.search(r"year\(([^)]+)\)", col_name)
             if match:
@@ -3447,11 +4061,13 @@ class MockDataFrame:
                 if value is not None:
                     try:
                         if isinstance(value, str):
-                            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00")
+                            )
                             return dt.year
                         elif hasattr(value, "year"):
                             return value.year
-                    except:  # noqa: E722
+                    except (ValueError, TypeError, AttributeError):
                         return None
             return None
         elif col_name.startswith("regexp_replace("):
@@ -3700,7 +4316,11 @@ class MockDataFrame:
                 else:
                     col_name = str(col)
                 value = row.get(col_name)
-                key_values.append(value)
+                # Handle None values for sorting - put them at the end
+                if value is None:
+                    key_values.append(float("inf"))  # Sort None values last
+                else:
+                    key_values.append(value)
             return tuple(key_values)
 
         # Check if any column has desc operation
@@ -5492,12 +6112,20 @@ class MockDataFrame:
     def _parse_cast_type_string(self, type_str: str) -> MockDataType:
         """Parse a cast type string to MockDataType."""
         from ..spark_types import (
-            IntegerType, LongType, DoubleType, StringType, BooleanType,
-            DateType, TimestampType, DecimalType, ArrayType, MapType
+            IntegerType,
+            LongType,
+            DoubleType,
+            StringType,
+            BooleanType,
+            DateType,
+            TimestampType,
+            DecimalType,
+            ArrayType,
+            MapType,
         )
-        
+
         type_str = type_str.strip().lower()
-        
+
         # Primitive types
         if type_str in ["int", "integer"]:
             return IntegerType()
@@ -5515,6 +6143,7 @@ class MockDataFrame:
             return TimestampType()
         elif type_str.startswith("decimal"):
             import re
+
             match = re.match(r"decimal\((\d+),(\d+)\)", type_str)
             if match:
                 precision, scale = int(match.group(1)), int(match.group(2))

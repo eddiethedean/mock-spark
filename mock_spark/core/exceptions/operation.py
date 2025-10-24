@@ -11,10 +11,10 @@ from .base import MockSparkException
 
 class MockSparkOperationError(MockSparkException):
     """Raised when DataFrame operation fails."""
-    
+
     def __init__(self, operation: str, column: str, issue: str, suggestion: str = ""):
         """Initialize operation error.
-        
+
         Args:
             operation: The operation that failed (e.g., "withColumn", "filter")
             column: The column involved in the operation
@@ -25,7 +25,7 @@ class MockSparkOperationError(MockSparkException):
         self.column = column
         self.issue = issue
         self.suggestion = suggestion
-        
+
         msg = f"Operation failed in {operation}\n"
         msg += f"Column: {column}\n"
         msg += f"Issue: {issue}"
@@ -36,10 +36,10 @@ class MockSparkOperationError(MockSparkException):
 
 class MockSparkValidationError(MockSparkException):
     """Raised when data validation fails."""
-    
+
     def __init__(self, column: str, value: str, expected_type: str, actual_type: str):
         """Initialize validation error.
-        
+
         Args:
             column: The column being validated
             value: The value that failed validation
@@ -50,7 +50,7 @@ class MockSparkValidationError(MockSparkException):
         self.value = value
         self.expected_type = expected_type
         self.actual_type = actual_type
-        
+
         msg = f"Validation failed for column '{column}'\n"
         msg += f"Value: {value}\n"
         msg += f"Expected type: {expected_type}\n"
@@ -60,10 +60,10 @@ class MockSparkValidationError(MockSparkException):
 
 class MockSparkCompatibilityError(MockSparkException):
     """Raised when PySpark compatibility issue is detected."""
-    
+
     def __init__(self, feature: str, pyspark_version: str, mock_version: str):
         """Initialize compatibility error.
-        
+
         Args:
             feature: The feature that's not compatible
             pyspark_version: PySpark version being emulated
@@ -72,20 +72,22 @@ class MockSparkCompatibilityError(MockSparkException):
         self.feature = feature
         self.pyspark_version = pyspark_version
         self.mock_version = mock_version
-        
+
         msg = f"Compatibility issue with feature '{feature}'\n"
         msg += f"PySpark version: {pyspark_version}\n"
         msg += f"Mock-spark version: {mock_version}\n"
-        msg += "This feature may not be fully supported in the current compatibility mode."
+        msg += (
+            "This feature may not be fully supported in the current compatibility mode."
+        )
         super().__init__(msg)
 
 
 class MockSparkSQLGenerationError(MockSparkException):
     """Raised when SQL generation fails."""
-    
+
     def __init__(self, operation: str, sql_fragment: str, error: str):
         """Initialize SQL generation error.
-        
+
         Args:
             operation: The operation being converted to SQL
             sql_fragment: The SQL fragment that failed
@@ -94,20 +96,22 @@ class MockSparkSQLGenerationError(MockSparkException):
         self.operation = operation
         self.sql_fragment = sql_fragment
         self.error = error
-        
+
         msg = f"SQL generation failed for operation '{operation}'\n"
         msg += f"SQL fragment: {sql_fragment}\n"
         msg += f"Error: {error}\n"
-        msg += "This may be due to unsupported SQL syntax or DuckDB compatibility issues."
+        msg += (
+            "This may be due to unsupported SQL syntax or DuckDB compatibility issues."
+        )
         super().__init__(msg)
 
 
 class MockSparkQueryExecutionError(MockSparkException):
     """Raised when query execution fails."""
-    
+
     def __init__(self, sql: str, error: str, context: Optional[dict] = None):
         """Initialize query execution error.
-        
+
         Args:
             sql: The SQL query that failed
             error: The underlying error
@@ -116,8 +120,8 @@ class MockSparkQueryExecutionError(MockSparkException):
         self.sql = sql
         self.error = error
         self.context = context or {}
-        
-        msg = f"Query execution failed\n"
+
+        msg = "Query execution failed\n"
         msg += f"SQL: {sql}\n"
         msg += f"Error: {error}"
         if context:
@@ -127,27 +131,29 @@ class MockSparkQueryExecutionError(MockSparkException):
 
 class MockSparkColumnNotFoundError(MockSparkException, AttributeError):
     """Raised when a column is not found."""
-    
+
     def __init__(self, column_name: str, available_columns: list):
         """Initialize column not found error.
-        
+
         Args:
             column_name: The column that was not found
             available_columns: List of available columns
         """
         self.column_name = column_name
         self.available_columns = available_columns
-        
+
         msg = f"'MockDataFrame' object has no attribute '{column_name}'. Available columns: {', '.join(available_columns)}"
         super().__init__(msg)
 
 
 class MockSparkTypeMismatchError(MockSparkException):
     """Raised when there's a type mismatch in operations."""
-    
-    def __init__(self, operation: str, expected_type: str, actual_type: str, column: str = ""):
+
+    def __init__(
+        self, operation: str, expected_type: str, actual_type: str, column: str = ""
+    ):
         """Initialize type mismatch error.
-        
+
         Args:
             operation: The operation that failed
             expected_type: Expected data type
@@ -158,7 +164,7 @@ class MockSparkTypeMismatchError(MockSparkException):
         self.expected_type = expected_type
         self.actual_type = actual_type
         self.column = column
-        
+
         msg = f"Type mismatch in operation '{operation}'\n"
         if column:
             msg += f"Column: {column}\n"
@@ -169,10 +175,10 @@ class MockSparkTypeMismatchError(MockSparkException):
 
 class MockSparkUnsupportedOperationError(MockSparkException):
     """Raised when an operation is not supported."""
-    
+
     def __init__(self, operation: str, reason: str = "", alternative: str = ""):
         """Initialize unsupported operation error.
-        
+
         Args:
             operation: The operation that's not supported
             reason: Reason why it's not supported
@@ -181,7 +187,7 @@ class MockSparkUnsupportedOperationError(MockSparkException):
         self.operation = operation
         self.reason = reason
         self.alternative = alternative
-        
+
         msg = f"Operation '{operation}' is not supported"
         if reason:
             msg += f"\nReason: {reason}"

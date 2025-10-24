@@ -301,17 +301,55 @@ class MockGroupedData:
                 result_key = alias_name if alias_name else f"count({col_name})"
                 return result_key, len(group_rows)
         elif func_name == "max":
-            values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
-            ]
-            result_key = alias_name if alias_name else f"max({col_name})"
-            return result_key, max(values) if values else None
+            # Check if this is a complex expression (MockColumnOperation)
+            if hasattr(expr, "column") and hasattr(expr.column, "operation"):
+                # Evaluate the expression for each row
+                values = []
+                for row_data in group_rows:
+                    try:
+                        expr_result = self.df._evaluate_column_expression(
+                            row_data, expr.column
+                        )
+                        if expr_result is not None:
+                            values.append(expr_result)
+                    except (ValueError, TypeError, AttributeError):
+                        pass
+                result_key = alias_name if alias_name else f"max({col_name})"
+                return result_key, max(values) if values else None
+            else:
+                # Simple column reference
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                result_key = alias_name if alias_name else f"max({col_name})"
+                return result_key, max(values) if values else None
         elif func_name == "min":
-            values = [
-                row.get(col_name) for row in group_rows if row.get(col_name) is not None
-            ]
-            result_key = alias_name if alias_name else f"min({col_name})"
-            return result_key, min(values) if values else None
+            # Check if this is a complex expression (MockColumnOperation)
+            if hasattr(expr, "column") and hasattr(expr.column, "operation"):
+                # Evaluate the expression for each row
+                values = []
+                for row_data in group_rows:
+                    try:
+                        expr_result = self.df._evaluate_column_expression(
+                            row_data, expr.column
+                        )
+                        if expr_result is not None:
+                            values.append(expr_result)
+                    except (ValueError, TypeError, AttributeError):
+                        pass
+                result_key = alias_name if alias_name else f"min({col_name})"
+                return result_key, min(values) if values else None
+            else:
+                # Simple column reference
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                result_key = alias_name if alias_name else f"min({col_name})"
+                return result_key, min(values) if values else None
         elif func_name == "collect_list":
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None

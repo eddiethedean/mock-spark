@@ -230,7 +230,7 @@ class MockColumn:
 
     def count(self) -> "MockColumnOperation":
         """Count non-null values in this column.
-        
+
         Returns:
             MockColumnOperation representing the count operation.
         """
@@ -270,10 +270,30 @@ class MockColumnOperation(IColumn):
     def name(self) -> str:
         """Get column name."""
         # If there's an alias, use it
-        if hasattr(self, '_alias_name') and self._alias_name:
+        if hasattr(self, "_alias_name") and self._alias_name:
             return self._alias_name
         # For datetime and comparison operations, use the SQL representation
-        if self.operation in ["hour", "minute", "second", "year", "month", "day", "dayofmonth", "dayofweek", "dayofyear", "weekofyear", "quarter", "to_date", "to_timestamp", "==", "!=", "<", ">", "<=", ">="]:
+        if self.operation in [
+            "hour",
+            "minute",
+            "second",
+            "year",
+            "month",
+            "day",
+            "dayofmonth",
+            "dayofweek",
+            "dayofyear",
+            "weekofyear",
+            "quarter",
+            "to_date",
+            "to_timestamp",
+            "==",
+            "!=",
+            "<",
+            ">",
+            "<=",
+            ">=",
+        ]:
             return str(self)
         return self._name
 
@@ -291,7 +311,9 @@ class MockColumnOperation(IColumn):
             part = "day" if self.operation == "dayofmonth" else self.operation
             return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
         elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
-            return f"extract({self.operation} from TRY_CAST({self.column.name} AS DATE))"
+            return (
+                f"extract({self.operation} from TRY_CAST({self.column.name} AS DATE))"
+            )
         elif self.operation in ["to_date", "to_timestamp"]:
             if self.value is not None:
                 return f"STRPTIME({self.column.name}, '{self.value}')"
@@ -300,7 +322,11 @@ class MockColumnOperation(IColumn):
                 return f"TRY_CAST({self.column.name} AS {target_type})"
         elif self.operation in ["==", "!=", "<", ">", "<=", ">="]:
             # For comparison operations, generate proper SQL
-            left = str(self.column) if hasattr(self.column, '__str__') else self.column.name
+            left = (
+                str(self.column)
+                if hasattr(self.column, "__str__")
+                else self.column.name
+            )
             right = str(self.value) if self.value is not None else "NULL"
             return f"({left} {self.operation} {right})"
         elif self.operation == "cast":
@@ -324,11 +350,11 @@ class MockColumnOperation(IColumn):
             # For functions without column input (like current_date, current_timestamp)
             return self.operation + "()"
         # Handle MockColumn objects properly
-        if hasattr(self.column, 'name'):
+        if hasattr(self.column, "name"):
             column_ref = self.column.name
         else:
             column_ref = str(self.column)
-        
+
         if self.operation == "==":
             return f"{column_ref} = {value_str}"
         elif self.operation == "!=":
@@ -406,9 +432,7 @@ class MockColumnOperation(IColumn):
 
     def alias(self, name: str) -> "MockColumnOperation":
         """Create an alias for this operation."""
-        aliased_operation = MockColumnOperation(
-            self.column, self.operation, self.value
-        )
+        aliased_operation = MockColumnOperation(self.column, self.operation, self.value)
         aliased_operation._alias_name = name
         return aliased_operation
 

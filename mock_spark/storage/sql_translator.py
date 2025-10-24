@@ -21,7 +21,6 @@ from sqlalchemy import (
     func,
     literal,
     case,
-    cast,
     desc,
     asc,
     inspect,
@@ -642,7 +641,14 @@ class SQLToSQLAlchemyTranslator:
         elif isinstance(expr, exp.Cast):
             col = self._translate_expression(expr.this, table)
             target_type = self._get_cast_type(expr.to)
-            return cast(col, target_type)
+            # Use TRY_CAST for overflow handling (DuckDB specific)
+            from sqlalchemy import text
+
+            # For integer casts, use BIGINT to handle overflow gracefully
+            if "INT" in str(target_type).upper():
+                return text(f"TRY_CAST({col} AS BIGINT)")
+            else:
+                return text(f"TRY_CAST({col} AS {target_type})")
 
         else:
             # Generic function - try to map using function mapper

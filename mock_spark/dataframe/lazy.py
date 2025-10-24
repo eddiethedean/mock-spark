@@ -5,8 +5,19 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, Optional, Dict, TYPE_CHECKING
-from ..spark_types import StringType, MockStructField, DoubleType, LongType, IntegerType, BooleanType, MockDataType, MockStructType, ArrayType
+from typing import Any, List, TYPE_CHECKING
+from ..spark_types import (
+    StringType,
+    MockStructField,
+    DoubleType,
+    LongType,
+    IntegerType,
+    BooleanType,
+    MockDataType,
+    MockStructType,
+    ArrayType,
+)
+from ..optimizer.query_optimizer import OperationType
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import MockDataFrame
@@ -18,7 +29,7 @@ class LazyEvaluationEngine:
 
     def __init__(self, enable_optimization: bool = True):
         """Initialize lazy evaluation engine.
-        
+
         Args:
             enable_optimization: Whether to enable query optimization
         """
@@ -27,6 +38,7 @@ class LazyEvaluationEngine:
         if enable_optimization:
             try:
                 from ..optimizer import QueryOptimizer
+
                 self._optimizer = QueryOptimizer()
             except ImportError:
                 # Fallback if optimizer is not available
@@ -67,23 +79,23 @@ class LazyEvaluationEngine:
 
     def optimize_operations(self, operations: List[tuple]) -> List[tuple]:
         """Optimize operations using the query optimizer.
-        
+
         Args:
             operations: List of (operation_name, payload) tuples
-            
+
         Returns:
             Optimized list of operations
         """
         if not self.enable_optimization or self._optimizer is None:
             return operations
-        
+
         try:
             # Convert operations to optimizer format
             optimizer_ops = self._convert_to_optimizer_operations(operations)
-            
+
             # Apply optimization
             optimized_ops = self._optimizer.optimize(optimizer_ops)
-            
+
             # Convert back to original format
             return self._convert_from_optimizer_operations(optimized_ops)
         except Exception:
@@ -93,38 +105,46 @@ class LazyEvaluationEngine:
     def _convert_to_optimizer_operations(self, operations: List[tuple]) -> List[Any]:
         """Convert operations to optimizer format."""
         from ..optimizer.query_optimizer import Operation, OperationType
-        
+
         optimizer_ops = []
         for op_name, payload in operations:
             if op_name == "select":
-                optimizer_ops.append(Operation(
-                    type=OperationType.SELECT,
-                    columns=payload if isinstance(payload, list) else [payload],
-                    predicates=[],
-                    join_conditions=[],
-                    group_by_columns=[],
-                    order_by_columns=[],
-                    limit_count=None,
-                    window_specs=[],
-                    metadata={}
-                ))
+                optimizer_ops.append(
+                    Operation(
+                        type=OperationType.SELECT,
+                        columns=payload if isinstance(payload, list) else [payload],
+                        predicates=[],
+                        join_conditions=[],
+                        group_by_columns=[],
+                        order_by_columns=[],
+                        limit_count=None,
+                        window_specs=[],
+                        metadata={},
+                    )
+                )
             elif op_name == "filter":
-                optimizer_ops.append(Operation(
-                    type=OperationType.FILTER,
-                    columns=[],
-                    predicates=[{"column": str(payload), "operator": "=", "value": True}],
-                    join_conditions=[],
-                    group_by_columns=[],
-                    order_by_columns=[],
-                    limit_count=None,
-                    window_specs=[],
-                    metadata={}
-                ))
+                optimizer_ops.append(
+                    Operation(
+                        type=OperationType.FILTER,
+                        columns=[],
+                        predicates=[
+                            {"column": str(payload), "operator": "=", "value": True}
+                        ],
+                        join_conditions=[],
+                        group_by_columns=[],
+                        order_by_columns=[],
+                        limit_count=None,
+                        window_specs=[],
+                        metadata={},
+                    )
+                )
             # Add more operation types as needed
-        
+
         return optimizer_ops
 
-    def _convert_from_optimizer_operations(self, optimizer_ops: List[Any]) -> List[tuple]:
+    def _convert_from_optimizer_operations(
+        self, optimizer_ops: List[Any]
+    ) -> List[tuple]:
         """Convert optimizer operations back to original format."""
         operations = []
         for op in optimizer_ops:
@@ -134,7 +154,7 @@ class LazyEvaluationEngine:
                 for pred in op.predicates:
                     operations.append(("filter", pred["column"]))
             # Add more operation types as needed
-        
+
         return operations
 
     @staticmethod
@@ -152,6 +172,10 @@ class LazyEvaluationEngine:
 
             return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
 
+        # Check if operations require manual materialization
+        if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
+            return LazyEvaluationEngine._materialize_manual(df)
+
         # Use backend factory to get materializer
         try:
             from mock_spark.backend.factory import BackendFactory
@@ -168,6 +192,13 @@ class LazyEvaluationEngine:
                     rows, df.schema
                 )
 
+                # Check if DuckDB returned default values (0.0 for numeric functions)
+                # If so, fall back to manual materialization
+                if LazyEvaluationEngine._has_default_values(
+                    materialized_data, df.schema
+                ):
+                    return LazyEvaluationEngine._materialize_manual(df)
+
                 # Create new eager DataFrame with materialized data
                 from ..dataframe import MockDataFrame
 
@@ -183,6 +214,79 @@ class LazyEvaluationEngine:
         except ImportError:
             # Fallback to manual materialization if DuckDB is not available
             return LazyEvaluationEngine._materialize_manual(df)
+
+    @staticmethod
+    def _has_default_values(data: List[dict], schema: "MockStructType") -> bool:
+        """Check if data contains default values that indicate DuckDB couldn't handle the operations."""
+        if not data:
+            return False
+
+        # Check if any numeric fields have default values (0.0, 0, None)
+        for row in data:
+            for field in schema.fields:
+                if field.name in row:
+                    value = row[field.name]
+                    # Check for default values that indicate DuckDB couldn't evaluate the function
+                    if value == 0.0 and field.dataType.__class__.__name__ in [
+                        "DoubleType",
+                        "FloatType",
+                    ]:
+                        return True
+                    if value == 0 and field.dataType.__class__.__name__ in [
+                        "IntegerType",
+                        "LongType",
+                    ]:
+                        return True
+                    if value is None and field.dataType.__class__.__name__ in [
+                        "StringType"
+                    ]:
+                        return True
+                    # Check for None values in any field (indicates DuckDB couldn't evaluate)
+                    if value is None:
+                        return True
+
+        return False
+
+    @staticmethod
+    def _requires_manual_materialization(operations_queue: List[tuple]) -> bool:
+        """Check if operations require manual materialization (DuckDB can't handle them)."""
+        for op_name, op_val in operations_queue:
+            if op_name == "select":
+                # Check if select contains operations that DuckDB can't handle
+                for col in op_val:
+                    # Check for MockCaseWhen (when/otherwise expressions)
+                    if hasattr(col, "conditions"):
+                        return True
+                    # Check for MockColumnOperation
+                    if hasattr(col, "operation"):
+                        # Check for operations that require MockDataFrame evaluation
+                        if col.operation in [
+                            "months_between",
+                            "datediff",
+                            "cast",
+                            "when",
+                            "otherwise",
+                        ]:
+                            return True
+                        # Check for comparison operations
+                        if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
+                            return True
+                        # Check for arithmetic operations with cast
+                        if col.operation in ["+", "-", "*", "/", "%"]:
+                            # Check if operands contain cast operations
+                            if (
+                                hasattr(col, "column")
+                                and hasattr(col.column, "operation")
+                                and col.column.operation == "cast"
+                            ):
+                                return True
+                            if (
+                                hasattr(col, "value")
+                                and hasattr(col.value, "operation")
+                                and col.value.operation == "cast"
+                            ):
+                                return True
+        return False
 
     @staticmethod
     def _convert_materialized_rows(
@@ -384,6 +488,24 @@ class LazyEvaluationEngine:
                     new_fields.append(
                         MockStructField(col_name, source_type, nullable=False)
                     )
+                elif col.operation == "datediff":
+                    new_fields.append(MockStructField(col_name, IntegerType()))
+                elif col.operation == "months_between":
+                    new_fields.append(MockStructField(col_name, DoubleType()))
+                elif col.operation in [
+                    "hour",
+                    "minute",
+                    "second",
+                    "day",
+                    "dayofmonth",
+                    "month",
+                    "year",
+                    "quarter",
+                    "dayofweek",
+                    "dayofyear",
+                    "weekofyear",
+                ]:
+                    new_fields.append(MockStructField(col_name, IntegerType()))
                 else:
                     # Default to StringType for unknown operations
                     new_fields.append(MockStructField(col_name, StringType()))
@@ -565,7 +687,9 @@ class LazyEvaluationEngine:
         return MockStructType(new_fields)
 
     @staticmethod
-    def _infer_withcolumn_schema(df: "MockDataFrame", withcolumn_params: Any) -> "MockStructType":
+    def _infer_withcolumn_schema(
+        df: "MockDataFrame", withcolumn_params: Any
+    ) -> "MockStructType":
         """Infer schema for withColumn operation.
 
         Args:
@@ -575,7 +699,18 @@ class LazyEvaluationEngine:
         Returns:
             Inferred schema after withColumn
         """
-        from ..spark_types import MockStructType, MockStructField, BooleanType, IntegerType, LongType, DoubleType, StringType, DateType, TimestampType, DecimalType
+        from ..spark_types import (
+            MockStructType,
+            MockStructField,
+            BooleanType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            StringType,
+            DateType,
+            TimestampType,
+            DecimalType,
+        )
         from ..functions.core.column import MockColumnOperation
 
         col_name, col = withcolumn_params
@@ -584,7 +719,11 @@ class LazyEvaluationEngine:
         new_fields = [field for field in df.schema.fields if field.name != col_name]
 
         # Infer the type of the new column
-        if isinstance(col, MockColumnOperation) and hasattr(col, "operation") and col.operation == "cast":
+        if (
+            isinstance(col, MockColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation == "cast"
+        ):
             # Cast operation - use the target data type from col.value
             cast_type = col.value
             if isinstance(cast_type, str):
@@ -606,10 +745,13 @@ class LazyEvaluationEngine:
                 elif cast_type.lower().startswith("decimal"):
                     # Parse decimal(10,2) format
                     import re
+
                     match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
                     if match:
                         precision, scale = int(match.group(1)), int(match.group(2))
-                        new_fields.append(MockStructField(col_name, DecimalType(precision, scale)))
+                        new_fields.append(
+                            MockStructField(col_name, DecimalType(precision, scale))
+                        )
                     else:
                         new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
                 else:
@@ -617,10 +759,77 @@ class LazyEvaluationEngine:
                     new_fields.append(MockStructField(col_name, StringType()))
             else:
                 # Already a MockDataType object
-                if hasattr(cast_type, '__class__'):
-                    new_fields.append(MockStructField(col_name, cast_type.__class__(nullable=True)))
+                if hasattr(cast_type, "__class__"):
+                    new_fields.append(
+                        MockStructField(col_name, cast_type.__class__(nullable=True))
+                    )
                 else:
                     new_fields.append(MockStructField(col_name, cast_type))
+        elif (
+            isinstance(col, MockColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation in ["+", "-", "*", "/", "%"]
+        ):
+            # Arithmetic operations - infer type from operands
+            left_type = None
+            right_type = None
+
+            # Get left operand type
+            if hasattr(col.column, "name"):
+                for field in df.schema.fields:
+                    if field.name == col.column.name:
+                        left_type = field.dataType
+                        break
+
+            # Get right operand type
+            if (
+                hasattr(col, "value")
+                and col.value is not None
+                and hasattr(col.value, "name")
+            ):
+                for field in df.schema.fields:
+                    if field.name == col.value.name:
+                        right_type = field.dataType
+                        break
+
+            # If either operand is DoubleType, result is DoubleType
+            if (left_type and isinstance(left_type, DoubleType)) or (
+                right_type and isinstance(right_type, DoubleType)
+            ):
+                new_fields.append(MockStructField(col_name, DoubleType()))
+            else:
+                new_fields.append(MockStructField(col_name, LongType()))
+        elif (
+            isinstance(col, MockColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation == "datediff"
+        ):
+            new_fields.append(MockStructField(col_name, IntegerType()))
+        elif (
+            isinstance(col, MockColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation == "months_between"
+        ):
+            new_fields.append(MockStructField(col_name, DoubleType()))
+        elif (
+            isinstance(col, MockColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation
+            in [
+                "hour",
+                "minute",
+                "second",
+                "day",
+                "dayofmonth",
+                "month",
+                "year",
+                "quarter",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+            ]
+        ):
+            new_fields.append(MockStructField(col_name, IntegerType()))
         else:
             # For other column types, default to StringType
             # TODO: Add more sophisticated type inference for other operations

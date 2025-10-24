@@ -60,9 +60,7 @@ class DateTimeFunctions:
             MockColumnOperation representing the current_date function.
         """
         # Create a MockColumnOperation without a column (None for functions without input)
-        operation = MockColumnOperation(
-            None, "current_date", name="current_date()"
-        )
+        operation = MockColumnOperation(None, "current_date", name="current_date()")
         return operation
 
     @staticmethod

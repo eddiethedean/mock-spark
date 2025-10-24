@@ -4,7 +4,7 @@ Window functions for Mock Spark.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, List
+from typing import Any, List, Optional
 from mock_spark.window import MockWindowSpec
 
 
@@ -210,54 +210,54 @@ class MockWindowFunction:
         """Evaluate first() window function."""
         if not data:
             return []
-        
+
         # Get the column name from the function
         col_name = self.column_name
         if not col_name:
             return [None] * len(data)
-        
+
         # Get the first value
         first_value = None
         for row in data:
             if col_name in row and row[col_name] is not None:
                 first_value = row[col_name]
                 break
-        
+
         return [first_value] * len(data)
 
     def _evaluate_last(self, data: List[dict]) -> List[Any]:
         """Evaluate last() window function."""
         if not data:
             return []
-        
+
         # Get the column name from the function
         col_name = self.column_name
         if not col_name:
             return [None] * len(data)
-        
+
         # Get the last value
         last_value = None
         for row in reversed(data):
             if col_name in row and row[col_name] is not None:
                 last_value = row[col_name]
                 break
-        
+
         return [last_value] * len(data)
 
     def _evaluate_sum(self, data: List[dict]) -> List[Any]:
         """Evaluate sum() window function."""
         if not data:
             return []
-        
+
         # Get the column name from the function
         col_name = self.column_name
         if not col_name:
             return [None] * len(data)
-        
+
         # Calculate sum for each position
         result = []
-        running_sum = 0
-        
+        running_sum = 0.0
+
         for row in data:
             if col_name in row and row[col_name] is not None:
                 try:
@@ -265,24 +265,24 @@ class MockWindowFunction:
                 except (ValueError, TypeError):
                     pass
             result.append(running_sum)
-        
+
         return result
 
     def _evaluate_avg(self, data: List[dict]) -> List[Any]:
         """Evaluate avg() window function."""
         if not data:
             return []
-        
+
         # Get the column name from the function
         col_name = self.column_name
         if not col_name:
             return [None] * len(data)
-        
+
         # Calculate average for each position
-        result = []
-        running_sum = 0
+        result: List[Optional[float]] = []
+        running_sum = 0.0
         count = 0
-        
+
         for row in data:
             if col_name in row and row[col_name] is not None:
                 try:
@@ -290,10 +290,10 @@ class MockWindowFunction:
                     count += 1
                 except (ValueError, TypeError):
                     pass
-            
+
             if count > 0:
                 result.append(running_sum / count)
             else:
                 result.append(None)
-        
+
         return result

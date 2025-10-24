@@ -18,11 +18,17 @@ from mock_spark.spark_types import MockStructType, MockStructField
 
 class TableMetadata:
     """Metadata for a table in the catalog."""
-    
-    def __init__(self, name: str, schema: str, created_at: datetime, 
-                 table_schema: MockStructType, properties: dict):
+
+    def __init__(
+        self,
+        name: str,
+        schema: str,
+        created_at: datetime,
+        table_schema: MockStructType,
+        properties: dict,
+    ):
         """Initialize table metadata.
-        
+
         Args:
             name: Table name.
             schema: Schema/database name.
@@ -264,19 +270,21 @@ class UnifiedStorageManager(IStorageManager):
 
     def save_table_metadata(self, qualified_name: str, metadata: TableMetadata) -> None:
         """Store table metadata.
-        
+
         Args:
             qualified_name: Qualified table name (schema.table).
             metadata: Table metadata to store.
         """
         self._table_metadata[qualified_name] = metadata
 
-    def get_table_metadata_by_name(self, qualified_name: str) -> Optional[TableMetadata]:
+    def get_table_metadata_by_name(
+        self, qualified_name: str
+    ) -> Optional[TableMetadata]:
         """Retrieve table metadata by qualified name.
-        
+
         Args:
             qualified_name: Qualified table name (schema.table).
-            
+
         Returns:
             Table metadata or None if not found.
         """
@@ -284,22 +292,23 @@ class UnifiedStorageManager(IStorageManager):
 
     def list_table_metadata(self, schema: str) -> List[TableMetadata]:
         """List all table metadata for a schema.
-        
+
         Args:
             schema: Schema name.
-            
+
         Returns:
             List of table metadata objects.
         """
         return [
-            metadata for qualified_name, metadata in self._table_metadata.items()
+            metadata
+            for qualified_name, metadata in self._table_metadata.items()
             if metadata.schema == schema
         ]
 
     def cleanup_temp_tables(self) -> None:
         """Clean up temporary tables to free memory."""
         try:
-            if hasattr(self.backend, 'cleanup_temp_tables'):
+            if hasattr(self.backend, "cleanup_temp_tables"):
                 self.backend.cleanup_temp_tables()
         except Exception:
             # Ignore errors during cleanup
@@ -308,7 +317,7 @@ class UnifiedStorageManager(IStorageManager):
     def optimize_storage(self) -> None:
         """Optimize storage by cleaning up and compacting data."""
         try:
-            if hasattr(self.backend, 'optimize_storage'):
+            if hasattr(self.backend, "optimize_storage"):
                 self.backend.optimize_storage()
         except Exception:
             # Ignore errors during optimization
@@ -316,29 +325,23 @@ class UnifiedStorageManager(IStorageManager):
 
     def get_memory_usage(self) -> Dict[str, Any]:
         """Get current memory usage statistics.
-        
+
         Returns:
             Dictionary with memory usage information.
         """
         try:
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
-            
+
             return {
-                'rss': memory_info.rss,  # Resident Set Size
-                'vms': memory_info.vms,  # Virtual Memory Size
-                'percent': process.memory_percent(),
-                'available': psutil.virtual_memory().available,
-                'total': psutil.virtual_memory().total
+                "rss": memory_info.rss,  # Resident Set Size
+                "vms": memory_info.vms,  # Virtual Memory Size
+                "percent": process.memory_percent(),
+                "available": psutil.virtual_memory().available,
+                "total": psutil.virtual_memory().total,
             }
         except Exception:
-            return {
-                'rss': 0,
-                'vms': 0,
-                'percent': 0,
-                'available': 0,
-                'total': 0
-            }
+            return {"rss": 0, "vms": 0, "percent": 0, "available": 0, "total": 0}
 
     def force_garbage_collection(self) -> None:
         """Force garbage collection to free memory."""
@@ -346,7 +349,7 @@ class UnifiedStorageManager(IStorageManager):
 
     def get_table_sizes(self) -> Dict[str, int]:
         """Get estimated sizes of all tables.
-        
+
         Returns:
             Dictionary mapping table names to estimated sizes.
         """
@@ -354,7 +357,9 @@ class UnifiedStorageManager(IStorageManager):
         for qualified_name, metadata in self._table_metadata.items():
             try:
                 # Estimate size based on metadata
-                estimated_size = metadata.table_schema.get_field_count() * 100  # Rough estimate
+                estimated_size = (
+                    metadata.table_schema.get_field_count() * 100
+                )  # Rough estimate
                 sizes[qualified_name] = estimated_size
             except Exception:
                 sizes[qualified_name] = 0
@@ -362,32 +367,32 @@ class UnifiedStorageManager(IStorageManager):
 
     def cleanup_old_tables(self, max_age_hours: int = 24) -> int:
         """Clean up tables older than specified age.
-        
+
         Args:
             max_age_hours: Maximum age in hours before cleanup.
-            
+
         Returns:
             Number of tables cleaned up.
         """
         from datetime import timedelta
-        
+
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
         cleaned_count = 0
-        
+
         for qualified_name, metadata in list(self._table_metadata.items()):
             if metadata.created_at < cutoff_time:
                 try:
                     # Remove from metadata
                     del self._table_metadata[qualified_name]
-                    
+
                     # Remove from backend if possible
-                    if hasattr(self.backend, 'drop_table'):
-                        schema, table = qualified_name.split('.', 1)
+                    if hasattr(self.backend, "drop_table"):
+                        schema, table = qualified_name.split(".", 1)
                         self.backend.drop_table(schema, table)
-                    
+
                     cleaned_count += 1
                 except Exception:
                     # Ignore errors during cleanup
                     pass
-        
+
         return cleaned_count

@@ -243,22 +243,12 @@ class TimestampNTZType(MockDataType):
     pass
 
 
-class TimestampType(MockDataType):
-    """Mock TimestampType for timestamp with timezone."""
-
-    pass
-
-
-class DateType(MockDataType):
-    """Mock DateType for date values."""
-
-    pass
-
-
 class IntervalType(MockDataType):
     """Mock IntervalType for time intervals."""
 
-    def __init__(self, start_field: str = "YEAR", end_field: str = "MONTH", nullable: bool = True):
+    def __init__(
+        self, start_field: str = "YEAR", end_field: str = "MONTH", nullable: bool = True
+    ):
         super().__init__(nullable)
         self.start_field = start_field
         self.end_field = end_field
@@ -270,7 +260,9 @@ class IntervalType(MockDataType):
 class YearMonthIntervalType(MockDataType):
     """Mock YearMonthIntervalType for year-month intervals."""
 
-    def __init__(self, start_field: str = "YEAR", end_field: str = "MONTH", nullable: bool = True):
+    def __init__(
+        self, start_field: str = "YEAR", end_field: str = "MONTH", nullable: bool = True
+    ):
         super().__init__(nullable)
         self.start_field = start_field
         self.end_field = end_field
@@ -282,7 +274,9 @@ class YearMonthIntervalType(MockDataType):
 class DayTimeIntervalType(MockDataType):
     """Mock DayTimeIntervalType for day-time intervals."""
 
-    def __init__(self, start_field: str = "DAY", end_field: str = "SECOND", nullable: bool = True):
+    def __init__(
+        self, start_field: str = "DAY", end_field: str = "SECOND", nullable: bool = True
+    ):
         super().__init__(nullable)
         self.start_field = start_field
         self.end_field = end_field

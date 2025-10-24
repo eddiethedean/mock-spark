@@ -173,15 +173,21 @@ class SQLAlchemyQueryBuilder:
 
         return literal(str(op))
 
-    def _handle_cast(self, column, target_type):
+    def _handle_cast(self, column: Any, target_type: str) -> Any:
         """Convert cast to SQLAlchemy cast."""
         type_map = {
-            "int": Integer, "integer": Integer,
-            "long": BigInteger, "bigint": BigInteger,
-            "double": Float, "float": Float,
-            "string": String, "varchar": String,
-            "boolean": Boolean, "bool": Boolean,
-            "date": Date, "timestamp": DateTime
+            "int": Integer,
+            "integer": Integer,
+            "long": BigInteger,
+            "bigint": BigInteger,
+            "double": Float,
+            "float": Float,
+            "string": String,
+            "varchar": String,
+            "boolean": Boolean,
+            "bool": Boolean,
+            "date": Date,
+            "timestamp": DateTime,
         }
         if isinstance(target_type, str):
             sa_type = type_map.get(target_type.lower(), String)()

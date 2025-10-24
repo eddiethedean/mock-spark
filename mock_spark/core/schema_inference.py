@@ -167,7 +167,7 @@ class SchemaInferenceEngine:
             return StringType()
         else:
             # Check for datetime objects
-            if hasattr(value, 'date') and hasattr(value, 'time'):
+            if hasattr(value, "date") and hasattr(value, "time"):
                 return TimestampType()
             return StringType()  # Default fallback
 
@@ -175,12 +175,13 @@ class SchemaInferenceEngine:
     def _is_date_string(value: str) -> bool:
         """Check if string looks like a date."""
         import re
+
         # Common date patterns
         date_patterns = [
-            r'^\d{4}-\d{2}-\d{2}$',  # YYYY-MM-DD
-            r'^\d{2}/\d{2}/\d{4}$',  # MM/DD/YYYY
-            r'^\d{2}-\d{2}-\d{4}$',  # MM-DD-YYYY
-            r'^\d{4}/\d{2}/\d{2}$',  # YYYY/MM/DD
+            r"^\d{4}-\d{2}-\d{2}$",  # YYYY-MM-DD
+            r"^\d{2}/\d{2}/\d{4}$",  # MM/DD/YYYY
+            r"^\d{2}-\d{2}-\d{4}$",  # MM-DD-YYYY
+            r"^\d{4}/\d{2}/\d{2}$",  # YYYY/MM/DD
         ]
         return any(re.match(pattern, value) for pattern in date_patterns)
 
@@ -188,12 +189,13 @@ class SchemaInferenceEngine:
     def _is_timestamp_string(value: str) -> bool:
         """Check if string looks like a timestamp."""
         import re
+
         # Common timestamp patterns
         timestamp_patterns = [
-            r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$',  # YYYY-MM-DD HH:MM:SS
-            r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$',  # YYYY-MM-DDTHH:MM:SS
-            r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$',  # YYYY-MM-DD HH:MM:SS.microseconds
-            r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$',  # YYYY-MM-DDTHH:MM:SS.microseconds
+            r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",  # YYYY-MM-DD HH:MM:SS
+            r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$",  # YYYY-MM-DDTHH:MM:SS
+            r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$",  # YYYY-MM-DD HH:MM:SS.microseconds
+            r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+$",  # YYYY-MM-DDTHH:MM:SS.microseconds
         ]
         return any(re.match(pattern, value) for pattern in timestamp_patterns)
 

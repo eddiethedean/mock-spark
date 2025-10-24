@@ -93,7 +93,7 @@ class MockCatalog:
             storage: Storage manager instance.
         """
         self.storage = storage
-        self._cached_tables = set()  # Track cached tables
+        self._cached_tables: set[str] = set()  # Track cached tables
 
     def listDatabases(self) -> List[MockDatabase]:
         """List all databases.
@@ -105,21 +105,22 @@ class MockCatalog:
 
     def setCurrentDatabase(self, dbName: str) -> None:
         """Set current/active database.
-        
+
         Args:
             dbName: Database name to set as current.
-            
+
         Raises:
             AnalysisException: If database does not exist.
         """
         if not self.storage.schema_exists(dbName):
             from mock_spark.core.exceptions.analysis import AnalysisException
+
             raise AnalysisException(f"Database '{dbName}' does not exist")
         self.storage.set_current_schema(dbName)
 
     def currentDatabase(self) -> str:
         """Get current database name.
-        
+
         Returns:
             Current database name.
         """
@@ -210,11 +211,11 @@ class MockCatalog:
             AnalysisException: If there's an error checking table existence.
         """
         # Handle qualified table names (schema.table)
-        if '.' in tableName and dbName is None:
-            parts = tableName.split('.', 1)
+        if "." in tableName and dbName is None:
+            parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
-        
+
         if dbName is None:
             dbName = self.storage.get_current_schema()
         if not isinstance(dbName, str):
@@ -304,17 +305,19 @@ class MockCatalog:
         """
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
-        
+
         if not tableName:
             raise IllegalArgumentException("Table name cannot be empty")
 
         # Handle qualified table names (schema.table)
-        if '.' in tableName:
-            parts = tableName.split('.', 1)
+        if "." in tableName:
+            parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
             else:
-                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+                raise IllegalArgumentException(
+                    f"Invalid qualified table name: {tableName}"
+                )
         else:
             dbName = self.storage.get_current_schema()
 
@@ -322,7 +325,7 @@ class MockCatalog:
             # Check if table exists first
             if not self.storage.table_exists(dbName, tableName):
                 raise AnalysisException(f"Table '{dbName}.{tableName}' does not exist")
-            
+
             # Drop the table from storage
             self.storage.drop_table(dbName, tableName)
         except Exception as e:
@@ -346,18 +349,20 @@ class MockCatalog:
         """
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
-        
+
         if not tableName:
             raise IllegalArgumentException("Table name cannot be empty")
 
         # Handle qualified table names (schema.table)
-        if '.' in tableName:
-            parts = tableName.split('.', 1)
+        if "." in tableName:
+            parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
                 qualified_name = f"{dbName}.{tableName}"
             else:
-                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+                raise IllegalArgumentException(
+                    f"Invalid qualified table name: {tableName}"
+                )
         else:
             dbName = self.storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"
@@ -376,18 +381,20 @@ class MockCatalog:
         """
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
-        
+
         if not tableName:
             raise IllegalArgumentException("Table name cannot be empty")
 
         # Handle qualified table names (schema.table)
-        if '.' in tableName:
-            parts = tableName.split('.', 1)
+        if "." in tableName:
+            parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
                 qualified_name = f"{dbName}.{tableName}"
             else:
-                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+                raise IllegalArgumentException(
+                    f"Invalid qualified table name: {tableName}"
+                )
         else:
             dbName = self.storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"
@@ -410,18 +417,20 @@ class MockCatalog:
         """
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
-        
+
         if not tableName:
             raise IllegalArgumentException("Table name cannot be empty")
 
         # Handle qualified table names (schema.table)
-        if '.' in tableName:
-            parts = tableName.split('.', 1)
+        if "." in tableName:
+            parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
                 qualified_name = f"{dbName}.{tableName}"
             else:
-                raise IllegalArgumentException(f"Invalid qualified table name: {tableName}")
+                raise IllegalArgumentException(
+                    f"Invalid qualified table name: {tableName}"
+                )
         else:
             dbName = self.storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"

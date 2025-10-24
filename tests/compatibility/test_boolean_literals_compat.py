@@ -1,5 +1,5 @@
 """
-Compatibility tests for boolean literal support in Mock-Spark 2.10.0.
+Compatibility tests for boolean literal support in Mock-Spark 2.11.0.
 
 Tests the specific SQL generation fix for F.lit(True) and F.lit(False) that
 was causing "Binder Error: Referenced column 'true' not found" issues.

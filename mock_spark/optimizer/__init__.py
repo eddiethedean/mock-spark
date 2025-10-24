@@ -17,7 +17,7 @@ from .optimization_rules import (
 __all__ = [
     "QueryOptimizer",
     "FilterPushdownRule",
-    "ColumnPruningRule", 
+    "ColumnPruningRule",
     "JoinOptimizationRule",
     "PredicatePushdownRule",
     "ProjectionPushdownRule",

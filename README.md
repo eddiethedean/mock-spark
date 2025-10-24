@@ -58,7 +58,7 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.10.0)
+### Latest (Version 2.11.0)
 
 **CTE Query Optimization & Performance** - Major performance breakthrough with query optimization:
 - ✅ **1200+ tests passing** - Comprehensive validation across all features (+200+ new tests)
@@ -67,7 +67,7 @@ from mock_spark import MockSparkSession as SparkSession
 - ✅ **100% type coverage** - Full mypy validation across 106 source files
 - ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
 
-**New in 2.10.0:**
+**New in 2.11.0:**
 - ✅ **Boolean Literal Support** - Fixed `F.lit(True)` and `F.lit(False)` SQL generation
   - **Correct SQL output** - Generates `true`/`false` instead of `"True"`/`"False"`
   - **Table persistence** - `saveAsTable()` and `spark.table()` work correctly with boolean columns
@@ -483,7 +483,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.7.0** - Extended 3.1/3.3/3.5 Compatibility  
 **v2.8.0** - Iteration Methods, Streaming Support  
 **v2.9.0** - CTE Query Optimization, 5-10x Performance Boost  
-**v2.10.0** - Boolean Literal Support, Type Safety Improvements
+**v2.10.0** - Boolean Literal Support, Type Safety Improvements  
+**v2.11.0** - Enhanced Error Handling, Improved Type Safety, Test Suite Robustness
 
 ---
 

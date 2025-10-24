@@ -319,7 +319,7 @@ class DuckDBSchema(ISchema):
         # Check if table exists in our registry first
         if table in self.tables:
             return True
-        
+
         # Fallback to SQLAlchemy inspector for tables created outside our system
         try:
             inspector = inspect(self.engine)
@@ -416,7 +416,7 @@ class DuckDBStorageManager(IStorageManager):
         self.schemas["default"] = DuckDBSchema(
             "default", self.connection, None, self.engine
         )
-        
+
         # Track current schema
         self._current_schema = "default"
 
@@ -626,7 +626,7 @@ class DuckDBStorageManager(IStorageManager):
             result = self.connection.execute("SHOW TABLES").fetchall()
             for table_info in result:
                 table_name = table_info[0]
-                if table_name.startswith('temp_'):
+                if table_name.startswith("temp_"):
                     self.connection.execute(f"DROP TABLE IF EXISTS {table_name}")
         except Exception:
             pass
@@ -647,21 +647,23 @@ class DuckDBStorageManager(IStorageManager):
         try:
             import psutil
             import os
+
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
             return {
-                'rss': memory_info.rss,
-                'vms': memory_info.vms,
-                'percent': process.memory_percent(),
-                'available': psutil.virtual_memory().available,
-                'total': psutil.virtual_memory().total
+                "rss": memory_info.rss,
+                "vms": memory_info.vms,
+                "percent": process.memory_percent(),
+                "available": psutil.virtual_memory().available,
+                "total": psutil.virtual_memory().total,
             }
         except Exception:
-            return {'rss': 0, 'vms': 0, 'percent': 0, 'available': 0, 'total': 0}
+            return {"rss": 0, "vms": 0, "percent": 0, "available": 0, "total": 0}
 
     def force_garbage_collection(self) -> None:
         """Force garbage collection to free memory."""
         import gc
+
         gc.collect()
 
     def get_table_sizes(self) -> Dict[str, int]:
@@ -672,7 +674,9 @@ class DuckDBStorageManager(IStorageManager):
             for table_info in result:
                 table_name = table_info[0]
                 # Get row count as size estimate
-                count_result = self.connection.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                count_result = self.connection.execute(
+                    f"SELECT COUNT(*) FROM {table_name}"
+                ).fetchone()
                 sizes[table_name] = count_result[0] if count_result else 0
         except Exception:
             pass
@@ -685,7 +689,7 @@ class DuckDBStorageManager(IStorageManager):
         if self.is_in_memory:
             self.cleanup_temp_tables()
             return 0
-        
+
         # For persistent storage, we could implement age-based cleanup
         # For now, just clean up temp tables
         self.cleanup_temp_tables()
