@@ -173,7 +173,7 @@ class TestValidationRules:
 
     def test_validation_rule_errors(self, spark, sample_data):
         """Test validation rule error handling."""
-        df = spark.createDataFrame(sample_data)
+        spark.createDataFrame(sample_data)
 
         # Test unknown string rule
         with pytest.raises(ValueError, match="Unknown string validation rule"):

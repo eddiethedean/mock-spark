@@ -743,7 +743,17 @@ class LazyEvaluationEngine:
                     current = MockDataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
                     other_df = op_val
-                    current = current.union(other_df)  # eager path
+                    # Use SetOperations for union
+                    from .operations.set_operations import SetOperations
+
+                    result_data, result_schema = SetOperations.union(
+                        current.data,
+                        current.schema,
+                        other_df.data,
+                        other_df.schema,
+                        current.storage,
+                    )
+                    current = MockDataFrame(result_data, result_schema, current.storage)
                 elif op_name == "orderBy":
                     current = current.orderBy(*op_val)  # eager path
                 elif op_name == "transform":

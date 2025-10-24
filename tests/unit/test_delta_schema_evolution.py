@@ -17,7 +17,7 @@ from mock_spark.errors import AnalysisException
 
 class TestDeltaSchemaEvolution:
     """Test Delta Lake schema evolution with mergeSchema option."""
-    
+
     def _get_unique_table_name(self, base_name):
         """Generate a unique table name to avoid race conditions."""
         return f"test.{base_name}_{uuid.uuid4().hex[:8]}"
@@ -51,7 +51,7 @@ class TestDeltaSchemaEvolution:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()
 
@@ -79,7 +79,7 @@ class TestDeltaSchemaEvolution:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()
 
@@ -111,7 +111,7 @@ class TestDeltaSchemaEvolution:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()
 
@@ -132,7 +132,9 @@ class TestDeltaSchemaEvolution:
             ).saveAsTable(table_name)
 
             # Step 3: Add second new column
-            df3 = spark.createDataFrame([{"id": 3, "name": "Charlie", "age": 25, "city": "NYC"}])
+            df3 = spark.createDataFrame(
+                [{"id": 3, "name": "Charlie", "age": 25, "city": "NYC"}]
+            )
             df3.write.format("delta").mode("append").option(
                 "mergeSchema", "true"
             ).saveAsTable(table_name)
@@ -150,7 +152,7 @@ class TestDeltaSchemaEvolution:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()
 
@@ -165,7 +167,9 @@ class TestDeltaSchemaEvolution:
             df1.write.format("delta").mode("overwrite").saveAsTable(table_name)
 
             # Append with new column of different type
-            df2 = spark.createDataFrame([{"id": 2, "name": "Bob", "age": 30, "score": 95.5}])
+            df2 = spark.createDataFrame(
+                [{"id": 2, "name": "Bob", "age": 30, "score": 95.5}]
+            )
             df2.write.format("delta").mode("append").option(
                 "mergeSchema", "true"
             ).saveAsTable(table_name)
@@ -183,7 +187,7 @@ class TestDeltaSchemaEvolution:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()
 
@@ -211,11 +215,11 @@ class TestDeltaSchemaEvolution:
             # Verify null handling for the first row
             rows = {row["id"]: row for row in result.collect()}
             assert rows[1]["age"] is None  # First row should have null for new column
-            assert rows[2]["age"] == 30     # Second row should have the value
+            assert rows[2]["age"] == 30  # Second row should have the value
         finally:
             # Clean up the table
             try:
                 spark.catalog.dropTable(table_name)
-            except:
+            except Exception:
                 pass  # Table might not exist
             spark.stop()

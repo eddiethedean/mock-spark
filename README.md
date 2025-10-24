@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-753+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-857+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-106%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from mock_spark import MockSparkSession as SparkSession
 | 📦 **Zero Java** | Pure Python with DuckDB backend |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 753+ passing tests, 100% mypy typed, CTE-optimized queries |
+| 🏭 **Production Ready** | 857+ passing tests, 100% mypy typed, CTE-optimized queries |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | ✅ **Tested** | Verified on Python 3.9-3.13 + PySpark 3.2-3.5 |
 
@@ -58,35 +58,37 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.12.0)
+### Latest (Version 2.12.1)
 
-**Complete Type Safety & Test Suite Overhaul** - Major reliability and maintainability improvements:
-- ✅ **753+ tests passing** - Comprehensive validation across all features with full test coverage
+**Single Responsibility Principle Refactoring & Code Quality Excellence** - Major architectural improvements for maintainability and reliability:
+- ✅ **857+ tests passing** - Comprehensive validation across all features with full test coverage
 - ✅ **100% mypy compliance** - Complete type safety with zero typing errors across all source files
-- ✅ **Interface standardization** - Unified storage interfaces with proper type annotations
+- ✅ **SRP refactoring** - Extracted specialized classes following Single Responsibility Principle
 - ✅ **Code quality excellence** - Enhanced ruff formatting and linting compliance
 - ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
 
-**New in 2.12.0:**
-- 🎯 **Complete Type Safety** - Resolved all 96 mypy typing errors for 100% type compliance
-  - **Interface alignment** - Unified `IStorageManager`, `ITable`, and `ISchema` interfaces across all backends
-  - **Type annotations** - Added comprehensive type hints throughout the codebase
-  - **Storage backend consistency** - Fixed method signatures and return types across Memory, File, and DuckDB backends
-  - **Error handling** - Improved type-safe error handling and validation
-- 🔧 **Storage Interface Overhaul** - Standardized storage backend implementations
-  - **Unified interfaces** - Consistent method signatures across all storage backends
-  - **Property-based design** - Proper `@property` decorators for interface compliance
-  - **Method implementation** - Complete abstract method implementations in all storage classes
-  - **Type consistency** - Unified return types and parameter handling
-- 🚀 **Test Suite Reliability** - Fixed all test failures and improved test coverage
-  - **Import resolution** - Fixed missing type imports in DataFrame operations
-  - **Delta merge compatibility** - Resolved `insert_data` parameter compatibility issues
-  - **Error handling** - Improved error simulation and test data generation
-  - **Performance validation** - Enhanced test execution speed and reliability
+**New in 2.12.1:**
+- 🏗️ **Single Responsibility Principle Refactoring** - Major architectural improvements for maintainability
+  - **TypeConverter class** - Extracted type conversion logic from MockDataFrame for better separation of concerns
+  - **DataFrameFormatter class** - Specialized display and formatting operations with proper column width calculation
+  - **SetOperations class** - Dedicated set operations (union, intersect, except, distinct) with hashable type handling
+  - **JoinOperations class** - Specialized join logic (inner, outer, left, right, cross) with proper column mapping
+  - **AggregationOperations class** - Statistical operations (describe, summary, count, mean, stddev) with comprehensive metrics
+  - **Modular design** - Each class has a single, well-defined responsibility for easier testing and maintenance
+- 🎯 **Enhanced Type Safety** - Complete type compliance across all extracted classes
+  - **Interface consistency** - Unified method signatures and return types across all operation classes
+  - **Type annotations** - Comprehensive type hints for all new classes and methods
+  - **Error handling** - Improved type-safe error handling in specialized operations
+  - **Hashable types** - Proper handling of unhashable types in set operations with recursive conversion
+- 🚀 **Test Suite Expansion** - Added comprehensive test coverage for all new classes
+  - **Unit tests** - Complete test coverage for TypeConverter, DataFrameFormatter, SetOperations, JoinOperations, and AggregationOperations
+  - **Edge case handling** - Tests for complex data types, null values, and error conditions
+  - **Performance validation** - Enhanced test execution speed and reliability with proper test isolation
+  - **Integration testing** - Verified all extracted classes work seamlessly with existing MockDataFrame operations
 - 📦 **Code Quality Improvements** - Enhanced maintainability and developer experience
-  - **Ruff compliance** - Applied consistent code formatting and linting standards
+  - **Ruff compliance** - Applied consistent code formatting and linting standards across all files
   - **Import organization** - Cleaned up import statements and dependency management
-  - **Documentation** - Updated inline documentation and type hints
+  - **Documentation** - Updated inline documentation and type hints for all new classes
   - **Error messages** - Improved error reporting and debugging information
 
 ### Version 2.7.0 Highlights
@@ -487,7 +489,9 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.8.0** - Iteration Methods, Streaming Support  
 **v2.9.0** - CTE Query Optimization, 5-10x Performance Boost  
 **v2.10.0** - Boolean Literal Support, Type Safety Improvements  
-**v2.11.0** - Enhanced Error Handling, Improved Type Safety, Test Suite Robustness
+**v2.11.0** - Enhanced Error Handling, Improved Type Safety, Test Suite Robustness  
+**v2.12.0** - Complete Type Safety & Test Suite Overhaul, Interface Standardization  
+**v2.12.1** - Single Responsibility Principle Refactoring, Modular Architecture, Enhanced Maintainability
 
 ---
 

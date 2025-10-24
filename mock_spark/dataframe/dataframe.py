@@ -1442,12 +1442,6 @@ class MockDataFrame:
         """Evaluate a column expression for a single row."""
         return self._expression_evaluator.evaluate_expression(row, column_expression)
 
-
-
-
-
-
-
     def _evaluate_window_functions(
         self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
     ) -> List[Dict[str, Any]]:
@@ -1929,7 +1923,9 @@ class MockDataFrame:
                 return self._expression_evaluator.evaluate_expression(row, value)
 
         if case_when_obj.else_value is not None:
-            return self._expression_evaluator.evaluate_expression(row, case_when_obj.else_value)
+            return self._expression_evaluator.evaluate_expression(
+                row, case_when_obj.else_value
+            )
 
         return None
 
@@ -1940,26 +1936,48 @@ class MockDataFrame:
         if hasattr(condition, "operation") and hasattr(condition, "column"):
             # Handle MockColumnOperation conditions
             if condition.operation == ">":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return col_value is not None and col_value > condition.value
             elif condition.operation == ">=":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return col_value is not None and col_value >= condition.value
             elif condition.operation == "<":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return col_value is not None and col_value < condition.value
             elif condition.operation == "<=":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return col_value is not None and col_value <= condition.value
             elif condition.operation == "==":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return bool(col_value == condition.value)
             elif condition.operation == "!=":
-                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
+                col_value = (
+                    row.get(condition.column.name)
+                    if hasattr(condition.column, "name")
+                    else row.get(str(condition.column))
+                )
                 return bool(col_value != condition.value)
         return False
-
-
 
     def createOrReplaceTempView(self, name: str) -> None:
         """Create or replace a temporary view of this DataFrame."""

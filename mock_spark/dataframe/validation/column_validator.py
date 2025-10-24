@@ -14,49 +14,45 @@ from ...core.exceptions.operation import MockSparkColumnNotFoundError
 
 class ColumnValidator:
     """Validates column existence and expressions for DataFrame operations.
-    
+
     This class centralizes all column validation logic that was previously
     scattered throughout MockDataFrame, ensuring consistent validation
     across all operations.
     """
-    
+
     @staticmethod
     def validate_column_exists(
-        schema: MockStructType, 
-        column_name: str, 
-        operation: str
+        schema: MockStructType, column_name: str, operation: str
     ) -> None:
         """Validate that a single column exists in schema.
-        
+
         Args:
             schema: The DataFrame schema to validate against.
             column_name: Name of the column to validate.
             operation: Name of the operation being performed (for error messages).
-            
+
         Raises:
             MockSparkColumnNotFoundError: If column doesn't exist in schema.
         """
         # Skip validation for wildcard selector
         if column_name == "*":
             return
-            
+
         column_names = [field.name for field in schema.fields]
         if column_name not in column_names:
             raise MockSparkColumnNotFoundError(column_name, column_names)
-    
+
     @staticmethod
     def validate_columns_exist(
-        schema: MockStructType, 
-        column_names: List[str], 
-        operation: str
+        schema: MockStructType, column_names: List[str], operation: str
     ) -> None:
         """Validate that multiple columns exist in schema.
-        
+
         Args:
             schema: The DataFrame schema to validate against.
             column_names: List of column names to validate.
             operation: Name of the operation being performed (for error messages).
-            
+
         Raises:
             MockSparkColumnNotFoundError: If any column doesn't exist in schema.
         """
@@ -64,16 +60,16 @@ class ColumnValidator:
         missing_columns = [col for col in column_names if col not in available_columns]
         if missing_columns:
             raise MockSparkColumnNotFoundError(missing_columns[0], available_columns)
-    
+
     @staticmethod
     def validate_filter_expression(
-        schema: MockStructType, 
-        condition: Any, 
+        schema: MockStructType,
+        condition: Any,
         operation: str,
-        has_pending_joins: bool = False
+        has_pending_joins: bool = False,
     ) -> None:
         """Validate filter expressions before execution.
-        
+
         Args:
             schema: The DataFrame schema to validate against.
             condition: The filter condition to validate.
@@ -115,7 +111,9 @@ class ColumnValidator:
             ]:
                 return
             # Simple column reference
-            ColumnValidator.validate_column_exists(schema, condition.column.name, operation)
+            ColumnValidator.validate_column_exists(
+                schema, condition.column.name, operation
+            )
         elif (
             hasattr(condition, "name")
             and not hasattr(condition, "operation")
@@ -126,16 +124,16 @@ class ColumnValidator:
             ColumnValidator.validate_column_exists(schema, condition.name, operation)
         # For complex expressions (with operations, literals, etc.), skip validation
         # as they will be handled by SQL generation
-    
+
     @staticmethod
     def validate_expression_columns(
-        schema: MockStructType, 
-        expression: Any, 
+        schema: MockStructType,
+        expression: Any,
         operation: str,
-        in_lazy_materialization: bool = False
+        in_lazy_materialization: bool = False,
     ) -> None:
         """Recursively validate column references in complex expressions.
-        
+
         Args:
             schema: The DataFrame schema to validate against.
             expression: The expression to validate.
@@ -202,7 +200,10 @@ class ColumnValidator:
                             )
                 elif isinstance(expression._original_column, MockColumnOperation):
                     ColumnValidator.validate_expression_columns(
-                        schema, expression._original_column, operation, in_lazy_materialization
+                        schema,
+                        expression._original_column,
+                        operation,
+                        in_lazy_materialization,
                     )
             elif hasattr(expression, "column") and isinstance(
                 expression.column, MockColumn
@@ -211,10 +212,14 @@ class ColumnValidator:
                 if not in_lazy_materialization:
                     # Skip validation for wildcard selector
                     if expression.column.name != "*":
-                        ColumnValidator.validate_column_exists(schema, expression.column.name, operation)
+                        ColumnValidator.validate_column_exists(
+                            schema, expression.column.name, operation
+                        )
             else:
                 # Simple column reference - validate directly
                 if not in_lazy_materialization:
                     # Skip validation for wildcard selector
                     if expression.name != "*":
-                        ColumnValidator.validate_column_exists(schema, expression.name, operation)
+                        ColumnValidator.validate_column_exists(
+                            schema, expression.name, operation
+                        )

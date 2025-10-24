@@ -10,15 +10,15 @@ import math
 import re
 import base64
 import datetime as dt_module
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union
 
-from ...functions import MockColumn, MockColumnOperation, MockLiteral
+from ...functions import MockColumn, MockColumnOperation
 from ...functions.conditional import MockCaseWhen
 
 
 class ExpressionEvaluator:
     """Evaluates column expressions, operations, and function calls.
-    
+
     This class handles the evaluation of all column expressions including:
     - Arithmetic operations (+, -, *, /, %)
     - Comparison operations (==, !=, <, >, <=, >=)
@@ -27,16 +27,12 @@ class ExpressionEvaluator:
     - Conditional expressions (when/otherwise)
     - Type casting operations
     """
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         """Initialize evaluator with function registry."""
         self._function_registry = self._build_function_registry()
-    
-    def evaluate_expression(
-        self, 
-        row: Dict[str, Any], 
-        expression: Any
-    ) -> Any:
+
+    def evaluate_expression(self, row: Dict[str, Any], expression: Any) -> Any:
         """Main entry point for expression evaluation."""
         # Handle MockCaseWhen (when/otherwise expressions)
         if isinstance(expression, MockCaseWhen):
@@ -53,21 +49,16 @@ class ExpressionEvaluator:
             return None
         else:
             return self._evaluate_direct_value(expression)
-    
+
     def evaluate_condition(
-        self, 
-        row: Dict[str, Any], 
-        condition: Union[MockColumnOperation, MockColumn]
+        self, row: Dict[str, Any], condition: Union[MockColumnOperation, MockColumn]
     ) -> bool:
         """Evaluate condition for a single row."""
         from ...core.condition_evaluator import ConditionEvaluator
+
         return ConditionEvaluator.evaluate_condition(row, condition)
-    
-    def _evaluate_case_when(
-        self, 
-        row: Dict[str, Any], 
-        case_when: MockCaseWhen
-    ) -> Any:
+
+    def _evaluate_case_when(self, row: Dict[str, Any], case_when: MockCaseWhen) -> Any:
         """Evaluate when/otherwise expressions."""
         # Evaluate each condition in order
         for condition, value in case_when.conditions:
@@ -85,7 +76,7 @@ class ExpressionEvaluator:
             return case_when.default_value
 
         return None
-    
+
     def _evaluate_mock_column(self, row: Dict[str, Any], column: MockColumn) -> Any:
         """Evaluate a MockColumn expression."""
         col_name = column.name
@@ -102,27 +93,27 @@ class ExpressionEvaluator:
         else:
             # Simple column reference
             return row.get(column.name)
-    
+
     def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
         """Evaluate a MockColumnOperation."""
         op = operation.operation
-        
+
         # Handle arithmetic operations
         if op in ["+", "-", "*", "/", "%"]:
             return self._evaluate_arithmetic_operation(row, operation)
-        
+
         # Handle comparison operations
         elif op in ["==", "!=", "<", ">", "<=", ">="]:
             return self._evaluate_comparison_operation(row, operation)
-        
+
         # Handle function calls - check if it's a known function
         elif op in self._function_registry:
             return self._evaluate_function_call(row, operation)
-        
+
         # Handle unary minus
         elif op == "-" and operation.value is None:
             return self._evaluate_arithmetic_operation(row, operation)
-        
+
         # For unknown operations, try to evaluate as function call
         else:
             try:
@@ -130,7 +121,7 @@ class ExpressionEvaluator:
             except Exception:
                 # If function call fails, try arithmetic operation as fallback
                 return self._evaluate_arithmetic_operation(row, operation)
-    
+
     def _evaluate_arithmetic_operation(
         self, row: Dict[str, Any], operation: Any
     ) -> Any:
@@ -165,7 +156,7 @@ class ExpressionEvaluator:
             return left_value % right_value if right_value != 0 else None
         else:
             return None
-    
+
     def _evaluate_comparison_operation(
         self, row: Dict[str, Any], operation: Any
     ) -> Any:
@@ -197,14 +188,16 @@ class ExpressionEvaluator:
             return left_value >= right_value
         else:
             return None
-    
+
     def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
         """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
 
         # Evaluate the column expression (could be a nested operation)
-        if hasattr(operation.column, "operation") and hasattr(operation.column, "column"):
+        if hasattr(operation.column, "operation") and hasattr(
+            operation.column, "column"
+        ):
             # The column is itself a MockColumnOperation, evaluate it first
             value = self.evaluate_expression(row, operation.column)
         else:
@@ -283,10 +276,12 @@ class ExpressionEvaluator:
             except Exception:
                 # Fallback to direct evaluation if function registry fails
                 pass
-        
+
         return value
-    
-    def _evaluate_format_string(self, row: Dict[str, Any], operation: Any, value: Any) -> Any:
+
+    def _evaluate_format_string(
+        self, row: Dict[str, Any], operation: Any, value: Any
+    ) -> Any:
         """Evaluate format_string function."""
         from typing import Any, List, Optional
 
@@ -325,8 +320,10 @@ class ExpressionEvaluator:
             return fmt % fmt_args
         except Exception:
             return None
-    
-    def _evaluate_expr_function(self, row: Dict[str, Any], operation: Any, value: Any) -> Any:
+
+    def _evaluate_expr_function(
+        self, row: Dict[str, Any], operation: Any, value: Any
+    ) -> Any:
         """Evaluate expr function - parse SQL expressions."""
         expr_str = operation.value if hasattr(operation, "value") else ""
 
@@ -374,7 +371,7 @@ class ExpressionEvaluator:
         else:
             # For other expressions, return the expression string as-is
             return expr_str
-    
+
     def _evaluate_function_call_by_name(
         self, row: Dict[str, Any], col_name: str
     ) -> Any:
@@ -468,7 +465,7 @@ class ExpressionEvaluator:
 
         # Default fallback
         return None
-    
+
     def _evaluate_to_date_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate to_date function."""
         # Extract column name from function call
@@ -489,8 +486,10 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
-    def _evaluate_to_timestamp_function(self, row: Dict[str, Any], col_name: str) -> Any:
+
+    def _evaluate_to_timestamp_function(
+        self, row: Dict[str, Any], col_name: str
+    ) -> Any:
         """Evaluate to_timestamp function."""
         # Extract column name from function call
         match = re.search(r"to_timestamp\(([^)]+)\)", col_name)
@@ -506,7 +505,7 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
+
     def _evaluate_hour_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate hour function."""
         match = re.search(r"hour\(([^)]+)\)", col_name)
@@ -525,7 +524,7 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
+
     def _evaluate_day_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate day function."""
         match = re.search(r"day\(([^)]+)\)", col_name)
@@ -544,7 +543,7 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
+
     def _evaluate_month_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate month function."""
         match = re.search(r"month\(([^)]+)\)", col_name)
@@ -563,7 +562,7 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
+
     def _evaluate_year_function(self, row: Dict[str, Any], col_name: str) -> Any:
         """Evaluate year function."""
         match = re.search(r"year\(([^)]+)\)", col_name)
@@ -582,7 +581,7 @@ class ExpressionEvaluator:
                 except (ValueError, TypeError, AttributeError):
                     return None
         return None
-    
+
     def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
         """Evaluate a value (could be a column reference, literal, or operation)."""
         if hasattr(value, "operation") and hasattr(value, "column"):
@@ -597,11 +596,11 @@ class ExpressionEvaluator:
         else:
             # It's a direct value
             return value
-    
+
     def _evaluate_direct_value(self, value: Any) -> Any:
         """Evaluate a direct value."""
         return value
-    
+
     def _is_aliased_function_call(self, column: MockColumn) -> bool:
         """Check if column is an aliased function call."""
         return (
@@ -610,7 +609,7 @@ class ExpressionEvaluator:
             and hasattr(column._original_column, "name")
             and self._is_function_call_name(column._original_column.name)
         )
-    
+
     def _is_function_call_name(self, name: str) -> bool:
         """Check if name is a function call."""
         function_prefixes = (
@@ -635,95 +634,95 @@ class ExpressionEvaluator:
             "year(",
         )
         return any(name.startswith(prefix) for prefix in function_prefixes)
-    
+
     def _build_function_registry(self) -> Dict[str, Any]:
         """Build registry of supported functions."""
         return {
             # String functions
-            'upper': self._func_upper,
-            'lower': self._func_lower,
-            'trim': self._func_trim,
-            'length': self._func_length,
-            'ascii': self._func_ascii,
-            'base64': self._func_base64,
-            'unbase64': self._func_unbase64,
-            'split': self._func_split,
-            'regexp_replace': self._func_regexp_replace,
-            'format_string': self._func_format_string,
+            "upper": self._func_upper,
+            "lower": self._func_lower,
+            "trim": self._func_trim,
+            "length": self._func_length,
+            "ascii": self._func_ascii,
+            "base64": self._func_base64,
+            "unbase64": self._func_unbase64,
+            "split": self._func_split,
+            "regexp_replace": self._func_regexp_replace,
+            "format_string": self._func_format_string,
             # Math functions
-            'abs': self._func_abs,
-            'round': self._func_round,
-            'ceil': self._func_ceil,
-            'floor': self._func_floor,
-            'sqrt': self._func_sqrt,
+            "abs": self._func_abs,
+            "round": self._func_round,
+            "ceil": self._func_ceil,
+            "floor": self._func_floor,
+            "sqrt": self._func_sqrt,
             # Cast function
-            'cast': self._func_cast,
+            "cast": self._func_cast,
             # Datetime functions
-            'hour': self._func_hour,
-            'minute': self._func_minute,
-            'second': self._func_second,
-            'day': self._func_day,
-            'dayofmonth': self._func_dayofmonth,
-            'month': self._func_month,
-            'year': self._func_year,
-            'quarter': self._func_quarter,
-            'dayofweek': self._func_dayofweek,
-            'dayofyear': self._func_dayofyear,
-            'weekofyear': self._func_weekofyear,
-            'datediff': self._func_datediff,
-            'months_between': self._func_months_between,
+            "hour": self._func_hour,
+            "minute": self._func_minute,
+            "second": self._func_second,
+            "day": self._func_day,
+            "dayofmonth": self._func_dayofmonth,
+            "month": self._func_month,
+            "year": self._func_year,
+            "quarter": self._func_quarter,
+            "dayofweek": self._func_dayofweek,
+            "dayofyear": self._func_dayofyear,
+            "weekofyear": self._func_weekofyear,
+            "datediff": self._func_datediff,
+            "months_between": self._func_months_between,
         }
-    
+
     # String function implementations
     def _func_upper(self, value: Any, operation: MockColumnOperation) -> str:
         """Upper case function."""
         return str(value).upper()
-    
+
     def _func_lower(self, value: Any, operation: MockColumnOperation) -> str:
         """Lower case function."""
         return str(value).lower()
-    
+
     def _func_trim(self, value: Any, operation: MockColumnOperation) -> str:
         """Trim function."""
         return str(value).strip()
-    
+
     def _func_length(self, value: Any, operation: MockColumnOperation) -> int:
         """Length function."""
         return len(str(value))
-    
+
     def _func_ascii(self, value: Any, operation: MockColumnOperation) -> int:
         """ASCII function."""
         if value is None:
-            return None
+            return 0
         s = str(value)
         return ord(s[0]) if s else 0
-    
+
     def _func_base64(self, value: Any, operation: MockColumnOperation) -> str:
         """Base64 encode function."""
         if value is None:
-            return None
+            return ""
         return base64.b64encode(str(value).encode("utf-8")).decode("utf-8")
-    
+
     def _func_unbase64(self, value: Any, operation: MockColumnOperation) -> bytes:
         """Base64 decode function."""
         if value is None:
-            return None
+            return b""
         try:
             return base64.b64decode(str(value).encode("utf-8"))
         except Exception:
-            return None
-    
+            return b""
+
     def _func_split(self, value: Any, operation: MockColumnOperation) -> List[str]:
         """Split function."""
         if value is None:
-            return None
+            return []
         delimiter = operation.value
         return str(value).split(delimiter)
-    
+
     def _func_regexp_replace(self, value: Any, operation: MockColumnOperation) -> str:
         """Regex replace function."""
         if value is None:
-            return None
+            return ""
         pattern = (
             operation.value[0]
             if isinstance(operation.value, tuple)
@@ -735,40 +734,38 @@ class ExpressionEvaluator:
             else ""
         )
         return re.sub(pattern, replacement, str(value))
-    
+
     def _func_format_string(self, value: Any, operation: MockColumnOperation) -> str:
         """Format string function."""
         # We need the row data to evaluate the arguments, but we don't have it here
         # This is a limitation of the current architecture
-        # For now, return None to indicate this function needs special handling
-        return None
-    
+        # For now, return empty string to indicate this function needs special handling
+        return ""
+
     # Math function implementations
     def _func_abs(self, value: Any, operation: MockColumnOperation) -> Any:
         """Absolute value function."""
         return abs(value) if isinstance(value, (int, float)) else value
-    
+
     def _func_round(self, value: Any, operation: MockColumnOperation) -> Any:
         """Round function."""
         precision = getattr(operation, "precision", 0)
         return round(value, precision) if isinstance(value, (int, float)) else value
-    
+
     def _func_ceil(self, value: Any, operation: MockColumnOperation) -> Any:
         """Ceiling function."""
         return math.ceil(value) if isinstance(value, (int, float)) else value
-    
+
     def _func_floor(self, value: Any, operation: MockColumnOperation) -> Any:
         """Floor function."""
         return math.floor(value) if isinstance(value, (int, float)) else value
-    
+
     def _func_sqrt(self, value: Any, operation: MockColumnOperation) -> Any:
         """Square root function."""
         return (
-            math.sqrt(value)
-            if isinstance(value, (int, float)) and value >= 0
-            else None
+            math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
         )
-    
+
     def _func_cast(self, value: Any, operation: MockColumnOperation) -> Any:
         """Cast function."""
         if value is None:
@@ -783,7 +780,9 @@ class ExpressionEvaluator:
                     return None
             elif cast_type.lower() in ["int", "integer"]:
                 try:
-                    return int(float(value))  # Convert via float to handle decimal strings
+                    return int(
+                        float(value)
+                    )  # Convert via float to handle decimal strings
                 except (ValueError, TypeError):
                     return None
             elif cast_type.lower() in ["long", "bigint"]:
@@ -810,36 +809,36 @@ class ExpressionEvaluator:
         else:
             # Type object, use appropriate conversion
             return value
-    
+
     # Datetime function implementations
     def _func_hour(self, value: Any, operation: MockColumnOperation) -> Any:
         """Hour function."""
-        return self._extract_datetime_component(value, 'hour')
-    
+        return self._extract_datetime_component(value, "hour")
+
     def _func_minute(self, value: Any, operation: MockColumnOperation) -> Any:
         """Minute function."""
-        return self._extract_datetime_component(value, 'minute')
-    
+        return self._extract_datetime_component(value, "minute")
+
     def _func_second(self, value: Any, operation: MockColumnOperation) -> Any:
         """Second function."""
-        return self._extract_datetime_component(value, 'second')
-    
+        return self._extract_datetime_component(value, "second")
+
     def _func_day(self, value: Any, operation: MockColumnOperation) -> Any:
         """Day function."""
-        return self._extract_datetime_component(value, 'day')
-    
+        return self._extract_datetime_component(value, "day")
+
     def _func_dayofmonth(self, value: Any, operation: MockColumnOperation) -> Any:
         """Day of month function."""
-        return self._extract_datetime_component(value, 'day')
-    
+        return self._extract_datetime_component(value, "day")
+
     def _func_month(self, value: Any, operation: MockColumnOperation) -> Any:
         """Month function."""
-        return self._extract_datetime_component(value, 'month')
-    
+        return self._extract_datetime_component(value, "month")
+
     def _func_year(self, value: Any, operation: MockColumnOperation) -> Any:
         """Year function."""
-        return self._extract_datetime_component(value, 'year')
-    
+        return self._extract_datetime_component(value, "year")
+
     def _func_quarter(self, value: Any, operation: MockColumnOperation) -> Any:
         """Quarter function."""
         if value is None:
@@ -848,7 +847,7 @@ class ExpressionEvaluator:
         if dt is None:
             return None
         return (dt.month - 1) // 3 + 1
-    
+
     def _func_dayofweek(self, value: Any, operation: MockColumnOperation) -> Any:
         """Day of week function."""
         if value is None:
@@ -858,7 +857,7 @@ class ExpressionEvaluator:
             return None
         # Sunday=1, Monday=2, ..., Saturday=7
         return (dt.weekday() + 2) % 7 or 7
-    
+
     def _func_dayofyear(self, value: Any, operation: MockColumnOperation) -> Any:
         """Day of year function."""
         if value is None:
@@ -867,7 +866,7 @@ class ExpressionEvaluator:
         if dt is None:
             return None
         return dt.timetuple().tm_yday
-    
+
     def _func_weekofyear(self, value: Any, operation: MockColumnOperation) -> Any:
         """Week of year function."""
         if value is None:
@@ -876,50 +875,50 @@ class ExpressionEvaluator:
         if dt is None:
             return None
         return dt.isocalendar()[1]
-    
+
     def _func_datediff(self, value: Any, operation: MockColumnOperation) -> Any:
         """Date difference function."""
         # Get the second date from the operation's value attribute
         date2_col = getattr(operation, "value", None)
         if date2_col is None:
             return None
-        
+
         # For now, if both dates are the same, return 0
         # This is a simplified implementation for testing
-        if hasattr(date2_col, 'name') and hasattr(operation.column, 'name'):
+        if hasattr(date2_col, "name") and hasattr(operation.column, "name"):
             if date2_col.name == operation.column.name:
                 return 0
-        
+
         # This would need to be evaluated in context - placeholder for now
         return None
-    
+
     def _func_months_between(self, value: Any, operation: MockColumnOperation) -> Any:
         """Months between function."""
         # Get the second date from the operation's value attribute
         date2_col = getattr(operation, "value", None)
         if date2_col is None:
             return None
-        
+
         # For now, if both dates are the same, return 0.0
         # This is a simplified implementation for testing
-        if hasattr(date2_col, 'name') and hasattr(operation.column, 'name'):
+        if hasattr(date2_col, "name") and hasattr(operation.column, "name"):
             if date2_col.name == operation.column.name:
                 return 0.0
-        
+
         # This would need to be evaluated in context - placeholder for now
         return None
-    
+
     def _extract_datetime_component(self, value: Any, component: str) -> Any:
         """Extract a component from a datetime value."""
         if value is None:
             return None
-        
+
         dt = self._parse_datetime(value)
         if dt is None:
             return None
-        
+
         return getattr(dt, component)
-    
+
     def _parse_datetime(self, value: Any) -> Optional[dt_module.datetime]:
         """Parse a value into a datetime object."""
         if isinstance(value, str):
@@ -927,9 +926,10 @@ class ExpressionEvaluator:
                 return dt_module.datetime.fromisoformat(value.replace(" ", "T"))
             except (ValueError, TypeError, AttributeError):
                 return None
-        elif hasattr(value, 'year') and hasattr(value, 'month') and hasattr(value, 'day'):
+        elif (
+            hasattr(value, "year") and hasattr(value, "month") and hasattr(value, "day")
+        ):
             # Already a datetime-like object
             return value
         else:
             return None
-

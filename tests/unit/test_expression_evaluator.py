@@ -3,7 +3,6 @@ Unit tests for the ExpressionEvaluator class.
 """
 
 import pytest
-import math
 import datetime as dt_module
 from mock_spark.dataframe.evaluation.expression_evaluator import ExpressionEvaluator
 from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
@@ -22,7 +21,7 @@ class TestExpressionEvaluator:
             "age": 25,
             "salary": 50000.0,
             "timestamp": "2023-01-01T10:30:00",
-            "null_col": None
+            "null_col": None,
         }
 
     def test_evaluate_expression_mock_column(self):
@@ -50,14 +49,18 @@ class TestExpressionEvaluator:
         assert result == 50
 
         # Test division
-        op = MockColumnOperation(MockColumn("salary"), "/", MockLiteral(1000, IntegerType()))
+        op = MockColumnOperation(
+            MockColumn("salary"), "/", MockLiteral(1000, IntegerType())
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == 50.0
 
     def test_evaluate_expression_comparison_operation(self):
         """Test evaluation of comparison operations."""
         # Test equality
-        op = MockColumnOperation(MockColumn("age"), "==", MockLiteral(25, IntegerType()))
+        op = MockColumnOperation(
+            MockColumn("age"), "==", MockLiteral(25, IntegerType())
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result is True
 
@@ -163,12 +166,16 @@ class TestExpressionEvaluator:
     def test_evaluate_expression_coalesce_function(self):
         """Test evaluation of coalesce function."""
         # Test coalesce with non-null value
-        op = MockColumnOperation(MockColumn("name"), "coalesce", [MockLiteral("default", StringType())])
+        op = MockColumnOperation(
+            MockColumn("name"), "coalesce", [MockLiteral("default", StringType())]
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == "Alice"
 
         # Test coalesce with null value
-        op = MockColumnOperation(MockColumn("null_col"), "coalesce", [MockLiteral("default", StringType())])
+        op = MockColumnOperation(
+            MockColumn("null_col"), "coalesce", [MockLiteral("default", StringType())]
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == "default"
 
@@ -193,7 +200,7 @@ class TestExpressionEvaluator:
 
         # Test isnan with NaN
         row_with_nan = self.row.copy()
-        row_with_nan["salary"] = float('nan')
+        row_with_nan["salary"] = float("nan")
         result = self.evaluator.evaluate_expression(row_with_nan, op)
         assert result is True
 
@@ -212,13 +219,22 @@ class TestExpressionEvaluator:
     def test_evaluate_expression_case_when(self):
         """Test evaluation of case when expressions."""
         # Create a MockCaseWhen object using method chaining
-        case_when = MockCaseWhen().when(
-            MockColumnOperation(MockColumn("age"), ">", MockLiteral(20, IntegerType())), 
-            MockLiteral("adult", StringType())
-        ).when(
-            MockColumnOperation(MockColumn("age"), ">", MockLiteral(10, IntegerType())), 
-            MockLiteral("teen", StringType())
-        ).otherwise(MockLiteral("child", StringType()))
+        case_when = (
+            MockCaseWhen()
+            .when(
+                MockColumnOperation(
+                    MockColumn("age"), ">", MockLiteral(20, IntegerType())
+                ),
+                MockLiteral("adult", StringType()),
+            )
+            .when(
+                MockColumnOperation(
+                    MockColumn("age"), ">", MockLiteral(10, IntegerType())
+                ),
+                MockLiteral("teen", StringType()),
+            )
+            .otherwise(MockLiteral("child", StringType()))
+        )
 
         result = self.evaluator.evaluate_expression(self.row, case_when)
         assert result == "adult"
@@ -226,7 +242,9 @@ class TestExpressionEvaluator:
     def test_evaluate_expression_nested_operations(self):
         """Test evaluation of nested operations."""
         # Test nested arithmetic: (age + 5) * 2
-        inner_op = MockColumnOperation(MockColumn("age"), "+", MockLiteral(5, IntegerType()))
+        inner_op = MockColumnOperation(
+            MockColumn("age"), "+", MockLiteral(5, IntegerType())
+        )
         outer_op = MockColumnOperation(inner_op, "*", MockLiteral(2, IntegerType()))
         result = self.evaluator.evaluate_expression(self.row, outer_op)
         assert result == 60
@@ -234,12 +252,16 @@ class TestExpressionEvaluator:
     def test_evaluate_expression_null_handling(self):
         """Test evaluation with null values."""
         # Test arithmetic with null
-        op = MockColumnOperation(MockColumn("null_col"), "+", MockLiteral(5, IntegerType()))
+        op = MockColumnOperation(
+            MockColumn("null_col"), "+", MockLiteral(5, IntegerType())
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result is None
 
         # Test comparison with null
-        op = MockColumnOperation(MockColumn("null_col"), "==", MockLiteral(5, IntegerType()))
+        op = MockColumnOperation(
+            MockColumn("null_col"), "==", MockLiteral(5, IntegerType())
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result is None
 
@@ -291,7 +313,9 @@ class TestExpressionEvaluator:
 
     def test_evaluate_expression_format_string_function(self):
         """Test evaluation of format_string function."""
-        op = MockColumnOperation(MockColumn("name"), "format_string", ("Hello %s!", [MockColumn("name")]))
+        op = MockColumnOperation(
+            MockColumn("name"), "format_string", ("Hello %s!", [MockColumn("name")])
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == "Hello Alice!"
 
@@ -359,12 +383,16 @@ class TestExpressionEvaluator:
 
     def test_evaluate_expression_datediff_function(self):
         """Test evaluation of datediff function."""
-        op = MockColumnOperation(MockColumn("timestamp"), "datediff", MockColumn("timestamp"))
+        op = MockColumnOperation(
+            MockColumn("timestamp"), "datediff", MockColumn("timestamp")
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == 0  # Same date should have 0 difference
 
     def test_evaluate_expression_months_between_function(self):
         """Test evaluation of months_between function."""
-        op = MockColumnOperation(MockColumn("timestamp"), "months_between", MockColumn("timestamp"))
+        op = MockColumnOperation(
+            MockColumn("timestamp"), "months_between", MockColumn("timestamp")
+        )
         result = self.evaluator.evaluate_expression(self.row, op)
         assert result == 0.0  # Same date should have 0 months difference

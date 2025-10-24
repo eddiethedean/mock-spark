@@ -129,7 +129,6 @@ class TestCatalogOperations:
 
     def test_write_modes(self, spark, sample_data):
         """Test different write modes."""
-        catalog = spark.catalog
 
         # Create initial DataFrame
         df1 = spark.createDataFrame(sample_data)
@@ -251,7 +250,6 @@ class TestCatalogOperations:
 
     def test_table_schema_inference(self, spark, sample_data):
         """Test table schema inference."""
-        catalog = spark.catalog
 
         # Create DataFrame with specific schema
         df = spark.createDataFrame(sample_data)

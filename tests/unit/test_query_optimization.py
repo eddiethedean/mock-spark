@@ -443,7 +443,7 @@ class TestMemoryManagement:
         df = mock_spark.createDataFrame(data)
 
         # Perform operations that might create temp tables
-        result = df.filter(df.value > 500).collect()
+        df.filter(df.value > 500).collect()
 
         # Clean up temp tables
         mock_spark.storage.cleanup_temp_tables()
@@ -458,7 +458,7 @@ class TestMemoryManagement:
         df = mock_spark.createDataFrame(data)
 
         # Perform operations
-        result = df.filter(df.value > 500).collect()
+        df.filter(df.value > 500).collect()
 
         # Force garbage collection
         mock_spark.storage.force_garbage_collection()
@@ -470,7 +470,7 @@ class TestMemoryManagement:
         """Test table size tracking."""
         # Create some data
         data = [{"id": i, "value": i * 10} for i in range(1000)]
-        df = mock_spark.createDataFrame(data)
+        mock_spark.createDataFrame(data)
 
         # Get table sizes
         sizes = mock_spark.storage.get_table_sizes()
@@ -481,7 +481,7 @@ class TestMemoryManagement:
         """Test cleanup of old tables."""
         # Create some data
         data = [{"id": i, "value": i * 10} for i in range(1000)]
-        df = spark.createDataFrame(data)
+        spark.createDataFrame(data)
 
         # Clean up old tables (should not affect current session)
         cleaned_count = spark.storage.cleanup_old_tables(max_age_hours=0)
@@ -496,7 +496,7 @@ class TestMemoryManagement:
         df = mock_spark.createDataFrame(data)
 
         # Perform operations
-        result = df.filter(df.value > 5000).collect()
+        df.filter(df.value > 5000).collect()
 
         # Optimize storage
         mock_spark.storage.optimize_storage()
@@ -567,7 +567,7 @@ class TestPerformanceBenchmarks:
         df = mock_spark.createDataFrame(data)
 
         start_time = time.time()
-        result = df.filter(df.value > 500).collect()
+        df.filter(df.value > 500).collect()
         end_time = time.time()
 
         execution_time = end_time - start_time
@@ -580,7 +580,7 @@ class TestPerformanceBenchmarks:
         df = mock_spark.createDataFrame(data)
 
         start_time = time.time()
-        result = df.filter(df.value > 5000).collect()
+        df.filter(df.value > 5000).collect()
         end_time = time.time()
 
         execution_time = end_time - start_time

@@ -13,15 +13,15 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from mock_spark import MockSparkSession, F as MockF
+    from mock_spark import MockSparkSession, F as MockF  # noqa: F401
 
     MOCK_SPARK_AVAILABLE = True
 except ImportError:
     MOCK_SPARK_AVAILABLE = False
 
 try:
-    from pyspark.sql import SparkSession, functions as PySparkF
-    from pyspark.sql.types import (
+    from pyspark.sql import SparkSession, functions as PySparkF  # noqa: F401
+    from pyspark.sql.types import (  # noqa: F401
         StructType,
         StructField,
         StringType,
