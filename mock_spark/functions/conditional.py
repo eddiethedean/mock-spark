@@ -500,3 +500,38 @@ class ConditionalFunctions:
             value=column2,
             name=f"nullif({column1.name}, {column2.name})",
         )
+
+    @staticmethod
+    def case_when(*conditions: tuple, else_value: Any = None) -> MockCaseWhen:
+        """Create CASE WHEN expression with multiple conditions.
+        
+        Args:
+            *conditions: Variable number of (condition, value) tuples.
+            else_value: Default value if no conditions match.
+            
+        Returns:
+            MockCaseWhen object representing the CASE WHEN expression.
+            
+        Example:
+            >>> F.case_when(
+            ...     (F.col("age") > 18, "adult"),
+            ...     (F.col("age") > 12, "teen"),
+            ...     else_value="child"
+            ... )
+        """
+        if not conditions:
+            raise ValueError("At least one condition must be provided")
+            
+        # Create MockCaseWhen with the first condition
+        first_condition, first_value = conditions[0]
+        case_when = MockCaseWhen(condition=first_condition, value=first_value)
+        
+        # Add remaining conditions
+        for condition, value in conditions[1:]:
+            case_when.when(condition, value)
+            
+        # Set default value if provided
+        if else_value is not None:
+            case_when.otherwise(else_value)
+            
+        return case_when

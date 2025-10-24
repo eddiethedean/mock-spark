@@ -80,6 +80,7 @@ __all__ = [
     "col",
     "lit",
     "when",
+    "case_when",
     "coalesce",
     "isnull",
     "isnotnull",

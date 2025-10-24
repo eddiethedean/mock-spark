@@ -60,6 +60,8 @@ from ..core.exceptions import (
 from ..core.exceptions.analysis import ColumnNotFoundException, AnalysisException
 from ..core.exceptions.operation import MockSparkColumnNotFoundError
 from .writer import MockDataFrameWriter
+from .validation.column_validator import ColumnValidator
+from .evaluation.expression_evaluator import ExpressionEvaluator
 
 
 class MockDataFrame:
@@ -109,6 +111,8 @@ class MockDataFrame:
         self._operations_queue: List[Any] = operations or []
         # Lazy evaluation engine (lazy-initialized)
         self._lazy_engine: Optional["LazyEvaluationEngine"] = None
+        # Expression evaluator for column expressions
+        self._expression_evaluator = ExpressionEvaluator()
 
     def _get_lazy_engine(self) -> "LazyEvaluationEngine":
         """Get or create the lazy evaluation engine."""
@@ -201,71 +205,19 @@ class MockDataFrame:
 
     def _validate_column_exists(self, column_name: str, operation: str) -> None:
         """Validate that a column exists in the DataFrame."""
-        if column_name not in self.columns:
-            from mock_spark.core.exceptions.operation import (
-                MockSparkColumnNotFoundError,
-            )
-
-            raise MockSparkColumnNotFoundError(column_name, self.columns)
+        ColumnValidator.validate_column_exists(self.schema, column_name, operation)
 
     def _validate_columns_exist(self, column_names: list, operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
-        missing_columns = [col for col in column_names if col not in self.columns]
-        if missing_columns:
-            from mock_spark.core.exceptions.operation import (
-                MockSparkColumnNotFoundError,
-            )
-
-            raise MockSparkColumnNotFoundError(missing_columns[0], self.columns)
+        ColumnValidator.validate_columns_exist(self.schema, column_names, operation)
 
     def _validate_filter_expression(self, condition: Any, operation: str) -> None:
         """Validate filter expression before execution."""
-        # Skip validation for empty dataframes - they can filter on any column
-        if len(self.columns) == 0:
-            return
-
-        # Skip validation for complex expressions - let SQL generation handle them
-        # Only validate simple column references
-
-        # Skip validation for operations that create complex expressions
-        if hasattr(condition, "operation") and condition.operation in [
-            "between",
-            "and",
-            "or",
-            "&",
-            "|",
-            "isin",
-            "not_in",
-            "!",
-        ]:
-            # These are complex expressions that may combine multiple columns, skip validation
-            return
-
-        if hasattr(condition, "column") and hasattr(condition.column, "name"):
-            # Check if this is a complex operation before validating
-            if hasattr(condition, "operation") and condition.operation in [
-                "between",
-                "and",
-                "or",
-                "&",
-                "|",
-                "isin",
-                "not_in",
-                "!",
-            ]:
-                return
-            # Simple column reference
-            self._validate_column_exists(condition.column.name, operation)
-        elif (
-            hasattr(condition, "name")
-            and not hasattr(condition, "operation")
-            and not hasattr(condition, "value")
-            and not hasattr(condition, "data_type")
-        ):
-            # Simple column reference without operation, value, or data_type (not a literal)
-            self._validate_column_exists(condition.name, operation)
-        # For complex expressions (with operations, literals, etc.), skip validation
-        # as they will be handled by SQL generation
+        # Check if there are pending joins (columns might come from other DF)
+        has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
+        ColumnValidator.validate_filter_expression(
+            self.schema, condition, operation, has_pending_joins
+        )
 
     def _validate_expression_columns(self, expression: Any, operation: str) -> None:
         """Validate column references in complex expressions."""
@@ -284,54 +236,9 @@ class MockDataFrame:
         finally:
             del frame
 
-        if isinstance(expression, MockColumnOperation):
-            # Check if this is a column reference
-            if hasattr(expression, "column"):
-                # Check if it's a MockDataFrame (has 'data' attribute) - skip validation
-                if hasattr(expression.column, "data") and hasattr(
-                    expression.column, "schema"
-                ):
-                    pass  # Skip MockDataFrame objects
-                elif isinstance(expression.column, MockColumn):
-                    if not in_lazy_materialization:
-                        self._validate_column_exists(expression.column.name, operation)
-
-            # Recursively validate nested expressions
-            if hasattr(expression, "column") and isinstance(
-                expression.column, MockColumnOperation
-            ):
-                self._validate_expression_columns(expression.column, operation)
-            if hasattr(expression, "value") and isinstance(
-                expression.value, MockColumnOperation
-            ):
-                self._validate_expression_columns(expression.value, operation)
-        elif isinstance(expression, MockColumn):
-            # Check if this is an aliased column with an original column reference
-            if (
-                hasattr(expression, "_original_column")
-                and expression._original_column is not None
-            ):
-                # This is an aliased column - validate the original column
-                # Check if it's a MockDataFrame first
-                if hasattr(expression._original_column, "data") and hasattr(
-                    expression._original_column, "schema"
-                ):
-                    pass  # Skip MockDataFrame objects
-                elif isinstance(expression._original_column, MockColumn):
-                    if not in_lazy_materialization:
-                        self._validate_column_exists(
-                            expression._original_column.name, operation
-                        )
-                elif isinstance(expression._original_column, MockColumnOperation):
-                    self._validate_expression_columns(
-                        expression._original_column, operation
-                    )
-            elif hasattr(expression, "column") and isinstance(
-                expression.column, MockColumn
-            ):
-                # This is a column operation - validate the column reference
-                if not in_lazy_materialization:
-                    self._validate_column_exists(expression.column.name, operation)
+        ColumnValidator.validate_expression_columns(
+            self.schema, expression, operation, in_lazy_materialization
+        )
 
     def _execute_with_debug(self, operation: str, sql: str) -> None:
         """Execute with optional debug logging."""
@@ -1525,832 +1432,21 @@ class MockDataFrame:
     ) -> bool:
         """Evaluate condition for a single row.
 
-        Delegates to shared ConditionEvaluator for consistency.
+        Delegates to ExpressionEvaluator for consistency.
         """
-        from ..core.condition_evaluator import ConditionEvaluator
-
-        return ConditionEvaluator.evaluate_condition(row, condition)
+        return self._expression_evaluator.evaluate_condition(row, condition)
 
     def _evaluate_column_expression(
         self, row: Dict[str, Any], column_expression: Any
     ) -> Any:
         """Evaluate a column expression for a single row."""
-        # Handle MockCaseWhen (when/otherwise expressions)
-        from ..functions.conditional import MockCaseWhen
+        return self._expression_evaluator.evaluate_expression(row, column_expression)
 
-        if isinstance(column_expression, MockCaseWhen):
-            # Evaluate each condition in order
-            for condition, value in column_expression.conditions:
-                condition_result = self._evaluate_column_expression(row, condition)
-                if condition_result:
-                    # Return the value (evaluate if it's an expression)
-                    if isinstance(value, (MockColumn, MockColumnOperation)):
-                        return self._evaluate_column_expression(row, value)
-                    return value
 
-            # No condition matched, return default value
-            if column_expression.default_value is not None:
-                if isinstance(
-                    column_expression.default_value, (MockColumn, MockColumnOperation)
-                ):
-                    return self._evaluate_column_expression(
-                        row, column_expression.default_value
-                    )
-                return column_expression.default_value
 
-            return None
-        elif isinstance(column_expression, MockColumn):
-            return self._evaluate_mock_column(row, column_expression)
-        elif hasattr(column_expression, "operation") and hasattr(
-            column_expression, "column"
-        ):
-            return self._evaluate_column_operation(row, column_expression)
-        elif hasattr(column_expression, "value") and hasattr(column_expression, "name"):
-            # It's a MockLiteral - evaluate it
-            return self._evaluate_value(row, column_expression)
-        elif isinstance(column_expression, str) and column_expression.startswith(
-            "CAST("
-        ):
-            # It's a string representation of a cast operation - this shouldn't happen
-            return None
-        else:
-            return self._evaluate_direct_value(column_expression)
 
-    def _evaluate_mock_column(self, row: Dict[str, Any], column: MockColumn) -> Any:
-        """Evaluate a MockColumn expression."""
-        col_name = column.name
 
-        # Check if this is an aliased function call
-        if self._is_aliased_function_call(column):
-            if column._original_column is not None:
-                original_name = column._original_column.name
-                return self._evaluate_function_call_by_name(row, original_name)
 
-        # Check if this is a direct function call
-        if self._is_function_call_name(col_name):
-            return self._evaluate_function_call_by_name(row, col_name)
-        else:
-            # Simple column reference
-            return row.get(column.name)
-
-    def _is_aliased_function_call(self, column: MockColumn) -> bool:
-        """Check if column is an aliased function call."""
-        return (
-            hasattr(column, "_original_column")
-            and column._original_column is not None
-            and hasattr(column._original_column, "name")
-            and self._is_function_call_name(column._original_column.name)
-        )
-
-    def _is_function_call_name(self, name: str) -> bool:
-        """Check if name is a function call."""
-        function_prefixes = (
-            "coalesce(",
-            "isnull(",
-            "isnan(",
-            "trim(",
-            "ceil(",
-            "floor(",
-            "sqrt(",
-            "regexp_replace(",
-            "split(",
-            "to_date(",
-            "to_timestamp(",
-            "hour(",
-            "day(",
-            "month(",
-            "year(",
-        )
-        return name.startswith(function_prefixes)
-
-    def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
-        """Evaluate a MockColumnOperation."""
-        if operation.operation in ["+", "-", "*", "/", "%"]:
-            return self._evaluate_arithmetic_operation(row, operation)
-        elif operation.operation in ["==", "!=", "<", ">", "<=", ">="]:
-            return self._evaluate_comparison_operation(row, operation)
-        else:
-            return self._evaluate_function_call(row, operation)
-
-    def _evaluate_comparison_operation(
-        self, row: Dict[str, Any], operation: Any
-    ) -> Any:
-        """Evaluate comparison operations like ==, !=, <, >, <=, >=."""
-        if not hasattr(operation, "operation") or not hasattr(operation, "column"):
-            return None
-
-        # Extract left value - evaluate the column expression
-        left_value = self._evaluate_column_expression(row, operation.column)
-
-        # Extract right value - evaluate the value expression
-        right_value = self._evaluate_column_expression(row, operation.value)
-
-        if left_value is None or right_value is None:
-            return None
-
-        # Perform the comparison
-        if operation.operation == "==":
-            return left_value == right_value
-        elif operation.operation == "!=":
-            return left_value != right_value
-        elif operation.operation == "<":
-            return left_value < right_value
-        elif operation.operation == ">":
-            return left_value > right_value
-        elif operation.operation == "<=":
-            return left_value <= right_value
-        elif operation.operation == ">=":
-            return left_value >= right_value
-        else:
-            return None
-
-    def _evaluate_direct_value(self, value: Any) -> Any:
-        """Evaluate a direct value."""
-        return value
-
-    def _evaluate_arithmetic_operation(
-        self, row: Dict[str, Any], operation: Any
-    ) -> Any:
-        """Evaluate arithmetic operations on columns."""
-        if not hasattr(operation, "operation") or not hasattr(operation, "column"):
-            return None
-
-        # Extract left value - evaluate the column expression (handles cast operations)
-        left_value = self._evaluate_column_expression(row, operation.column)
-
-        # Extract right value - evaluate the value expression (handles cast operations)
-        right_value = self._evaluate_column_expression(row, operation.value)
-
-        if operation.operation == "-" and operation.value is None:
-            # Unary minus operation
-            if left_value is None:
-                return None
-            return -left_value
-
-        if left_value is None or right_value is None:
-            return None
-
-        if operation.operation == "+":
-            return left_value + right_value
-        elif operation.operation == "-":
-            return left_value - right_value
-        elif operation.operation == "*":
-            return left_value * right_value
-        elif operation.operation == "/":
-            return left_value / right_value if right_value != 0 else None
-        elif operation.operation == "%":
-            return left_value % right_value if right_value != 0 else None
-        else:
-            return None
-
-    def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
-        """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
-        if not hasattr(operation, "operation") or not hasattr(operation, "column"):
-            return None
-
-        # Evaluate the column expression (could be a nested operation)
-        if hasattr(operation.column, "operation") and hasattr(
-            operation.column, "column"
-        ):
-            # The column is itself a MockColumnOperation, evaluate it first
-            value = self._evaluate_column_expression(row, operation.column)
-        else:
-            # Simple column reference or literal
-            if hasattr(operation.column, "value") and hasattr(operation.column, "name"):
-                # It's a MockLiteral - evaluate it
-                value = self._evaluate_value(row, operation.column)
-            else:
-                # Regular column reference
-                column_name = (
-                    operation.column.name
-                    if hasattr(operation.column, "name")
-                    else str(operation.column)
-                )
-                value = row.get(column_name)
-
-        func_name = operation.operation
-
-        # Handle coalesce function before the None check
-        if func_name == "coalesce":
-            # Check the main column first
-            if value is not None:
-                return value
-
-            # If main column is None, check the literal values
-            if hasattr(operation, "value") and isinstance(operation.value, list):
-                for i, col in enumerate(operation.value):
-                    # Check if it's a MockLiteral object
-                    if (
-                        hasattr(col, "value")
-                        and hasattr(col, "name")
-                        and hasattr(col, "data_type")
-                    ):
-                        # This is a MockLiteral
-                        col_value = col.value
-                    elif hasattr(col, "name"):
-                        col_value = row.get(col.name)
-                    elif hasattr(col, "value"):
-                        col_value = col.value  # For other values
-                    else:
-                        col_value = col
-                    if col_value is not None:
-                        return col_value
-
-            return None
-
-        # Handle format_string before generic handling
-        if func_name == "format_string":
-            # operation.value is expected to be a tuple: (format_str, remaining_columns)
-            from typing import Any, List, Optional
-
-            fmt: Optional[str] = None
-            args: List[Any] = []
-            if hasattr(operation, "value"):
-                val = operation.value
-                if isinstance(val, tuple) and len(val) >= 1:
-                    fmt = val[0]
-                    rest = []
-                    if len(val) > 1:
-                        # val[1] may itself be an iterable of remaining columns
-                        rem = val[1]
-                        if isinstance(rem, (list, tuple)):
-                            rest = list(rem)
-                        else:
-                            rest = [rem]
-                    args = []
-                    # The first argument is the evaluated left value
-                    args.append(value)
-                    # Evaluate remaining args
-                    for a in rest:
-                        if hasattr(a, "operation") and hasattr(a, "column"):
-                            args.append(self._evaluate_column_expression(row, a))
-                        elif hasattr(a, "value"):
-                            args.append(a.value)
-                        elif hasattr(a, "name"):
-                            args.append(row.get(a.name))
-                        else:
-                            args.append(a)
-            try:
-                if fmt is None:
-                    return None
-                # Convert None to empty string to mimic Spark's tolerant formatting
-                fmt_args = tuple("")
-                if args:
-                    fmt_args = tuple("" if v is None else v for v in args)
-                return fmt % fmt_args
-            except Exception:
-                return None
-
-        # Handle expr function - parse SQL expressions
-        if func_name == "expr":
-            # Parse the SQL expression stored in operation.value
-            expr_str = operation.value if hasattr(operation, "value") else ""
-
-            # Simple parsing for common functions like lower(name), upper(name), etc.
-            if expr_str.startswith("lower(") and expr_str.endswith(")"):
-                # Extract column name from lower(column_name)
-                col_name = expr_str[6:-1]  # Remove "lower(" and ")"
-                col_value = row.get(col_name)
-                return col_value.lower() if col_value is not None else None
-            elif expr_str.startswith("upper(") and expr_str.endswith(")"):
-                # Extract column name from upper(column_name)
-                col_name = expr_str[6:-1]  # Remove "upper(" and ")"
-                col_value = row.get(col_name)
-                return col_value.upper() if col_value is not None else None
-            elif expr_str.startswith("ascii(") and expr_str.endswith(")"):
-                # Extract column name from ascii(column_name)
-                col_name = expr_str[6:-1]
-                col_value = row.get(col_name)
-                if col_value is None:
-                    return None
-                s = str(col_value)
-                return ord(s[0]) if s else 0
-            elif expr_str.startswith("base64(") and expr_str.endswith(")"):
-                # Extract column name from base64(column_name)
-                col_name = expr_str[7:-1]
-                col_value = row.get(col_name)
-                if col_value is None:
-                    return None
-                import base64 as _b64
-
-                return _b64.b64encode(str(col_value).encode("utf-8")).decode("utf-8")
-            elif expr_str.startswith("unbase64(") and expr_str.endswith(")"):
-                # Extract column name from unbase64(column_name)
-                col_name = expr_str[9:-1]
-                col_value = row.get(col_name)
-                if col_value is None:
-                    return None
-                import base64 as _b64
-
-                try:
-                    return _b64.b64decode(str(col_value).encode("utf-8"))
-                except Exception:
-                    return None
-            elif expr_str.startswith("length(") and expr_str.endswith(")"):
-                # Extract column name from length(column_name)
-                col_name = expr_str[7:-1]  # Remove "length(" and ")"
-                col_value = row.get(col_name)
-                return len(col_value) if col_value is not None else None
-            else:
-                # For other expressions, return the expression string as-is
-                return expr_str
-
-        # Handle isnull function before the None check
-        if func_name == "isnull":
-            # Check if value is null
-            return value is None
-
-        # Handle isnan function before the None check
-        if func_name == "isnan":
-            # Check if value is NaN
-            import math
-
-            return isinstance(value, float) and math.isnan(value)
-
-        # Handle datetime functions before the None check
-        if func_name == "current_timestamp":
-            # Return current timestamp
-            import datetime
-
-            return datetime.datetime.now()
-        elif func_name == "current_date":
-            # Return current date
-            import datetime
-
-            return datetime.date.today()
-
-        if value is None and func_name not in ("ascii", "base64", "unbase64"):
-            return None
-
-        if func_name == "upper":
-            return str(value).upper()
-        elif func_name == "lower":
-            return str(value).lower()
-        elif func_name == "length":
-            return len(str(value))
-        elif func_name == "abs":
-            return abs(value) if isinstance(value, (int, float)) else value
-        elif func_name == "round":
-            # For round function, we need to handle the precision parameter
-            precision = getattr(operation, "precision", 0)
-            return round(value, precision) if isinstance(value, (int, float)) else value
-        elif func_name == "trim":
-            return str(value).strip()
-        elif func_name == "ceil":
-            import math
-
-            return math.ceil(value) if isinstance(value, (int, float)) else value
-        elif func_name == "floor":
-            import math
-
-            return math.floor(value) if isinstance(value, (int, float)) else value
-        elif func_name == "sqrt":
-            import math
-
-            return (
-                math.sqrt(value)
-                if isinstance(value, (int, float)) and value >= 0
-                else None
-            )
-        elif func_name == "ascii":
-            if value is None:
-                return None
-            s = str(value)
-            return ord(s[0]) if s else 0
-        elif func_name == "base64":
-            import base64 as _b64
-
-            if value is None:
-                return None
-            return _b64.b64encode(str(value).encode("utf-8")).decode("utf-8")
-        elif func_name == "unbase64":
-            import base64 as _b64
-
-            if value is None:
-                return None
-            try:
-                return _b64.b64decode(str(value).encode("utf-8"))
-            except Exception:
-                return None
-        elif func_name == "split":
-            if value is None:
-                return None
-            delimiter = operation.value
-            return str(value).split(delimiter)
-        elif func_name == "regexp_replace":
-            if value is None:
-                return None
-            pattern = (
-                operation.value[0]
-                if isinstance(operation.value, tuple)
-                else operation.value
-            )
-            replacement = (
-                operation.value[1]
-                if isinstance(operation.value, tuple) and len(operation.value) > 1
-                else ""
-            )
-            import re
-
-            return re.sub(pattern, replacement, str(value))
-        elif func_name == "cast":
-            # Cast operation
-            if value is None:
-                return None
-            cast_type = operation.value
-            if isinstance(cast_type, str):
-                # String type name, convert value
-                if cast_type.lower() in ["double", "float"]:
-                    try:
-                        return float(value)
-                    except (ValueError, TypeError):
-                        return None
-                elif cast_type.lower() in ["int", "integer"]:
-                    try:
-                        return int(
-                            float(value)
-                        )  # Convert via float to handle decimal strings
-                    except (ValueError, TypeError):
-                        return None
-                elif cast_type.lower() in ["long", "bigint"]:
-                    # Special handling for timestamp to long (unix timestamp)
-                    if isinstance(value, str):
-                        import datetime as dt_module
-
-                        try:
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace(" ", "T").split(".")[0]
-                            )
-                            timestamp_result = int(dt.timestamp())
-                            return timestamp_result
-                        except (ValueError, TypeError, AttributeError):
-                            pass
-                    # Regular integer cast
-                    try:
-                        int_result = int(float(value))
-                        return int_result
-                    except (ValueError, TypeError, OverflowError):
-                        return None
-                elif cast_type.lower() in ["string", "varchar"]:
-                    return str(value)
-                else:
-                    return value
-            else:
-                # Type object, use appropriate conversion
-                return value
-        elif func_name in [
-            "hour",
-            "minute",
-            "second",
-            "day",
-            "dayofmonth",
-            "month",
-            "year",
-            "quarter",
-            "dayofweek",
-            "dayofyear",
-            "weekofyear",
-        ]:
-            if value is None:
-                return None
-
-            import datetime as dt_module
-
-            # Parse timestamp string
-            if isinstance(value, str):
-                try:
-                    dt = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
-                except (ValueError, TypeError, AttributeError):
-                    return None
-            else:
-                dt = value
-
-            # Extract the appropriate component
-            if func_name == "hour":
-                return dt.hour
-            elif func_name in ["minute", "second"]:
-                return getattr(dt, func_name.lower())
-            elif func_name in ["day", "dayofmonth"]:
-                return dt.day
-            elif func_name == "month":
-                return dt.month
-            elif func_name == "year":
-                return dt.year
-            elif func_name == "quarter":
-                return (dt.month - 1) // 3 + 1
-            elif func_name == "dayofweek":
-                # Sunday=1, Monday=2, ..., Saturday=7
-                return (dt.weekday() + 2) % 7 or 7
-            elif func_name == "dayofyear":
-                return dt.timetuple().tm_yday
-            elif func_name == "weekofyear":
-                return dt.isocalendar()[1]
-
-            return None
-        elif func_name == "datediff":
-            # Get the second date from the operation's value attribute
-            date2_col = getattr(operation, "value", None)
-            if date2_col is None:
-                return None
-
-            # Evaluate the second date
-            date2_value = self._evaluate_column_expression(row, date2_col)
-
-            if value is None or date2_value is None:
-                return None
-
-            import datetime as dt_module
-
-            # Parse both dates
-            try:
-                if isinstance(value, str):
-                    d1 = dt_module.datetime.fromisoformat(
-                        value.replace(" ", "T").split(".")[0]
-                    )
-                else:
-                    d1 = value
-
-                if isinstance(date2_value, str):
-                    d2 = dt_module.datetime.fromisoformat(
-                        date2_value.replace(" ", "T").split(".")[0]
-                    )
-                else:
-                    d2 = date2_value
-
-                # Return day difference
-                return (d1.date() - d2.date()).days
-            except (ValueError, TypeError, AttributeError):
-                return None
-        elif func_name == "months_between":
-            # Similar structure to datediff
-            date2_col = getattr(operation, "value", None)
-            if date2_col is None:
-                return None
-
-            date2_value = self._evaluate_value(row, date2_col)
-
-            if value is None or date2_value is None:
-                return None
-
-            import datetime as dt_module
-
-            try:
-                if isinstance(value, str):
-                    d1 = dt_module.datetime.fromisoformat(
-                        value.replace(" ", "T").split(".")[0]
-                    )
-                else:
-                    d1 = value
-
-                if isinstance(date2_value, str):
-                    d2 = dt_module.datetime.fromisoformat(
-                        date2_value.replace(" ", "T").split(".")[0]
-                    )
-                else:
-                    d2 = date2_value
-
-                # Calculate months difference
-                months = (d1.year - d2.year) * 12 + (d1.month - d2.month)
-                # Add fractional month based on days
-                days_diff = (d1.day - d2.day) / 31.0
-                result: float = months + days_diff
-                return result
-            except (ValueError, TypeError, AttributeError):
-                return None
-        else:
-            return value
-
-    def _evaluate_function_call_by_name(
-        self, row: Dict[str, Any], col_name: str
-    ) -> Any:
-        """Evaluate function calls by parsing the function name."""
-        if col_name.startswith("coalesce("):
-            # Parse coalesce arguments: coalesce(col1, col2, ...)
-            # For now, implement basic coalesce logic
-            if "name" in col_name and "Unknown" in col_name:
-                name_value = row.get("name")
-                return name_value if name_value is not None else "Unknown"
-            else:
-                # Generic coalesce logic - return first non-null value
-                # This is a simplified implementation
-                return None
-        elif col_name.startswith("isnull("):
-            # Parse isnull argument: isnull(col)
-            if "name" in col_name:
-                result = row.get("name") is None
-                return result
-            else:
-                return None
-        elif col_name.startswith("isnan("):
-            # Parse isnan argument: isnan(col)
-            if "salary" in col_name:
-                value = row.get("salary")
-                if isinstance(value, float):
-                    return value != value  # NaN check
-                return False
-        elif col_name.startswith("trim("):
-            # Parse trim argument: trim(col)
-            if "name" in col_name:
-                value = row.get("name")
-                return str(value).strip() if value is not None else None
-        elif col_name.startswith("ceil("):
-            # Parse ceil argument: ceil(col)
-            import math
-
-            if "value" in col_name:
-                value = row.get("value")
-                return math.ceil(value) if isinstance(value, (int, float)) else value
-        elif col_name.startswith("floor("):
-            # Parse floor argument: floor(col)
-            import math
-
-            if "value" in col_name:
-                value = row.get("value")
-                return math.floor(value) if isinstance(value, (int, float)) else value
-        elif col_name.startswith("sqrt("):
-            # Parse sqrt argument: sqrt(col)
-            import math
-
-            if "value" in col_name:
-                value = row.get("value")
-                return (
-                    math.sqrt(value)
-                    if isinstance(value, (int, float)) and value >= 0
-                    else None
-                )
-        elif col_name.startswith("to_date("):
-            # Parse to_date argument: to_date(col)
-            import re
-            import datetime as dt_module
-
-            # Extract column name from function call
-            match = re.search(r"to_date\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        # Try to parse as datetime first, then extract date
-                        if isinstance(value, str):
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            return dt.date()
-                        elif hasattr(value, "date"):
-                            return value.date()
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("to_timestamp("):
-            # Parse to_timestamp argument: to_timestamp(col)
-            import re
-            import datetime as dt_module
-
-            # Extract column name from function call
-            match = re.search(r"to_timestamp\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        if isinstance(value, str):
-                            return dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("hour("):
-            # Parse hour argument: hour(col)
-            import re
-            import datetime as dt_module
-
-            match = re.search(r"hour\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        if isinstance(value, str):
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            return dt.hour
-                        elif hasattr(value, "hour"):
-                            return value.hour
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("day("):
-            # Parse day argument: day(col)
-            import re
-            import datetime as dt_module
-
-            match = re.search(r"day\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        if isinstance(value, str):
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            return dt.day
-                        elif hasattr(value, "day"):
-                            return value.day
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("month("):
-            # Parse month argument: month(col)
-            import re
-            import datetime as dt_module
-
-            match = re.search(r"month\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        if isinstance(value, str):
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            return dt.month
-                        elif hasattr(value, "month"):
-                            return value.month
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("year("):
-            # Parse year argument: year(col)
-            import re
-            import datetime as dt_module
-
-            match = re.search(r"year\(([^)]+)\)", col_name)
-            if match:
-                column_name = match.group(1)
-                value = row.get(column_name)
-                if value is not None:
-                    try:
-                        if isinstance(value, str):
-                            dt = dt_module.datetime.fromisoformat(
-                                value.replace("Z", "+00:00")
-                            )
-                            return dt.year
-                        elif hasattr(value, "year"):
-                            return value.year
-                    except (ValueError, TypeError, AttributeError):
-                        return None
-            return None
-        elif col_name.startswith("regexp_replace("):
-            # Parse regexp_replace arguments: regexp_replace(col, pattern, replacement)
-            if "name" in col_name:
-                value = row.get("name")
-                if value is not None:
-                    import re
-
-                    # Simple regex replacement - replace 'e' with 'X'
-                    return re.sub(r"e", "X", str(value))
-                return value
-        elif col_name.startswith("split("):
-            # Parse split arguments: split(col, delimiter)
-            if "name" in col_name:
-                value = row.get("name")
-                if value is not None:
-                    # Simple split on 'l'
-                    return str(value).split("l")
-                return []
-
-        # Default fallback
-        return None
-
-    def _is_function_call(self, col_name: str) -> bool:
-        """Check if column name is a function call."""
-        function_patterns = [
-            "upper(",
-            "lower(",
-            "length(",
-            "abs(",
-            "round(",
-            "count(",
-            "sum(",
-            "avg(",
-            "max(",
-            "min(",
-            "count(DISTINCT ",
-            "coalesce(",
-            "isnull(",
-            "isnan(",
-            "trim(",
-            "ceil(",
-            "floor(",
-            "sqrt(",
-            "regexp_replace(",
-            "split(",
-        ]
-        return any(col_name.startswith(pattern) for pattern in function_patterns)
 
     def _evaluate_window_functions(
         self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
@@ -2830,10 +1926,10 @@ class MockDataFrame:
         # Fallback to manual evaluation
         for condition, value in case_when_obj.conditions:
             if self._evaluate_case_when_condition(row, condition):
-                return self._evaluate_value(row, value)
+                return self._expression_evaluator.evaluate_expression(row, value)
 
         if case_when_obj.else_value is not None:
-            return self._evaluate_value(row, case_when_obj.else_value)
+            return self._expression_evaluator.evaluate_expression(row, case_when_obj.else_value)
 
         return None
 
@@ -2844,54 +1940,26 @@ class MockDataFrame:
         if hasattr(condition, "operation") and hasattr(condition, "column"):
             # Handle MockColumnOperation conditions
             if condition.operation == ">":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return col_value is not None and col_value > condition.value
             elif condition.operation == ">=":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return col_value is not None and col_value >= condition.value
             elif condition.operation == "<":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return col_value is not None and col_value < condition.value
             elif condition.operation == "<=":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return col_value is not None and col_value <= condition.value
             elif condition.operation == "==":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return bool(col_value == condition.value)
             elif condition.operation == "!=":
-                col_value = self._get_column_value(row, condition.column)
+                col_value = row.get(condition.column.name) if hasattr(condition.column, 'name') else row.get(str(condition.column))
                 return bool(col_value != condition.value)
         return False
 
-    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
-        """Evaluate a value (could be a column reference, literal, or operation)."""
-        if hasattr(value, "operation") and hasattr(value, "column"):
-            # It's a MockColumnOperation
-            return self._evaluate_column_expression(row, value)
-        elif hasattr(value, "value") and hasattr(value, "name"):
-            # It's a MockLiteral
-            return value.value
-        elif hasattr(value, "name"):
-            # It's a column reference
-            return self._get_column_value(row, value)
-        else:
-            # It's a literal value
-            return value
 
-    def _get_column_value(self, row: Dict[str, Any], column: Any) -> Any:
-        """Get column value from row."""
-        if hasattr(column, "name"):
-            return row.get(column.name)
-        else:
-            return row.get(str(column))
-
-    def _get_column_type(self, column: Any) -> Any:
-        """Get column type from schema."""
-        if hasattr(column, "name"):
-            for field in self.schema.fields:
-                if field.name == column.name:
-                    return field.dataType
-        return None
 
     def createOrReplaceTempView(self, name: str) -> None:
         """Create or replace a temporary view of this DataFrame."""

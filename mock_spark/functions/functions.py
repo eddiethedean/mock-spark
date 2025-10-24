@@ -821,6 +821,11 @@ class MockFunctions:
         return ConditionalFunctions.when(condition)
 
     @staticmethod
+    def case_when(*conditions: tuple, else_value: Any = None) -> MockCaseWhen:
+        """Create CASE WHEN expression with multiple conditions."""
+        return ConditionalFunctions.case_when(*conditions, else_value=else_value)
+
+    @staticmethod
     def dayofweek(column: Union[MockColumn, str]) -> MockColumnOperation:
         """Extract day of week."""
         return DateTimeFunctions.dayofweek(column)
