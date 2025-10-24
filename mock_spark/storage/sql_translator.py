@@ -646,9 +646,9 @@ class SQLToSQLAlchemyTranslator:
 
             # For integer casts, use BIGINT to handle overflow gracefully
             if "INT" in str(target_type).upper():
-                return text(f"TRY_CAST({col} AS BIGINT)")
+                return text(f"TRY_CAST({col} AS BIGINT)")  # type: ignore[return-value]
             else:
-                return text(f"TRY_CAST({col} AS {target_type})")
+                return text(f"TRY_CAST({col} AS {target_type})")  # type: ignore[return-value]
 
         else:
             # Generic function - try to map using function mapper

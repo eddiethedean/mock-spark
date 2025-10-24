@@ -5,7 +5,7 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Optional, Tuple
 from ..spark_types import (
     StringType,
     MockStructField,
@@ -73,7 +73,6 @@ class LazyEvaluationEngine:
             df.data,
             new_schema,
             df.storage,  # type: ignore[has-type]
-            is_lazy=True,
             operations=df._operations_queue + [(op_name, payload)],
         )
 
@@ -170,7 +169,7 @@ class LazyEvaluationEngine:
         if not df._operations_queue:
             from ..dataframe import MockDataFrame
 
-            return MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
+            return MockDataFrame(df.data, df.schema, df.storage)  # type: ignore[has-type]
 
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
@@ -206,7 +205,6 @@ class LazyEvaluationEngine:
                     materialized_data,
                     df.schema,
                     df.storage,  # type: ignore[has-type]
-                    is_lazy=False,
                 )
             finally:
                 materializer.close()
@@ -325,7 +323,7 @@ class LazyEvaluationEngine:
 
                             try:
                                 row_dict[field.name] = ast.literal_eval(value)
-                            except:  # noqa: E722
+                            except Exception:  # noqa: E722
                                 # If parsing fails, split manually
                                 row_dict[field.name] = value[1:-1].split(",")
                         elif value.startswith("{") and value.endswith("}"):
@@ -369,26 +367,447 @@ class LazyEvaluationEngine:
         """
         from ..dataframe import MockDataFrame
 
-        current = MockDataFrame(df.data, df.schema, df.storage, is_lazy=False)  # type: ignore[has-type]
+        current = MockDataFrame(df.data, df.schema, df.storage)  # type: ignore[has-type]
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
-                    current = current.filter(op_val)  # eager path
+                    # Manual filter implementation
+                    from ..core.condition_evaluator import ConditionEvaluator
+
+                    filtered_data = []
+                    for row in current.data:
+                        if ConditionEvaluator.evaluate_condition(row, op_val):
+                            filtered_data.append(row)
+                    current = MockDataFrame(
+                        filtered_data, current.schema, current.storage
+                    )
                 elif op_name == "withColumn":
                     col_name, col = op_val
                     current = current.withColumn(col_name, col)  # eager path
                 elif op_name == "select":
-                    current = current.select(*op_val)  # eager path
+                    # Manual select implementation
+                    from ..core.schema_inference import SchemaInferenceEngine
+                    from ..functions.core.column import MockColumn, MockColumnOperation
+                    from ..functions.core.literals import MockLiteral
+                    from ..spark_types import MockStructType, MockStructField
+
+                    new_fields = []
+                    for col in op_val:
+                        if isinstance(col, MockColumn) and (
+                            not hasattr(col, "operation") or col.operation is None
+                        ):
+                            # Simple column reference
+                            if hasattr(current.schema, "_field_map"):
+                                field = current.schema._field_map.get(col.name)
+                            if field:
+                                new_fields.append(field)
+                        elif isinstance(col, MockColumnOperation):
+                            # Column operation - need to evaluate
+                            col_name = getattr(col, "name", "result")
+
+                            # Handle transform operations specially
+                            if col.operation == "transform":
+                                # For transform, we need to evaluate the lambda on the array
+                                from ..functions.core.lambda_parser import LambdaParser
+
+                                # Get the column being transformed
+                                transform_col = col.column
+                                if isinstance(transform_col, MockColumn):
+                                    col_name = transform_col.name
+
+                                # Get the lambda function
+                                lambda_func = col.value
+
+                                # Parse the lambda function
+                                try:
+                                    parser = LambdaParser(lambda_func)
+                                    duckdb_lambda = parser.to_duckdb_lambda()
+                                except Exception as e:
+                                    print(
+                                        f"Warning: Failed to parse lambda for transform: {e}"
+                                    )
+                                    duckdb_lambda = None
+
+                                # Create a field for the transformed result
+                                col_type = SchemaInferenceEngine._infer_type(
+                                    []
+                                )  # Array type
+                                new_fields.append(
+                                    MockStructField(col_name, col_type, True)
+                                )
+                            else:
+                                # For other operations, use the standard approach
+                                col_type = SchemaInferenceEngine._infer_type(col)
+                                new_fields.append(
+                                    MockStructField(col_name, col_type, True)
+                                )
+                        elif hasattr(col, "get_result_type"):
+                            # MockCaseWhen or similar conditional expression
+                            col_name = getattr(col, "name", "case_when")
+                            col_type = col.get_result_type()
+                            new_fields.append(MockStructField(col_name, col_type, True))
+                        elif isinstance(col, MockLiteral):
+                            # Literal value
+                            col_name = getattr(col, "name", "literal")
+                            col_type = SchemaInferenceEngine._infer_type(col)
+                            new_fields.append(MockStructField(col_name, col_type, True))
+                        elif hasattr(col, "function_name") and hasattr(
+                            col, "window_spec"
+                        ):
+                            # Window function (lag, lead, rank, etc.)
+                            # For window functions, col.name should be the alias, not the object itself
+                            if hasattr(col, "name") and isinstance(col.name, str):
+                                col_name = col.name
+                            else:
+                                # Fallback to generating a name
+                                col_name = f"{col.function_name}_over"
+
+                            # Infer type based on function
+                            if col.function_name in [
+                                "row_number",
+                                "rank",
+                                "dense_rank",
+                            ]:
+                                col_type = SchemaInferenceEngine._infer_type(
+                                    1
+                                )  # IntegerType
+                            elif col.function_name in ["lag", "lead"]:
+                                # Try to infer from source column
+                                if col.column_name and hasattr(
+                                    current.schema, "_field_map"
+                                ):
+                                    field = current.schema._field_map.get(
+                                        col.column_name
+                                    )
+                                    if field:
+                                        col_type = field.dataType
+                                    else:
+                                        col_type = SchemaInferenceEngine._infer_type(
+                                            ""
+                                        )  # StringType
+                                else:
+                                    col_type = SchemaInferenceEngine._infer_type(
+                                        ""
+                                    )  # StringType
+                            else:
+                                col_type = SchemaInferenceEngine._infer_type(
+                                    0.0
+                                )  # DoubleType
+
+                            new_fields.append(MockStructField(col_name, col_type, True))
+                        else:
+                            # Fallback for other types
+                            col_name = str(col)
+                            col_type = SchemaInferenceEngine._infer_type(col)
+                            new_fields.append(MockStructField(col_name, col_type, True))
+
+                    new_schema = MockStructType(new_fields)
+
+                    # Evaluate the select operation on each row
+                    new_data = []
+                    for row_index, row in enumerate(current.data):
+                        new_row = {}
+                        for i, col in enumerate(op_val):
+                            if isinstance(col, MockColumn) and (
+                                not hasattr(col, "operation") or col.operation is None
+                            ):
+                                # Simple column reference
+                                if col.name in row and i < len(new_fields):
+                                    new_row[new_fields[i].name] = row[col.name]
+                            elif isinstance(col, MockColumnOperation):
+                                # Column operation - evaluate using condition evaluator
+                                if col.operation == "transform":
+                                    # Handle transform operation for higher-order array functions
+                                    try:
+                                        from ..core.condition_evaluator import (
+                                            ConditionEvaluator,
+                                        )
+
+                                        result = ConditionEvaluator.evaluate_condition(
+                                            row, col
+                                        )
+                                        if i < len(new_fields):
+                                            new_row[new_fields[i].name] = result
+                                    except Exception as e:
+                                        print(
+                                            f"Warning: Failed to evaluate transform operation: {e}"
+                                        )
+                                        if i < len(new_fields):
+                                            new_row[new_fields[i].name] = None
+                                elif col.operation == "cast":
+                                    # Handle cast operation
+                                    try:
+                                        # Get the source value
+                                        if hasattr(col, "column") and hasattr(
+                                            col.column, "name"
+                                        ):
+                                            source_value = row.get(col.column.name)
+                                        else:
+                                            source_value = None
+
+                                        # Perform the cast
+                                        cast_type = col.value
+                                        if isinstance(cast_type, str):
+                                            if cast_type.lower() == "long":
+                                                # Convert to Unix timestamp for timestamp strings
+                                                if isinstance(source_value, str):
+                                                    from datetime import datetime
+
+                                                    try:
+                                                        # Try parsing as timestamp
+                                                        dt = datetime.strptime(
+                                                            source_value,
+                                                            "%Y-%m-%d %H:%M:%S",
+                                                        )
+                                                        if i < len(new_fields):
+                                                            new_row[
+                                                                new_fields[i].name
+                                                            ] = int(dt.timestamp())
+                                                    except Exception:
+                                                        if i < len(new_fields):
+                                                            new_row[
+                                                                new_fields[i].name
+                                                            ] = None
+                                                else:
+                                                    if i < len(new_fields):
+                                                        new_row[new_fields[i].name] = (
+                                                            int(source_value)
+                                                            if source_value is not None
+                                                            else None
+                                                        )
+                                            elif cast_type.lower() in [
+                                                "int",
+                                                "integer",
+                                            ]:
+                                                if i < len(new_fields):
+                                                    new_row[new_fields[i].name] = (
+                                                        int(source_value)
+                                                        if source_value is not None
+                                                        else None
+                                                    )
+                                            elif cast_type.lower() in [
+                                                "double",
+                                                "float",
+                                            ]:
+                                                if i < len(new_fields):
+                                                    new_row[new_fields[i].name] = (
+                                                        float(source_value)
+                                                        if source_value is not None
+                                                        else None
+                                                    )
+                                            elif cast_type.lower() in [
+                                                "string",
+                                                "varchar",
+                                            ]:
+                                                if i < len(new_fields):
+                                                    new_row[new_fields[i].name] = (
+                                                        str(source_value)
+                                                        if source_value is not None
+                                                        else None
+                                                    )
+                                            elif cast_type.lower() in [
+                                                "boolean",
+                                                "bool",
+                                            ]:
+                                                if i < len(new_fields):
+                                                    new_row[new_fields[i].name] = (
+                                                        bool(source_value)
+                                                        if source_value is not None
+                                                        else None
+                                                    )
+                                            else:
+                                                if i < len(new_fields):
+                                                    new_row[new_fields[i].name] = (
+                                                        source_value
+                                                    )
+                                        else:
+                                            if i < len(new_fields):
+                                                new_row[new_fields[i].name] = (
+                                                    source_value
+                                                )
+                                    except Exception:
+                                        if i < len(new_fields):
+                                            new_row[new_fields[i].name] = None
+                                else:
+                                    # Other column operations (arithmetic, functions, etc.)
+                                    from ..core.condition_evaluator import (
+                                        ConditionEvaluator,
+                                    )
+
+                                    try:
+                                        result = ConditionEvaluator.evaluate_expression(
+                                            row, col
+                                        )
+                                        if i < len(new_fields):
+                                            new_row[new_fields[i].name] = result
+                                    except Exception:
+                                        if i < len(new_fields):
+                                            new_row[new_fields[i].name] = None
+                            elif hasattr(col, "evaluate") and hasattr(
+                                col, "conditions"
+                            ):
+                                # MockCaseWhen or similar conditional expression
+                                try:
+                                    result = col.evaluate(row)
+                                    if i < len(new_fields):
+                                        new_row[new_fields[i].name] = result
+                                except Exception:
+                                    if i < len(new_fields):
+                                        new_row[new_fields[i].name] = None
+                            elif isinstance(col, MockLiteral):
+                                # Literal value
+                                if i < len(new_fields):
+                                    new_row[new_fields[i].name] = col.value
+                            elif hasattr(col, "function_name") and hasattr(
+                                col, "window_spec"
+                            ):
+                                # Window function (lag, lead, rank, etc.)
+                                try:
+                                    # The col is already a MockWindowFunction, just evaluate it
+                                    result = col.evaluate(current.data)
+
+                                    # Get the result for this specific row using the row_index
+                                    if row_index < len(result) and i < len(new_fields):
+                                        new_row[new_fields[i].name] = result[row_index]
+                                    elif i < len(new_fields):
+                                        new_row[new_fields[i].name] = None
+                                except Exception:
+                                    # Silently handle errors
+                                    if i < len(new_fields):
+                                        new_row[new_fields[i].name] = None
+                            else:
+                                # Fallback
+                                if i < len(new_fields):
+                                    new_row[new_fields[i].name] = None
+                        new_data.append(new_row)
+
+                    current = MockDataFrame(new_data, new_schema, current.storage)
                 elif op_name == "groupBy":
                     current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns MockGroupedData
                 elif op_name == "join":
                     other_df, on, how = op_val
-                    current = current.join(other_df, on, how)  # eager path
+                    # Manual join implementation
+                    from ..core.condition_evaluator import ConditionEvaluator
+
+                    # Materialize other DataFrame if needed
+                    if other_df._operations_queue:
+                        other_df = other_df._materialize_if_lazy()
+
+                    # Handle join condition
+                    if isinstance(on, str):
+                        on_columns = [on]
+                    else:
+                        on_columns = on
+
+                    # Perform the join
+                    joined_data = []
+                    for left_row in current.data:
+                        for right_row in other_df.data:
+                            # Check if join condition is met
+                            join_match = True
+                            for col in on_columns:
+                                if left_row.get(col) != right_row.get(col):
+                                    join_match = False
+                                    break
+
+                            if join_match:
+                                # Combine rows
+                                joined_row = left_row.copy()
+                                for key, value in right_row.items():
+                                    # Avoid duplicate column names
+                                    if key not in joined_row:
+                                        joined_row[key] = value
+                                    else:
+                                        # Handle column name conflicts by prefixing
+                                        joined_row[f"right_{key}"] = value
+                                joined_data.append(joined_row)
+
+                                # For inner join, only add matching rows
+                                if how.lower() in ["inner", "inner_join"]:
+                                    break
+
+                    # Create new schema combining both schemas
+                    new_fields = list(current.schema.fields)
+                    for field in other_df.schema.fields:
+                        # Avoid duplicate field names
+                        if not any(f.name == field.name for f in new_fields):
+                            new_fields.append(field)
+                        else:
+                            # Handle field name conflicts by prefixing
+                            new_field = MockStructField(
+                                f"right_{field.name}", field.dataType, field.nullable
+                            )
+                            new_fields.append(new_field)
+
+                    new_schema = MockStructType(new_fields)
+                    current = MockDataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
                     other_df = op_val
                     current = current.union(other_df)  # eager path
                 elif op_name == "orderBy":
                     current = current.orderBy(*op_val)  # eager path
+                elif op_name == "transform":
+                    # Manual transform implementation for higher-order array functions
+                    from ..core.condition_evaluator import ConditionEvaluator
+                    from ..functions.core.lambda_parser import LambdaParser
+
+                    # op_val should be (column_name, lambda_function)
+                    if len(op_val) == 2:
+                        col_name, lambda_func = op_val
+
+                        # Parse the lambda function
+                        try:
+                            parser = LambdaParser(lambda_func)
+                            duckdb_lambda = parser.to_duckdb_lambda()
+                        except Exception as e:
+                            # If lambda parsing fails, skip the transform
+                            print(f"Warning: Failed to parse lambda for transform: {e}")
+                            continue
+
+                        # Apply the transform to each row
+                        new_data = []
+                        for row in current.data:
+                            new_row = row.copy()
+                            if col_name in row and row[col_name] is not None:
+                                # Apply the lambda function to each element of the array
+                                if isinstance(row[col_name], list):
+                                    try:
+                                        # Use DuckDB to evaluate the lambda
+                                        import duckdb
+
+                                        conn = duckdb.connect()
+
+                                        # Create a temporary table with the array
+                                        conn.execute(
+                                            "CREATE TEMP TABLE temp_array AS SELECT ? as arr",
+                                            [row[col_name]],
+                                        )
+
+                                        # Apply the transform using DuckDB's array_transform function
+                                        transform_result: Optional[Tuple[Any, ...]] = (
+                                            conn.execute(
+                                                f"SELECT array_transform(arr, {duckdb_lambda}) as transformed FROM temp_array"
+                                            ).fetchone()
+                                        )
+
+                                        if (
+                                            transform_result is not None
+                                            and transform_result[0] is not None
+                                        ):
+                                            new_row[col_name] = transform_result[0]
+
+                                        conn.close()
+                                    except Exception as e:
+                                        # If DuckDB evaluation fails, skip the transform
+                                        print(
+                                            f"Warning: Failed to evaluate transform lambda: {e}"
+                                        )
+                                        pass
+                            new_data.append(new_row)
+
+                        current = MockDataFrame(
+                            new_data, current.schema, current.storage
+                        )
                 else:
                     # Unknown ops ignored for now
                     continue
@@ -541,7 +960,12 @@ class LazyEvaluationEngine:
 
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
                 # Handle MockWindowFunction (e.g., rank().over(window))
-                col_name = col.name
+                # For window functions, col.name should be the alias, not the object itself
+                if hasattr(col, "name") and isinstance(col.name, str):
+                    col_name = col.name
+                else:
+                    # Fallback to generating a name
+                    col_name = f"{col.function_name}_over"
 
                 # Window functions that are non-nullable
                 non_nullable_window_functions = {
@@ -679,10 +1103,16 @@ class LazyEvaluationEngine:
         # Start with all fields from left DataFrame
         new_fields = df.schema.fields.copy()
 
-        # Add fields from right DataFrame that aren't already present
+        # Add ALL fields from right DataFrame
+        # In SQL joins, all columns from both tables are available
         for field in other_df.schema.fields:
-            if not any(f.name == field.name for f in new_fields):
+            # Check if field already exists (same name and type)
+            existing_field = next((f for f in new_fields if f.name == field.name), None)
+            if existing_field is None:
+                # Field doesn't exist, add it
                 new_fields.append(field)
+            # If field exists with same name, we keep the left one (SQL standard behavior)
+            # No need to add the right field
 
         return MockStructType(new_fields)
 

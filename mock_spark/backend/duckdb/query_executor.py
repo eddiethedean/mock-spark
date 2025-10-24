@@ -7,7 +7,7 @@ and execution capabilities for complex DataFrame operations.
 
 # mypy: disable-error-code="arg-type"
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from sqlalchemy import (
     create_engine,
     select,
@@ -27,8 +27,8 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     literal,
-    insert,
     text,
+    insert,
 )
 from sqlalchemy.orm import Session
 from mock_spark.spark_types import (
@@ -894,6 +894,28 @@ class SQLAlchemyMaterializer:
                             continue
 
                     try:
+                        # Handle standalone functions (functions without column input)
+                        if col.column is None:
+                            # For standalone functions like current_date(), current_timestamp()
+                            if col.function_name in [
+                                "current_date",
+                                "current_timestamp",
+                            ]:
+                                # Use raw SQL for these functions
+                                func_sql = self._expression_to_sql(
+                                    col, source_table=source_table
+                                )
+                                func_expr = text(func_sql)
+                                select_columns.append(func_expr)
+                                new_columns.append(
+                                    Column(col.name, String, primary_key=False)
+                                )
+                                continue
+                            else:
+                                raise ValueError(
+                                    f"Unsupported standalone function: {col.function_name}"
+                                )
+
                         # Check if the column is a complex expression (e.g., arithmetic operation)
                         if hasattr(
                             col.column, "function_name"
@@ -3407,7 +3429,8 @@ class SQLAlchemyMaterializer:
                 alias_map[col.name] = col
 
         # Store alias mapping in target table for later reference
-        target_table_obj._alias_map = alias_map
+        if hasattr(target_table_obj, "_alias_map"):
+            target_table_obj._alias_map = alias_map
 
         # Execute select and insert results
         with Session(self.engine) as session:
@@ -4329,7 +4352,6 @@ class SQLAlchemyMaterializer:
                 new_expr = left_col / right_val
             elif col.operation == "cast":
                 # Handle cast operation using TRY_CAST for overflow handling
-                from sqlalchemy import text
                 from sqlalchemy.types import Date, DateTime
 
                 # Map type names to DuckDB type strings
@@ -5210,7 +5232,7 @@ class SQLAlchemyMaterializer:
 
         # Materialize the other DataFrame to get its data
         other_materialized = (
-            other_df._materialize_if_lazy() if other_df.is_lazy else other_df
+            other_df._materialize_if_lazy() if other_df._operations_queue else other_df
         )
         other_data = other_materialized.data
         other_schema = other_materialized.schema
@@ -5329,7 +5351,7 @@ class SQLAlchemyMaterializer:
 
             session.commit()
 
-    def _expression_to_sql(self, expr: Any, source_table: str = None) -> str:
+    def _expression_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
         """Convert an expression to SQL."""
         if isinstance(expr, str):
             # If it's already SQL (contains function calls), return as-is
@@ -5356,7 +5378,17 @@ class SQLAlchemyMaterializer:
             and hasattr(expr, "value")
         ):
             # Handle string/math functions like upper, lower, abs, etc.
-            if expr.operation in ["upper", "lower", "length", "trim", "abs", "round"]:
+            if expr.operation in [
+                "upper",
+                "lower",
+                "length",
+                "trim",
+                "abs",
+                "round",
+                "md5",
+                "sha1",
+                "crc32",
+            ]:
                 column_name = self._column_to_sql(expr.column, source_table)
                 return f"{expr.operation.upper()}({column_name})"
 
@@ -5583,7 +5615,7 @@ class SQLAlchemyMaterializer:
         else:
             return str(expr)
 
-    def _column_to_sql(self, expr: Any, source_table: str = None) -> str:
+    def _column_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
         """Convert a column reference to SQL with quotes for expressions."""
         if isinstance(expr, str):
             # Check if this is a date/timestamp literal
@@ -5748,6 +5780,11 @@ class SQLAlchemyMaterializer:
                     select_parts.append(f"'{col.value}' AS \"{col.name}\"")
                 else:
                     select_parts.append(f'{col.value} AS "{col.name}"')
+            elif hasattr(col, "operation"):
+                # Column operation
+                expr_sql = self._expression_to_sql(col)
+                col_name = getattr(col, "name", "result")
+                select_parts.append(f'{expr_sql} AS "{col_name}"')
             elif hasattr(col, "name"):
                 # Check for alias
                 original_col = getattr(col, "_original_column", None) or getattr(
@@ -5759,11 +5796,6 @@ class SQLAlchemyMaterializer:
                     select_parts.append("*")
                 else:
                     select_parts.append(f'"{col.name}"')
-            elif hasattr(col, "operation"):
-                # Column operation
-                expr_sql = self._expression_to_sql(col)
-                col_name = getattr(col, "name", "result")
-                select_parts.append(f'{expr_sql} AS "{col_name}"')
 
         # Remove duplicate "*" entries and keep only one
         if select_parts.count("*") > 1:
@@ -5921,7 +5953,7 @@ class SQLAlchemyMaterializer:
         other_df, on, how = join_params
 
         # Materialize the other DataFrame if it's lazy
-        if other_df.is_lazy and other_df._operations_queue:
+        if other_df._operations_queue:
             other_df = other_df._materialize_if_lazy()
 
         # Create a temporary table for the other DataFrame
@@ -5963,7 +5995,7 @@ class SQLAlchemyMaterializer:
     ) -> str:
         """Build CTE SQL for union operation."""
         # Materialize the other DataFrame if it's lazy
-        if other_df.is_lazy and other_df._operations_queue:
+        if other_df._operations_queue:
             other_df = other_df._materialize_if_lazy()
 
         # Create a temporary table for the other DataFrame

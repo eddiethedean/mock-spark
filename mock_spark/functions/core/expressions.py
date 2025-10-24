@@ -20,6 +20,8 @@ class ExpressionFunctions:
     def col(name: str) -> MockColumn:
         """Create a column reference.
 
+        Delegates to canonical MockColumn constructor.
+
         Args:
             name: Column name.
 
@@ -32,6 +34,8 @@ class ExpressionFunctions:
     def lit(value: Any) -> MockLiteral:
         """Create a literal value.
 
+        Delegates to canonical MockLiteral constructor.
+
         Args:
             value: Literal value.
 
@@ -43,6 +47,8 @@ class ExpressionFunctions:
     @staticmethod
     def when(condition: MockColumnOperation, value: Any) -> "MockCaseWhen":
         """Start a CASE WHEN expression.
+
+        Delegates to canonical MockCaseWhen constructor.
 
         Args:
             condition: Condition to evaluate.

@@ -8,11 +8,7 @@ import pytest
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow
 from mock_spark.core.exceptions.operation import (
-    MockSparkOperationError,
     MockSparkColumnNotFoundError,
-    MockSparkTypeMismatchError,
-    MockSparkSQLGenerationError,
-    MockSparkQueryExecutionError,
 )
 
 
@@ -123,9 +119,7 @@ class TestErrorMessages:
 
         with pytest.raises(MockSparkColumnNotFoundError) as exc_info:
             df.select(
-                F.col("name"),
-                F.col("age"),
-                F.col("non_existent").alias("bad_col")
+                F.col("name"), F.col("age"), F.col("non_existent").alias("bad_col")
             )
 
         error = exc_info.value
@@ -162,7 +156,9 @@ class TestErrorMessages:
         error = exc_info.value
         assert "non_existent" in str(error)
 
-    @pytest.mark.skip(reason="Window function validation not implemented - non-standard PySpark behavior")
+    @pytest.mark.skip(
+        reason="Window function validation not implemented - non-standard PySpark behavior"
+    )
     def test_window_function_error(self, spark, sample_data):
         """Test window function error messages."""
         df = spark.createDataFrame(sample_data)
@@ -172,7 +168,7 @@ class TestErrorMessages:
                 F.col("name"),
                 F.row_number().over(
                     MockWindow.partitionBy("non_existent").orderBy("name")
-                )
+                ),
             )
 
         error = exc_info.value
@@ -260,12 +256,7 @@ class TestErrorMessages:
         df = spark.createDataFrame(sample_data)
 
         with pytest.raises(MockSparkColumnNotFoundError) as exc_info:
-            df.select(
-                F.col("name"),
-                F.col("bad1"),
-                F.col("age"),
-                F.col("bad2")
-            )
+            df.select(F.col("name"), F.col("bad1"), F.col("age"), F.col("bad2"))
 
         error = exc_info.value
         # Should mention the first missing column
@@ -276,10 +267,7 @@ class TestErrorMessages:
         df = spark.createDataFrame(sample_data)
 
         with pytest.raises(MockSparkColumnNotFoundError) as exc_info:
-            df.select(
-                F.col("name"),
-                (F.col("bad_column") + F.col("age")).alias("sum")
-            )
+            df.select(F.col("name"), (F.col("bad_column") + F.col("age")).alias("sum"))
 
         error = exc_info.value
         assert "bad_column" in str(error)
@@ -294,12 +282,12 @@ class TestErrorMessages:
 
         error = exc_info.value
         error_msg = str(error)
-        
+
         # Should be multi-line and informative
         assert "\n" in error_msg
         assert "Column:" in error_msg
         assert "Available columns:" in error_msg
-        
+
         # Should list available columns
         assert "name" in error_msg
         assert "age" in error_msg
@@ -311,8 +299,8 @@ class TestErrorMessages:
 
         # Test that debug mode can be configured
         # This is a basic test - actual debug output would require more complex setup
-        assert hasattr(df, '_execute_with_debug')
-        
+        assert hasattr(df, "_execute_with_debug")
+
         # Test that the method exists and is callable
         assert callable(df._execute_with_debug)
 
@@ -324,8 +312,8 @@ class TestErrorMessages:
             df.select("bad_column")
         except MockSparkColumnNotFoundError as e:
             # Check that error attributes are preserved
-            assert hasattr(e, 'column_name')
-            assert hasattr(e, 'available_columns')
+            assert hasattr(e, "column_name")
+            assert hasattr(e, "available_columns")
             assert e.column_name == "bad_column"
             assert "name" in e.available_columns
             assert "age" in e.available_columns

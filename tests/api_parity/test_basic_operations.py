@@ -5,7 +5,6 @@ Tests select, filter, join operations between MockSpark and PySpark
 to ensure identical behavior and results.
 """
 
-import pytest
 from tests.api_parity.conftest import ParityTestBase, compare_dataframes
 
 
@@ -17,11 +16,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.select("id", "name", "age")
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.select("id", "name", "age")
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -30,11 +29,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.filter(mock_df.age > 30)
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.filter(pyspark_df.age > 30)
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -43,11 +42,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.withColumn("age_plus_10", mock_df.age + 10)
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.withColumn("age_plus_10", pyspark_df.age + 10)
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -56,11 +55,13 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.select(mock_df.id, mock_df.name, mock_df.age)
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
-        pyspark_result = pyspark_df.select(pyspark_df.id, pyspark_df.name, pyspark_df.age)
-        
+        pyspark_result = pyspark_df.select(
+            pyspark_df.id, pyspark_df.name, pyspark_df.age
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -68,12 +69,16 @@ class TestBasicOperations(ParityTestBase):
         """Test column aliasing."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
-        mock_result = mock_df.select(mock_df.id.alias("user_id"), mock_df.name.alias("full_name"))
-        
+        mock_result = mock_df.select(
+            mock_df.id.alias("user_id"), mock_df.name.alias("full_name")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
-        pyspark_result = pyspark_df.select(pyspark_df.id.alias("user_id"), pyspark_df.name.alias("full_name"))
-        
+        pyspark_result = pyspark_df.select(
+            pyspark_df.id.alias("user_id"), pyspark_df.name.alias("full_name")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -82,11 +87,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.drop("department")
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.drop("department")
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -94,15 +99,15 @@ class TestBasicOperations(ParityTestBase):
         """Test distinct operations."""
         # Add duplicate data
         duplicate_data = sample_data + sample_data[:2]  # Add first 2 rows again
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(duplicate_data)
         mock_result = mock_df.distinct()
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(duplicate_data)
         pyspark_result = pyspark_df.distinct()
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -111,11 +116,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.orderBy("age")
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.orderBy("age")
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -124,11 +129,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.orderBy(mock_df.age.desc())
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.orderBy(pyspark_df.age.desc())
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -137,11 +142,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.limit(3)
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.limit(3)
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -150,17 +155,17 @@ class TestBasicOperations(ParityTestBase):
         # Split data
         data1 = sample_data[:3]
         data2 = sample_data[3:]
-        
+
         # MockSpark
         mock_df1 = mock_spark.createDataFrame(data1)
         mock_df2 = mock_spark.createDataFrame(data2)
         mock_result = mock_df1.union(mock_df2)
-        
+
         # PySpark
         pyspark_df1 = pyspark_spark.createDataFrame(data1)
         pyspark_df2 = pyspark_spark.createDataFrame(data2)
         pyspark_result = pyspark_df1.union(pyspark_df2)
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -172,17 +177,17 @@ class TestBasicOperations(ParityTestBase):
             {"department": "HR", "manager": "Jane"},
             {"department": "Finance", "manager": "Bob"},
         ]
-        
+
         # MockSpark
         mock_df1 = mock_spark.createDataFrame(sample_data)
         mock_df2 = mock_spark.createDataFrame(dept_data)
         mock_result = mock_df1.join(mock_df2, "department", "inner")
-        
+
         # PySpark
         pyspark_df1 = pyspark_spark.createDataFrame(sample_data)
         pyspark_df2 = pyspark_spark.createDataFrame(dept_data)
         pyspark_result = pyspark_df1.join(pyspark_df2, "department", "inner")
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -194,17 +199,21 @@ class TestBasicOperations(ParityTestBase):
             {"dept_name": "HR", "manager": "Jane"},
             {"dept_name": "Finance", "manager": "Bob"},
         ]
-        
+
         # MockSpark
         mock_df1 = mock_spark.createDataFrame(sample_data)
         mock_df2 = mock_spark.createDataFrame(dept_data)
-        mock_result = mock_df1.join(mock_df2, mock_df1.department == mock_df2.dept_name, "inner")
-        
+        mock_result = mock_df1.join(
+            mock_df2, mock_df1.department == mock_df2.dept_name, "inner"
+        )
+
         # PySpark
         pyspark_df1 = pyspark_spark.createDataFrame(sample_data)
         pyspark_df2 = pyspark_spark.createDataFrame(dept_data)
-        pyspark_result = pyspark_df1.join(pyspark_df2, pyspark_df1.department == pyspark_df2.dept_name, "inner")
-        
+        pyspark_result = pyspark_df1.join(
+            pyspark_df2, pyspark_df1.department == pyspark_df2.dept_name, "inner"
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -213,11 +222,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_df.show()  # Should not crash
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_df.show()  # Should not crash
-        
+
         # Both should complete without error
         assert True
 
@@ -226,11 +235,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_schema = mock_df.schema
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_schema = pyspark_df.schema
-        
+
         # Compare field names
         mock_field_names = [field.name for field in mock_schema.fields]
         pyspark_field_names = [field.name for field in pyspark_schema.fields]
@@ -241,11 +250,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_columns = mock_df.columns
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_columns = pyspark_df.columns
-        
+
         # Compare
         assert set(mock_columns) == set(pyspark_columns)
 
@@ -254,11 +263,11 @@ class TestBasicOperations(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_dtypes = mock_df.dtypes
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_dtypes = pyspark_df.dtypes
-        
+
         # Compare
         assert len(mock_dtypes) == len(pyspark_dtypes)
         for mock_dtype, pyspark_dtype in zip(mock_dtypes, pyspark_dtypes):

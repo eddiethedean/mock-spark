@@ -9,7 +9,7 @@ from datetime import datetime
 import gc
 import psutil
 import os
-from .interfaces import IStorageManager
+from ..core.interfaces.storage import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager
 from mock_spark.backend.duckdb import DuckDBStorageManager
@@ -112,13 +112,14 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self.backend.schema_exists(schema)
 
-    def drop_schema(self, schema: str) -> None:
+    def drop_schema(self, schema_name: str, cascade: bool = False) -> None:
         """Drop a schema.
 
         Args:
-            schema: Name of the schema to drop.
+            schema_name: Name of the schema to drop.
+            cascade: Whether to cascade the drop operation.
         """
-        self.backend.drop_schema(schema)
+        self.backend.drop_schema(schema_name, cascade)
 
     def list_schemas(self) -> List[str]:
         """List all schemas.
@@ -175,7 +176,7 @@ class UnifiedStorageManager(IStorageManager):
             data: Data to insert.
             mode: Insert mode ("append", "overwrite", "ignore").
         """
-        self.backend.insert_data(schema, table, data, mode)
+        self.backend.insert_data(schema, table, data)
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
@@ -192,17 +193,19 @@ class UnifiedStorageManager(IStorageManager):
         """
         return self.backend.query_table(schema, table, filter_expr)
 
-    def get_table_schema(self, schema: str, table: str) -> Optional[MockStructType]:
+    def get_table_schema(
+        self, schema_name: str, table_name: str
+    ) -> Union[Any, MockStructType]:
         """Get table schema.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
 
         Returns:
-            Table schema or None if table doesn't exist.
+            Table schema.
         """
-        return self.backend.get_table_schema(schema, table)
+        return self.backend.get_table_schema(schema_name, table_name)
 
     def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.
@@ -225,28 +228,30 @@ class UnifiedStorageManager(IStorageManager):
         """
         self.backend.create_temp_view(name, dataframe)
 
-    def list_tables(self, schema: str) -> List[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
         Args:
-            schema: Name of the schema.
+            schema_name: Name of the schema. If None, list tables in all schemas.
 
         Returns:
             List of table names.
         """
-        return self.backend.list_tables(schema)
+        return self.backend.list_tables(schema_name)
 
-    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+    def get_table_metadata(
+        self, schema_name: str, table_name: str
+    ) -> Union[Any, Dict[str, Any]]:
         """Get table metadata including Delta-specific fields.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
 
         Returns:
-            Table metadata dictionary or None if table doesn't exist.
+            Table metadata.
         """
-        return self.backend.get_table_metadata(schema, table)
+        return self.backend.get_table_metadata(schema_name, table_name)
 
     def update_table_metadata(
         self, schema: str, table: str, metadata_updates: Dict[str, Any]
@@ -358,7 +363,7 @@ class UnifiedStorageManager(IStorageManager):
             try:
                 # Estimate size based on metadata
                 estimated_size = (
-                    metadata.table_schema.get_field_count() * 100
+                    len(metadata.table_schema.fields) * 100
                 )  # Rough estimate
                 sizes[qualified_name] = estimated_size
             except Exception:

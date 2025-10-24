@@ -203,10 +203,15 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
         modules["session"] = MockSparkSession("compatibility-test")
 
     elif env_type == "pyspark":
-        from pyspark import SparkContext
-        from pyspark.sql import SparkSession
-        from pyspark.sql import functions as pyspark_functions
-        from pyspark.sql import types as pyspark_types
+        try:
+            from pyspark import SparkContext
+            from pyspark.sql import SparkSession
+            from pyspark.sql import functions as pyspark_functions
+            from pyspark.sql import types as pyspark_types
+        except ImportError as e:
+            import pytest
+
+            pytest.skip(f"PySpark not available: {e}")
 
         # Note: JAVA_TOOL_OPTIONS are set in conftest.py before any pyspark imports
 
@@ -268,7 +273,14 @@ def import_environment_modules(env_type: str) -> Dict[str, Any]:
 
             warnings.warn(f"Failed to configure Delta Lake: {e}")
 
-        spark = builder.getOrCreate()
+        try:
+            spark = builder.getOrCreate()
+            # Test that the session actually works
+            spark.createDataFrame([{"test": 1}]).collect()
+        except Exception as e:
+            import pytest
+
+            pytest.skip(f"PySpark session creation failed: {e}")
 
         # Store warehouse dir for cleanup
         modules["_warehouse_dir"] = warehouse_dir

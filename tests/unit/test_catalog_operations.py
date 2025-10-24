@@ -5,10 +5,7 @@ Tests database management, table operations, and catalog functionality.
 """
 
 import pytest
-from datetime import datetime
-from mock_spark import MockSparkSession, F
-from mock_spark.storage.manager import TableMetadata
-from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+from mock_spark import MockSparkSession
 
 
 @pytest.mark.fast
@@ -39,7 +36,7 @@ class TestCatalogOperations:
 
         # Create new database
         catalog.createDatabase("test_db")
-        
+
         # Verify database was created
         dbs = catalog.listDatabases()
         db_names = [db.name for db in dbs]
@@ -57,7 +54,7 @@ class TestCatalogOperations:
         # Create and switch to new database
         catalog.createDatabase("new_db")
         catalog.setCurrentDatabase("new_db")
-        
+
         # Verify switch worked
         assert catalog.currentDatabase() == "new_db"
 
@@ -139,8 +136,10 @@ class TestCatalogOperations:
         df1.write.mode("overwrite").saveAsTable("write_test_table")
 
         # Test error mode (should fail if table exists)
-        df2 = spark.createDataFrame([{"id": 4, "name": "David", "age": 40, "department": "Finance"}])
-        
+        df2 = spark.createDataFrame(
+            [{"id": 4, "name": "David", "age": 40, "department": "Finance"}]
+        )
+
         try:
             df2.write.mode("error").saveAsTable("write_test_table")
             assert False, "Error mode should have failed"
@@ -275,12 +274,14 @@ class TestCatalogOperations:
 
         # Get table metadata
         tables = catalog.listTables()
-        test_table = next((t for t in tables if t.name == "properties_test_table"), None)
+        test_table = next(
+            (t for t in tables if t.name == "properties_test_table"), None
+        )
         assert test_table is not None
 
         # Verify table properties
-        assert hasattr(test_table, 'name')
-        assert hasattr(test_table, 'database')
+        assert hasattr(test_table, "name")
+        assert hasattr(test_table, "database")
 
     def test_catalog_error_handling(self, spark):
         """Test catalog error handling."""

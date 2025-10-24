@@ -8,20 +8,27 @@ to ensure API compatibility and identical behavior.
 import pytest
 import os
 import sys
-from typing import List, Dict, Any, Optional
 
 # Add mock_spark to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
     from mock_spark import MockSparkSession, F as MockF
+
     MOCK_SPARK_AVAILABLE = True
 except ImportError:
     MOCK_SPARK_AVAILABLE = False
 
 try:
     from pyspark.sql import SparkSession, functions as PySparkF
-    from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType
+    from pyspark.sql.types import (
+        StructType,
+        StructField,
+        StringType,
+        IntegerType,
+        DoubleType,
+    )
+
     PYSPARK_AVAILABLE = True
 except ImportError:
     PYSPARK_AVAILABLE = False
@@ -40,7 +47,15 @@ def pyspark_spark():
     """Create PySpark SparkSession for testing."""
     if not PYSPARK_AVAILABLE:
         pytest.skip("PySpark not available")
-    return SparkSession.builder.appName("parity_test").getOrCreate()
+
+    try:
+        # Try to create a session to check if PySpark can actually run
+        session = SparkSession.builder.appName("parity_test").getOrCreate()
+        # Test that the session actually works
+        session.createDataFrame([{"test": 1}]).collect()
+        return session
+    except Exception as e:
+        pytest.skip(f"PySpark session creation failed: {e}")
 
 
 @pytest.fixture
@@ -50,7 +65,13 @@ def sample_data():
         {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0, "department": "IT"},
         {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0, "department": "HR"},
         {"id": 3, "name": "Charlie", "age": 35, "salary": 70000.0, "department": "IT"},
-        {"id": 4, "name": "David", "age": 40, "salary": 80000.0, "department": "Finance"},
+        {
+            "id": 4,
+            "name": "David",
+            "age": 40,
+            "salary": 80000.0,
+            "department": "Finance",
+        },
         {"id": 5, "name": "Eve", "age": 45, "salary": 90000.0, "department": "IT"},
     ]
 
@@ -135,7 +156,7 @@ def complex_data():
 
 def compare_dataframes(mock_df, pyspark_df, tolerance: float = 1e-6):
     """Compare two DataFrames and assert they are equivalent.
-    
+
     Args:
         mock_df: MockSpark DataFrame
         pyspark_df: PySpark DataFrame
@@ -144,33 +165,41 @@ def compare_dataframes(mock_df, pyspark_df, tolerance: float = 1e-6):
     # Compare row counts
     mock_count = mock_df.count()
     pyspark_count = pyspark_df.count()
-    assert mock_count == pyspark_count, f"Row count mismatch: {mock_count} vs {pyspark_count}"
-    
+    assert mock_count == pyspark_count, (
+        f"Row count mismatch: {mock_count} vs {pyspark_count}"
+    )
+
     # Compare schemas
     mock_columns = mock_df.columns
     pyspark_columns = pyspark_df.columns
-    assert set(mock_columns) == set(pyspark_columns), f"Column mismatch: {mock_columns} vs {pyspark_columns}"
-    
+    assert set(mock_columns) == set(pyspark_columns), (
+        f"Column mismatch: {mock_columns} vs {pyspark_columns}"
+    )
+
     # Compare data
     mock_data = mock_df.collect()
     pyspark_data = pyspark_df.collect()
-    
+
     assert len(mock_data) == len(pyspark_data), "Data length mismatch"
-    
+
     for i, (mock_row, pyspark_row) in enumerate(zip(mock_data, pyspark_data)):
         for col in mock_columns:
             mock_val = mock_row[col]
             pyspark_val = pyspark_row[col]
-            
+
             if isinstance(mock_val, float) and isinstance(pyspark_val, float):
-                assert abs(mock_val - pyspark_val) < tolerance, f"Row {i}, column {col}: {mock_val} vs {pyspark_val}"
+                assert abs(mock_val - pyspark_val) < tolerance, (
+                    f"Row {i}, column {col}: {mock_val} vs {pyspark_val}"
+                )
             else:
-                assert mock_val == pyspark_val, f"Row {i}, column {col}: {mock_val} vs {pyspark_val}"
+                assert mock_val == pyspark_val, (
+                    f"Row {i}, column {col}: {mock_val} vs {pyspark_val}"
+                )
 
 
 def compare_aggregations(mock_result, pyspark_result, tolerance: float = 1e-6):
     """Compare aggregation results between MockSpark and PySpark.
-    
+
     Args:
         mock_result: MockSpark aggregation result
         pyspark_result: PySpark aggregation result
@@ -179,21 +208,33 @@ def compare_aggregations(mock_result, pyspark_result, tolerance: float = 1e-6):
     # Compare row counts
     mock_count = mock_result.count()
     pyspark_count = pyspark_result.count()
-    assert mock_count == pyspark_count, f"Aggregation count mismatch: {mock_count} vs {pyspark_count}"
-    
-    # Compare data
-    mock_data = mock_result.collect()
-    pyspark_data = pyspark_result.collect()
-    
+    assert mock_count == pyspark_count, (
+        f"Aggregation count mismatch: {mock_count} vs {pyspark_count}"
+    )
+
+    # Compare data - sort by all columns to ensure consistent ordering
+    mock_data = sorted(
+        mock_result.collect(),
+        key=lambda row: tuple(str(row[col]) for col in mock_result.columns),
+    )
+    pyspark_data = sorted(
+        pyspark_result.collect(),
+        key=lambda row: tuple(str(row[col]) for col in pyspark_result.columns),
+    )
+
     for mock_row, pyspark_row in zip(mock_data, pyspark_data):
         for col in mock_result.columns:
             mock_val = mock_row[col]
             pyspark_val = pyspark_row[col]
-            
+
             if isinstance(mock_val, float) and isinstance(pyspark_val, float):
-                assert abs(mock_val - pyspark_val) < tolerance, f"Column {col}: {mock_val} vs {pyspark_val}"
+                assert abs(mock_val - pyspark_val) < tolerance, (
+                    f"Column {col}: {mock_val} vs {pyspark_val}"
+                )
             else:
-                assert mock_val == pyspark_val, f"Column {col}: {mock_val} vs {pyspark_val}"
+                assert mock_val == pyspark_val, (
+                    f"Column {col}: {mock_val} vs {pyspark_val}"
+                )
 
 
 def skip_if_pyspark_unavailable():
@@ -210,16 +251,18 @@ def skip_if_mock_spark_unavailable():
 
 class ParityTestBase:
     """Base class for API parity tests."""
-    
+
     def setup_method(self):
         """Set up test method."""
         skip_if_pyspark_unavailable()
         skip_if_mock_spark_unavailable()
-    
+
     def compare_dataframes(self, mock_df, pyspark_df, tolerance: float = 1e-6):
         """Compare DataFrames with tolerance."""
         compare_dataframes(mock_df, pyspark_df, tolerance)
-    
-    def compare_aggregations(self, mock_result, pyspark_result, tolerance: float = 1e-6):
+
+    def compare_aggregations(
+        self, mock_result, pyspark_result, tolerance: float = 1e-6
+    ):
         """Compare aggregation results with tolerance."""
         compare_aggregations(mock_result, pyspark_result, tolerance)

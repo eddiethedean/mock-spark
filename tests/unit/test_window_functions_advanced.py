@@ -81,9 +81,9 @@ class TestWindowFunctionsAdvanced:
             F.col("customer_id"),
             F.col("product"),
             F.col("amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("row_num"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("row_num"),
         )
 
         rows = result.collect()
@@ -110,12 +110,12 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id"),
             F.col("amount"),
-            F.rank().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("rank"),
-            F.dense_rank().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("dense_rank"),
+            F.rank()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("rank"),
+            F.dense_rank()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("dense_rank"),
         )
 
         rows = result.collect()
@@ -135,12 +135,12 @@ class TestWindowFunctionsAdvanced:
             F.col("customer_id"),
             F.col("product"),
             F.col("amount"),
-            F.lag("amount", 1).over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("prev_amount"),
-            F.lead("amount", 1).over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("next_amount"),
+            F.lag("amount", 1)
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("prev_amount"),
+            F.lead("amount", 1)
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("next_amount"),
         )
 
         rows = result.collect()
@@ -150,8 +150,12 @@ class TestWindowFunctionsAdvanced:
         for row in rows:
             # prev_amount and next_amount should be None for first/last rows in partition
             # or valid numbers for middle rows
-            assert row["prev_amount"] is None or isinstance(row["prev_amount"], (int, float))
-            assert row["next_amount"] is None or isinstance(row["next_amount"], (int, float))
+            assert row["prev_amount"] is None or isinstance(
+                row["prev_amount"], (int, float)
+            )
+            assert row["next_amount"] is None or isinstance(
+                row["next_amount"], (int, float)
+            )
 
     def test_first_and_last_values(self, spark, sales_data):
         """Test first_value and last_value functions."""
@@ -160,12 +164,12 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id"),
             F.col("amount"),
-            F.first("amount").over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("first_amount"),
-            F.last("amount").over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("last_amount"),
+            F.first("amount")
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("first_amount"),
+            F.last("amount")
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("last_amount"),
         )
 
         rows = result.collect()
@@ -184,9 +188,9 @@ class TestWindowFunctionsAdvanced:
             F.col("region"),
             F.col("salesperson"),
             F.col("amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("region", "salesperson").orderBy("amount")
-            ).alias("row_num"),
+            F.row_number()
+            .over(MockWindow.partitionBy("region", "salesperson").orderBy("amount"))
+            .alias("row_num"),
         )
 
         rows = result.collect()
@@ -212,14 +216,12 @@ class TestWindowFunctionsAdvanced:
             F.col("customer_id"),
             F.col("product"),
             F.col("amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id")
-                .orderBy(F.col("amount").desc())
-            ).alias("row_num_desc"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id")
-                .orderBy(F.col("amount").asc())
-            ).alias("row_num_asc"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy(F.col("amount").desc()))
+            .alias("row_num_desc"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy(F.col("amount").asc()))
+            .alias("row_num_asc"),
         )
 
         rows = result.collect()
@@ -237,11 +239,13 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id"),
             F.col("amount"),
-            F.sum("amount").over(
+            F.sum("amount")
+            .over(
                 MockWindow.partitionBy("customer_id")
                 .orderBy("amount")
                 .rowsBetween(MockWindow.currentRow, MockWindow.unboundedFollowing)
-            ).alias("sum_following"),
+            )
+            .alias("sum_following"),
         )
 
         rows = result.collect()
@@ -259,11 +263,13 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id"),
             F.col("amount"),
-            F.avg("amount").over(
+            F.avg("amount")
+            .over(
                 MockWindow.partitionBy("customer_id")
                 .orderBy("amount")
                 .rangeBetween(MockWindow.unboundedPreceding, MockWindow.currentRow)
-            ).alias("avg_preceding"),
+            )
+            .alias("avg_preceding"),
         )
 
         rows = result.collect()
@@ -281,9 +287,9 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id").alias("customer"),
             F.col("amount").alias("sale_amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("rank"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("rank"),
         )
 
         rows = result.collect()
@@ -310,9 +316,9 @@ class TestWindowFunctionsAdvanced:
             F.col("id"),
             F.col("value"),
             F.col("category"),
-            F.row_number().over(
-                MockWindow.partitionBy("category").orderBy("value")
-            ).alias("row_num"),
+            F.row_number()
+            .over(MockWindow.partitionBy("category").orderBy("value"))
+            .alias("row_num"),
         )
 
         rows = result.collect()
@@ -336,9 +342,9 @@ class TestWindowFunctionsAdvanced:
             F.col("name"),
             F.col("department"),
             F.col("salary"),
-            F.row_number().over(
-                MockWindow.partitionBy("department").orderBy("name")
-            ).alias("row_num"),
+            F.row_number()
+            .over(MockWindow.partitionBy("department").orderBy("name"))
+            .alias("row_num"),
         )
 
         rows = result.collect()
@@ -355,15 +361,15 @@ class TestWindowFunctionsAdvanced:
         result = df.select(
             F.col("customer_id"),
             F.col("amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("row_num"),
-            F.rank().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("rank"),
-            F.sum("amount").over(
-                MockWindow.partitionBy("customer_id")
-            ).alias("total_amount"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("row_num"),
+            F.rank()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("rank"),
+            F.sum("amount")
+            .over(MockWindow.partitionBy("customer_id"))
+            .alias("total_amount"),
         )
 
         rows = result.collect()
@@ -383,10 +389,13 @@ class TestWindowFunctionsAdvanced:
             F.col("customer_id"),
             F.col("amount"),
             F.col("product"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id")
-                .orderBy(F.col("amount").desc(), F.col("product").asc())
-            ).alias("row_num"),
+            F.row_number()
+            .over(
+                MockWindow.partitionBy("customer_id").orderBy(
+                    F.col("amount").desc(), F.col("product").asc()
+                )
+            )
+            .alias("row_num"),
         )
 
         rows = result.collect()
@@ -402,11 +411,13 @@ class TestWindowFunctionsAdvanced:
         data = []
         for customer_id in range(1, 11):  # 10 customers
             for product_id in range(1, 6):  # 5 products per customer
-                data.append({
-                    "customer_id": customer_id,
-                    "product_id": product_id,
-                    "amount": customer_id * 100 + product_id * 10,
-                })
+                data.append(
+                    {
+                        "customer_id": customer_id,
+                        "product_id": product_id,
+                        "amount": customer_id * 100 + product_id * 10,
+                    }
+                )
 
         df = spark.createDataFrame(data)
 
@@ -414,9 +425,9 @@ class TestWindowFunctionsAdvanced:
             F.col("customer_id"),
             F.col("product_id"),
             F.col("amount"),
-            F.row_number().over(
-                MockWindow.partitionBy("customer_id").orderBy("amount")
-            ).alias("row_num"),
+            F.row_number()
+            .over(MockWindow.partitionBy("customer_id").orderBy("amount"))
+            .alias("row_num"),
         )
 
         rows = result.collect()

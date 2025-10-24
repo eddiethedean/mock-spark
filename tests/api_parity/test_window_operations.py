@@ -5,7 +5,6 @@ Tests window functions between MockSpark and PySpark
 to ensure identical behavior and results.
 """
 
-import pytest
 from tests.api_parity.conftest import ParityTestBase, compare_dataframes
 
 
@@ -18,23 +17,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.row_number().over(mock_window).alias("row_num")
+            "name",
+            "department",
+            "salary",
+            MockF.row_number().over(mock_window).alias("row_num"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.row_number().over(pyspark_window).alias("row_num")
+            "name",
+            "department",
+            "salary",
+            PySparkF.row_number().over(pyspark_window).alias("row_num"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -44,23 +47,24 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.rank().over(mock_window).alias("rank")
+            "name", "department", "salary", MockF.rank().over(mock_window).alias("rank")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.rank().over(pyspark_window).alias("rank")
+            "name",
+            "department",
+            "salary",
+            PySparkF.rank().over(pyspark_window).alias("rank"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -70,23 +74,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.dense_rank().over(mock_window).alias("dense_rank")
+            "name",
+            "department",
+            "salary",
+            MockF.dense_rank().over(mock_window).alias("dense_rank"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.dense_rank().over(pyspark_window).alias("dense_rank")
+            "name",
+            "department",
+            "salary",
+            PySparkF.dense_rank().over(pyspark_window).alias("dense_rank"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -96,23 +104,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.lag("salary", 1).over(mock_window).alias("prev_salary")
+            "name",
+            "department",
+            "salary",
+            MockF.lag("salary", 1).over(mock_window).alias("prev_salary"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.lag("salary", 1).over(pyspark_window).alias("prev_salary")
+            "name",
+            "department",
+            "salary",
+            PySparkF.lag("salary", 1).over(pyspark_window).alias("prev_salary"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -122,23 +134,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.lead("salary", 1).over(mock_window).alias("next_salary")
+            "name",
+            "department",
+            "salary",
+            MockF.lead("salary", 1).over(mock_window).alias("next_salary"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.lead("salary", 1).over(pyspark_window).alias("next_salary")
+            "name",
+            "department",
+            "salary",
+            PySparkF.lead("salary", 1).over(pyspark_window).alias("next_salary"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -148,23 +164,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.first("salary").over(mock_window).alias("first_salary")
+            "name",
+            "department",
+            "salary",
+            MockF.first("salary").over(mock_window).alias("first_salary"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.first("salary").over(pyspark_window).alias("first_salary")
+            "name",
+            "department",
+            "salary",
+            PySparkF.first("salary").over(pyspark_window).alias("first_salary"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -174,23 +194,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.last("salary").over(mock_window).alias("last_salary")
+            "name",
+            "department",
+            "salary",
+            MockF.last("salary").over(mock_window).alias("last_salary"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.last("salary").over(pyspark_window).alias("last_salary")
+            "name",
+            "department",
+            "salary",
+            PySparkF.last("salary").over(pyspark_window).alias("last_salary"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -200,23 +224,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.sum("salary").over(mock_window).alias("running_sum")
+            "name",
+            "department",
+            "salary",
+            MockF.sum("salary").over(mock_window).alias("running_sum"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.sum("salary").over(pyspark_window).alias("running_sum")
+            "name",
+            "department",
+            "salary",
+            PySparkF.sum("salary").over(pyspark_window).alias("running_sum"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -226,23 +254,27 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.avg("salary").over(mock_window).alias("running_avg")
+            "name",
+            "department",
+            "salary",
+            MockF.avg("salary").over(mock_window).alias("running_avg"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.avg("salary").over(pyspark_window).alias("running_avg")
+            "name",
+            "department",
+            "salary",
+            PySparkF.avg("salary").over(pyspark_window).alias("running_avg"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -252,23 +284,35 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
-        mock_window = MockWindow.partitionBy("department").orderBy("salary").rowsBetween(MockWindow.currentRow, MockWindow.unboundedFollowing)
-        mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.sum("salary").over(mock_window).alias("sum_following")
+        mock_window = (
+            MockWindow.partitionBy("department")
+            .orderBy("salary")
+            .rowsBetween(MockWindow.currentRow, MockWindow.unboundedFollowing)
         )
-        
+        mock_result = mock_df.select(
+            "name",
+            "department",
+            "salary",
+            MockF.sum("salary").over(mock_window).alias("sum_following"),
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
-        pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary").rowsBetween(PySparkWindow.currentRow, PySparkWindow.unboundedFollowing)
-        pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.sum("salary").over(pyspark_window).alias("sum_following")
+        pyspark_window = (
+            PySparkWindow.partitionBy("department")
+            .orderBy("salary")
+            .rowsBetween(PySparkWindow.currentRow, PySparkWindow.unboundedFollowing)
         )
-        
+        pyspark_result = pyspark_df.select(
+            "name",
+            "department",
+            "salary",
+            PySparkF.sum("salary").over(pyspark_window).alias("sum_following"),
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -278,23 +322,35 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
-        mock_window = MockWindow.partitionBy("department").orderBy("salary").rangeBetween(MockWindow.unboundedPreceding, MockWindow.currentRow)
-        mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.avg("salary").over(mock_window).alias("avg_preceding")
+        mock_window = (
+            MockWindow.partitionBy("department")
+            .orderBy("salary")
+            .rangeBetween(MockWindow.unboundedPreceding, MockWindow.currentRow)
         )
-        
+        mock_result = mock_df.select(
+            "name",
+            "department",
+            "salary",
+            MockF.avg("salary").over(mock_window).alias("avg_preceding"),
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
-        pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary").rangeBetween(PySparkWindow.unboundedPreceding, PySparkWindow.currentRow)
-        pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.avg("salary").over(pyspark_window).alias("avg_preceding")
+        pyspark_window = (
+            PySparkWindow.partitionBy("department")
+            .orderBy("salary")
+            .rangeBetween(PySparkWindow.unboundedPreceding, PySparkWindow.currentRow)
         )
-        
+        pyspark_result = pyspark_df.select(
+            "name",
+            "department",
+            "salary",
+            PySparkF.avg("salary").over(pyspark_window).alias("avg_preceding"),
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -304,27 +360,31 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.partitionBy("department").orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
+            "name",
+            "department",
+            "salary",
             MockF.row_number().over(mock_window).alias("row_num"),
             MockF.rank().over(mock_window).alias("rank"),
-            MockF.sum("salary").over(mock_window).alias("running_sum")
+            MockF.sum("salary").over(mock_window).alias("running_sum"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.partitionBy("department").orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
+            "name",
+            "department",
+            "salary",
             PySparkF.row_number().over(pyspark_window).alias("row_num"),
             PySparkF.rank().over(pyspark_window).alias("rank"),
-            PySparkF.sum("salary").over(pyspark_window).alias("running_sum")
+            PySparkF.sum("salary").over(pyspark_window).alias("running_sum"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -334,23 +394,31 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
-        mock_window = MockWindow.partitionBy("department").orderBy(mock_df.salary.desc(), mock_df.name.asc())
-        mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.row_number().over(mock_window).alias("row_num")
+        mock_window = MockWindow.partitionBy("department").orderBy(
+            mock_df.salary.desc(), mock_df.name.asc()
         )
-        
+        mock_result = mock_df.select(
+            "name",
+            "department",
+            "salary",
+            MockF.row_number().over(mock_window).alias("row_num"),
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
-        pyspark_window = PySparkWindow.partitionBy("department").orderBy(pyspark_df.salary.desc(), pyspark_df.name.asc())
-        pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.row_number().over(pyspark_window).alias("row_num")
+        pyspark_window = PySparkWindow.partitionBy("department").orderBy(
+            pyspark_df.salary.desc(), pyspark_df.name.asc()
         )
-        
+        pyspark_result = pyspark_df.select(
+            "name",
+            "department",
+            "salary",
+            PySparkF.row_number().over(pyspark_window).alias("row_num"),
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -360,22 +428,26 @@ class TestWindowOperations(ParityTestBase):
         from mock_spark.window import MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_window = MockWindow.orderBy("salary")
         mock_result = mock_df.select(
-            "name", "department", "salary",
-            MockF.row_number().over(mock_window).alias("row_num")
+            "name",
+            "department",
+            "salary",
+            MockF.row_number().over(mock_window).alias("row_num"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_window = PySparkWindow.orderBy("salary")
         pyspark_result = pyspark_df.select(
-            "name", "department", "salary",
-            PySparkF.row_number().over(pyspark_window).alias("row_num")
+            "name",
+            "department",
+            "salary",
+            PySparkF.row_number().over(pyspark_window).alias("row_num"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)

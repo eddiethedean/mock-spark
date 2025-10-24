@@ -8,7 +8,6 @@ maintaining compatibility with PySpark's SparkSession interface.
 from typing import Any, Dict, List, Optional, Union, Tuple, cast
 from ...core.interfaces.session import ISession
 from ...core.interfaces.dataframe import IDataFrame
-from ...core.interfaces.storage import IStorageManager
 from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
 from ..catalog import MockCatalog
@@ -85,7 +84,7 @@ class MockSparkSession:
             self.storage = storage_backend
         from typing import cast
 
-        self._catalog = MockCatalog(cast(IStorageManager, self.storage))
+        self._catalog = MockCatalog(self.storage)
         self.sparkContext = MockSparkContext(app_name)
         self._conf = MockConfiguration()
         self._version = "3.4.0"  # Mock version
@@ -500,19 +499,25 @@ class MockSparkSession:
             for field in table_schema.fields:
                 # Create new data type with nullable=True
                 data_type: MockDataType
-                if isinstance(field.dataType, BooleanType):
+                field_type = getattr(field, "dataType", None) or getattr(
+                    field, "data_type", None
+                )
+                if isinstance(field_type, BooleanType):
                     data_type = BooleanType(nullable=True)
-                elif isinstance(field.dataType, IntegerType):
+                elif isinstance(field_type, IntegerType):
                     data_type = IntegerType(nullable=True)
-                elif isinstance(field.dataType, LongType):
+                elif isinstance(field_type, LongType):
                     data_type = LongType(nullable=True)
-                elif isinstance(field.dataType, DoubleType):
+                elif isinstance(field_type, DoubleType):
                     data_type = DoubleType(nullable=True)
-                elif isinstance(field.dataType, StringType):
+                elif isinstance(field_type, StringType):
                     data_type = StringType(nullable=True)
                 else:
                     # For other types, create with nullable=True
-                    data_type = field.dataType.__class__(nullable=True)
+                    if field_type is None:
+                        data_type = StringType(nullable=True)  # fallback
+                    else:
+                        data_type = field_type.__class__(nullable=True)
 
                 # Create new field with nullable=True
                 updated_field = MockStructField(field.name, data_type, nullable=True)

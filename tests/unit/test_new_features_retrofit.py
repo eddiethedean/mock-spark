@@ -66,9 +66,7 @@ def test_lazy_evaluation_filter_and_withcolumn_materialization():
         ]
     )
 
-    lazy_df = (
-        df.withLazy(True).filter(F.col("id") > 1).withColumn("greeting", F.lit("hi"))
-    )
+    lazy_df = df.filter(F.col("id") > 1).withColumn("greeting", F.lit("hi"))
 
     # Ensure not materialized yet by checking original data length via eager df
     assert len(df.collect()) == 3

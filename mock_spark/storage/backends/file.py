@@ -7,7 +7,8 @@ This module provides a file-based storage implementation using JSON files.
 import json
 import os
 from typing import List, Dict, Any, Optional, Union
-from ..interfaces import IStorageManager, ITable, ISchema
+from ...core.interfaces.storage import IStorageManager, ITable
+from ...core.types.schema import ISchema
 from mock_spark.spark_types import MockStructType, MockStructField
 
 
@@ -22,15 +23,30 @@ class FileTable(ITable):
             schema: Table schema.
             file_path: Path to table data file.
         """
-        self.name = name
-        self.schema = schema
+        self._name = name
+        self._schema = schema
         self.file_path = file_path
-        self.metadata = {
+        self._metadata = {
             "created_at": "2024-01-01T00:00:00Z",
             "row_count": 0,
             "schema_version": "1.0",
         }
         self._ensure_file_exists()
+
+    @property
+    def name(self) -> str:
+        """Get table name."""
+        return self._name
+
+    @property
+    def schema(self) -> MockStructType:
+        """Get table schema."""
+        return self._schema
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Get table metadata."""
+        return self._metadata
 
     def _ensure_file_exists(self) -> None:
         """Ensure the table data file exists."""
@@ -83,7 +99,7 @@ class FileTable(ITable):
                 current_data = data
 
         self._save_data(current_data)
-        self.metadata["row_count"] = len(current_data)
+        self._metadata["row_count"] = len(current_data)
 
     def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
         """Query data from table.
@@ -118,9 +134,32 @@ class FileTable(ITable):
             Table metadata.
         """
         data = self._load_data()
-        metadata = self.metadata.copy()
+        metadata = self._metadata.copy()
         metadata["row_count"] = len(data)
         return metadata
+
+    def insert(self, data: List[Dict[str, Any]]) -> None:
+        """Insert data into table."""
+        self.insert_data(data)
+
+    def query(self, **filters: Any) -> List[Dict[str, Any]]:
+        """Query data from table."""
+        return self.query_data()
+
+    def count(self) -> int:
+        """Count rows in table."""
+        return len(self._load_data())
+
+    def truncate(self) -> None:
+        """Truncate table."""
+        self._save_data([])
+        self._metadata["row_count"] = 0
+
+    def drop(self) -> None:
+        """Drop table."""
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
+        self._metadata.clear()
 
 
 class FileSchema(ISchema):
@@ -196,6 +235,50 @@ class FileSchema(ISchema):
 
         return tables
 
+    # ISchema interface implementation
+    @property
+    def fields(self) -> List[Any]:
+        """Get schema fields."""
+        return []
+
+    def add_field(self, field: Any) -> None:
+        """Add field to schema."""
+        pass
+
+    def remove_field(self, field_name: str) -> None:
+        """Remove field from schema."""
+        pass
+
+    def get_field(self, field_name: str) -> Optional[Any]:
+        """Get field by name."""
+        return None
+
+    def field_names(self) -> List[str]:
+        """Get field names."""
+        return []
+
+    def field_types(self) -> Dict[str, Any]:
+        """Get field types."""
+        return {}
+
+    def __eq__(self, other: Any) -> bool:
+        """Check equality with another schema."""
+        if not isinstance(other, FileSchema):
+            return False
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        """Get hash for schema."""
+        return hash(self.name)
+
+    def __str__(self) -> str:
+        """Get string representation."""
+        return f"FileSchema(name={self.name})"
+
+    def __repr__(self) -> str:
+        """Get representation."""
+        return f"FileSchema(name={self.name})"
+
 
 class FileStorageManager(IStorageManager):
     """File-based storage manager implementation."""
@@ -231,20 +314,21 @@ class FileStorageManager(IStorageManager):
         """
         return schema in self.schemas
 
-    def drop_schema(self, schema: str) -> None:
+    def drop_schema(self, schema_name: str, cascade: bool = False) -> None:
         """Drop a schema.
 
         Args:
-            schema: Name of the schema to drop.
+            schema_name: Name of the schema to drop.
+            cascade: Whether to cascade the drop operation.
         """
-        if schema in self.schemas and schema != "default":
+        if schema_name in self.schemas and schema_name != "default":
             # Remove schema directory
-            schema_path = os.path.join(self.base_path, schema)
+            schema_path = os.path.join(self.base_path, schema_name)
             if os.path.exists(schema_path):
                 import shutil
 
                 shutil.rmtree(schema_path)
-            del self.schemas[schema]
+            del self.schemas[schema_name]
 
     def list_schemas(self) -> List[str]:
         """List all schemas.
@@ -270,45 +354,67 @@ class FileStorageManager(IStorageManager):
 
     def create_table(
         self,
-        schema: str,
-        table: str,
-        columns: Union[List[MockStructField], MockStructType],
+        schema_name: str,
+        table_name: str,
+        fields: Union[List[MockStructField], MockStructType],
     ) -> None:
         """Create a new table.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
-            columns: Table columns definition.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
+            fields: Table fields definition.
         """
-        if schema not in self.schemas:
-            self.create_schema(schema)
+        if schema_name not in self.schemas:
+            self.create_schema(schema_name)
 
-        self.schemas[schema].create_table(table, columns)
+        self.schemas[schema_name].create_table(table_name, fields)
 
-    def drop_table(self, schema: str, table: str) -> None:
+    def drop_table(self, schema_name: str, table_name: str) -> None:
         """Drop a table.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
         """
-        if schema in self.schemas:
-            self.schemas[schema].drop_table(table)
+        if schema_name in self.schemas:
+            self.schemas[schema_name].drop_table(table_name)
 
     def insert_data(
-        self, schema: str, table: str, data: List[Dict[str, Any]], mode: str = "append"
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
         """Insert data into table.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
             data: Data to insert.
-            mode: Insert mode ("append", "overwrite", "ignore").
         """
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            self.schemas[schema].tables[table].insert_data(data, mode)
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            self.schemas[schema_name].tables[table_name].insert_data(data)
+
+    def query_data(
+        self, schema_name: str, table_name: str, **filters: Any
+    ) -> List[Dict[str, Any]]:
+        """Query data from table.
+
+        Args:
+            schema_name: Name of the schema.
+            table_name: Name of the table.
+            **filters: Optional filter parameters.
+
+        Returns:
+            List of data rows.
+        """
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            return self.schemas[schema_name].tables[table_name].query_data()
+        return []
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
@@ -327,19 +433,23 @@ class FileStorageManager(IStorageManager):
             return self.schemas[schema].tables[table].query_data(filter_expr)
         return []
 
-    def get_table_schema(self, schema: str, table: str) -> Optional[MockStructType]:
+    def get_table_schema(self, schema_name: str, table_name: str) -> MockStructType:
         """Get table schema.
 
         Args:
-            schema: Name of the schema.
-            table: Name of the table.
+            schema_name: Name of the schema.
+            table_name: Name of the table.
 
         Returns:
-            Table schema or None if table doesn't exist.
+            Table schema.
         """
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            return self.schemas[schema].tables[table].get_schema()
-        return None
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            return self.schemas[schema_name].tables[table_name].get_schema()
+        # Return empty schema if table doesn't exist
+        return MockStructType([])
 
     def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.
@@ -372,36 +482,46 @@ class FileStorageManager(IStorageManager):
         self.create_table(schema, name, schema_obj)
 
         # Insert the data
-        self.insert_data(schema, name, data, mode="overwrite")
+        self.insert_data(schema, name, data)
 
-    def list_tables(self, schema: str) -> List[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema.
 
         Args:
-            schema: Name of the schema.
+            schema_name: Name of the schema. If None, list tables in all schemas.
 
         Returns:
             List of table names.
         """
-        if schema not in self.schemas:
-            return []
-        return self.schemas[schema].list_tables()
+        if schema_name is None:
+            # List tables from all schemas
+            all_tables = []
+            for schema in self.schemas.values():
+                all_tables.extend(schema.list_tables())
+            return all_tables
 
-    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+        if schema_name not in self.schemas:
+            return []
+        return self.schemas[schema_name].list_tables()
+
+    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
         """Get table metadata including Delta-specific fields."""
-        if schema not in self.schemas:
-            return None
-        if table not in self.schemas[schema].tables:
-            return None
-        return self.schemas[schema].tables[table].get_metadata()
+        if schema_name not in self.schemas:
+            return {}
+        if table_name not in self.schemas[schema_name].tables:
+            return {}
+        return self.schemas[schema_name].tables[table_name].get_metadata()
 
     def update_table_metadata(
-        self, schema: str, table: str, metadata_updates: Dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata fields."""
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            table_obj = self.schemas[schema].tables[table]
-            table_obj.metadata.update(metadata_updates)
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            table_obj = self.schemas[schema_name].tables[table_name]
+            table_obj._metadata.update(metadata_updates)
 
     def close(self) -> None:
         """Close storage backend and clean up resources.

@@ -6,12 +6,15 @@ This module contains conditional functions including CASE WHEN expressions.
 
 from typing import Any, List, Union, TYPE_CHECKING
 from mock_spark.functions.base import MockColumn, MockColumnOperation
+from mock_spark.core.condition_evaluator import ConditionEvaluator
 
 if TYPE_CHECKING:
     from mock_spark.spark_types import MockDataType
 
 
-def validate_rule(column: Union[MockColumn, str], rule: Union[str, List]) -> MockColumn:
+def validate_rule(
+    column: Union[MockColumn, str], rule: Union[str, List]
+) -> MockColumnOperation:
     """Convert validation rule to column expression.
 
     Args:
@@ -262,6 +265,8 @@ class MockCaseWhen:
     def _evaluate_condition(self, row: dict, condition: Any) -> bool:
         """Evaluate a condition for a given row.
 
+        Delegates to shared ConditionEvaluator for consistency.
+
         Args:
             row: The data row to evaluate against.
             condition: The condition to evaluate.
@@ -269,115 +274,9 @@ class MockCaseWhen:
         Returns:
             True if condition is met, False otherwise.
         """
-        if hasattr(condition, "operation") and hasattr(condition, "column"):
-            # Handle MockColumnOperation
-            from mock_spark.functions.base import MockColumnOperation
+        from mock_spark.core.condition_evaluator import ConditionEvaluator
 
-            if isinstance(condition, MockColumnOperation):
-                return self._evaluate_column_operation(row, condition)
-
-        # For simple values, check if truthy
-        return bool(condition) if condition is not None else False
-
-    def _evaluate_column_operation(self, row: dict, operation: Any) -> bool:
-        """Evaluate a column operation.
-
-        Args:
-            row: The data row to evaluate against.
-            operation: The column operation to evaluate.
-
-        Returns:
-            True if operation evaluates to true, False otherwise.
-        """
-        if operation.operation == "==":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return bool(left_value == right_value)
-        elif operation.operation == "!=":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return bool(left_value != right_value)
-        elif operation.operation == ">":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return (
-                left_value is not None
-                and right_value is not None
-                and left_value > right_value
-            )
-        elif operation.operation == ">=":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return (
-                left_value is not None
-                and right_value is not None
-                and left_value >= right_value
-            )
-        elif operation.operation == "<":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return (
-                left_value is not None
-                and right_value is not None
-                and left_value < right_value
-            )
-        elif operation.operation == "<=":
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
-            return (
-                left_value is not None
-                and right_value is not None
-                and left_value <= right_value
-            )
-        elif operation.operation == "&":
-            # Prevent infinite recursion - check if operands are operations
-            if hasattr(operation.column, "operation"):
-                left_result = self._evaluate_column_operation(row, operation.column)
-            else:
-                left_result = self._evaluate_condition(row, operation.column)
-
-            if hasattr(operation.value, "operation"):
-                right_result = self._evaluate_column_operation(row, operation.value)
-            else:
-                right_result = self._evaluate_condition(row, operation.value)
-
-            return left_result and right_result
-        elif operation.operation == "|":
-            # Prevent infinite recursion - check if operands are operations
-            if hasattr(operation.column, "operation"):
-                left_result = self._evaluate_column_operation(row, operation.column)
-            else:
-                left_result = self._evaluate_condition(row, operation.column)
-
-            if hasattr(operation.value, "operation"):
-                right_result = self._evaluate_column_operation(row, operation.value)
-            else:
-                right_result = self._evaluate_condition(row, operation.value)
-
-            return left_result or right_result
-        else:
-            return False
-
-    def _get_column_value(self, row: dict, column: Any) -> Any:
-        """Get the value of a column from a row.
-
-        Args:
-            row: The data row.
-            column: The column to get the value for.
-
-        Returns:
-            The column value.
-        """
-        if hasattr(column, "name"):
-            return row.get(column.name)
-        elif hasattr(column, "value"):
-            return column.value
-        elif hasattr(column, "operation") and hasattr(column, "column"):
-            # This is a MockColumnOperation - we need to evaluate it
-            # For now, return None - this needs to be fixed
-            return None
-        else:
-            return column
+        return ConditionEvaluator.evaluate_condition(row, condition)
 
     def _evaluate_value(self, row: dict, value: Any) -> Any:
         """Evaluate a value for a given row.
@@ -419,17 +318,17 @@ class MockCaseWhen:
         """
         if operation.operation == "-" and operation.value is None:
             # Unary minus operation
-            left_value = self._get_column_value(row, operation.column)
+            left_value = ConditionEvaluator._get_column_value(row, operation.column)
             if left_value is None:
                 return None
             return -left_value
         elif operation.operation == "+" and operation.value is None:
             # Unary plus operation (just return the value)
-            return self._get_column_value(row, operation.column)
+            return ConditionEvaluator._get_column_value(row, operation.column)
         elif operation.operation in ["+", "-", "*", "/", "%"]:
             # Binary arithmetic operations
-            left_value = self._get_column_value(row, operation.column)
-            right_value = self._get_column_value(row, operation.value)
+            left_value = ConditionEvaluator._get_column_value(row, operation.column)
+            right_value = ConditionEvaluator._get_column_value(row, operation.value)
 
             if left_value is None or right_value is None:
                 return None
@@ -446,7 +345,7 @@ class MockCaseWhen:
                 return left_value % right_value if right_value != 0 else None
         else:
             # For other operations, try to get the column value
-            return self._get_column_value(row, operation.column)
+            return ConditionEvaluator._get_column_value(row, operation.column)
 
 
 class ConditionalFunctions:

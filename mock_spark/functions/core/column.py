@@ -263,6 +263,7 @@ class MockColumnOperation(IColumn):
         self.operation = operation
         self.value = value
         self._name = name or self._generate_name()
+        self._alias_name: Optional[str] = None
         self.function_name = operation
         self.return_type: Optional[Any] = None  # Type hint for return type
 
@@ -573,18 +574,6 @@ class MockColumnOperation(IColumn):
     def cast(self, data_type: MockDataType) -> "MockColumnOperation":
         """Cast operation result to different data type."""
         return MockColumnOperation(self, "cast", data_type)
-
-    def when(self, condition: "MockColumnOperation", value: Any) -> "MockCaseWhen":
-        """Start a CASE WHEN expression."""
-        from ..conditional import MockCaseWhen
-
-        return MockCaseWhen(self, condition, value)
-
-    def otherwise(self, value: Any) -> "MockCaseWhen":
-        """End a CASE WHEN expression with default value."""
-        from ..conditional import MockCaseWhen
-
-        return MockCaseWhen(self, None, value)
 
     def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
         """Apply window function over window specification."""

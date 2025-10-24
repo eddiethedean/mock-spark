@@ -5,7 +5,6 @@ Tests type conversions between MockSpark and PySpark
 to ensure identical behavior and results.
 """
 
-import pytest
 from tests.api_parity.conftest import ParityTestBase, compare_dataframes
 
 
@@ -16,12 +15,16 @@ class TestTypeCasting(ParityTestBase):
         """Test casting to string type."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
-        mock_result = mock_df.select("id", mock_df.value.cast("string").alias("value_str"))
-        
+        mock_result = mock_df.select(
+            "id", mock_df.value.cast("string").alias("value_str")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.value.cast("string").alias("value_str"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.value.cast("string").alias("value_str")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -30,11 +33,13 @@ class TestTypeCasting(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
         mock_result = mock_df.select("id", mock_df.value.cast("int").alias("value_int"))
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.value.cast("int").alias("value_int"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.value.cast("int").alias("value_int")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -42,12 +47,16 @@ class TestTypeCasting(ParityTestBase):
         """Test casting to long type."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
-        mock_result = mock_df.select("id", mock_df.value.cast("long").alias("value_long"))
-        
+        mock_result = mock_df.select(
+            "id", mock_df.value.cast("long").alias("value_long")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.value.cast("long").alias("value_long"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.value.cast("long").alias("value_long")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -55,12 +64,16 @@ class TestTypeCasting(ParityTestBase):
         """Test casting to double type."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
-        mock_result = mock_df.select("id", mock_df.value.cast("double").alias("value_double"))
-        
+        mock_result = mock_df.select(
+            "id", mock_df.value.cast("double").alias("value_double")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.value.cast("double").alias("value_double"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.value.cast("double").alias("value_double")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -68,12 +81,16 @@ class TestTypeCasting(ParityTestBase):
         """Test casting to float type."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
-        mock_result = mock_df.select("id", mock_df.value.cast("float").alias("value_float"))
-        
+        mock_result = mock_df.select(
+            "id", mock_df.value.cast("float").alias("value_float")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.value.cast("float").alias("value_float"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.value.cast("float").alias("value_float")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -81,12 +98,16 @@ class TestTypeCasting(ParityTestBase):
         """Test casting to boolean type."""
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
-        mock_result = mock_df.select("id", mock_df.flag.cast("boolean").alias("flag_bool"))
-        
+        mock_result = mock_df.select(
+            "id", mock_df.flag.cast("boolean").alias("flag_bool")
+        )
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
-        pyspark_result = pyspark_df.select("id", pyspark_df.flag.cast("boolean").alias("flag_bool"))
-        
+        pyspark_result = pyspark_df.select(
+            "id", pyspark_df.flag.cast("boolean").alias("flag_bool")
+        )
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -97,23 +118,23 @@ class TestTypeCasting(ParityTestBase):
             {"id": 2, "value_str": "20.7"},
             {"id": 3, "value_str": "30.9"},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
             "id",
             mock_df.value_str.cast("double").alias("value_double"),
-            mock_df.value_str.cast("int").alias("value_int")
+            mock_df.value_str.cast("int").alias("value_int"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
             "id",
             pyspark_df.value_str.cast("double").alias("value_double"),
-            pyspark_df.value_str.cast("int").alias("value_int")
+            pyspark_df.value_str.cast("int").alias("value_int"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -124,23 +145,23 @@ class TestTypeCasting(ParityTestBase):
             {"id": 2, "value": None, "text": None},
             {"id": 3, "value": 30.9, "text": "30.9"},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
             "id",
             mock_df.value.cast("string").alias("value_str"),
-            mock_df.text.cast("double").alias("text_double")
+            mock_df.text.cast("double").alias("text_double"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
             "id",
             pyspark_df.value.cast("string").alias("value_str"),
-            pyspark_df.text.cast("double").alias("text_double")
+            pyspark_df.text.cast("double").alias("text_double"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -151,21 +172,19 @@ class TestTypeCasting(ParityTestBase):
             {"id": 2, "text": "invalid"},
             {"id": 3, "text": "30.9"},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
-            "id",
-            mock_df.text.cast("double").alias("text_double")
+            "id", mock_df.text.cast("double").alias("text_double")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
-            "id",
-            pyspark_df.text.cast("double").alias("text_double")
+            "id", pyspark_df.text.cast("double").alias("text_double")
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -176,17 +195,17 @@ class TestTypeCasting(ParityTestBase):
         mock_result = mock_df.select(
             "id",
             mock_df.flag.cast("int").alias("flag_int"),
-            mock_df.flag.cast("double").alias("flag_double")
+            mock_df.flag.cast("double").alias("flag_double"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
         pyspark_result = pyspark_df.select(
             "id",
             pyspark_df.flag.cast("int").alias("flag_int"),
-            pyspark_df.flag.cast("double").alias("flag_double")
+            pyspark_df.flag.cast("double").alias("flag_double"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -198,21 +217,19 @@ class TestTypeCasting(ParityTestBase):
             {"id": 3, "value": 5.0},
             {"id": 4, "value": -1.0},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
-            "id",
-            mock_df.value.cast("boolean").alias("value_bool")
+            "id", mock_df.value.cast("boolean").alias("value_bool")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
-            "id",
-            pyspark_df.value.cast("boolean").alias("value_bool")
+            "id", pyspark_df.value.cast("boolean").alias("value_bool")
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -223,21 +240,19 @@ class TestTypeCasting(ParityTestBase):
             {"id": 2, "value": 20.123},
             {"id": 3, "value": 30.999},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
-            "id",
-            mock_df.value.cast("decimal(10,2)").alias("value_decimal")
+            "id", mock_df.value.cast("decimal(10,2)").alias("value_decimal")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
-            "id",
-            pyspark_df.value.cast("decimal(10,2)").alias("value_decimal")
+            "id", pyspark_df.value.cast("decimal(10,2)").alias("value_decimal")
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -247,23 +262,23 @@ class TestTypeCasting(ParityTestBase):
             {"id": 1, "date_str": "2024-01-15", "timestamp_str": "2024-01-15 10:30:00"},
             {"id": 2, "date_str": "2024-01-16", "timestamp_str": "2024-01-16 14:45:00"},
         ]
-        
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(data)
         mock_result = mock_df.select(
             "id",
             mock_df.date_str.cast("date").alias("date_col"),
-            mock_df.timestamp_str.cast("timestamp").alias("timestamp_col")
+            mock_df.timestamp_str.cast("timestamp").alias("timestamp_col"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(data)
         pyspark_result = pyspark_df.select(
             "id",
             pyspark_df.date_str.cast("date").alias("date_col"),
-            pyspark_df.timestamp_str.cast("timestamp").alias("timestamp_col")
+            pyspark_df.timestamp_str.cast("timestamp").alias("timestamp_col"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -272,17 +287,15 @@ class TestTypeCasting(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(complex_data)
         mock_result = mock_df.select(
-            "id",
-            mock_df.scores.cast("string").alias("scores_str")
+            "id", mock_df.scores.cast("string").alias("scores_str")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(complex_data)
         pyspark_result = pyspark_df.select(
-            "id",
-            pyspark_df.scores.cast("string").alias("scores_str")
+            "id", pyspark_df.scores.cast("string").alias("scores_str")
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -291,17 +304,15 @@ class TestTypeCasting(ParityTestBase):
         # MockSpark
         mock_df = mock_spark.createDataFrame(complex_data)
         mock_result = mock_df.select(
-            "id",
-            mock_df.metadata.cast("string").alias("metadata_str")
+            "id", mock_df.metadata.cast("string").alias("metadata_str")
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(complex_data)
         pyspark_result = pyspark_df.select(
-            "id",
-            pyspark_df.metadata.cast("string").alias("metadata_str")
+            "id", pyspark_df.metadata.cast("string").alias("metadata_str")
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -314,9 +325,9 @@ class TestTypeCasting(ParityTestBase):
             mock_df.value.cast("string").alias("value_str"),
             mock_df.value.cast("int").alias("value_int"),
             mock_df.value.cast("long").alias("value_long"),
-            mock_df.flag.cast("int").alias("flag_int")
+            mock_df.flag.cast("int").alias("flag_int"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
         pyspark_result = pyspark_df.select(
@@ -324,9 +335,9 @@ class TestTypeCasting(ParityTestBase):
             pyspark_df.value.cast("string").alias("value_str"),
             pyspark_df.value.cast("int").alias("value_int"),
             pyspark_df.value.cast("long").alias("value_long"),
-            pyspark_df.flag.cast("int").alias("flag_int")
+            pyspark_df.flag.cast("int").alias("flag_int"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -337,17 +348,17 @@ class TestTypeCasting(ParityTestBase):
         mock_result = mock_df.select(
             "id",
             mock_df.value.cast("string").alias("string_value"),
-            mock_df.value.cast("int").alias("int_value")
+            mock_df.value.cast("int").alias("int_value"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
         pyspark_result = pyspark_df.select(
             "id",
             pyspark_df.value.cast("string").alias("string_value"),
-            pyspark_df.value.cast("int").alias("int_value")
+            pyspark_df.value.cast("int").alias("int_value"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)
 
@@ -358,16 +369,16 @@ class TestTypeCasting(ParityTestBase):
         mock_result = mock_df.select(
             "id",
             (mock_df.value.cast("int") + 10).alias("value_plus_10"),
-            (mock_df.value.cast("string") + "_suffix").alias("value_with_suffix")
+            (mock_df.value.cast("string") + "_suffix").alias("value_with_suffix"),
         )
-        
+
         # PySpark
         pyspark_df = pyspark_spark.createDataFrame(numeric_data)
         pyspark_result = pyspark_df.select(
             "id",
             (pyspark_df.value.cast("int") + 10).alias("value_plus_10"),
-            (pyspark_df.value.cast("string") + "_suffix").alias("value_with_suffix")
+            (pyspark_df.value.cast("string") + "_suffix").alias("value_with_suffix"),
         )
-        
+
         # Compare
         compare_dataframes(mock_result, pyspark_result)

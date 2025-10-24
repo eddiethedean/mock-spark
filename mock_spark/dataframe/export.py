@@ -31,7 +31,7 @@ class DataFrameExporter:
             ImportError: If pandas is not installed
         """
         # Handle lazy evaluation
-        if df.is_lazy and df._operations_queue:
+        if df._operations_queue:
             materialized = df._materialize_if_lazy()
             return DataFrameExporter.to_pandas(materialized)
 

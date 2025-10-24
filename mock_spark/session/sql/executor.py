@@ -565,9 +565,7 @@ class MockSQLExecutor:
             target_schema, target_name, target_df.schema.fields
         )  # type: ignore[attr-defined]
         if updated_rows:
-            self.session.storage.insert_data(
-                target_schema, target_name, updated_rows, mode="append"
-            )  # type: ignore[attr-defined]
+            self.session.storage.insert_data(target_schema, target_name, updated_rows)  # type: ignore[attr-defined]
 
         # MERGE returns empty DataFrame
         return cast(IDataFrame, MockDataFrame([], MockStructType([])))

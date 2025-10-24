@@ -267,9 +267,7 @@ class MockDataFrameWriter:
 
                         # Reinsert existing data with nulls
                         if existing_data:
-                            self.storage.insert_data(
-                                schema, table, existing_data, mode="append"
-                            )
+                            self.storage.insert_data(schema, table, existing_data)
                     else:
                         # Schema mismatch without mergeSchema - raise error
                         from ..errors import AnalysisException
@@ -298,7 +296,7 @@ class MockDataFrameWriter:
         data = self.df.collect()
         # Convert MockRow objects to dictionaries
         dict_data = [row.asDict() for row in data]
-        self.storage.insert_data(schema, table, dict_data, mode=self.save_mode)
+        self.storage.insert_data(schema, table, dict_data)
 
         # Set Delta-specific metadata
         if is_delta:

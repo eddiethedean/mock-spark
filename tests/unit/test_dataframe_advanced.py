@@ -385,16 +385,20 @@ class TestDataFrameAdvancedOperations:
         df1 = spark.createDataFrame(df1_data)
         df2 = spark.createDataFrame(df2_data)
 
-        # Test simple join with column names
-        result = df1.join(df2, "department_id", "inner")
+        # Rename column to match for join
+        df2_renamed = df2.withColumnRenamed("dept_id", "department_id")
 
-        assert result.count() == 0  # No matching columns with different names
+        # Test simple join with column names
+
+        result = df1.join(df2_renamed, "department_id", "inner")
+
+        assert result.count() == 3  # Should match all rows
         assert "department" in result.columns
 
         # Test left join
-        result2 = df1.join(df2, "department_id", "left")
+        result2 = df1.join(df2_renamed, "department_id", "left")
 
-        assert result2.count() == 0  # No matching columns with different names
+        assert result2.count() == 3  # Should match all rows
         assert "department" in result2.columns
 
     def test_complex_union_operations(self, spark):

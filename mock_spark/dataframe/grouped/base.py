@@ -52,8 +52,8 @@ class MockGroupedData:
         """
         from ...functions.core.literals import MockLiteral
 
-        # Materialize the DataFrame if it's lazy
-        if self.df.is_lazy:
+        # Materialize the DataFrame if it has queued operations
+        if self.df._operations_queue:
             self.df = self.df._materialize_if_lazy()
 
         # Group data by group columns
@@ -210,6 +210,12 @@ class MockGroupedData:
         """
         if expr.startswith("sum("):
             col_name = expr[4:-1]
+            # Validate column exists
+            if col_name not in [field.name for field in self.df.schema.fields]:
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             values = [
                 row.get(col_name, 0)
                 for row in group_rows
@@ -218,6 +224,12 @@ class MockGroupedData:
             return expr, sum(values) if values else 0
         elif expr.startswith("avg("):
             col_name = expr[4:-1]
+            # Validate column exists
+            if col_name not in [field.name for field in self.df.schema.fields]:
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             values = [
                 row.get(col_name, 0)
                 for row in group_rows
@@ -228,12 +240,24 @@ class MockGroupedData:
             return expr, len(group_rows)
         elif expr.startswith("max("):
             col_name = expr[4:-1]
+            # Validate column exists
+            if col_name not in [field.name for field in self.df.schema.fields]:
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
             return expr, max(values) if values else None
         elif expr.startswith("min("):
             col_name = expr[4:-1]
+            # Validate column exists
+            if col_name not in [field.name for field in self.df.schema.fields]:
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
@@ -263,6 +287,29 @@ class MockGroupedData:
         alias_name = expr.name if has_alias else None
 
         if func_name == "sum":
+            # Validate column exists (only for simple column names, not expressions)
+            if (
+                col_name
+                and not any(
+                    op in col_name
+                    for op in [
+                        "+",
+                        "-",
+                        "*",
+                        "/",
+                        "(",
+                        ")",
+                        "extract",
+                        "TRY_CAST",
+                        "AS",
+                    ]
+                )
+                and col_name not in [field.name for field in self.df.schema.fields]
+            ):
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             # Extract and convert values to numeric type
             values = []
             for row in group_rows:
@@ -278,6 +325,29 @@ class MockGroupedData:
             result_key = alias_name if alias_name else f"sum({col_name})"
             return result_key, sum(values) if values else 0
         elif func_name == "avg":
+            # Validate column exists (only for simple column names, not expressions)
+            if (
+                col_name
+                and not any(
+                    op in col_name
+                    for op in [
+                        "+",
+                        "-",
+                        "*",
+                        "/",
+                        "(",
+                        ")",
+                        "extract",
+                        "TRY_CAST",
+                        "AS",
+                    ]
+                )
+                and col_name not in [field.name for field in self.df.schema.fields]
+            ):
+                available_columns = [field.name for field in self.df.schema.fields]
+                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+
+                raise MockSparkColumnNotFoundError(col_name, available_columns)
             # Extract and convert values to numeric type
             values = []
             for row in group_rows:
@@ -565,6 +635,14 @@ class MockGroupedData:
                 alias_name if alias_name else f"approx_count_distinct({col_name})"
             )
             return result_key, distinct_count
+        elif func_name == "countDistinct":
+            # countDistinct(col) - exact distinct count
+            values = [
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
+            ]
+            distinct_count = len(set(values))
+            result_key = alias_name if alias_name else f"countDistinct({col_name})"
+            return result_key, distinct_count
         elif func_name == "stddev_pop":
             # stddev_pop(col) - population standard deviation
             values = [
@@ -780,6 +858,126 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
+    def count_distinct(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Count distinct values in columns.
+
+        Args:
+            *columns: Columns to count distinct values for.
+
+        Returns:
+            MockDataFrame with count distinct results.
+        """
+        from ...functions import count_distinct
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(count_distinct(col))
+            else:
+                exprs.append(count_distinct(col))
+
+        return self.agg(*exprs)
+
+    def collect_set(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Collect unique values into a set.
+
+        Args:
+            *columns: Columns to collect unique values for.
+
+        Returns:
+            MockDataFrame with collect_set results.
+        """
+        from ...functions import collect_set
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(collect_set(col))
+            else:
+                exprs.append(collect_set(col))
+
+        return self.agg(*exprs)
+
+    def first(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Get first value in each group.
+
+        Args:
+            *columns: Columns to get first values for.
+
+        Returns:
+            MockDataFrame with first values.
+        """
+        from ...functions import first
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(first(col))
+            else:
+                exprs.append(first(col))
+
+        return self.agg(*exprs)
+
+    def last(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Get last value in each group.
+
+        Args:
+            *columns: Columns to get last values for.
+
+        Returns:
+            MockDataFrame with last values.
+        """
+        from ...functions import last
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(last(col))
+            else:
+                exprs.append(last(col))
+
+        return self.agg(*exprs)
+
+    def stddev(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Calculate standard deviation.
+
+        Args:
+            *columns: Columns to calculate standard deviation for.
+
+        Returns:
+            MockDataFrame with standard deviation results.
+        """
+        from ...functions import stddev
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(stddev(col))
+            else:
+                exprs.append(stddev(col))
+
+        return self.agg(*exprs)
+
+    def variance(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+        """Calculate variance.
+
+        Args:
+            *columns: Columns to calculate variance for.
+
+        Returns:
+            MockDataFrame with variance results.
+        """
+        from ...functions import variance
+
+        exprs = []
+        for col in columns:
+            if isinstance(col, MockColumn):
+                exprs.append(variance(col))
+            else:
+                exprs.append(variance(col))
+
+        return self.agg(*exprs)
+
     def rollup(self, *columns: Union[str, MockColumn]) -> "MockRollupGroupedData":
         """Create rollup grouped data for hierarchical grouping.
 
@@ -890,7 +1088,7 @@ class MockGroupedData:
             )
 
         # Materialize DataFrame if lazy
-        if self.df.is_lazy:
+        if self.df._operations_queue:
             df = self.df._materialize_if_lazy()
         else:
             df = self.df
@@ -982,7 +1180,7 @@ class MockGroupedData:
             )
 
         # Materialize DataFrame if lazy
-        if self.df.is_lazy:
+        if self.df._operations_queue:
             df = self.df._materialize_if_lazy()
         else:
             df = self.df

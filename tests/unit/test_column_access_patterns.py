@@ -58,9 +58,9 @@ class TestColumnAccessPatterns:
         salary_col = df.salary
 
         # Verify they are MockColumn objects
-        assert hasattr(name_col, 'name')
-        assert hasattr(age_col, 'name')
-        assert hasattr(salary_col, 'name')
+        assert hasattr(name_col, "name")
+        assert hasattr(age_col, "name")
+        assert hasattr(salary_col, "name")
 
         # Verify column names
         assert name_col.name == "name"
@@ -75,7 +75,7 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.name.alias("employee_name"),
             df.age.cast("string").alias("age_str"),
-            df.salary.cast("long").alias("salary_long")
+            df.salary.cast("long").alias("salary_long"),
         )
 
         assert result.count() == 3
@@ -93,7 +93,7 @@ class TestColumnAccessPatterns:
         assert result.collect()[0]["name"] == "Charlie"
 
         # Test multiple conditions
-        result = df.filter((df.age > 25) & (df.active == True))
+        result = df.filter((df.age > 25) & (df.active))
         assert result.count() == 1
         assert result.collect()[0]["name"] == "Charlie"
 
@@ -142,7 +142,9 @@ class TestColumnAccessPatterns:
 
         # Test operations on derived column
         result = df_with_derived.filter(df_with_derived.age_days > 10000)
-        assert result.count() == 2  # Bob (30*365=10950) and Charlie (35*365=12775) > 10000
+        assert (
+            result.count() == 2
+        )  # Bob (30*365=10950) and Charlie (35*365=12775) > 10000
 
     def test_df_column_access_chained_operations(self, spark, sample_data):
         """Test chained operations with df.column_name."""
@@ -152,7 +154,7 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.name,
             df.age.cast("string").alias("age_str"),
-            (df.salary / 1000).cast("int").alias("salary_k")
+            (df.salary / 1000).cast("int").alias("salary_k"),
         )
 
         assert result.count() == 3
@@ -168,7 +170,7 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.name,
             F.upper(df.department).alias("dept_upper"),
-            F.when(df.age > 30, "Senior").otherwise("Junior").alias("level")
+            F.when(df.age > 30, "Senior").otherwise("Junior").alias("level"),
         )
 
         assert result.count() == 3
@@ -211,7 +213,7 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.timestamp,
             F.hour(df.timestamp).alias("hour"),
-            F.day(df.timestamp).alias("day")
+            F.day(df.timestamp).alias("day"),
         )
 
         assert result.count() == 3
@@ -227,7 +229,9 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.name,
             (df.salary * 1.1).cast("int").alias("salary_with_bonus"),
-            F.when(df.age > 30, df.salary * 1.2).otherwise(df.salary).alias("adjusted_salary")
+            F.when(df.age > 30, df.salary * 1.2)
+            .otherwise(df.salary)
+            .alias("adjusted_salary"),
         )
 
         assert result.count() == 3
@@ -243,7 +247,7 @@ class TestColumnAccessPatterns:
         result = df.select(
             df.name.alias("employee_name"),
             df.age.alias("employee_age"),
-            df.salary.alias("employee_salary")
+            df.salary.alias("employee_salary"),
         )
 
         assert result.count() == 3
@@ -258,7 +262,9 @@ class TestColumnAccessPatterns:
         # Test nested operations
         result = df.select(
             df.name,
-            F.when(df.age > 30, F.upper(df.department)).otherwise(df.department).alias("dept_upper_if_senior")
+            F.when(df.age > 30, F.upper(df.department))
+            .otherwise(df.department)
+            .alias("dept_upper_if_senior"),
         )
 
         assert result.count() == 3
@@ -273,7 +279,7 @@ class TestColumnAccessPatterns:
         result = df.groupBy(df.department).agg(
             F.count(df.name).alias("count"),
             F.avg(df.salary).alias("avg_salary"),
-            F.max(df.age).alias("max_age")
+            F.max(df.age).alias("max_age"),
         )
 
         assert result.count() == 2  # Two departments

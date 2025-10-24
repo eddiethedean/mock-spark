@@ -29,8 +29,9 @@ Example:
     >>> storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 """
 
-# Import interfaces
-from .interfaces import IStorageManager, ITable, ISchema
+# Import interfaces from canonical location
+from ..core.interfaces.storage import IStorageManager, ITable
+from ..core.types.schema import ISchema
 
 # Import backends
 from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema

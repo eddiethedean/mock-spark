@@ -40,7 +40,7 @@ class TestLazyEvaluationCompatibility:
         )
 
         # Verify that operations are queued but not executed
-        assert result.is_lazy is True
+        assert len(result._operations_queue) > 0
         assert len(result._operations_queue) == 4  # filter, select, withColumn, orderBy
 
         # Original data should be unchanged
@@ -136,7 +136,7 @@ class TestLazyEvaluationCompatibility:
         ).filter(F.col("rank") <= 2)
 
         # Verify operations are queued
-        assert result.is_lazy is True
+        assert len(result._operations_queue) > 0
         assert len(result._operations_queue) == 2  # select with window, filter
 
         # Materialize and verify results
@@ -189,7 +189,7 @@ class TestLazyEvaluationCompatibility:
         )
 
         # Verify operations are queued
-        assert result.is_lazy is True
+        assert len(result._operations_queue) > 0
         assert len(result._operations_queue) == 3  # join, select, orderBy
 
         # Materialize and verify results
@@ -208,7 +208,7 @@ class TestLazyEvaluationCompatibility:
         result = df1.union(df2).union(df3).filter(F.col("id") > 1).orderBy("id")
 
         # Verify operations are queued
-        assert result.is_lazy is True
+        assert len(result._operations_queue) > 0
         assert len(result._operations_queue) == 4  # union, union, filter, orderBy
 
         # Materialize and verify results
@@ -231,7 +231,7 @@ class TestLazyEvaluationCompatibility:
         )
 
         # Verify operations are queued
-        assert result.is_lazy is True
+        assert len(result._operations_queue) > 0
         assert (
             len(result._operations_queue) == 5
         )  # filter, withColumn, filter, select, orderBy
@@ -280,7 +280,7 @@ class TestLazyEvaluationCompatibility:
         df_lazy = spark_lazy.createDataFrame([{"a": 1}, {"a": 2}])
         result_lazy = df_lazy.filter(F.col("a") > 1)
 
-        assert result_lazy.is_lazy is True
+        assert len(result_lazy._operations_queue) > 0
         assert len(result_lazy._operations_queue) == 1
 
         # Test eager mode
@@ -288,7 +288,7 @@ class TestLazyEvaluationCompatibility:
         df_eager = spark_eager.createDataFrame([{"a": 1}, {"a": 2}])
         result_eager = df_eager.filter(F.col("a") > 1)
 
-        assert result_eager.is_lazy is False
+        assert len(result_eager._operations_queue) == 0
         assert len(result_eager._operations_queue) == 0
         assert len(result_eager.data) == 1  # Already filtered
 

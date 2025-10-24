@@ -26,7 +26,7 @@ class TestCTEOptimization:
         ]
 
         # Create DataFrame with lazy evaluation
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Chain multiple operations
         result_df = (
@@ -60,7 +60,7 @@ class TestCTEOptimization:
 
         data = [{"id": i, "value": i * 10} for i in range(1, 11)]
 
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Chain operations including orderBy and limit
         result_df = (
@@ -89,7 +89,7 @@ class TestCTEOptimization:
             {"a": 30, "b": 15, "c": 4},
         ]
 
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Chain operations with complex expressions
         result_df = (
@@ -119,7 +119,7 @@ class TestCTEOptimization:
 
         data = [{"id": i, "value": i * 10} for i in range(1, 6)]
 
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Even if CTE optimization fails, operations should still work
         result_df = df.filter(F.col("value") > 20).withColumn(
@@ -137,7 +137,7 @@ class TestCTEOptimization:
 
         data = [{"id": 1, "value": 10}, {"id": 2, "value": 20}]
 
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Filter that results in empty DataFrame
         result_df = df.filter(F.col("value") > 100).select("id", "value")
@@ -152,7 +152,7 @@ class TestCTEOptimization:
 
         data = [{"id": 1, "value": 10}, {"id": 2, "value": 20}, {"id": 3, "value": 30}]
 
-        df = spark.createDataFrame(data).withLazy(True)
+        df = spark.createDataFrame(data)
 
         # Single filter operation
         result_df = df.filter(F.col("value") >= 20)

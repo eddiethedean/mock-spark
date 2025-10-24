@@ -6,7 +6,7 @@ in column expressions and transformations.
 """
 
 from typing import Any, Optional, TYPE_CHECKING
-from ...spark_types import MockDataType, StringType
+from ...spark_types import MockDataType
 from ...core.interfaces.functions import IColumn
 
 if TYPE_CHECKING:
@@ -50,42 +50,17 @@ class MockLiteral(IColumn):
     def _infer_type(self, value: Any) -> MockDataType:
         """Infer data type from value.
 
+        Delegates to SchemaInferenceEngine for consistency.
+
         Args:
             value: The value to infer type for.
 
         Returns:
             Inferred MockDataType.
         """
-        if value is None:
-            return StringType()
-        elif isinstance(value, bool):
-            from ...spark_types import BooleanType
+        from ...core.schema_inference import SchemaInferenceEngine
 
-            return BooleanType(nullable=False)
-        elif isinstance(value, int):
-            from ...spark_types import IntegerType
-
-            return IntegerType(nullable=False)
-        elif isinstance(value, float):
-            from ...spark_types import DoubleType
-
-            return DoubleType(nullable=False)
-        elif isinstance(value, str):
-            return StringType(nullable=False)
-        elif isinstance(value, list):
-            from ...spark_types import ArrayType
-
-            if value:
-                element_type = self._infer_type(value[0])
-            else:
-                element_type = StringType()
-            return ArrayType(element_type)
-        elif isinstance(value, dict):
-            from ...spark_types import MapType
-
-            return MapType(StringType(), StringType())
-        else:
-            return StringType()
+        return SchemaInferenceEngine._infer_type(value)
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison.

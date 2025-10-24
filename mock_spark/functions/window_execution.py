@@ -166,14 +166,22 @@ class MockWindowFunction:
         """Evaluate lag() window function."""
         results: List[Any] = [None]  # First row has no previous value
         for i in range(1, len(data)):
-            results.append(data[i - 1])
+            # Get the column value from the previous row
+            if self.column_name and self.column_name in data[i - 1]:
+                results.append(data[i - 1][self.column_name])
+            else:
+                results.append(None)
         return results
 
     def _evaluate_lead(self, data: List[dict]) -> List[Any]:
         """Evaluate lead() window function."""
         results: List[Any] = []
         for i in range(len(data) - 1):
-            results.append(data[i + 1])
+            # Get the column value from the next row
+            if self.column_name and self.column_name in data[i + 1]:
+                results.append(data[i + 1][self.column_name])
+            else:
+                results.append(None)
         results.append(None)  # Last row has no next value
         return results
 

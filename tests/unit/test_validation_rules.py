@@ -22,11 +22,41 @@ class TestValidationRules:
     def sample_data(self):
         """Sample data for testing."""
         return [
-            {"id": 1, "name": "Alice", "age": 25, "salary": 50000, "email": "alice@example.com"},
-            {"id": 2, "name": "Bob", "age": 30, "salary": 60000, "email": "bob@test.com"},
-            {"id": 3, "name": "Charlie", "age": 35, "salary": 70000, "email": "charlie@company.org"},
-            {"id": 4, "name": "David", "age": 40, "salary": 80000, "email": "david@corp.net"},
-            {"id": 5, "name": "Eve", "age": 45, "salary": 90000, "email": "eve@business.com"},
+            {
+                "id": 1,
+                "name": "Alice",
+                "age": 25,
+                "salary": 50000,
+                "email": "alice@example.com",
+            },
+            {
+                "id": 2,
+                "name": "Bob",
+                "age": 30,
+                "salary": 60000,
+                "email": "bob@test.com",
+            },
+            {
+                "id": 3,
+                "name": "Charlie",
+                "age": 35,
+                "salary": 70000,
+                "email": "charlie@company.org",
+            },
+            {
+                "id": 4,
+                "name": "David",
+                "age": 40,
+                "salary": 80000,
+                "email": "david@corp.net",
+            },
+            {
+                "id": 5,
+                "name": "Eve",
+                "age": 45,
+                "salary": 90000,
+                "email": "eve@business.com",
+            },
         ]
 
     def test_string_validation_rules(self, spark, sample_data):
@@ -199,14 +229,14 @@ class TestValidationRules:
         # Test multiple conditions
         age_rule = validate_rule("age", ["between", 25, 40])
         salary_rule = validate_rule("salary", ["gte", 60000])
-        
+
         result = df.filter(age_rule & salary_rule)
         assert result.count() == 3  # 3 people meet both criteria (Bob, Charlie, David)
 
         # Test OR conditions
         name_rule = validate_rule("name", ["starts_with", "A"])
         age_rule = validate_rule("age", ["gt", 40])
-        
+
         result = df.filter(name_rule | age_rule)
         assert result.count() == 2  # 1 name starts with A, 1 age > 40
 
@@ -215,12 +245,14 @@ class TestValidationRules:
         # Create a larger dataset
         data = []
         for i in range(100):
-            data.append({
-                "id": i,
-                "value": i * 10,
-                "category": f"cat_{i % 10}",
-                "score": i * 0.1,
-            })
+            data.append(
+                {
+                    "id": i,
+                    "value": i * 10,
+                    "category": f"cat_{i % 10}",
+                    "score": i * 0.1,
+                }
+            )
 
         df = spark.createDataFrame(data)
 

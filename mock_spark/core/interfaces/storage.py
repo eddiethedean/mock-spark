@@ -6,8 +6,9 @@ table management, and data persistence.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
-from ..types.schema import ISchema, IStructField
+from typing import Any, Dict, List, Optional, Union
+from ..types.schema import ISchema
+from ...spark_types import MockStructType
 
 
 class IStorageManager(ABC):
@@ -35,7 +36,10 @@ class IStorageManager(ABC):
 
     @abstractmethod
     def create_table(
-        self, schema_name: str, table_name: str, fields: List[IStructField]
+        self,
+        schema_name: str,
+        table_name: str,
+        fields: Union[List[Any], MockStructType],
     ) -> Optional[Any]:
         """Create a new table."""
         pass
@@ -56,7 +60,9 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def get_table_schema(self, schema_name: str, table_name: str) -> ISchema:
+    def get_table_schema(
+        self, schema_name: str, table_name: str
+    ) -> Union[ISchema, MockStructType]:
         """Get table schema."""
         pass
 
@@ -75,8 +81,39 @@ class IStorageManager(ABC):
         pass
 
     @abstractmethod
-    def get_table_metadata(self, schema_name: str, table_name: str) -> "ITableMetadata":
+    def get_table_metadata(
+        self, schema_name: str, table_name: str
+    ) -> Union["ITableMetadata", Dict[str, Any]]:
         """Get table metadata."""
+        pass
+
+    # Optional methods that some implementations use
+    def get_current_schema(self) -> str:
+        """Get current schema (optional)."""
+        return "default"
+
+    def set_current_schema(self, schema_name: str) -> None:
+        """Set current schema (optional)."""
+        pass
+
+    def get_data(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+        """Get all data from table (optional)."""
+        return self.query_data(schema_name, table_name)
+
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
+        """Create a temporary view (optional)."""
+        pass
+
+    def query_table(
+        self, schema_name: str, table_name: str, filter_expr: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Query table with filter (optional)."""
+        return self.query_data(schema_name, table_name)
+
+    def update_table_metadata(
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
+    ) -> None:
+        """Update table metadata (optional)."""
         pass
 
 
@@ -91,13 +128,13 @@ class ITable(ABC):
 
     @property
     @abstractmethod
-    def schema(self) -> ISchema:
+    def schema(self) -> Union[ISchema, MockStructType]:
         """Get table schema."""
         pass
 
     @property
     @abstractmethod
-    def metadata(self) -> "ITableMetadata":
+    def metadata(self) -> Union["ITableMetadata", Dict[str, Any]]:
         """Get table metadata."""
         pass
 

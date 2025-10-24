@@ -13,7 +13,7 @@ import time
 from sqlalchemy import create_engine, MetaData, Table, insert, inspect
 from sqlalchemy.engine import Engine
 
-from mock_spark.storage.interfaces import IStorageManager, ITable, ISchema
+from mock_spark.core.interfaces.storage import IStorageManager, ITable
 from mock_spark.storage.models import (
     StorageMode,
     StorageOperationResult,
@@ -37,8 +37,8 @@ class DuckDBTable(ITable):
         engine: Optional[Engine] = None,
     ):
         """Initialize DuckDB table with type safety."""
-        self.name = name
-        self.schema = schema
+        self._name = name
+        self._schema = schema
         self.connection = connection
         self.sqlalchemy_session = sqlalchemy_session
 
@@ -52,7 +52,7 @@ class DuckDBTable(ITable):
         self.sqlalchemy_table: Optional[Table] = None
 
         # Create simplified metadata using dataclasses
-        self.metadata = {
+        self._metadata = {
             "table_name": name,
             "schema_name": "default",
             "created_at": datetime.utcnow().isoformat(),
@@ -69,12 +69,12 @@ class DuckDBTable(ITable):
     def _create_table_from_schema(self) -> None:
         """Create table from MockSpark schema using SQLAlchemy."""
         # Check if table already exists in metadata
-        if self.name in self.table_metadata.tables:
-            self.sqlalchemy_table = self.table_metadata.tables[self.name]
+        if self._name in self.table_metadata.tables:
+            self.sqlalchemy_table = self.table_metadata.tables[self._name]
         else:
             # Create SQLAlchemy table from MockSpark schema
             self.sqlalchemy_table = create_table_from_mock_schema(
-                self.name, self.schema, self.table_metadata
+                self._name, self._schema, self.table_metadata
             )
 
         # Create the table in the database
@@ -208,13 +208,15 @@ class DuckDBTable(ITable):
 
     def _update_row_count(self, new_rows: int) -> None:
         """Update row count with type safety."""
-        current_count = self.metadata.get("row_count", 0)
-        self.metadata["row_count"] = (
+        current_count = self._metadata.get("row_count", 0)
+        self._metadata["row_count"] = (
             int(current_count) + new_rows if current_count else new_rows
         )
-        self.metadata["updated_at"] = datetime.utcnow().isoformat()
+        self._metadata["updated_at"] = datetime.utcnow().isoformat()
 
-    def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
+    def _query_data_internal(
+        self, filter_expr: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Optimized querying using SQLAlchemy select()."""
         start_time = time.time()
 
@@ -269,15 +271,65 @@ class DuckDBTable(ITable):
 
     def get_schema(self) -> MockStructType:
         """Get table schema."""
-        return self.schema
+        return self._schema
 
     def get_metadata(self) -> Dict[str, Any]:
         """Get table metadata with type safety."""
-        return self.metadata.copy()
+        return self._metadata.copy()
+
+    # ITable interface implementation
+    @property
+    def name(self) -> str:
+        """Get table name."""
+        return self._name
+
+    @property
+    def schema(self) -> MockStructType:
+        """Get table schema."""
+        return self._schema
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Get table metadata."""
+        return self._metadata
+
+    def insert(self, data: List[Dict[str, Any]]) -> None:
+        """Insert data into table."""
+        self.insert_data(data)
+
+    def query(self, **filters: Any) -> List[Dict[str, Any]]:
+        """Query data from table."""
+        return self._query_data_internal()
+
+    def count(self) -> int:
+        """Count rows in table."""
+        count = self._metadata.get("row_count", 0)
+        return int(count) if count is not None else 0
+
+    def truncate(self) -> None:
+        """Truncate table."""
+        # Clear all data but keep table structure
+        if self.sqlalchemy_table is not None:
+            with self.engine.connect() as conn:
+                conn.execute(self.sqlalchemy_table.delete())
+                conn.commit()
+        self._metadata["row_count"] = 0
+        self._metadata["updated_at"] = datetime.utcnow().isoformat()
+
+    def drop(self) -> None:
+        """Drop table."""
+        if self.sqlalchemy_table is not None:
+            with self.engine.connect() as conn:
+                self.sqlalchemy_table.drop(conn)
+                conn.commit()
+
+    def query_data(self, filter_expr: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Query data from table (interface compliance)."""
+        return self._query_data_internal(filter_expr)
 
 
-class DuckDBSchema(ISchema):
-    """DuckDB schema implementation with type safety."""
+class DuckDBSchema:
+    """DuckDB database schema (namespace) implementation with type safety."""
 
     def __init__(
         self,
@@ -438,10 +490,10 @@ class DuckDBStorageManager(IStorageManager):
         """Check if schema exists."""
         return schema in self.schemas
 
-    def drop_schema(self, schema: str) -> None:
+    def drop_schema(self, schema_name: str, cascade: bool = False) -> None:
         """Drop a schema."""
-        if schema in self.schemas and schema != "default":
-            del self.schemas[schema]
+        if schema_name in self.schemas and schema_name != "default":
+            del self.schemas[schema_name]
 
     def list_schemas(self) -> List[str]:
         """List all schemas."""
@@ -455,27 +507,41 @@ class DuckDBStorageManager(IStorageManager):
 
     def create_table(
         self,
-        schema: str,
-        table: str,
+        schema_name: str,
+        table_name: str,
         fields: Union[List[MockStructField], MockStructType],
     ) -> Optional[DuckDBTable]:
         """Create a new table with type safety."""
-        if schema not in self.schemas:
-            self.create_schema(schema)
+        if schema_name not in self.schemas:
+            self.create_schema(schema_name)
 
-        return self.schemas[schema].create_table(table, fields)
+        return self.schemas[schema_name].create_table(table_name, fields)
 
-    def drop_table(self, schema: str, table: str) -> None:
+    def drop_table(self, schema_name: str, table_name: str) -> None:
         """Drop a table."""
-        if schema in self.schemas:
-            self.schemas[schema].drop_table(table)
+        if schema_name in self.schemas:
+            self.schemas[schema_name].drop_table(table_name)
 
     def insert_data(
-        self, schema: str, table: str, data: List[Dict[str, Any]], mode: str = "append"
+        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
         """Insert data with type safety."""
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            self.schemas[schema].tables[table].insert_data(data, mode)
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            self.schemas[schema_name].tables[table_name].insert_data(data)
+
+    def query_data(
+        self, schema_name: str, table_name: str, **filters: Any
+    ) -> List[Dict[str, Any]]:
+        """Query data from table."""
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            return self.schemas[schema_name].tables[table_name].query_data()
+        return []
 
     def query_table(
         self, schema: str, table: str, filter_expr: Optional[str] = None
@@ -485,11 +551,15 @@ class DuckDBStorageManager(IStorageManager):
             return self.schemas[schema].tables[table].query_data(filter_expr)
         return []
 
-    def get_table_schema(self, schema: str, table: str) -> Optional[MockStructType]:
+    def get_table_schema(self, schema_name: str, table_name: str) -> MockStructType:
         """Get table schema."""
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            return self.schemas[schema].tables[table].get_schema()
-        return None
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            return self.schemas[schema_name].tables[table_name].get_schema()
+        # Return empty schema if table doesn't exist
+        return MockStructType([])
 
     def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table."""
@@ -508,7 +578,7 @@ class DuckDBStorageManager(IStorageManager):
         self.create_table(schema, name, schema_obj)
 
         # Insert the data
-        self.insert_data(schema, name, data, mode="overwrite")
+        self.insert_data(schema, name, data)
 
     def get_table(self, schema: str, table: str) -> Optional[DuckDBTable]:
         """Get an existing table."""
@@ -516,27 +586,37 @@ class DuckDBStorageManager(IStorageManager):
             return None
         return self.schemas[schema].tables.get(table)
 
-    def list_tables(self, schema: str = "default") -> List[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
         """List tables in schema."""
-        if schema not in self.schemas:
-            return []
-        return self.schemas[schema].list_tables()
+        if schema_name is None:
+            # List tables from all schemas
+            all_tables = []
+            for schema in self.schemas.values():
+                all_tables.extend(schema.list_tables())
+            return all_tables
 
-    def get_table_metadata(self, schema: str, table: str) -> Optional[Dict[str, Any]]:
+        if schema_name not in self.schemas:
+            return []
+        return self.schemas[schema_name].list_tables()
+
+    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
         """Get table metadata including Delta-specific fields."""
-        if schema not in self.schemas:
-            return None
-        if table not in self.schemas[schema].tables:
-            return None
-        return self.schemas[schema].tables[table].get_metadata()
+        if schema_name not in self.schemas:
+            return {}
+        if table_name not in self.schemas[schema_name].tables:
+            return {}
+        return self.schemas[schema_name].tables[table_name].get_metadata()
 
     def update_table_metadata(
-        self, schema: str, table: str, metadata_updates: Dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
     ) -> None:
         """Update table metadata fields."""
-        if schema in self.schemas and table in self.schemas[schema].tables:
-            table_obj = self.schemas[schema].tables[table]
-            table_obj.metadata.update(metadata_updates)
+        if (
+            schema_name in self.schemas
+            and table_name in self.schemas[schema_name].tables
+        ):
+            table_obj = self.schemas[schema_name].tables[table_name]
+            table_obj._metadata.update(metadata_updates)
 
     def get_database_info(self) -> Dict[str, Any]:
         """Get database information with type safety."""
