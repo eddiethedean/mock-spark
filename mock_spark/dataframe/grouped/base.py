@@ -210,12 +210,10 @@ class MockGroupedData:
         """
         if expr.startswith("sum("):
             col_name = expr[4:-1]
-            # Validate column exists
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
-
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+            # Validate column exists using ValidationHandler
+            from ...dataframe.validation_handler import ValidationHandler
+            validator = ValidationHandler()
+            validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
                 row.get(col_name, 0)
                 for row in group_rows
@@ -224,12 +222,10 @@ class MockGroupedData:
             return expr, sum(values) if values else 0
         elif expr.startswith("avg("):
             col_name = expr[4:-1]
-            # Validate column exists
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
-
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+            # Validate column exists using ValidationHandler
+            from ...dataframe.validation_handler import ValidationHandler
+            validator = ValidationHandler()
+            validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
                 row.get(col_name, 0)
                 for row in group_rows
@@ -240,24 +236,20 @@ class MockGroupedData:
             return expr, len(group_rows)
         elif expr.startswith("max("):
             col_name = expr[4:-1]
-            # Validate column exists
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
-
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+            # Validate column exists using ValidationHandler
+            from ...dataframe.validation_handler import ValidationHandler
+            validator = ValidationHandler()
+            validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
             return expr, max(values) if values else None
         elif expr.startswith("min("):
             col_name = expr[4:-1]
-            # Validate column exists
-            if col_name not in [field.name for field in self.df.schema.fields]:
-                available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
-
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+            # Validate column exists using ValidationHandler
+            from ...dataframe.validation_handler import ValidationHandler
+            validator = ValidationHandler()
+            validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
