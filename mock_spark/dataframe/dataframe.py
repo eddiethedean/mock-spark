@@ -207,7 +207,7 @@ class MockDataFrame:
         """Validate that a column exists in the DataFrame."""
         ColumnValidator.validate_column_exists(self.schema, column_name, operation)
 
-    def _validate_columns_exist(self, column_names: list, operation: str) -> None:
+    def _validate_columns_exist(self, column_names: List[str], operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
         ColumnValidator.validate_columns_exist(self.schema, column_names, operation)
 
@@ -1476,7 +1476,7 @@ class MockDataFrame:
                             )
                             if partition_key not in partition_groups:
                                 partition_groups[partition_key] = []
-                            partition_groups[partition_key].append(i)  # type: ignore[arg-type]
+                            partition_groups[partition_key].append(i)
 
                         # Assign row numbers within each partition
                         for partition_indices in partition_groups.values():
@@ -1491,7 +1491,7 @@ class MockDataFrame:
                                 )
                             else:
                                 # No order by - use original order within partition
-                                sorted_partition_indices = partition_indices  # type: ignore[assignment]
+                                sorted_partition_indices = partition_indices
 
                             # Assign row numbers starting from 1 within each partition
                             for i, original_index in enumerate(
@@ -1763,8 +1763,8 @@ class MockDataFrame:
                     value = row.get(order_col_name)
                     current_values.append(value)
 
-                if previous_values is not None and current_values != previous_values:  # type: ignore[unreachable]
-                    current_rank += 1  # type: ignore[unreachable]
+                if previous_values is not None and current_values != previous_values:
+                    current_rank += 1
 
                 data[idx][col_name] = current_rank
                 previous_values = current_values
@@ -3264,8 +3264,8 @@ class MockDataFrame:
         """
         # In mock implementation, watermarks don't affect behavior
         # Store for potential future use
-        self._watermark_col = eventTime  # type: ignore
-        self._watermark_delay = delayThreshold  # type: ignore
+        self._watermark_col = eventTime
+        self._watermark_delay = delayThreshold
         return self
 
     def melt(
@@ -3403,9 +3403,9 @@ class MockDataFrame:
         if hasattr(self, "_observations"):
             new_df._observations = dict(self._observations)  # type: ignore
         else:
-            new_df._observations = {}  # type: ignore
+            new_df._observations = {}  # type: ignore[attr-defined]
 
-        new_df._observations[name] = exprs  # type: ignore
+        new_df._observations[name] = exprs
         return new_df
 
     @property

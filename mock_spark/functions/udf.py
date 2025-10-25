@@ -25,7 +25,7 @@ class UserDefinedFunction:
 
     def __init__(
         self,
-        func: Callable,
+        func: Callable[..., Any],
         returnType: Any,
         name: Optional[str] = None,
         evalType: str = "SQL",

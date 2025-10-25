@@ -26,7 +26,7 @@ Example:
     ...     spark.table("nonexistent.table")
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from .errors import AnalysisException, PySparkValueError
 
 
@@ -53,11 +53,11 @@ class MockErrorSimulator:
             spark_session: MockSparkSession instance to simulate errors on.
         """
         self.spark_session = spark_session
-        self.error_rules: Dict[str, List[tuple]] = {}
+        self.error_rules: Dict[str, List[Tuple[Callable[..., bool], Exception]]] = {}
         self._original_methods: Dict[str, Any] = {}
 
     def add_rule(
-        self, method_name: str, condition: Callable, exception: Exception
+        self, method_name: str, condition: Callable[..., bool], exception: Exception
     ) -> None:
         """Add an error rule for a specific method.
 
@@ -146,7 +146,7 @@ class MockErrorSimulator:
             for condition, exception in self.error_rules[method_name]:
                 try:
                     if condition(*args, **kwargs):
-                        return exception  # type: ignore[no-any-return]
+                        return exception
                 except Exception:
                     # If condition evaluation fails, skip this rule
                     continue
@@ -172,7 +172,7 @@ class MockErrorSimulator:
             setattr(self.spark_session, method_name, original_method)
         self._original_methods.clear()
 
-    def _wrap_method(self, method_name: str) -> Callable:
+    def _wrap_method(self, method_name: str) -> Callable[..., Any]:
         """Wrap a method with error simulation logic."""
         original_method = getattr(self.spark_session, method_name)
 

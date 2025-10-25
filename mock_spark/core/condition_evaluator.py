@@ -5,7 +5,7 @@ This module provides shared condition evaluation logic to avoid duplication
 between DataFrame and conditional function modules.
 """
 
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional, cast
 from ..functions.base import MockColumn, MockColumnOperation
 
 
@@ -33,7 +33,7 @@ class ConditionEvaluator:
             return expression
 
     @staticmethod
-    def evaluate_condition(row: Dict[str, Any], condition: Any) -> bool:
+    def evaluate_condition(row: Dict[str, Any], condition: Any) -> Optional[bool]:
         """Evaluate a condition for a given row.
 
         Args:
@@ -73,25 +73,25 @@ class ConditionEvaluator:
             right_value = ConditionEvaluator._get_column_value(row, operation.value)
 
             if left_value is None or right_value is None:
-                return None  # type: ignore[return-value]
+                return None
 
             try:
                 if operation_type == "+":
-                    return left_value + right_value
+                    return cast(bool, left_value + right_value)
                 elif operation_type == "-":
-                    return left_value - right_value
+                    return cast(bool, left_value - right_value)
                 elif operation_type == "*":
-                    return left_value * right_value
+                    return cast(bool, left_value * right_value)
                 elif operation_type == "/":
                     if right_value == 0:
-                        return None  # type: ignore[return-value]
-                    return left_value / right_value
+                        return None
+                    return cast(bool, left_value / right_value)
                 elif operation_type == "%":
                     if right_value == 0:
-                        return None  # type: ignore[return-value]
-                    return left_value % right_value
+                        return None
+                    return cast(bool, left_value % right_value)
             except (TypeError, ValueError):
-                return None  # type: ignore[return-value]
+                return None
 
         # Cast operations
         elif operation_type == "cast":
@@ -99,7 +99,7 @@ class ConditionEvaluator:
             target_type = operation.value
 
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
 
             try:
                 if target_type == "long" or target_type == "bigint":
@@ -121,7 +121,7 @@ class ConditionEvaluator:
                 else:
                     return value
             except (TypeError, ValueError):
-                return None  # type: ignore[return-value]
+                return None
 
         # Function operations
         elif operation_type in [
@@ -336,7 +336,7 @@ class ConditionEvaluator:
             start_date = ConditionEvaluator._get_column_value(row, operation.value)
 
             if end_date is None or start_date is None:
-                return None  # type: ignore[return-value]
+                return None
 
             try:
                 from datetime import datetime
@@ -362,14 +362,14 @@ class ConditionEvaluator:
                 # Calculate difference in days
                 return (end_dt - start_dt).days
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "months_between":
             # For months_between, we need two dates - get both values
             end_date = ConditionEvaluator._get_column_value(row, operation.column)
             start_date = ConditionEvaluator._get_column_value(row, operation.value)
 
             if end_date is None or start_date is None:
-                return None  # type: ignore[return-value]
+                return None
 
             try:
                 from datetime import datetime
@@ -397,7 +397,7 @@ class ConditionEvaluator:
                 month_diff = end_dt.month - start_dt.month
                 return year_diff * 12 + month_diff
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         else:
             # For other functions, delegate to the existing function evaluation
             return ConditionEvaluator._evaluate_function_operation(
@@ -425,24 +425,24 @@ class ConditionEvaluator:
 
         operation_type = operation.operation
         if operation_type in ["==", "eq"]:
-            return left_value == right_value
+            return cast(bool, left_value == right_value)
         elif operation_type in ["!=", "ne"]:
-            return left_value != right_value
+            return cast(bool, left_value != right_value)
         elif operation_type in ["<", "lt"]:
-            return left_value < right_value
+            return cast(bool, left_value < right_value)
         elif operation_type in ["<=", "le"]:
-            return left_value <= right_value
+            return cast(bool, left_value <= right_value)
         elif operation_type in [">", "gt"]:
-            return left_value > right_value
+            return cast(bool, left_value > right_value)
         elif operation_type in [">=", "ge"]:
-            return left_value >= right_value
+            return cast(bool, left_value >= right_value)
         else:
             return False
 
     @staticmethod
     def _evaluate_logical_operation(
         row: Dict[str, Any], operation: MockColumnOperation
-    ) -> bool:
+    ) -> Optional[bool]:
         """Evaluate a logical operation.
 
         Args:
@@ -470,7 +470,7 @@ class ConditionEvaluator:
     @staticmethod
     def _evaluate_column_operation(
         row: Dict[str, Any], operation: MockColumnOperation
-    ) -> bool:
+    ) -> Optional[bool]:
         """Evaluate a column operation.
 
         Args:
@@ -573,12 +573,16 @@ class ConditionEvaluator:
             "unix_timestamp",
             "from_unixtime",
         ]:
-            return ConditionEvaluator._evaluate_function_operation(
-                col_value, operation_type
+            return cast(
+                bool,
+                ConditionEvaluator._evaluate_function_operation(
+                    col_value, operation_type
+                ),
             )
         elif operation_type == "transform":
-            return ConditionEvaluator._evaluate_transform_operation(
-                col_value, operation
+            return cast(
+                bool,
+                ConditionEvaluator._evaluate_transform_operation(col_value, operation),
             )
 
         # Arithmetic operations
@@ -587,25 +591,25 @@ class ConditionEvaluator:
             right_value = ConditionEvaluator._get_column_value(row, operation.value)
 
             if left_value is None or right_value is None:
-                return None  # type: ignore[return-value]
+                return None
 
             try:
                 if operation_type == "+":
-                    return left_value + right_value
+                    return cast(bool, left_value + right_value)
                 elif operation_type == "-":
-                    return left_value - right_value
+                    return cast(bool, left_value - right_value)
                 elif operation_type == "*":
-                    return left_value * right_value
+                    return cast(bool, left_value * right_value)
                 elif operation_type == "/":
                     if right_value == 0:
-                        return None  # type: ignore[return-value]
-                    return left_value / right_value
+                        return None
+                    return cast(bool, left_value / right_value)
                 elif operation_type == "%":
                     if right_value == 0:
-                        return None  # type: ignore[return-value]
-                    return left_value % right_value
+                        return None
+                    return cast(bool, left_value % right_value)
             except (TypeError, ValueError, ZeroDivisionError):
-                return None  # type: ignore[return-value]
+                return None
 
         # Logical operations
         if operation_type in ["and", "&"]:
@@ -763,7 +767,7 @@ class ConditionEvaluator:
             return math.radians(float(value)) if value is not None else None
         elif operation_type == "sign":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             val = float(value)
             if val > 0:
                 return 1
@@ -826,26 +830,26 @@ class ConditionEvaluator:
         elif operation_type == "to_date":
             # For to_date, we need a format - this is a simplified version
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
                 return datetime.strptime(str(value), "%Y-%m-%d").date()
             except ValueError:
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "to_timestamp":
             # For to_timestamp, we need a format - this is a simplified version
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
                 return datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
             except ValueError:
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "hour":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -855,10 +859,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.hour
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "day":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -868,10 +872,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.day
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "dayofmonth":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -881,10 +885,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.day
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "month":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -894,10 +898,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.month
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "year":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -907,10 +911,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.year
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "dayofweek":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -920,10 +924,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.weekday() + 1  # PySpark uses 1-based weekday
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "dayofyear":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -933,10 +937,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.timetuple().tm_yday
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "weekofyear":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -946,10 +950,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.isocalendar()[1]
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "quarter":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -959,10 +963,10 @@ class ConditionEvaluator:
                     dt = value
                 return (dt.month - 1) // 3 + 1
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "minute":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -972,10 +976,10 @@ class ConditionEvaluator:
                     dt = value
                 return dt.minute
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "second":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -985,11 +989,11 @@ class ConditionEvaluator:
                     dt = value
                 return dt.second
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "date_add":
             # For date_add, we need days to add - this is a simplified version
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime, timedelta
 
@@ -999,11 +1003,11 @@ class ConditionEvaluator:
                     dt = value
                 return dt + timedelta(days=1)  # Simplified: always add 1 day
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "date_sub":
             # For date_sub, we need days to subtract - this is a simplified version
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime, timedelta
 
@@ -1013,11 +1017,11 @@ class ConditionEvaluator:
                     dt = value
                 return dt - timedelta(days=1)  # Simplified: always subtract 1 day
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "datediff":
             # For datediff, we need two dates - this is a simplified version
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -1027,10 +1031,10 @@ class ConditionEvaluator:
                     dt = value
                 return (datetime.now() - dt).days
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "unix_timestamp":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
@@ -1040,16 +1044,16 @@ class ConditionEvaluator:
                     dt = value
                 return dt.timestamp()
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
         elif operation_type == "from_unixtime":
             if value is None:
-                return None  # type: ignore[return-value]
+                return None
             try:
                 from datetime import datetime
 
                 return datetime.fromtimestamp(float(value))
             except (ValueError, AttributeError):
-                return None  # type: ignore[return-value]
+                return None
 
         # Default fallback
         return None

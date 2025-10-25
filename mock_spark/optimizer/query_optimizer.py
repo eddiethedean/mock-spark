@@ -5,7 +5,7 @@ Provides comprehensive query optimization including filter pushdown,
 column pruning, join optimization, and memory management.
 """
 
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Any, Optional, Set, cast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -240,7 +240,7 @@ class JoinOptimizationRule(OptimizationRule):
 
         # Simple heuristic: sort by estimated size (metadata)
         def get_estimated_size(op: Operation) -> int:
-            return op.metadata.get("estimated_size", 1000)  # Default size
+            return cast(int, op.metadata.get("estimated_size", 1000))  # Default size
 
         return sorted(join_ops, key=get_estimated_size)
 

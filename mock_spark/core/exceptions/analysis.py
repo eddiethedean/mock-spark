@@ -5,7 +5,7 @@ This module provides exception classes for analysis-related errors,
 including SQL parsing, query analysis, and schema validation errors.
 """
 
-from typing import Any, Optional, List
+from typing import Any, Dict, List, Optional
 from .base import MockSparkException
 
 
@@ -30,7 +30,7 @@ class AnalysisException(MockSparkException):
         message: str,
         stackTrace: Optional[Any] = None,
         error_code: Optional[str] = None,
-        context: Optional[dict] = None,
+        context: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, stackTrace)
         self.error_code = error_code

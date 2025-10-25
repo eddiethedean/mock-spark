@@ -424,7 +424,7 @@ class DataFrameOperationExecutor:
         self.table_manager.copy_table_structure(source_table, target_table)
 
     def apply_order_by(
-        self, source_table: str, target_table: str, order_cols: List
+        self, source_table: str, target_table: str, order_cols: List[Any]
     ) -> None:
         """Apply orderBy operation.
 

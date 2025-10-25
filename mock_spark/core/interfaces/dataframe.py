@@ -6,7 +6,7 @@ ensuring consistent behavior across all DataFrame implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 from ..types.schema import ISchema
 
 
@@ -76,7 +76,7 @@ class IDataFrame(ABC):
         pass
 
     @abstractmethod
-    def rename(self, *mapping: tuple) -> "IDataFrame":
+    def rename(self, *mapping: Tuple[str, str]) -> "IDataFrame":
         """Rename columns."""
         pass
 

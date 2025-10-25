@@ -5,7 +5,7 @@ This module provides JSON and CSV processing functions that match PySpark's API.
 Includes parsing, generation, and schema inference for JSON and CSV data.
 """
 
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, Dict
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 
 
@@ -14,7 +14,9 @@ class JSONCSVFunctions:
 
     @staticmethod
     def from_json(
-        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+        column: Union[MockColumn, str],
+        schema: Any,
+        options: Optional[Dict[str, Any]] = None,
     ) -> MockColumnOperation:
         """Parse JSON string column into struct/array column.
 
@@ -110,7 +112,9 @@ class JSONCSVFunctions:
 
     @staticmethod
     def from_csv(
-        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+        column: Union[MockColumn, str],
+        schema: Any,
+        options: Optional[Dict[str, Any]] = None,
     ) -> MockColumnOperation:
         """Parse CSV string column into struct column.
 

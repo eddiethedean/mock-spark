@@ -4,7 +4,7 @@ Window functions for Mock Spark.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from mock_spark.window import MockWindowSpec
 
 
@@ -61,7 +61,7 @@ class MockWindowFunction:
         self.name = name
         return self
 
-    def evaluate(self, data: List[dict]) -> List[Any]:
+    def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate the window function over the data.
 
         Args:
@@ -99,11 +99,11 @@ class MockWindowFunction:
         else:
             return [None] * len(data)
 
-    def _evaluate_row_number(self, data: List[dict]) -> List[int]:
+    def _evaluate_row_number(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate row_number() window function."""
         return list(range(1, len(data) + 1))
 
-    def _evaluate_rank(self, data: List[dict]) -> List[int]:
+    def _evaluate_rank(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate rank() window function."""
         if not data:
             return []
@@ -157,12 +157,12 @@ class MockWindowFunction:
 
         return ranks
 
-    def _evaluate_dense_rank(self, data: List[dict]) -> List[int]:
+    def _evaluate_dense_rank(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate dense_rank() window function."""
         # Simple dense rank implementation - returns row numbers for now
         return list(range(1, len(data) + 1))
 
-    def _evaluate_lag(self, data: List[dict]) -> List[Any]:
+    def _evaluate_lag(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate lag() window function."""
         results: List[Any] = [None]  # First row has no previous value
         for i in range(1, len(data)):
@@ -173,7 +173,7 @@ class MockWindowFunction:
                 results.append(None)
         return results
 
-    def _evaluate_lead(self, data: List[dict]) -> List[Any]:
+    def _evaluate_lead(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate lead() window function."""
         results: List[Any] = []
         for i in range(len(data) - 1):
@@ -185,14 +185,14 @@ class MockWindowFunction:
         results.append(None)  # Last row has no next value
         return results
 
-    def _evaluate_nth_value(self, data: List[dict]) -> List[Any]:
+    def _evaluate_nth_value(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate nth_value() window function."""
         # For simplicity, return the first value for all rows
         if not data:
             return []
         return [data[0]] * len(data)
 
-    def _evaluate_ntile(self, data: List[dict]) -> List[int]:
+    def _evaluate_ntile(self, data: List[Dict[str, Any]]) -> List[int]:
         """Evaluate ntile() window function."""
         if not data:
             return []
@@ -200,21 +200,21 @@ class MockWindowFunction:
         n = len(data)
         return list(range(1, n + 1))
 
-    def _evaluate_cume_dist(self, data: List[dict]) -> List[float]:
+    def _evaluate_cume_dist(self, data: List[Dict[str, Any]]) -> List[float]:
         """Evaluate cume_dist() window function."""
         if not data:
             return []
         n = len(data)
         return [i / n for i in range(1, n + 1)]
 
-    def _evaluate_percent_rank(self, data: List[dict]) -> List[float]:
+    def _evaluate_percent_rank(self, data: List[Dict[str, Any]]) -> List[float]:
         """Evaluate percent_rank() window function."""
         if not data:
             return []
         n = len(data)
         return [i / (n - 1) if n > 1 else 0.0 for i in range(n)]
 
-    def _evaluate_first(self, data: List[dict]) -> List[Any]:
+    def _evaluate_first(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate first() window function."""
         if not data:
             return []
@@ -233,7 +233,7 @@ class MockWindowFunction:
 
         return [first_value] * len(data)
 
-    def _evaluate_last(self, data: List[dict]) -> List[Any]:
+    def _evaluate_last(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate last() window function."""
         if not data:
             return []
@@ -252,7 +252,7 @@ class MockWindowFunction:
 
         return [last_value] * len(data)
 
-    def _evaluate_sum(self, data: List[dict]) -> List[Any]:
+    def _evaluate_sum(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate sum() window function."""
         if not data:
             return []
@@ -276,7 +276,7 @@ class MockWindowFunction:
 
         return result
 
-    def _evaluate_avg(self, data: List[dict]) -> List[Any]:
+    def _evaluate_avg(self, data: List[Dict[str, Any]]) -> List[Any]:
         """Evaluate avg() window function."""
         if not data:
             return []

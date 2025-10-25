@@ -482,7 +482,7 @@ class MathFunctions:
 
             y = MockLiteral(y)  # type: ignore[assignment]
 
-        return MockColumnOperation(y, "atan2", x, name=f"atan2({y}, {x})")  # type: ignore[arg-type]
+        return MockColumnOperation(y, "atan2", x, name=f"atan2({y}, {x})")
 
     @staticmethod
     def cosh(col: Union[MockColumn, str]) -> MockColumnOperation:

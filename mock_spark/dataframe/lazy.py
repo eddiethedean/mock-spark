@@ -5,7 +5,7 @@ This module handles lazy evaluation, operation queuing, and materialization
 for MockDataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, List, TYPE_CHECKING, Optional, Tuple
+from typing import Any, Dict, List, TYPE_CHECKING, Optional, Tuple
 from ..spark_types import (
     StringType,
     MockStructField,
@@ -72,11 +72,13 @@ class LazyEvaluationEngine:
         return MockDataFrame(
             df.data,
             new_schema,
-            df.storage,  # type: ignore[has-type]
+            df.storage,
             operations=df._operations_queue + [(op_name, payload)],
         )
 
-    def optimize_operations(self, operations: List[tuple]) -> List[tuple]:
+    def optimize_operations(
+        self, operations: List[Tuple[str, Any]]
+    ) -> List[Tuple[str, Any]]:
         """Optimize operations using the query optimizer.
 
         Args:
@@ -101,7 +103,9 @@ class LazyEvaluationEngine:
             # If optimization fails, return original operations
             return operations
 
-    def _convert_to_optimizer_operations(self, operations: List[tuple]) -> List[Any]:
+    def _convert_to_optimizer_operations(
+        self, operations: List[Tuple[str, Any]]
+    ) -> List[Any]:
         """Convert operations to optimizer format."""
         from ..optimizer.query_optimizer import Operation, OperationType
 
@@ -143,7 +147,7 @@ class LazyEvaluationEngine:
 
     def _convert_from_optimizer_operations(
         self, optimizer_ops: List[Any]
-    ) -> List[tuple]:
+    ) -> List[Tuple[str, Any]]:
         """Convert optimizer operations back to original format."""
         operations = []
         for op in optimizer_ops:
@@ -169,7 +173,7 @@ class LazyEvaluationEngine:
         if not df._operations_queue:
             from ..dataframe import MockDataFrame
 
-            return MockDataFrame(df.data, df.schema, df.storage)  # type: ignore[has-type]
+            return MockDataFrame(df.data, df.schema, df.storage)
 
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
@@ -204,7 +208,7 @@ class LazyEvaluationEngine:
                 return MockDataFrame(
                     materialized_data,
                     df.schema,
-                    df.storage,  # type: ignore[has-type]
+                    df.storage,
                 )
             finally:
                 materializer.close()
@@ -214,7 +218,9 @@ class LazyEvaluationEngine:
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
-    def _has_default_values(data: List[dict], schema: "MockStructType") -> bool:
+    def _has_default_values(
+        data: List[Dict[str, Any]], schema: "MockStructType"
+    ) -> bool:
         """Check if data contains default values that indicate DuckDB couldn't handle the operations."""
         if not data:
             return False
@@ -246,7 +252,9 @@ class LazyEvaluationEngine:
         return False
 
     @staticmethod
-    def _requires_manual_materialization(operations_queue: List[tuple]) -> bool:
+    def _requires_manual_materialization(
+        operations_queue: List[Tuple[str, Any]],
+    ) -> bool:
         """Check if operations require manual materialization (DuckDB can't handle them)."""
         for op_name, op_val in operations_queue:
             if op_name == "select":
@@ -289,7 +297,7 @@ class LazyEvaluationEngine:
     @staticmethod
     def _convert_materialized_rows(
         rows: List[Any], schema: "MockStructType"
-    ) -> List[dict]:
+    ) -> List[Dict[str, Any]]:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
@@ -367,7 +375,7 @@ class LazyEvaluationEngine:
         """
         from ..dataframe import MockDataFrame
 
-        current = MockDataFrame(df.data, df.schema, df.storage)  # type: ignore[has-type]
+        current = MockDataFrame(df.data, df.schema, df.storage)
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":

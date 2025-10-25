@@ -26,7 +26,7 @@ Example:
            ALICE |           50
 """
 
-from typing import Any, Optional, Union, Callable
+from typing import Any, Optional, Union, Callable, Tuple, Dict
 from .core.column import MockColumn, MockColumnOperation
 from .core.literals import MockLiteral
 from .base import MockAggregateFunction
@@ -821,7 +821,7 @@ class MockFunctions:
         return ConditionalFunctions.when(condition)
 
     @staticmethod
-    def case_when(*conditions: tuple, else_value: Any = None) -> MockCaseWhen:
+    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> MockCaseWhen:
         """Create CASE WHEN expression with multiple conditions."""
         return ConditionalFunctions.case_when(*conditions, else_value=else_value)
 
@@ -973,7 +973,7 @@ class MockFunctions:
             msg = MockLiteral(msg)  # type: ignore[assignment]
 
         return MockColumnOperation(
-            msg,  # type: ignore[arg-type]
+            msg,
             "raise_error",
             name=f"raise_error({msg})",
         )
@@ -1673,7 +1673,9 @@ class MockFunctions:
     # JSON/CSV functions
     @staticmethod
     def from_json(
-        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+        column: Union[MockColumn, str],
+        schema: Any,
+        options: Optional[Dict[str, Any]] = None,
     ) -> MockColumnOperation:
         """Parse JSON string into struct/array."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
@@ -1712,7 +1714,9 @@ class MockFunctions:
 
     @staticmethod
     def from_csv(
-        column: Union[MockColumn, str], schema: Any, options: Optional[dict] = None
+        column: Union[MockColumn, str],
+        schema: Any,
+        options: Optional[Dict[str, Any]] = None,
     ) -> MockColumnOperation:
         """Parse CSV string into struct."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
@@ -1820,7 +1824,9 @@ class MockFunctions:
         return GroupingFunctions.grouping_id(*cols)
 
     @staticmethod
-    def udf(f: Optional[Callable] = None, returnType: Any = None) -> Callable:
+    def udf(
+        f: Optional[Callable[..., Any]] = None, returnType: Any = None
+    ) -> Callable[..., Any]:
         """Create a user-defined function (all PySpark versions).
 
         Args:
@@ -1843,7 +1849,7 @@ class MockFunctions:
         if returnType is None:
             returnType = StringType()
 
-        def udf_wrapper(func: Callable) -> Callable:
+        def udf_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             """Wrap function to create MockColumnOperation."""
 
             def apply_udf(col: Union[MockColumn, str]) -> MockColumnOperation:
@@ -1905,7 +1911,7 @@ class MockFunctions:
         else:
             actual_returnType = returnType if returnType is not None else StringType()
 
-        def pandas_udf_wrapper(func: Callable) -> UserDefinedFunction:
+        def pandas_udf_wrapper(func: Callable[..., Any]) -> UserDefinedFunction:
             """Wrap function to create UserDefinedFunction with Pandas eval type."""
             udf_obj = UserDefinedFunction(func, actual_returnType, evalType="PANDAS")
             return udf_obj

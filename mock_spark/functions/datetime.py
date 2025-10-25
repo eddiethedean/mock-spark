@@ -619,10 +619,10 @@ class DateTimeFunctions:
         elif isinstance(year, str):
             year_col = MockColumn(year)
         else:
-            year_col = year  # type: ignore[assignment]
+            year_col = year
 
         return MockColumnOperation(
-            year_col,  # type: ignore[arg-type]
+            year_col,
             "make_date",
             value=(month, day),
             name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})",
@@ -704,7 +704,7 @@ class DateTimeFunctions:
             timestamp = MockColumn(timestamp)
 
         return MockColumnOperation(
-            timestamp,  # type: ignore[arg-type]
+            timestamp,
             "unix_timestamp",
             value=format,
             name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})",  # type: ignore[union-attr]
@@ -794,7 +794,7 @@ class DateTimeFunctions:
             col = MockLiteral(col)  # type: ignore[assignment]
 
         return MockColumnOperation(
-            col,  # type: ignore[arg-type]
+            col,
             "timestamp_seconds",
             name=f"timestamp_seconds({col})",
         )

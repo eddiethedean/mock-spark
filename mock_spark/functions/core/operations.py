@@ -5,8 +5,18 @@ This module provides arithmetic, comparison, and logical operations
 for MockColumn and MockColumnOperation classes.
 """
 
-from typing import Any
+from typing import Any, List
 from .column import MockColumn, MockColumnOperation
+
+__all__ = [
+    "MockColumnOperation",
+    "ColumnOperations",
+    "ComparisonOperations",
+    "SortOperations",
+    "TypeOperations",
+    "ConditionalOperations",
+    "WindowOperations",
+]
 
 
 class ColumnOperations:
@@ -118,7 +128,7 @@ class ComparisonOperations:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: list) -> MockColumnOperation:
+    def isin(self, values: List[Any]) -> MockColumnOperation:
         """Check if column value is in list of values."""
         return MockColumnOperation(self, "isin", values)
 

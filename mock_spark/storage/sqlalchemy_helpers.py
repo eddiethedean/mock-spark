@@ -53,7 +53,7 @@ def mock_type_to_sqlalchemy(mock_type: Any) -> Any:
     # Handle MapType - use custom type that will be handled with raw SQL
     if "MapType" in type_name or "Map" in type_name:
         # Return a marker type that we can detect later
-        class DuckDBMapType(TypeDecorator):
+        class DuckDBMapType(TypeDecorator[str]):
             impl = String
             cache_ok = True
 
@@ -299,7 +299,7 @@ class TableFactory:
         return create_table_from_data(table_name, data, self.metadata, **kwargs)
 
     def from_columns(
-        self, table_name: str, columns: List[Column], **kwargs: Any
+        self, table_name: str, columns: List[Column[Any]], **kwargs: Any
     ) -> Table:
         """Create table from list of Column objects."""
         return Table(table_name, self.metadata, *columns, **kwargs)

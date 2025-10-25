@@ -536,7 +536,7 @@ class MockGroupedData:
             if group_rows:
                 max_row = max(
                     group_rows, key=lambda r: r.get(ord_col_name, float("-inf"))
-                )  # type: ignore[arg-type]
+                )
                 result_key = alias_name if alias_name else f"max_by({col_name})"
                 return result_key, max_row.get(col_name)
             return alias_name if alias_name else f"max_by({col_name})", None
@@ -552,7 +552,7 @@ class MockGroupedData:
             if group_rows:
                 min_row = min(
                     group_rows, key=lambda r: r.get(ord_col_name, float("inf"))
-                )  # type: ignore[arg-type]
+                )
                 result_key = alias_name if alias_name else f"min_by({col_name})"
                 return result_key, min_row.get(col_name)
             return alias_name if alias_name else f"min_by({col_name})", None
@@ -564,7 +564,7 @@ class MockGroupedData:
                 true_count = 0
                 for row in group_rows:
                     # Evaluate the condition expression
-                    cond_expr = expr.column  # type: ignore[union-attr]
+                    cond_expr = expr.column
                     if (
                         hasattr(cond_expr, "column")
                         and hasattr(cond_expr, "operation")
@@ -574,27 +574,27 @@ class MockGroupedData:
                             cond_expr.column.name
                             if hasattr(cond_expr.column, "name")
                             else cond_expr.column
-                        )  # type: ignore[union-attr]
+                        )
                         comp_val = (
                             cond_expr.value.value
                             if hasattr(cond_expr.value, "value")
                             else cond_expr.value
-                        )  # type: ignore[union-attr]
+                        )
 
                         # Evaluate the condition based on the operation
-                        if cond_expr.operation == ">":  # type: ignore[union-attr]
+                        if cond_expr.operation == ">":
                             if col_val is not None and col_val > comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == "<":  # type: ignore[union-attr]
+                        elif cond_expr.operation == "<":
                             if col_val is not None and col_val < comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == ">=":  # type: ignore[union-attr]
+                        elif cond_expr.operation == ">=":
                             if col_val is not None and col_val >= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == "<=":  # type: ignore[union-attr]
+                        elif cond_expr.operation == "<=":
                             if col_val is not None and col_val <= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == "==":  # type: ignore[union-attr]
+                        elif cond_expr.operation == "==":
                             if col_val is not None and col_val == comp_val:
                                 true_count += 1
                 result_key = alias_name if alias_name else "count_if"
@@ -679,7 +679,7 @@ class MockGroupedData:
                     expr.ord_column.name
                     if hasattr(expr.ord_column, "name")
                     else str(expr.ord_column)
-                )  # type: ignore[union-attr]
+                )
                 values1 = [
                     row.get(col_name)
                     for row in group_rows
@@ -692,8 +692,9 @@ class MockGroupedData:
                 ]
 
                 if len(values1) > 0 and len(values2) > 0:
-                    mean1 = statistics.mean(values1)  # type: ignore[arg-type,type-var]
-                    mean2 = statistics.mean(values2)  # type: ignore[arg-type,type-var]
+                    # Mypy has limitations with statistics.mean and list comprehensions
+                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
+                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
                     if mean1 is not None and mean2 is not None:
                         covar = sum(
                             (x1 - mean1) * (x2 - mean2)

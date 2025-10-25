@@ -122,7 +122,7 @@ class DataFrameFactory:
             if engine_config.enable_type_coercion:
                 data = validator.coerce(data)
 
-        return MockDataFrame(data, schema, storage)  # type: ignore[return-value]
+        return MockDataFrame(data, schema, storage)
 
     def _handle_schema_inference(
         self, data: List[Dict[str, Any]], schema: Optional[Any]

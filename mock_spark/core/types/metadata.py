@@ -6,7 +6,7 @@ including table metadata, field metadata, and general metadata management.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class IMetadata(ABC):
@@ -43,7 +43,7 @@ class IMetadata(ABC):
         pass
 
     @abstractmethod
-    def items(self) -> List[tuple]:
+    def items(self) -> List[Tuple[Any, Any]]:
         """Get all items."""
         pass
 

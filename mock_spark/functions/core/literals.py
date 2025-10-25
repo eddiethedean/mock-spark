@@ -5,7 +5,7 @@ This module provides MockLiteral class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, List, Optional, TYPE_CHECKING, cast
 from ...spark_types import MockDataType
 from ...core.interfaces.functions import IColumn
 
@@ -60,7 +60,7 @@ class MockLiteral(IColumn):
         """
         from ...core.schema_inference import SchemaInferenceEngine
 
-        return SchemaInferenceEngine._infer_type(value)
+        return cast(MockDataType, SchemaInferenceEngine._infer_type(value))
 
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison.
@@ -178,7 +178,7 @@ class MockLiteral(IColumn):
         """Check if literal value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: list) -> "MockColumnOperation":
+    def isin(self, values: List[Any]) -> "MockColumnOperation":
         """Check if literal value is in list of values."""
         from .column import MockColumnOperation
 

@@ -25,7 +25,7 @@ class TableMetadata:
         schema: str,
         created_at: datetime,
         table_schema: MockStructType,
-        properties: dict,
+        properties: Dict[str, Any],
     ):
         """Initialize table metadata.
 

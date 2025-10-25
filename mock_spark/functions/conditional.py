@@ -4,7 +4,7 @@ Conditional functions for Mock Spark.
 This module contains conditional functions including CASE WHEN expressions.
 """
 
-from typing import Any, List, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING, cast
 from mock_spark.functions.base import MockColumn, MockColumnOperation
 from mock_spark.core.condition_evaluator import ConditionEvaluator
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 def validate_rule(
-    column: Union[MockColumn, str], rule: Union[str, List]
+    column: Union[MockColumn, str], rule: Union[str, List[Any]]
 ) -> MockColumnOperation:
     """Convert validation rule to column expression.
 
@@ -57,27 +57,27 @@ def validate_rule(
         if op == "gt":
             if len(rule) < 2:
                 raise ValueError("gt rule requires a value")
-            return column > rule[1]
+            return cast(MockColumnOperation, column > rule[1])
         elif op == "gte":
             if len(rule) < 2:
                 raise ValueError("gte rule requires a value")
-            return column >= rule[1]
+            return cast(MockColumnOperation, column >= rule[1])
         elif op == "lt":
             if len(rule) < 2:
                 raise ValueError("lt rule requires a value")
-            return column < rule[1]
+            return cast(MockColumnOperation, column < rule[1])
         elif op == "lte":
             if len(rule) < 2:
                 raise ValueError("lte rule requires a value")
-            return column <= rule[1]
+            return cast(MockColumnOperation, column <= rule[1])
         elif op == "eq":
             if len(rule) < 2:
                 raise ValueError("eq rule requires a value")
-            return column == rule[1]
+            return cast(MockColumnOperation, column == rule[1])
         elif op == "ne":
             if len(rule) < 2:
                 raise ValueError("ne rule requires a value")
-            return column != rule[1]
+            return cast(MockColumnOperation, column != rule[1])
         elif op == "between":
             if len(rule) < 3:
                 raise ValueError("between rule requires two values")
@@ -128,7 +128,7 @@ class MockCaseWhen:
             value: The value to return if condition is true.
         """
         self.column = column
-        self.conditions: List[tuple] = []
+        self.conditions: List[Tuple[Any, Any]] = []
         self.default_value: Any = None
 
         if condition is not None and value is not None:
@@ -183,7 +183,7 @@ class MockCaseWhen:
         self.name = name
         return self
 
-    def evaluate(self, row: dict) -> Any:
+    def evaluate(self, row: Dict[str, Any]) -> Any:
         """Evaluate the CASE WHEN expression for a given row.
 
         Args:
@@ -262,7 +262,7 @@ class MockCaseWhen:
         # Default to LongType for arithmetic operations, not BooleanType
         return LongType(nullable=not all_literals)
 
-    def _evaluate_condition(self, row: dict, condition: Any) -> bool:
+    def _evaluate_condition(self, row: Dict[str, Any], condition: Any) -> bool:
         """Evaluate a condition for a given row.
 
         Delegates to shared ConditionEvaluator for consistency.
@@ -276,9 +276,9 @@ class MockCaseWhen:
         """
         from mock_spark.core.condition_evaluator import ConditionEvaluator
 
-        return ConditionEvaluator.evaluate_condition(row, condition)
+        return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
-    def _evaluate_value(self, row: dict, value: Any) -> Any:
+    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
         """Evaluate a value for a given row.
 
         Args:
@@ -306,7 +306,9 @@ class MockCaseWhen:
         else:
             return value
 
-    def _evaluate_column_operation_value(self, row: dict, operation: Any) -> Any:
+    def _evaluate_column_operation_value(
+        self, row: Dict[str, Any], operation: Any
+    ) -> Any:
         """Evaluate a column operation for a value.
 
         Args:
@@ -502,7 +504,7 @@ class ConditionalFunctions:
         )
 
     @staticmethod
-    def case_when(*conditions: tuple, else_value: Any = None) -> MockCaseWhen:
+    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> MockCaseWhen:
         """Create CASE WHEN expression with multiple conditions.
 
         Args:

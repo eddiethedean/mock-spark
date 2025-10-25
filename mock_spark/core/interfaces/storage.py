@@ -10,6 +10,15 @@ from typing import Any, Dict, List, Optional, Union
 from ..types.schema import ISchema
 from ...spark_types import MockStructType
 
+__all__ = [
+    "ISchema",
+    "IStorageManager",
+    "ITable",
+    "ITableMetadata",
+    "IDataSerializer",
+    "IDataDeserializer",
+]
+
 
 class IStorageManager(ABC):
     """Abstract interface for storage management."""

@@ -5,7 +5,7 @@ This module provides functionality to parse Spark SQL queries and convert them
 to SQLAlchemy statements, eliminating the need for raw SQL execution.
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, NoReturn, Union, cast
 import sqlglot
 from sqlglot import exp
 from sqlalchemy import (
@@ -56,7 +56,7 @@ class SQLToSQLAlchemyTranslator:
         self.metadata = MetaData()
         self._table_cache: Dict[str, Table] = {}
 
-    def translate(self, sql: str) -> Union[Select, Insert, Update, Delete]:
+    def translate(self, sql: str) -> Union[Select[Any], Insert, Update, Delete]:
         """
         Translate SQL string to SQLAlchemy statement.
 
@@ -122,7 +122,7 @@ class SQLToSQLAlchemyTranslator:
         self._table_cache[table_name] = table
         return table
 
-    def _translate_select(self, ast: exp.Select) -> Select:
+    def _translate_select(self, ast: exp.Select) -> Select[Any]:
         """Translate SELECT statement to SQLAlchemy."""
         # Get FROM table
         from_clause = ast.find(exp.From)
@@ -181,19 +181,19 @@ class SQLToSQLAlchemyTranslator:
                     if join_kind == "LEFT":
                         stmt = stmt.select_from(table).outerjoin(
                             join_table, join_condition
-                        )  # type: ignore[attr-defined]
+                        )
                     elif join_kind == "RIGHT":
                         # SQLAlchemy doesn't have right join, need to swap tables
                         stmt = stmt.select_from(join_table).outerjoin(
                             table, join_condition
-                        )  # type: ignore[attr-defined]
+                        )
                     elif join_kind == "FULL":
-                        stmt = stmt.select_from(table).outerjoin(  # type: ignore[attr-defined]
+                        stmt = stmt.select_from(table).outerjoin(
                             join_table, join_condition, full=True
                         )
                     else:
                         # INNER join (default)
-                        stmt = stmt.select_from(table).join(join_table, join_condition)  # type: ignore[attr-defined]
+                        stmt = stmt.select_from(table).join(join_table, join_condition)
 
         # Add WHERE clause
         where = ast.find(exp.Where)
@@ -295,7 +295,7 @@ class SQLToSQLAlchemyTranslator:
 
     def _translate_join_condition(
         self, on_exp: exp.Expression, left_table: Table, right_table: Table
-    ) -> ColumnElement:
+    ) -> ColumnElement[Any]:
         """Translate JOIN ON condition to SQLAlchemy."""
         # Simple implementation for now - assumes ON clause references columns from both tables
         # This will need enhancement for complex join conditions
@@ -400,14 +400,14 @@ class SQLToSQLAlchemyTranslator:
 
         return stmt
 
-    def _translate_create(self, ast: exp.Create) -> Any:
+    def _translate_create(self, ast: exp.Create) -> NoReturn:
         """Translate CREATE statement (raises error - not supported via translator)."""
         raise SQLTranslationError(
             "CREATE statements should be handled by MockSparkSession.catalog, "
             "not through spark.sql() translation"
         )
 
-    def _translate_drop(self, ast: exp.Drop) -> Any:
+    def _translate_drop(self, ast: exp.Drop) -> NoReturn:
         """Translate DROP statement (raises error - not supported via translator)."""
         raise SQLTranslationError(
             "DROP statements should be handled by MockSparkSession.catalog, "
@@ -416,7 +416,7 @@ class SQLToSQLAlchemyTranslator:
 
     def _translate_expression(
         self, expr: exp.Expression, table: Table
-    ) -> ColumnElement:
+    ) -> ColumnElement[Any]:
         """
         Translate sqlglot expression to SQLAlchemy column element.
 
@@ -522,7 +522,7 @@ class SQLToSQLAlchemyTranslator:
                 f"Unsupported expression type: {type(expr).__name__}"
             )
 
-    def _translate_function(self, expr: exp.Func, table: Table) -> ColumnElement:
+    def _translate_function(self, expr: exp.Func, table: Table) -> ColumnElement[Any]:
         """Translate SQL function to SQLAlchemy function."""
         func_name = expr.__class__.__name__.lower()
 
@@ -662,11 +662,11 @@ class SQLToSQLAlchemyTranslator:
             # Try to get function from mapper
             try:
                 sql_func = get_sqlalchemy_function(func_name)
-                return sql_func(*args)
+                return cast(ColumnElement[Any], sql_func(*args))
             except ValueError:
                 # Fall back to generic func attribute access
                 if hasattr(func, func_name):
-                    return getattr(func, func_name)(*args)
+                    return cast(ColumnElement[Any], getattr(func, func_name)(*args))
                 raise SQLTranslationError(f"Unsupported function: {func_name}")
 
     def _get_cast_type(self, type_exp: exp.Expression) -> Any:
@@ -690,7 +690,7 @@ class SQLToSQLAlchemyTranslator:
         else:
             return String  # Default fallback
 
-    def _translate_case(self, expr: exp.Case, table: Table) -> ColumnElement:
+    def _translate_case(self, expr: exp.Case, table: Table) -> ColumnElement[Any]:
         """Translate CASE WHEN to SQLAlchemy case()."""
         whens = []
 

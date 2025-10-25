@@ -5,7 +5,7 @@ This module provides the MockingCoordinator class, which handles
 mocking of methods, error simulation rules, and test coordination.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 
 class MockingCoordinator:
@@ -98,7 +98,7 @@ class MockingCoordinator:
         if method_name in self._error_rules:
             for condition, exception in self._error_rules[method_name]:
                 if condition(*args, **kwargs):
-                    return exception
+                    return cast(Optional[Exception], exception)
         return None
 
     def clear_error_rules(self) -> None:

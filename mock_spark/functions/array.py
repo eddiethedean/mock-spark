@@ -853,7 +853,7 @@ class ArrayFunctions:
             start = MockLiteral(start)  # type: ignore[assignment]
 
         return MockColumnOperation(
-            start,  # type: ignore[arg-type]
+            start,
             "sequence",
             value=(stop, step),
             name=f"sequence({start}, {stop}, {step})",

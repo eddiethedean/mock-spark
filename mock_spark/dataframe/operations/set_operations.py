@@ -64,7 +64,7 @@ class SetOperations:
     def intersect_rows(rows1: List[MockRow], rows2: List[MockRow]) -> List[MockRow]:
         """Find intersection of two lists of rows."""
 
-        def make_hashable(row: MockRow) -> tuple:
+        def make_hashable(row: MockRow) -> Tuple[Any, ...]:
             row_values = []
             for col in row.__dict__.keys():
                 value = getattr(row, col)
@@ -90,7 +90,7 @@ class SetOperations:
     def except_rows(rows1: List[MockRow], rows2: List[MockRow]) -> List[MockRow]:
         """Find rows in rows1 that are not in rows2."""
 
-        def make_hashable(row: MockRow) -> tuple:
+        def make_hashable(row: MockRow) -> Tuple[Any, ...]:
             row_values = []
             for col in row.__dict__.keys():
                 value = getattr(row, col)

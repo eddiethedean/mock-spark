@@ -4,7 +4,7 @@ Spark SQL Function Mapper.
 Maps Spark SQL functions to SQLAlchemy func.* equivalents for SQL translation.
 """
 
-from typing import Callable, Dict
+from typing import Any, Callable, Dict, cast
 from sqlalchemy import func
 
 
@@ -225,7 +225,7 @@ ALL_FUNCTIONS: Dict[str, str] = {
 }
 
 
-def get_sqlalchemy_function(spark_func_name: str) -> Callable:
+def get_sqlalchemy_function(spark_func_name: str) -> Callable[..., Any]:
     """
     Get SQLAlchemy function equivalent for Spark SQL function.
 
@@ -242,11 +242,11 @@ def get_sqlalchemy_function(spark_func_name: str) -> Callable:
 
     if func_name_lower in ALL_FUNCTIONS:
         sqlalchemy_name = ALL_FUNCTIONS[func_name_lower]
-        return getattr(func, sqlalchemy_name)
+        return cast(Callable[..., Any], getattr(func, sqlalchemy_name))
 
     # Try direct mapping (for functions not in our mapping)
     if hasattr(func, func_name_lower):
-        return getattr(func, func_name_lower)
+        return cast(Callable[..., Any], getattr(func, func_name_lower))
 
     raise ValueError(
         f"Unsupported Spark SQL function: {spark_func_name}. "

@@ -10,7 +10,7 @@ import math
 import re
 import base64
 import datetime as dt_module
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from ...functions import MockColumn, MockColumnOperation
 from ...functions.conditional import MockCaseWhen
@@ -56,7 +56,7 @@ class ExpressionEvaluator:
         """Evaluate condition for a single row."""
         from ...core.condition_evaluator import ConditionEvaluator
 
-        return ConditionEvaluator.evaluate_condition(row, condition)
+        return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
     def _evaluate_case_when(self, row: Dict[str, Any], case_when: MockCaseWhen) -> Any:
         """Evaluate when/otherwise expressions."""
@@ -930,6 +930,6 @@ class ExpressionEvaluator:
             hasattr(value, "year") and hasattr(value, "month") and hasattr(value, "day")
         ):
             # Already a datetime-like object
-            return value
+            return cast(Optional[dt_module.datetime], value)
         else:
             return None

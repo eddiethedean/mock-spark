@@ -115,7 +115,7 @@ class SQLAlchemyQueryBuilder:
             self.table.join(other_table, condition, isouter=isouter, full=isfull)
         )
 
-    def add_union(self, other_stmt: Select) -> None:
+    def add_union(self, other_stmt: Select[Any]) -> None:
         """Add a UNION operation using SQLAlchemy."""
         self.select_stmt = self.select_stmt.union(other_stmt)
 
@@ -169,7 +169,7 @@ class SQLAlchemyQueryBuilder:
 
         operation_func = operation_map.get(op.operation)
         if operation_func:
-            return operation_func(left, right)
+            return operation_func(left, right)  # type: ignore[no-untyped-call]
 
         return literal(str(op))
 

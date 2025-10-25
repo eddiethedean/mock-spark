@@ -180,7 +180,7 @@ class MockPerformanceSimulator:
             setattr(self.spark_session, method_name, original_method)
         self._original_methods.clear()
 
-    def _wrap_method(self, method_name: str) -> Callable:
+    def _wrap_method(self, method_name: str) -> Callable[..., Any]:
         """Wrap a method with performance simulation logic."""
         original_method = getattr(self.spark_session, method_name)
 

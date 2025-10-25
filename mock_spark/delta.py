@@ -20,7 +20,7 @@ For real Delta operations (MERGE, time travel, etc.), use real PySpark + delta-s
 """
 
 from __future__ import annotations
-from typing import Any, Optional, Dict, TYPE_CHECKING
+from typing import Any, Optional, Dict, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from .dataframe import MockDataFrame
@@ -72,9 +72,11 @@ class DeltaTable:
         table_name = path.split("/")[-1] if "/" in path else path
         return cls(spark_session, f"default.{table_name}")
 
-    def toDF(self) -> MockDataFrame:
+    def toDF(self) -> "MockDataFrame":
         """Get DataFrame from Delta table."""
-        return self._spark.table(self._table_name)
+        from .dataframe import MockDataFrame
+
+        return cast(MockDataFrame, self._spark.table(self._table_name))
 
     def alias(self, alias: str) -> DeltaTable:
         """Alias table (returns self for chaining)."""

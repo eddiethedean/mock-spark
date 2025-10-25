@@ -103,7 +103,9 @@ class SQLAlchemyMaterializer:
 
         return duckdb_format
 
-    def _translate_duckdb_error(self, error: Exception, context: dict) -> Exception:
+    def _translate_duckdb_error(
+        self, error: Exception, context: Dict[str, Any]
+    ) -> Exception:
         """Translate DuckDB errors to helpful MockSpark errors."""
         error_msg = str(error).lower()
 
@@ -4225,7 +4227,7 @@ class SQLAlchemyMaterializer:
         target_table: str,
         col_name: str,
         window_func: Any,
-        new_columns: List[Column],
+        new_columns: List[Column[Any]],
     ) -> None:
         """Apply a window function using raw SQL."""
         source_table_obj = self._created_tables[source_table]

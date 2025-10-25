@@ -5,7 +5,7 @@ Provides detailed error messages for DataFrame operations,
 SQL generation, and query execution failures.
 """
 
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from .base import MockSparkException
 
 
@@ -109,7 +109,7 @@ class MockSparkSQLGenerationError(MockSparkException):
 class MockSparkQueryExecutionError(MockSparkException):
     """Raised when query execution fails."""
 
-    def __init__(self, sql: str, error: str, context: Optional[dict] = None):
+    def __init__(self, sql: str, error: str, context: Optional[Dict[str, Any]] = None):
         """Initialize query execution error.
 
         Args:
@@ -132,7 +132,7 @@ class MockSparkQueryExecutionError(MockSparkException):
 class MockSparkColumnNotFoundError(MockSparkException, AttributeError):
     """Raised when a column is not found."""
 
-    def __init__(self, column_name: str, available_columns: list):
+    def __init__(self, column_name: str, available_columns: List[str]):
         """Initialize column not found error.
 
         Args:

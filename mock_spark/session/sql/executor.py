@@ -137,8 +137,8 @@ class MockSQLExecutor:
                 # Convert IDataFrame to MockDataFrame if needed
                 from ...dataframe import MockDataFrame
 
-                if isinstance(df_any, MockDataFrame):  # type: ignore[unreachable]
-                    df = df_any  # type: ignore[unreachable]
+                if isinstance(df_any, MockDataFrame):
+                    df = df_any
                 else:
                     # df_any may be an IDataFrame; construct MockDataFrame from its public API
                     from ...spark_types import MockStructType
@@ -375,7 +375,7 @@ class MockSQLExecutor:
                     schema_name, table_only = "default", table_name
 
                 # Get table metadata
-                meta = self.session.storage.get_table_metadata(schema_name, table_only)  # type: ignore[attr-defined]
+                meta = self.session.storage.get_table_metadata(schema_name, table_only)
 
                 if not meta or meta.get("format") != "delta":
                     from ...errors import AnalysisException
@@ -560,12 +560,12 @@ class MockSQLExecutor:
 
         # Write merged data back to target table
 
-        self.session.storage.drop_table(target_schema, target_name)  # type: ignore[attr-defined]
+        self.session.storage.drop_table(target_schema, target_name)
         self.session.storage.create_table(
             target_schema, target_name, target_df.schema.fields
-        )  # type: ignore[attr-defined]
+        )
         if updated_rows:
-            self.session.storage.insert_data(target_schema, target_name, updated_rows)  # type: ignore[attr-defined]
+            self.session.storage.insert_data(target_schema, target_name, updated_rows)
 
         # MERGE returns empty DataFrame
         return cast(IDataFrame, MockDataFrame([], MockStructType([])))

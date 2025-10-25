@@ -4,7 +4,7 @@ Optimization rules for Mock-Spark query optimizer.
 Provides specific optimization rules for different query patterns.
 """
 
-from typing import List, Set
+from typing import List, Set, cast
 from .query_optimizer import OptimizationRule, Operation, OperationType
 
 
@@ -179,7 +179,7 @@ class JoinOptimizationRule(OptimizationRule):
 
         # Simple heuristic: sort by estimated size (metadata)
         def get_estimated_size(op: Operation) -> int:
-            return op.metadata.get("estimated_size", 1000)  # Default size
+            return cast(int, op.metadata.get("estimated_size", 1000))  # Default size
 
         return sorted(join_ops, key=get_estimated_size)
 
