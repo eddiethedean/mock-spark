@@ -4,7 +4,7 @@ DataFrame operation executor for Mock Spark.
 This module provides execution of DataFrame operations (filter, select, join, etc.).
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 from sqlalchemy import (
     select,
     func,

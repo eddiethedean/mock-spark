@@ -194,21 +194,29 @@ class CTEQueryBuilder:
             SQL string for select with window functions CTE
         """
         select_parts = []
-        
+
         # Track aliases before adding window functions
         existing_cols = {}
         for col in columns:
-            if hasattr(col, "name") and hasattr(col, "_original_column") and col._original_column is not None:
+            if (
+                hasattr(col, "name")
+                and hasattr(col, "_original_column")
+                and col._original_column is not None
+            ):
                 existing_cols[col.name] = col._original_column.name
-        
+
         # Handle wildcard columns first - if we have "*", include all source table columns
         has_wildcard = any(
-            (isinstance(col, str) and col == "*") or 
-            (hasattr(col, "name") and col.name == "*")
+            (isinstance(col, str) and col == "*")
+            or (hasattr(col, "name") and col.name == "*")
             for col in columns
         )
-        
-        if has_wildcard and source_table_obj is not None and hasattr(source_table_obj, 'columns'):
+
+        if (
+            has_wildcard
+            and source_table_obj is not None
+            and hasattr(source_table_obj, "columns")
+        ):
             # Add all source table columns when we have "*"
             for col in source_table_obj.columns:
                 select_parts.append(f'"{col.name}"')
@@ -228,27 +236,33 @@ class CTEQueryBuilder:
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
                 # Window function
                 func_name = col.function_name.upper()
-                if col.column is None or col.column == "*" or (hasattr(col.column, "name") and col.column.name == "*"):
+                if (
+                    col.column is None
+                    or col.column == "*"
+                    or (hasattr(col.column, "name") and col.column.name == "*")
+                ):
                     # For window functions, we don't need a column expression for functions like ROW_NUMBER
                     if func_name in ["ROW_NUMBER", "RANK", "DENSE_RANK"]:
                         col_expr = ""
                     elif func_name in ["LAG", "LEAD"]:
                         # LAG and LEAD need a specific column, use the first available column
-                        if source_table_obj is not None and hasattr(source_table_obj, 'columns'):
+                        if source_table_obj is not None and hasattr(
+                            source_table_obj, "columns"
+                        ):
                             try:
                                 columns_list = list(source_table_obj.columns)
                                 if columns_list:
                                     col_expr = f'"{columns_list[0].name}"'
                                 else:
                                     col_expr = "*"
-                            except:
+                            except Exception:
                                 col_expr = "*"
                         else:
                             col_expr = "*"
                     else:
                         col_expr = "*"
                 else:
-                    if hasattr(col.column, 'name'):
+                    if hasattr(col.column, "name"):
                         col_expr = f'"{col.column.name}"'
                     else:
                         col_expr = f'"{col.column}"'
@@ -281,7 +295,10 @@ class CTEQueryBuilder:
                 select_parts.append(f'{func_name}({col_expr}) AS "{result_name}"')
             elif hasattr(col, "name"):
                 # Check if this is an aliased column
-                if hasattr(col, "_original_column") and col._original_column is not None:
+                if (
+                    hasattr(col, "_original_column")
+                    and col._original_column is not None
+                ):
                     # This is an aliased column - use original column name with alias
                     original_name = col._original_column.name
                     alias_name = col.name

@@ -80,77 +80,77 @@ class MockLiteral(IColumn):
 
         return MockColumnOperation(self, "!=", other)
 
-    def __lt__(self, other: Any) -> "MockColumnOperation":
+    def __lt__(self, other: Any) -> "IColumn":
         """Less than comparison."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "<", other)
+        return MockColumnOperation(self, "<", other)  # type: ignore[return-value]
 
-    def __le__(self, other: Any) -> "MockColumnOperation":
+    def __le__(self, other: Any) -> "IColumn":
         """Less than or equal comparison."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "<=", other)
+        return MockColumnOperation(self, "<=", other)  # type: ignore[return-value]
 
-    def __gt__(self, other: Any) -> "MockColumnOperation":
+    def __gt__(self, other: Any) -> "IColumn":
         """Greater than comparison."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, ">", other)
+        return MockColumnOperation(self, ">", other)  # type: ignore[return-value]
 
-    def __ge__(self, other: Any) -> "MockColumnOperation":
+    def __ge__(self, other: Any) -> "IColumn":
         """Greater than or equal comparison."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, ">=", other)
+        return MockColumnOperation(self, ">=", other)  # type: ignore[return-value]
 
-    def __add__(self, other: Any) -> "MockColumnOperation":
+    def __add__(self, other: Any) -> "IColumn":
         """Addition operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "+", other)
+        return MockColumnOperation(self, "+", other)  # type: ignore[return-value]
 
-    def __sub__(self, other: Any) -> "MockColumnOperation":
+    def __sub__(self, other: Any) -> "IColumn":
         """Subtraction operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "-", other)
+        return MockColumnOperation(self, "-", other)  # type: ignore[return-value]
 
-    def __mul__(self, other: Any) -> "MockColumnOperation":
+    def __mul__(self, other: Any) -> "IColumn":
         """Multiplication operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "*", other)
+        return MockColumnOperation(self, "*", other)  # type: ignore[return-value]
 
-    def __truediv__(self, other: Any) -> "MockColumnOperation":
+    def __truediv__(self, other: Any) -> "IColumn":
         """Division operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "/", other)
+        return MockColumnOperation(self, "/", other)  # type: ignore[return-value]
 
-    def __mod__(self, other: Any) -> "MockColumnOperation":
+    def __mod__(self, other: Any) -> "IColumn":
         """Modulo operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "%", other)
+        return MockColumnOperation(self, "%", other)  # type: ignore[return-value]
 
-    def __and__(self, other: Any) -> "MockColumnOperation":
+    def __and__(self, other: Any) -> "IColumn":
         """Logical AND operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "&", other)
+        return MockColumnOperation(self, "&", other)  # type: ignore[return-value]
 
-    def __or__(self, other: Any) -> "MockColumnOperation":
+    def __or__(self, other: Any) -> "IColumn":
         """Logical OR operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "|", other)
+        return MockColumnOperation(self, "|", other)  # type: ignore[return-value]
 
-    def __invert__(self) -> "MockColumnOperation":
+    def __invert__(self) -> "IColumn":
         """Logical NOT operation."""
         from .column import MockColumnOperation
 
-        return MockColumnOperation(self, "!", None)
+        return MockColumnOperation(self, "!", None)  # type: ignore[return-value]
 
     def __neg__(self) -> "MockColumnOperation":
         """Unary minus operation (-literal)."""

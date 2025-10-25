@@ -7,7 +7,6 @@ maintaining compatibility with PySpark's Column interface.
 
 from typing import Any, List, Optional, TYPE_CHECKING
 from ...spark_types import MockDataType, StringType
-from ...core.interfaces.functions import IColumn
 
 if TYPE_CHECKING:
     from ...window import MockWindowSpec
@@ -17,131 +16,131 @@ if TYPE_CHECKING:
 
 class ColumnOperatorMixin:
     """Mixin providing common operator methods for MockColumn and MockColumnOperation."""
-    
+
     def _create_operation(self, operation: str, other: Any) -> "MockColumnOperation":
         """Create a MockColumnOperation with the given operation and other operand.
-        
+
         Args:
             operation: The operation to perform (e.g., "==", "+", etc.)
             other: The other operand
-            
+
         Returns:
             MockColumnOperation instance
         """
         return MockColumnOperation(self, operation, other)
-    
+
     def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Equality comparison."""
         return self._create_operation("==", other)
-    
+
     def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
         return self._create_operation("!=", other)
-    
+
     def __lt__(self, other: Any) -> "MockColumnOperation":
         """Less than comparison."""
         return self._create_operation("<", other)
-    
+
     def __le__(self, other: Any) -> "MockColumnOperation":
         """Less than or equal comparison."""
         return self._create_operation("<=", other)
-    
+
     def __gt__(self, other: Any) -> "MockColumnOperation":
         """Greater than comparison."""
         return self._create_operation(">", other)
-    
+
     def __ge__(self, other: Any) -> "MockColumnOperation":
         """Greater than or equal comparison."""
         return self._create_operation(">=", other)
-    
+
     def __add__(self, other: Any) -> "MockColumnOperation":
         """Addition operation."""
         return self._create_operation("+", other)
-    
+
     def __sub__(self, other: Any) -> "MockColumnOperation":
         """Subtraction operation."""
         return self._create_operation("-", other)
-    
+
     def __mul__(self, other: Any) -> "MockColumnOperation":
         """Multiplication operation."""
         return self._create_operation("*", other)
-    
+
     def __truediv__(self, other: Any) -> "MockColumnOperation":
         """Division operation."""
         return self._create_operation("/", other)
-    
+
     def __mod__(self, other: Any) -> "MockColumnOperation":
         """Modulo operation."""
         return self._create_operation("%", other)
-    
+
     def __and__(self, other: Any) -> "MockColumnOperation":
         """Logical AND operation."""
         return self._create_operation("&", other)
-    
+
     def __or__(self, other: Any) -> "MockColumnOperation":
         """Logical OR operation."""
         return self._create_operation("|", other)
-    
+
     def __invert__(self) -> "MockColumnOperation":
         """Logical NOT operation."""
         return self._create_operation("!", None)
-    
+
     def __neg__(self) -> "MockColumnOperation":
         """Unary minus operation (-column)."""
         return self._create_operation("-", None)
-    
+
     def isnull(self) -> "MockColumnOperation":
         """Check if column value is null."""
         return self._create_operation("isnull", None)
-    
+
     def isnotnull(self) -> "MockColumnOperation":
         """Check if column value is not null."""
         return self._create_operation("isnotnull", None)
-    
+
     def isNull(self) -> "MockColumnOperation":
         """Check if column value is null (PySpark compatibility)."""
         return self.isnull()
-    
+
     def isNotNull(self) -> "MockColumnOperation":
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
-    
+
     def isin(self, values: List[Any]) -> "MockColumnOperation":
         """Check if column value is in list of values."""
         return self._create_operation("isin", values)
-    
+
     def between(self, lower: Any, upper: Any) -> "MockColumnOperation":
         """Check if column value is between lower and upper bounds."""
         return self._create_operation("between", (lower, upper))
-    
+
     def like(self, pattern: str) -> "MockColumnOperation":
         """SQL LIKE pattern matching."""
         return self._create_operation("like", pattern)
-    
+
     def rlike(self, pattern: str) -> "MockColumnOperation":
         """Regular expression pattern matching."""
         return self._create_operation("rlike", pattern)
-    
+
     def contains(self, literal: str) -> "MockColumnOperation":
         """Check if column contains the literal string."""
         return self._create_operation("contains", literal)
-    
+
     def startswith(self, literal: str) -> "MockColumnOperation":
         """Check if column starts with the literal string."""
         return self._create_operation("startswith", literal)
-    
+
     def endswith(self, literal: str) -> "MockColumnOperation":
         """Check if column ends with the literal string."""
         return self._create_operation("endswith", literal)
-    
+
     def asc(self) -> "MockColumnOperation":
         """Ascending sort order."""
         return self._create_operation("asc", None)
-    
+
     def desc(self) -> "MockColumnOperation":
         """Descending sort order."""
         return self._create_operation("desc", None)
-    
+
     def cast(self, data_type: MockDataType) -> "MockColumnOperation":
         """Cast column to different data type."""
         return self._create_operation("cast", data_type)
@@ -447,11 +446,6 @@ class MockColumnOperation(ColumnOperatorMixin):
         aliased_operation = MockColumnOperation(self.column, self.operation, self.value)
         aliased_operation._alias_name = name
         return aliased_operation
-
-
-
-
-
 
     def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
         """Apply window function over window specification."""

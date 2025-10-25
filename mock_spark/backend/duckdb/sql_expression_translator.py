@@ -4,7 +4,7 @@ SQL expression translation utilities for Mock Spark.
 This module provides translation of MockColumn expressions to SQL and SQLAlchemy.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from sqlalchemy import (
     and_,
     or_,
@@ -118,8 +118,10 @@ class SQLExpressionTranslator:
         ):
             # Check if this is a datetime operation first
             if self.datetime_handler.is_datetime_operation(expr):
-                return self.datetime_handler.convert_datetime_operation_to_sql(expr, source_table)
-            
+                return self.datetime_handler.convert_datetime_operation_to_sql(
+                    expr, source_table
+                )
+
             # Handle string/math functions like upper, lower, abs, etc.
             if expr.operation in [
                 "upper",
@@ -259,7 +261,13 @@ class SQLExpressionTranslator:
                     else:
                         return f"TRY_CAST({left} AS DATE)"
                 # Handle array operations
-                elif expr.operation in ["array_sort", "array_reverse", "array_size", "array_max", "array_min"]:
+                elif expr.operation in [
+                    "array_sort",
+                    "array_reverse",
+                    "array_size",
+                    "array_max",
+                    "array_min",
+                ]:
                     if expr.operation == "array_sort":
                         # array_sort(array, asc) -> LIST_SORT or LIST_REVERSE_SORT
                         asc = getattr(expr, "value", True)
@@ -801,7 +809,12 @@ class SQLExpressionTranslator:
 
         return " ".join(sql_parts)
 
-    def window_spec_to_sql(self, window_spec: Any, table_obj: Any = None, alias_mapping: dict = None) -> str:
+    def window_spec_to_sql(
+        self,
+        window_spec: Any,
+        table_obj: Any = None,
+        alias_mapping: Optional[Dict[Any, Any]] = None,
+    ) -> str:
         """Convert window specification to SQL.
 
         Args:
@@ -941,7 +954,7 @@ class SQLExpressionTranslator:
     def window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
         """Convert a window function to SQLAlchemy ORM expression."""
         function_name = getattr(window_func, "function_name", "window_function")
-        
+
         # Get the column from the window function
         if hasattr(window_func, "column"):
             column = self.column_to_orm(table_class, window_func.column)

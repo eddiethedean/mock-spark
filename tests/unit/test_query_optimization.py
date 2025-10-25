@@ -555,7 +555,9 @@ class TestLazyEvaluationOptimization:
         end_time = time.time()
 
         execution_time = end_time - start_time
-        assert execution_time < 4.0  # Should still complete quickly (adjusted for test environment)
+        assert (
+            execution_time < 4.0
+        )  # Should still complete quickly (adjusted for test environment)
         assert len(result) > 0
 
 

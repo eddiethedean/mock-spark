@@ -212,6 +212,7 @@ class MockGroupedData:
             col_name = expr[4:-1]
             # Validate column exists using ValidationHandler
             from ...dataframe.validation_handler import ValidationHandler
+
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
@@ -224,6 +225,7 @@ class MockGroupedData:
             col_name = expr[4:-1]
             # Validate column exists using ValidationHandler
             from ...dataframe.validation_handler import ValidationHandler
+
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
@@ -238,6 +240,7 @@ class MockGroupedData:
             col_name = expr[4:-1]
             # Validate column exists using ValidationHandler
             from ...dataframe.validation_handler import ValidationHandler
+
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [
@@ -248,6 +251,7 @@ class MockGroupedData:
             col_name = expr[4:-1]
             # Validate column exists using ValidationHandler
             from ...dataframe.validation_handler import ValidationHandler
+
             validator = ValidationHandler()
             validator.validate_column_exists(self.df.schema, col_name, "aggregation")
             values = [

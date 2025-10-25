@@ -156,7 +156,7 @@ def create_table_from_mock_schema(
 def get_column_type_for_value(value: Any) -> Any:
     """
     Infer SQLAlchemy column type from a Python value.
-    
+
     Delegates to centralized schema inference for consistency.
 
     Args:
@@ -166,10 +166,10 @@ def get_column_type_for_value(value: Any) -> Any:
         SQLAlchemy type class
     """
     from ...core.schema_inference import SchemaInferenceEngine
-    
+
     # Use centralized type inference
     mock_type = SchemaInferenceEngine._infer_type_from_value(value)
-    
+
     # Map MockSpark types to SQLAlchemy types
     if mock_type.__class__.__name__ == "BooleanType":
         return Boolean

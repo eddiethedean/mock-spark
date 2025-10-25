@@ -99,7 +99,9 @@ class DuckDBTableManager:
                     columns.append(Column(key, String))  # type: ignore[arg-type]
 
         # Create table - use raw SQL for MAP/ARRAY columns
-        has_array_columns = any(type(col.type).__name__ == "ArrayType" for col in columns)
+        has_array_columns = any(
+            type(col.type).__name__ == "ArrayType" for col in columns
+        )
         if has_map_columns or has_array_columns:
             # Build CREATE TABLE with proper MAP/ARRAY types using raw SQL
             col_defs = []
@@ -108,7 +110,12 @@ class DuckDBTableManager:
                     col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
                 elif type(col.type).__name__ == "ArrayType":
                     # Determine array element type
-                    elem_type = col.type.element_type
+                    if hasattr(col.type, "element_type"):
+                        elem_type = col.type.element_type
+                    else:
+                        # Fallback for non-array types
+                        col_defs.append(f'"{col.name}" VARCHAR[]')
+                        continue
                     if elem_type.__class__.__name__ == "LongType":
                         col_defs.append(f'"{col.name}" INTEGER[]')
                     elif elem_type.__class__.__name__ in ["FloatType", "DoubleType"]:

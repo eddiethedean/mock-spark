@@ -94,4 +94,3 @@ class WindowFunctionProcessor:
                 return func.__getattr__(function_name.lower())().over(
                     partition_by=partition_by, order_by=order_by
                 )
-

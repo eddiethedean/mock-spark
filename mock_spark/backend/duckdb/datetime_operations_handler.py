@@ -5,7 +5,7 @@ This module provides centralized handling of datetime operations,
 consolidating logic from datetime functions, SQL conversion, and column operations.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from ...functions.core.column import MockColumn
 from ...functions.core.literals import MockLiteral
 from .date_format_converter import DateFormatConverter
@@ -14,64 +14,70 @@ from .date_format_converter import DateFormatConverter
 class DatetimeOperationsHandler:
     """Centralized handler for datetime operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the datetime operations handler."""
         self.format_converter = DateFormatConverter()
 
-    def convert_datetime_operation_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
+    def convert_datetime_operation_to_sql(
+        self, expr: Any, source_table: Optional[str] = None
+    ) -> str:
         """Convert a datetime operation to SQL.
-        
+
         Args:
             expr: The datetime operation expression
             source_table: Optional source table name
-            
+
         Returns:
             SQL string representation of the datetime operation
         """
         if not hasattr(expr, "operation"):
             return str(expr)
-        
+
         operation = expr.operation
         column_name = self._get_column_name(expr, source_table)
-        
+
         # Handle functions that don't need a column input
         if operation == "current_date":
             return "CURRENT_DATE"
         elif operation == "current_timestamp":
             return "CURRENT_TIMESTAMP"
-        
+
         # Handle make_date function specifically
         if operation == "make_date":
             return self._handle_make_date(expr, column_name)
-        
+
         # Handle datetime conversion functions
         if operation in ["to_date", "to_timestamp"]:
             return self._handle_datetime_conversion(expr, column_name)
-        
+
         # Handle datetime extraction functions
         if operation in ["hour", "minute", "second"]:
             return f"CAST(extract({operation} from TRY_CAST({column_name} AS TIMESTAMP)) AS INTEGER)"
         elif operation in ["year", "month", "day", "dayofmonth"]:
             part = "day" if operation == "dayofmonth" else operation
-            return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            return (
+                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            )
         elif operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
             part_map = {
                 "dayofweek": "dow",
-                "dayofyear": "doy", 
+                "dayofyear": "doy",
                 "weekofyear": "week",
                 "quarter": "quarter",
             }
             part = part_map.get(operation, operation)
-            return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
-        
+            return (
+                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            )
+
         # Handle date formatting
         if operation == "date_format":
             return self._handle_date_format(expr, column_name)
-        
+
         # Handle from_unixtime
         if operation == "from_unixtime":
             return self._handle_from_unixtime(expr, column_name)
-        
+
         # Handle other datetime operations
         return self._handle_other_datetime_operations(expr, column_name)
 
@@ -104,7 +110,9 @@ class DatetimeOperationsHandler:
         """Handle to_date and to_timestamp conversions."""
         if hasattr(expr, "value") and expr.value is not None:
             format_str = expr.value
-            duckdb_format = self.format_converter.convert_java_to_duckdb_format(format_str)
+            duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                format_str
+            )
             return f"STRPTIME({column_name}, '{duckdb_format}')"
         else:
             target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
@@ -114,7 +122,9 @@ class DatetimeOperationsHandler:
         """Handle date formatting operations."""
         if hasattr(expr, "value") and expr.value is not None:
             format_str = expr.value
-            duckdb_format = self.format_converter.convert_java_to_duckdb_format(format_str)
+            duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                format_str
+            )
             return f"strftime(TRY_CAST({column_name} AS TIMESTAMP), '{duckdb_format}')"
         else:
             return f"strftime(TRY_CAST({column_name} AS TIMESTAMP), '%Y-%m-%d')"
@@ -123,7 +133,9 @@ class DatetimeOperationsHandler:
         """Handle from_unixtime operations."""
         if hasattr(expr, "value") and expr.value is not None:
             format_str = expr.value
-            duckdb_format = self.format_converter.convert_java_to_duckdb_format(format_str)
+            duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                format_str
+            )
             return f"strftime(to_timestamp({column_name}), '{duckdb_format}')"
         else:
             return f"strftime(to_timestamp({column_name}), '%Y-%m-%d %H:%M:%S')"
@@ -141,12 +153,12 @@ class DatetimeOperationsHandler:
                 return f"({column_name} * {right})"
             elif expr.operation == "/":
                 return f"({column_name} / {right})"
-        
+
         # Handle comparison operations
         if expr.operation in ["==", "!=", "<", ">", "<=", ">="]:
             right = self._format_value(expr.value) if hasattr(expr, "value") else "NULL"
             return f"({column_name} {expr.operation} {right})"
-        
+
         # Default fallback
         return f"{expr.operation}({column_name})"
 
@@ -171,29 +183,60 @@ class DatetimeOperationsHandler:
         """Check if an expression is a datetime operation."""
         if not hasattr(expr, "operation"):
             return False
-        
+
         datetime_operations = {
-            "current_date", "current_timestamp", "to_date", "to_timestamp",
-            "hour", "minute", "second", "year", "month", "day", "dayofmonth",
-            "dayofweek", "dayofyear", "weekofyear", "quarter", "date_format",
-            "from_unixtime", "add_months", "months_between", "date_add",
-            "date_sub", "timestampadd", "timestampdiff", "convert_timezone",
-            "current_timezone", "from_utc_timestamp", "to_utc_timestamp",
-            "date_part", "dayname", "make_date", "date_trunc", "datediff",
-            "unix_timestamp", "last_day", "next_day", "trunc", "timestamp_seconds",
-            "weekday"
+            "current_date",
+            "current_timestamp",
+            "to_date",
+            "to_timestamp",
+            "hour",
+            "minute",
+            "second",
+            "year",
+            "month",
+            "day",
+            "dayofmonth",
+            "dayofweek",
+            "dayofyear",
+            "weekofyear",
+            "quarter",
+            "date_format",
+            "from_unixtime",
+            "add_months",
+            "months_between",
+            "date_add",
+            "date_sub",
+            "timestampadd",
+            "timestampdiff",
+            "convert_timezone",
+            "current_timezone",
+            "from_utc_timestamp",
+            "to_utc_timestamp",
+            "date_part",
+            "dayname",
+            "make_date",
+            "date_trunc",
+            "datediff",
+            "unix_timestamp",
+            "last_day",
+            "next_day",
+            "trunc",
+            "timestamp_seconds",
+            "weekday",
         }
-        
+
         return expr.operation in datetime_operations
 
-    def get_datetime_operation_sql(self, operation: str, column_name: str, value: Any = None) -> str:
+    def get_datetime_operation_sql(
+        self, operation: str, column_name: str, value: Any = None
+    ) -> str:
         """Get SQL for a specific datetime operation.
-        
+
         Args:
             operation: The datetime operation name
             column_name: The column name
             value: Optional value for the operation
-            
+
         Returns:
             SQL string for the operation
         """
@@ -205,41 +248,53 @@ class DatetimeOperationsHandler:
             return f"CAST(extract({operation} from TRY_CAST({column_name} AS TIMESTAMP)) AS INTEGER)"
         elif operation in ["year", "month", "day", "dayofmonth"]:
             part = "day" if operation == "dayofmonth" else operation
-            return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            return (
+                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            )
         elif operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
             part_map = {
                 "dayofweek": "dow",
                 "dayofyear": "doy",
-                "weekofyear": "week", 
+                "weekofyear": "week",
                 "quarter": "quarter",
             }
             part = part_map.get(operation, operation)
-            return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            return (
+                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
+            )
         elif operation in ["to_date", "to_timestamp"]:
             if value is not None:
-                duckdb_format = self.format_converter.convert_java_to_duckdb_format(value)
+                duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                    value
+                )
                 return f"STRPTIME({column_name}, '{duckdb_format}')"
             else:
                 target_type = "DATE" if operation == "to_date" else "TIMESTAMP"
                 return f"TRY_CAST({column_name} AS {target_type})"
         elif operation == "date_format":
             if value is not None:
-                duckdb_format = self.format_converter.convert_java_to_duckdb_format(value)
-                return f"strftime(TRY_CAST({column_name} AS TIMESTAMP), '{duckdb_format}')"
+                duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                    value
+                )
+                return (
+                    f"strftime(TRY_CAST({column_name} AS TIMESTAMP), '{duckdb_format}')"
+                )
             else:
                 return f"strftime(TRY_CAST({column_name} AS TIMESTAMP), '%Y-%m-%d')"
         elif operation == "from_unixtime":
             if value is not None:
-                duckdb_format = self.format_converter.convert_java_to_duckdb_format(value)
+                duckdb_format = self.format_converter.convert_java_to_duckdb_format(
+                    value
+                )
                 return f"strftime(to_timestamp({column_name}), '{duckdb_format}')"
             else:
                 return f"strftime(to_timestamp({column_name}), '%Y-%m-%d %H:%M:%S')"
         elif operation == "make_date":
             # make_date function takes year, month, day as separate parameters
             # The value should be a tuple of (month, day)
-            if hasattr(expr, "value") and expr.value is not None:
-                if isinstance(expr.value, tuple) and len(expr.value) == 2:
-                    month, day = expr.value
+            if value is not None:
+                if isinstance(value, tuple) and len(value) == 2:
+                    month, day = value
                     month_sql = self._format_value(month)
                     day_sql = self._format_value(day)
                     return f"make_date({column_name}, {month_sql}, {day_sql})"
