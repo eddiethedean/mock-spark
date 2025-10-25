@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from .window_handler import WindowFunctionHandler
     from .collection_handler import CollectionHandler
     from .validation_handler import ValidationHandler
+    from .condition_handler import ConditionHandler
 
 from ..spark_types import (
     MockStructType,
@@ -121,6 +122,8 @@ class MockDataFrame:
         self._collection_handler: Optional["CollectionHandler"] = None
         # Validation handler (lazy-initialized)
         self._validation_handler: Optional["ValidationHandler"] = None
+        # Condition handler (lazy-initialized)
+        self._condition_handler: Optional["ConditionHandler"] = None
 
     def _get_lazy_engine(self) -> "LazyEvaluationEngine":
         """Get or create the lazy evaluation engine."""
@@ -153,6 +156,14 @@ class MockDataFrame:
 
             self._validation_handler = ValidationHandler()
         return self._validation_handler
+
+    def _get_condition_handler(self) -> "ConditionHandler":
+        """Get or create the condition handler."""
+        if self._condition_handler is None:
+            from .condition_handler import ConditionHandler
+
+            self._condition_handler = ConditionHandler()
+        return self._condition_handler
 
     def _queue_op(self, op_name: str, payload: Any) -> "MockDataFrame":
         """Queue an operation for lazy evaluation."""
@@ -1461,28 +1472,24 @@ class MockDataFrame:
         self, data: List[Dict[str, Any]], condition: MockColumnOperation
     ) -> List[Dict[str, Any]]:
         """Apply condition to filter data."""
-        filtered_data = []
-
-        for row in data:
-            if self._evaluate_condition(row, condition):
-                filtered_data.append(row)
-
-        return filtered_data
+        return self._get_condition_handler().apply_condition(data, condition)
 
     def _evaluate_condition(
         self, row: Dict[str, Any], condition: Union[MockColumnOperation, MockColumn]
     ) -> bool:
         """Evaluate condition for a single row.
 
-        Delegates to ExpressionEvaluator for consistency.
+        Delegates to ConditionHandler for consistency.
         """
-        return self._expression_evaluator.evaluate_condition(row, condition)
+        return self._get_condition_handler().evaluate_condition(row, condition)
 
     def _evaluate_column_expression(
         self, row: Dict[str, Any], column_expression: Any
     ) -> Any:
         """Evaluate a column expression for a single row."""
-        return self._expression_evaluator.evaluate_expression(row, column_expression)
+        return self._get_condition_handler().evaluate_column_expression(
+            row, column_expression
+        )
 
     def _evaluate_window_functions(
         self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
@@ -1566,71 +1573,15 @@ class MockDataFrame:
 
     def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
-        # Use the MockCaseWhen's own evaluate method
-        if hasattr(case_when_obj, "evaluate"):
-            return case_when_obj.evaluate(row)
-
-        # Fallback to manual evaluation
-        for condition, value in case_when_obj.conditions:
-            if self._evaluate_case_when_condition(row, condition):
-                return self._expression_evaluator.evaluate_expression(row, value)
-
-        if case_when_obj.else_value is not None:
-            return self._expression_evaluator.evaluate_expression(
-                row, case_when_obj.else_value
-            )
-
-        return None
+        return self._get_condition_handler().evaluate_case_when(row, case_when_obj)
 
     def _evaluate_case_when_condition(
         self, row: Dict[str, Any], condition: Any
     ) -> bool:
         """Evaluate a CASE WHEN condition for a row."""
-        if hasattr(condition, "operation") and hasattr(condition, "column"):
-            # Handle MockColumnOperation conditions
-            if condition.operation == ">":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return col_value is not None and col_value > condition.value
-            elif condition.operation == ">=":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return col_value is not None and col_value >= condition.value
-            elif condition.operation == "<":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return col_value is not None and col_value < condition.value
-            elif condition.operation == "<=":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return col_value is not None and col_value <= condition.value
-            elif condition.operation == "==":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return bool(col_value == condition.value)
-            elif condition.operation == "!=":
-                col_value = (
-                    row.get(condition.column.name)
-                    if hasattr(condition.column, "name")
-                    else row.get(str(condition.column))
-                )
-                return bool(col_value != condition.value)
-        return False
+        return self._get_condition_handler()._evaluate_case_when_condition(
+            row, condition
+        )
 
     def createOrReplaceTempView(self, name: str) -> None:
         """Create or replace a temporary view of this DataFrame."""
