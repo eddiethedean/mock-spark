@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .lazy import LazyEvaluationEngine
     from .window_handler import WindowFunctionHandler
     from .collection_handler import CollectionHandler
+    from .validation_handler import ValidationHandler
 
 from ..spark_types import (
     MockStructType,
@@ -62,7 +63,6 @@ from ..core.exceptions import (
 from ..core.exceptions.analysis import ColumnNotFoundException, AnalysisException
 from ..core.exceptions.operation import MockSparkColumnNotFoundError
 from .writer import MockDataFrameWriter
-from .validation.column_validator import ColumnValidator
 from .evaluation.expression_evaluator import ExpressionEvaluator
 
 
@@ -119,6 +119,8 @@ class MockDataFrame:
         self._window_handler: Optional["WindowFunctionHandler"] = None
         # Collection handler (lazy-initialized)
         self._collection_handler: Optional["CollectionHandler"] = None
+        # Validation handler (lazy-initialized)
+        self._validation_handler: Optional["ValidationHandler"] = None
 
     def _get_lazy_engine(self) -> "LazyEvaluationEngine":
         """Get or create the lazy evaluation engine."""
@@ -143,6 +145,14 @@ class MockDataFrame:
 
             self._collection_handler = CollectionHandler()
         return self._collection_handler
+
+    def _get_validation_handler(self) -> "ValidationHandler":
+        """Get or create the validation handler."""
+        if self._validation_handler is None:
+            from .validation_handler import ValidationHandler
+
+            self._validation_handler = ValidationHandler()
+        return self._validation_handler
 
     def _queue_op(self, op_name: str, payload: Any) -> "MockDataFrame":
         """Queue an operation for lazy evaluation."""
@@ -227,17 +237,21 @@ class MockDataFrame:
 
     def _validate_column_exists(self, column_name: str, operation: str) -> None:
         """Validate that a column exists in the DataFrame."""
-        ColumnValidator.validate_column_exists(self.schema, column_name, operation)
+        self._get_validation_handler().validate_column_exists(
+            self.schema, column_name, operation
+        )
 
     def _validate_columns_exist(self, column_names: List[str], operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
-        ColumnValidator.validate_columns_exist(self.schema, column_names, operation)
+        self._get_validation_handler().validate_columns_exist(
+            self.schema, column_names, operation
+        )
 
     def _validate_filter_expression(self, condition: Any, operation: str) -> None:
         """Validate filter expression before execution."""
         # Check if there are pending joins (columns might come from other DF)
         has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
-        ColumnValidator.validate_filter_expression(
+        self._get_validation_handler().validate_filter_expression(
             self.schema, condition, operation, has_pending_joins
         )
 
@@ -258,7 +272,7 @@ class MockDataFrame:
         finally:
             del frame
 
-        ColumnValidator.validate_expression_columns(
+        self._get_validation_handler().validate_expression_columns(
             self.schema, expression, operation, in_lazy_materialization
         )
 

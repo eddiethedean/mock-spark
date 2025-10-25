@@ -121,23 +121,33 @@ class ValidationHandler(Protocol):
     """Protocol for data validation."""
 
     def validate_column_exists(
-        self, columns: List[str], column_name: str, operation: str
+        self, schema: "MockStructType", column_name: str, operation: str
     ) -> None:
         """Validate single column exists."""
         ...
 
     def validate_columns_exist(
-        self, columns: List[str], column_names: List[str], operation: str
+        self, schema: "MockStructType", column_names: List[str], operation: str
     ) -> None:
         """Validate multiple columns exist."""
         ...
 
-    def validate_filter_expression(self, condition: Any, operation: str) -> None:
-        """Validate filter expression is not None."""
+    def validate_filter_expression(
+        self,
+        schema: "MockStructType",
+        condition: Any,
+        operation: str,
+        has_pending_joins: bool = False,
+    ) -> None:
+        """Validate filter expression."""
         ...
 
     def validate_expression_columns(
-        self, columns: List[str], expression: Any, operation: str
+        self,
+        schema: "MockStructType",
+        expression: Any,
+        operation: str,
+        in_lazy_materialization: bool = False,
     ) -> None:
         """Validate columns in expression exist."""
         ...
