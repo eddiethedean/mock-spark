@@ -208,7 +208,7 @@ class StringFunctions:
             column = MockColumn(column)
 
         operation = MockColumnOperation(
-            column, "split", delimiter, name=f"split({column.name}, '{delimiter}')"
+            column, "split", delimiter, name=f"split({column.name}, {delimiter}, -1)"
         )
         return operation
 

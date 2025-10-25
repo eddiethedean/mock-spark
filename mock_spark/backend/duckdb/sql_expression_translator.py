@@ -73,6 +73,9 @@ class SQLExpressionTranslator:
                 return f'{source_table}."{expr}"'
             else:
                 return f'"{expr}"'
+        elif isinstance(expr, MockLiteral):
+            # Handle MockLiteral objects by extracting their value
+            return self.value_to_sql(expr.value)
         elif hasattr(expr, "name"):
             # Check if this is referencing an aliased expression
             if source_table:
@@ -221,6 +224,10 @@ class SQLExpressionTranslator:
                     }
                     part = part_map.get(expr.operation, expr.operation)
                     return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) AS INTEGER)"
+                elif expr.operation == "log":
+                    # DuckDB uses log10 for base-10 logarithm, but PySpark uses natural log
+                    # For compatibility with PySpark, we need to use ln (natural log)
+                    return f"ln({left})"
                 elif expr.operation == "date_format":
                     # DuckDB: strftime function for date formatting
                     if hasattr(expr, "value") and expr.value is not None:
@@ -324,6 +331,36 @@ class SQLExpressionTranslator:
                 return f"({left} LIKE '{right[1:-1]}%')"  # Remove quotes from right
             elif expr.operation == "endswith":
                 return f"({left} LIKE '%{right[1:-1]}')"  # Remove quotes from right
+            elif expr.operation == "split":
+                # DuckDB uses string_split function
+                return f"string_split({left}, {right})"
+            elif expr.operation == "concat":
+                # DuckDB uses || operator for string concatenation
+                # Handle multiple arguments by chaining || operators
+                if isinstance(expr.value, (list, tuple)) and len(expr.value) > 0:
+                    # Multiple arguments: concat(col1, col2, col3) -> col1 || col2 || col3
+                    right_parts = []
+                    for val in expr.value:
+                        # Check for MockLiteral first (has both name and value)
+                        if hasattr(val, 'value') and hasattr(val, '_name'):
+                            # Handle MockLiteral objects
+                            right_parts.append(f"'{val.value}'")
+                        elif hasattr(val, 'name'):
+                            # Handle MockColumn objects
+                            right_parts.append(val.name)
+                        else:
+                            right_parts.append(str(val))
+                    return f"({left} || {' || '.join(right_parts)})"
+                else:
+                    # Single argument: concat(col1, col2) -> col1 || col2
+                    return f"({left} || {right})"
+            elif expr.operation == "regexp_extract":
+                # DuckDB supports regexp_extract function
+                if isinstance(expr.value, tuple) and len(expr.value) >= 2:
+                    pattern, group = expr.value[0], expr.value[1]
+                    return f"regexp_extract({left}, '{pattern}', {group})"
+                else:
+                    return f"regexp_extract({left}, {right})"
             elif expr.operation == "between":
                 # Handle BETWEEN operation: column BETWEEN lower AND upper
                 if isinstance(expr.value, tuple) and len(expr.value) == 2:
@@ -396,6 +433,22 @@ class SQLExpressionTranslator:
             elif expr.operation == "cast":
                 # Handle cast operation with proper SQL syntax using TRY_CAST for safety
                 return f"TRY_CAST({left} AS {right})"
+            # Handle math functions
+            elif expr.operation == "log":
+                # DuckDB uses log10 for base-10 logarithm, but PySpark uses natural log
+                # For compatibility with PySpark, we need to use ln (natural log)
+                print(f"DEBUG sql_expression_translator: log function - left={left}, returning ln({left})")
+                print(f"DEBUG sql_expression_translator: expr.operation={expr.operation}, expr.name={getattr(expr, 'name', 'no name')}")
+                return f"ln({left})"
+            elif expr.operation == "exp":
+                # DuckDB uses exp for exponential function
+                return f"exp({left})"
+            elif expr.operation == "pow":
+                # DuckDB uses power function
+                return f"power({left}, {right})"
+            elif expr.operation == "sqrt":
+                # DuckDB uses sqrt function
+                return f"sqrt({left})"
             else:
                 return f"({left} {expr.operation} {right})"
         elif hasattr(expr, "name"):
@@ -774,7 +827,10 @@ class SQLExpressionTranslator:
         Returns:
             SQL string representation
         """
-        if isinstance(value, str):
+        if isinstance(value, MockLiteral):
+            # Handle MockLiteral objects by extracting their value
+            return self.value_to_sql(value.value)
+        elif isinstance(value, str):
             return f"'{value}'"
         elif value is None:
             return "NULL"

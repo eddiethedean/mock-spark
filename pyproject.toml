@@ -65,10 +65,12 @@ dev = [
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "pytest-xdist>=3.0.0",  # Parallel test execution with isolated JVM workers
+    "pytest-xdist>=3.0.0",  # Parallel test execution
     "hypothesis>=6.0.0",
-    "pyspark>=3.2.0,<3.3.0",  # PySpark 3.2.x for Java 11 compatibility
-    "delta-spark>=2.0.0,<2.2.0",  # Delta Lake compatible with PySpark 3.2.x
+]
+generate-outputs = [
+    "pyspark>=3.2.0,<3.6.0",  # PySpark for generating expected outputs
+    "delta-spark>=2.0.0,<2.2.0",  # Delta Lake for generating expected outputs
 ]
 # PySpark version compatibility modes
 # Note: These extras are markers for documentation purposes.

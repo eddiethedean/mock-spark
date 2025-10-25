@@ -117,7 +117,7 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "sqrt", name=f"sqrt({column.name})")
+        operation = MockColumnOperation(column, "sqrt", name=f"SQRT({column.name})")
         return operation
 
     @staticmethod
@@ -133,7 +133,8 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "exp", name=f"exp({column.name})")
+        # PySpark uses uppercase EXP in column names
+        operation = MockColumnOperation(column, "exp", name=f"EXP({column.name})")
         return operation
 
     @staticmethod
@@ -152,8 +153,9 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
+        # PySpark's log() uses natural logarithm and names the column with 'ln'
         name = (
-            f"log({base}, {column.name})" if base is not None else f"log({column.name})"
+            f"log({base}, {column.name})" if base is not None else f"ln({column.name})"
         )
         operation = MockColumnOperation(column, "log", base, name=name)
         return operation
@@ -250,8 +252,10 @@ class MathFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
+        # PySpark uses uppercase POWER in column names with decimal exponent
+        exponent_str = f"{float(exponent)}" if isinstance(exponent, (int, float)) else str(exponent)
         operation = MockColumnOperation(
-            column, "pow", exponent, name=f"pow({column.name}, {exponent})"
+            column, "pow", exponent, name=f"POWER({column.name}, {exponent_str})"
         )
         return operation
 

@@ -245,7 +245,9 @@ def demo_error_handling(spark: Any, df: Any) -> None:
 
     # Lazy evaluation - error deferred
     print("\n✓ Lazy evaluation (error deferred):")
-    bad_query = df.filter(F.col("nonexistent") > 0)  # No error yet
+    # Use a different approach that doesn't trigger immediate validation
+    # Create a complex expression that will fail at execution time
+    bad_query = df.select(F.col("id"), F.col("nonexistent"))  # This will fail at execution
     print("   Transformation queued (no error)")
 
     try:

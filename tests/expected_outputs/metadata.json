@@ -1,0 +1,19 @@
+{
+  "generated_at": "2024-01-01T00:00:00",
+  "pyspark_version": "3.5.1",
+  "categories": [
+    "dataframe_operations",
+    "functions",
+    "sql_operations", 
+    "delta_operations",
+    "window_operations",
+    "pyspark_30_features",
+    "pyspark_31_features",
+    "pyspark_32_features", 
+    "pyspark_33_features",
+    "pyspark_34_features",
+    "pyspark_35_features"
+  ],
+  "total_tests": 0,
+  "description": "Expected outputs generated from PySpark for compatibility testing"
+}

@@ -774,6 +774,18 @@ class SQLAlchemyMaterializer:
                             func_expr = func.floor(source_column)
                         elif col.function_name == "sqrt":
                             func_expr = func.sqrt(source_column)
+                        elif col.function_name == "log":
+                            # PySpark's log() uses natural logarithm (ln)
+                            print(f"DEBUG query_executor: log function - using func.ln({source_column})")
+                            func_expr = func.ln(source_column)
+                        elif col.function_name == "pow":
+                            # Handle pow function with exponent parameter
+                            if hasattr(col, "value") and col.value is not None:
+                                func_expr = func.power(source_column, col.value)
+                            else:
+                                func_expr = func.power(source_column, 2)
+                        elif col.function_name == "exp":
+                            func_expr = func.exp(source_column)
                         elif col.function_name in [
                             "hour",
                             "minute",
@@ -818,6 +830,10 @@ class SQLAlchemyMaterializer:
                                 "months_between": "months_between",
                                 "minute": "minute",
                                 "second": "second",
+                                "log": "ln",  # PySpark log is natural log, DuckDB uses ln
+                                "pow": "power",  # PySpark pow -> DuckDB power
+                                "exp": "exp",  # Both use exp
+                                "sqrt": "sqrt",  # Both use sqrt
                                 "add_months": "date_add",
                                 "date_add": "date_add",
                                 "date_sub": "date_sub",
@@ -977,6 +993,10 @@ class SQLAlchemyMaterializer:
                             duckdb_function_name = function_mapping.get(
                                 col.function_name, col.function_name
                             )
+                            if col.function_name == "log":
+                                print(f"DEBUG: log function - mapped to {duckdb_function_name}")
+                                print(f"DEBUG: column_expr: {column_expr}")
+                                print(f"DEBUG: func_expr will be: {duckdb_function_name}({column_expr})")
 
                             # Handle raise_error immediately (before column_expr setup)
                             if col.function_name == "raise_error":
