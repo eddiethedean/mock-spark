@@ -5,7 +5,7 @@ This module provides a centralized factory for creating backend instances,
 enabling dependency injection and easier testing.
 """
 
-from typing import Optional, Any
+from typing import Optional, Any, List
 from .protocols import StorageBackend, DataMaterializer, ExportBackend
 
 
@@ -96,6 +96,22 @@ class BackendFactory:
 
             engine_url = kwargs.get("engine_url", "duckdb:///:memory:")
             return SQLAlchemyMaterializer(engine_url=engine_url)
+        elif backend_type == "memory":
+            # For memory backend, use DuckDB materializer as fallback
+            from .duckdb.materializer import DuckDBMaterializer
+
+            return DuckDBMaterializer(
+                max_memory=max_memory,
+                allow_disk_spillover=allow_disk_spillover,
+            )
+        elif backend_type == "file":
+            # For file backend, use DuckDB materializer as fallback
+            from .duckdb.materializer import DuckDBMaterializer
+
+            return DuckDBMaterializer(
+                max_memory=max_memory,
+                allow_disk_spillover=allow_disk_spillover,
+            )
         else:
             raise ValueError(f"Unsupported materializer type: {backend_type}")
 
@@ -116,5 +132,75 @@ class BackendFactory:
             from .duckdb.export import DuckDBExporter
 
             return DuckDBExporter()
+        elif backend_type == "memory":
+            # For memory backend, use DuckDB exporter as fallback
+            from .duckdb.export import DuckDBExporter
+
+            return DuckDBExporter()
+        elif backend_type == "file":
+            # For file backend, use DuckDB exporter as fallback
+            from .duckdb.export import DuckDBExporter
+
+            return DuckDBExporter()
         else:
             raise ValueError(f"Unsupported export backend type: {backend_type}")
+
+    @staticmethod
+    def get_backend_type(storage: StorageBackend) -> str:
+        """Detect backend type from storage instance.
+
+        Args:
+            storage: Storage backend instance
+
+        Returns:
+            Backend type string ("duckdb", "memory", "file", etc.)
+
+        Raises:
+            ValueError: If backend type cannot be determined
+        """
+        # Use module path inspection to detect backend type
+        module_name = type(storage).__module__
+
+        if "duckdb" in module_name:
+            return "duckdb"
+        elif "memory" in module_name:
+            return "memory"
+        elif "file" in module_name:
+            return "file"
+        else:
+            # Fallback: try to match class name
+            class_name = type(storage).__name__.lower()
+            if "duckdb" in class_name:
+                return "duckdb"
+            elif "memory" in class_name:
+                return "memory"
+            elif "file" in class_name:
+                return "file"
+            else:
+                raise ValueError(f"Cannot determine backend type for {type(storage)}")
+
+    @staticmethod
+    def list_available_backends() -> List[str]:
+        """List all available backend types.
+
+        Returns:
+            List of supported backend type strings
+        """
+        return ["duckdb", "memory", "file"]
+
+    @staticmethod
+    def validate_backend_type(backend_type: str) -> None:
+        """Validate that a backend type is supported.
+
+        Args:
+            backend_type: Backend type to validate
+
+        Raises:
+            ValueError: If backend type is not supported
+        """
+        available_backends = BackendFactory.list_available_backends()
+        if backend_type not in available_backends:
+            raise ValueError(
+                f"Unsupported backend type: {backend_type}. "
+                f"Available backends: {', '.join(available_backends)}"
+            )

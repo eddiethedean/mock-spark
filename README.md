@@ -38,7 +38,7 @@ from mock_spark import MockSparkSession as SparkSession
 |---------|-------------|
 | ⚡ **10x Faster** | No JVM startup (30s → 0.1s) |
 | 🎯 **Drop-in Replacement** | Use existing PySpark code unchanged |
-| 📦 **Zero Java** | Pure Python with DuckDB backend |
+| 📦 **Zero Java** | Pure Python with pluggable backend architecture (DuckDB default) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
 | 🏭 **Production Ready** | 857+ passing tests, 100% mypy typed, CTE-optimized queries |
@@ -242,6 +242,44 @@ def test_large_dataset():
     
     spark.stop()
 ```
+
+### Backend Selection
+
+Mock Spark supports multiple backend engines for different use cases:
+
+```python
+# Default backend (DuckDB) - backward compatible
+spark = MockSparkSession("MyApp")
+
+# Explicit backend selection via config
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "duckdb") \
+    .config("spark.mock.backend.maxMemory", "4GB") \
+    .config("spark.mock.backend.allowDiskSpillover", True) \
+    .getOrCreate()
+
+# Memory backend for lightweight testing
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "memory") \
+    .getOrCreate()
+
+# File backend for persistent storage
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "file") \
+    .config("spark.mock.backend.basePath", "/tmp/mock_spark") \
+    .getOrCreate()
+```
+
+**Available Backends:**
+- **DuckDB** (default): High-performance analytical database
+- **Memory**: In-memory storage for lightweight testing
+- **File**: File-based storage for persistent data
+
+**Backend Configuration:**
+- `spark.mock.backend`: Backend type ("duckdb", "memory", "file")
+- `spark.mock.backend.maxMemory`: Memory limit (e.g., "1GB", "4GB")
+- `spark.mock.backend.allowDiskSpillover`: Allow disk usage when memory is full
+- `spark.mock.backend.basePath`: Base path for file backend
 
 ---
 

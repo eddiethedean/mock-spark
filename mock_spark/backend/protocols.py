@@ -85,7 +85,8 @@ class ExportBackend(Protocol):
     """Protocol for DataFrame export operations.
 
     This protocol defines the interface for exporting DataFrames to
-    different formats and systems (DuckDB, pandas, etc.).
+    different formats and systems. Backend implementations should provide
+    methods for exporting to their specific target systems.
     """
 
     def to_duckdb(

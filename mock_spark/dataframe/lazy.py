@@ -183,7 +183,9 @@ class LazyEvaluationEngine:
         try:
             from mock_spark.backend.factory import BackendFactory
 
-            materializer = BackendFactory.create_materializer("duckdb")
+            # Detect backend type from DataFrame's storage
+            backend_type = BackendFactory.get_backend_type(df.storage)
+            materializer = BackendFactory.create_materializer(backend_type)
             try:
                 # Let materializer optimize and execute the operations
                 rows = materializer.materialize(

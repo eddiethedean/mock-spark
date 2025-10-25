@@ -168,6 +168,96 @@ spark = MockSparkSession("Test", storage_backend=mock_storage)
 mock_storage.create_table.assert_called_once()
 ```
 
+## Backend Configuration
+
+### Configuration via Session Builder
+
+Backend selection is now configurable through the session builder's `.config()` method:
+
+```python
+from mock_spark import MockSparkSession
+
+# Default backend (DuckDB) - backward compatible
+spark = MockSparkSession("MyApp")
+
+# Explicit backend selection
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "duckdb") \
+    .config("spark.mock.backend.maxMemory", "4GB") \
+    .config("spark.mock.backend.allowDiskSpillover", True) \
+    .getOrCreate()
+
+# Memory backend for lightweight testing
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "memory") \
+    .getOrCreate()
+
+# File backend for persistent storage
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "file") \
+    .config("spark.mock.backend.basePath", "/tmp/mock_spark") \
+    .getOrCreate()
+```
+
+### Configuration Keys
+
+| Key | Description | Default | Example |
+|-----|-------------|---------|---------|
+| `spark.mock.backend` | Backend type | `"duckdb"` | `"duckdb"`, `"memory"`, `"file"` |
+| `spark.mock.backend.maxMemory` | Memory limit | `"1GB"` | `"4GB"`, `"8GB"` |
+| `spark.mock.backend.allowDiskSpillover` | Allow disk usage | `false` | `true`, `false` |
+| `spark.mock.backend.basePath` | Base path for file backend | `"mock_spark_storage"` | `"/tmp/data"` |
+
+### Backend Type Detection
+
+The system automatically detects backend types from storage instances:
+
+```python
+from mock_spark.backend.factory import BackendFactory
+
+# Create a storage backend
+storage = BackendFactory.create_storage_backend("duckdb")
+
+# Detect the backend type
+backend_type = BackendFactory.get_backend_type(storage)
+print(backend_type)  # "duckdb"
+
+# List available backends
+available = BackendFactory.list_available_backends()
+print(available)  # ["duckdb", "memory", "file"]
+```
+
+### Adding New Backends
+
+To add a new backend implementation:
+
+1. **Implement the protocols** in `mock_spark/backend/<backend_name>/`:
+   - `storage.py` - Implements `StorageBackend` protocol
+   - `materializer.py` - Implements `DataMaterializer` protocol  
+   - `export.py` - Implements `ExportBackend` protocol
+   - `query_executor.py` - Implements `QueryExecutor` protocol
+
+2. **Register in BackendFactory**:
+   ```python
+   # In create_storage_backend()
+   elif backend_type == "new_backend":
+       from .new_backend.storage import NewBackendStorageManager
+       return NewBackendStorageManager(**kwargs)
+   ```
+
+3. **Add configuration support**:
+   ```python
+   # Add new config keys for backend-specific options
+   .config("spark.mock.backend.newBackend.option", "value")
+   ```
+
+4. **Update detection logic**:
+   ```python
+   # In get_backend_type()
+   elif "new_backend" in module_name:
+       return "new_backend"
+   ```
+
 ## Backward Compatibility
 
 All existing imports continue to work via re-exports:

@@ -69,7 +69,9 @@ class DataFrameExporter:
         # Use backend export functionality
         from mock_spark.backend.factory import BackendFactory
 
-        exporter = BackendFactory.create_export_backend("duckdb")
+        # Detect backend type from DataFrame's storage
+        backend_type = BackendFactory.get_backend_type(df.storage)
+        exporter = BackendFactory.create_export_backend(backend_type)
         return exporter.to_duckdb(df, connection, table_name)
 
     @staticmethod
@@ -91,7 +93,9 @@ class DataFrameExporter:
         # Delegate to backend implementation
         from mock_spark.backend.factory import BackendFactory
 
-        exporter = BackendFactory.create_export_backend("duckdb")
+        # Detect backend type from DataFrame's storage
+        backend_type = BackendFactory.get_backend_type(df.storage)
+        exporter = BackendFactory.create_export_backend(backend_type)
         return exporter.create_duckdb_table(df, connection, table_name)
 
     @staticmethod

@@ -67,7 +67,19 @@ class MockSparkSessionBuilder:
         """
         # Return existing singleton if present; otherwise create and cache
         if MockSparkSession._singleton_session is None:
-            session = MockSparkSession(self._app_name)
+            # Extract backend configuration
+            backend_type = self._config.get("spark.mock.backend", "duckdb")
+            max_memory = self._config.get("spark.mock.backend.maxMemory", "1GB")
+            allow_disk_spillover = self._config.get(
+                "spark.mock.backend.allowDiskSpillover", False
+            )
+
+            session = MockSparkSession(
+                self._app_name,
+                backend_type=backend_type,
+                max_memory=max_memory,
+                allow_disk_spillover=allow_disk_spillover,
+            )
             for key, value in self._config.items():
                 session.conf.set(key, value)
             MockSparkSession._singleton_session = session

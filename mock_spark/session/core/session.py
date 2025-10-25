@@ -65,6 +65,7 @@ class MockSparkSession:
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
         storage_backend: Optional[StorageBackend] = None,
+        backend_type: str = "duckdb",
     ):
         """Initialize MockSparkSession.
 
@@ -73,17 +74,19 @@ class MockSparkSession:
             validation_mode: "strict", "relaxed", or "minimal" validation behavior.
             enable_type_coercion: Whether to coerce basic types during DataFrame creation.
             enable_lazy_evaluation: Whether to enable lazy evaluation (default True).
-            max_memory: Maximum memory for DuckDB to use (e.g., '1GB', '4GB', '8GB').
+            max_memory: Maximum memory for backend to use (e.g., '1GB', '4GB', '8GB').
                        Default is '1GB' for test isolation.
-            allow_disk_spillover: If True, allows DuckDB to spill to disk when memory is full.
+            allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
-            storage_backend: Optional storage backend instance. If None, creates DuckDB backend.
+            storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
+            backend_type: Type of backend to use ("duckdb", "sqlite", etc.). Default is "duckdb".
         """
         self.app_name = app_name
+        self.backend_type = backend_type
         # Use dependency injection for storage backend
         if storage_backend is None:
             self.storage = BackendFactory.create_storage_backend(
-                backend_type="duckdb",
+                backend_type=backend_type,
                 max_memory=max_memory,
                 allow_disk_spillover=allow_disk_spillover,
             )
