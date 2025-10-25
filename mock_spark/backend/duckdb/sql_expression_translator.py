@@ -252,6 +252,23 @@ class SQLExpressionTranslator:
                         return f"STRPTIME({left}, '{duckdb_format}')::DATE"
                     else:
                         return f"TRY_CAST({left} AS DATE)"
+                # Handle array operations
+                elif expr.operation in ["array_sort", "array_reverse", "array_size", "array_max", "array_min"]:
+                    if expr.operation == "array_sort":
+                        # array_sort(array, asc) -> LIST_SORT or LIST_REVERSE_SORT
+                        asc = getattr(expr, "value", True)
+                        if asc:
+                            return f"LIST_SORT({left})"
+                        else:
+                            return f"LIST_REVERSE_SORT({left})"
+                    elif expr.operation == "array_reverse":
+                        return f"LIST_REVERSE({left})"
+                    elif expr.operation == "array_size":
+                        return f"LEN({left})"
+                    elif expr.operation == "array_max":
+                        return f"LIST_MAX({left})"
+                    elif expr.operation == "array_min":
+                        return f"LIST_MIN({left})"
                 else:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"
@@ -516,6 +533,19 @@ class SQLExpressionTranslator:
                         raise NotImplementedError(
                             f"Unsupported condition value type: {type(condition.value)}"
                         )
+                elif condition.operation == "between":
+                    # Handle BETWEEN operation: column BETWEEN lower AND upper
+                    left = self.column_to_sql(
+                        condition.column,
+                        source_table_obj.name
+                        if hasattr(source_table_obj, "name")
+                        else None,
+                    )
+                    if isinstance(condition.value, tuple) and len(condition.value) == 2:
+                        lower, upper = condition.value
+                        return f"({left} BETWEEN {lower} AND {upper})"
+                    else:
+                        raise ValueError(f"Invalid between operation: {condition}")
         elif isinstance(condition, MockColumn):
             return f'"{condition.name}"'
 
@@ -765,7 +795,7 @@ class SQLExpressionTranslator:
 
         return " ".join(sql_parts)
 
-    def window_spec_to_sql(self, window_spec: Any, table_obj: Any = None) -> str:
+    def window_spec_to_sql(self, window_spec: Any, table_obj: Any = None, alias_mapping: dict = None) -> str:
         """Convert window specification to SQL.
 
         Args:
@@ -789,6 +819,8 @@ class SQLExpressionTranslator:
                     col_name = col
                 elif hasattr(col, "name"):
                     col_name = col.name
+
+                # Don't apply alias mapping in window specs - they reference source table columns
 
                 # Validate column exists if available_columns is set
                 if (
@@ -821,6 +853,8 @@ class SQLExpressionTranslator:
                         col_name = col.column.name
                 elif hasattr(col, "name"):
                     col_name = col.name
+
+                # Don't apply alias mapping in window specs - they reference source table columns
 
                 # Validate column exists if available_columns is set
                 if (

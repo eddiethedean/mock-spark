@@ -428,6 +428,21 @@ class MockColumnOperation(IColumn):
                 return f"from_unixtime({self.column.name}, '{self.value}')"
             else:
                 return f"from_unixtime({self.column.name})"
+        elif self.operation == "array_sort":
+            # Handle array_sort -> LIST_SORT or LIST_REVERSE_SORT
+            asc = getattr(self, "value", True)
+            if asc:
+                return f"LIST_SORT({self.column.name})"
+            else:
+                return f"LIST_REVERSE_SORT({self.column.name})"
+        elif self.operation == "array_reverse":
+            return f"LIST_REVERSE({self.column.name})"
+        elif self.operation == "array_size":
+            return f"LEN({self.column.name})"
+        elif self.operation == "array_max":
+            return f"LIST_MAX({self.column.name})"
+        elif self.operation == "array_min":
+            return f"LIST_MIN({self.column.name})"
         else:
             return f"{self.column.name} {self.operation} {self.value}"
 

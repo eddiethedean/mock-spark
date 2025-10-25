@@ -488,34 +488,9 @@ class DataFrameOperationExecutor:
             table_name: Name of the table to create
             data: List of dictionaries containing the data to insert
         """
-        if not data:
-            return
-
-        # Get column names and types from first row
-        first_row = data[0]
-        columns = []
-        for col_name, value in first_row.items():
-            if isinstance(value, int):
-                columns.append(Column(col_name, Integer, primary_key=False))
-            elif isinstance(value, float):
-                columns.append(Column(col_name, Double, primary_key=False))
-            elif isinstance(value, bool):
-                columns.append(Column(col_name, Boolean, primary_key=False))
-            else:
-                columns.append(Column(col_name, String, primary_key=False))
-
-        # Create table
-        metadata = MetaData()
-        table_obj = Table(table_name, metadata, *columns)
-        table_obj.create(self.engine, checkfirst=True)
-        self.table_manager._created_tables[table_name] = table_obj
-
-        # Insert data
-        with Session(self.engine) as session:
-            for row in data:
-                insert_stmt = table_obj.insert().values(row)
-                session.execute(insert_stmt)
-            session.commit()
+        # Delegate to table_manager which has proper array handling
+        table_obj = self.table_manager.create_table_with_data(table_name, data)
+        self._created_tables[table_name] = table_obj
 
     def copy_table_structure(self, source_table: str, target_table: str) -> None:
         """Copy table structure from source to target.

@@ -98,27 +98,23 @@ class DuckDBTableManager:
                 else:
                     columns.append(Column(key, String))  # type: ignore[arg-type]
 
-        # Create table - use raw SQL for MAP columns
-        if has_map_columns:
-            # Build CREATE TABLE with proper MAP types using raw SQL
+        # Create table - use raw SQL for MAP/ARRAY columns
+        has_array_columns = any(type(col.type).__name__ == "ArrayType" for col in columns)
+        if has_map_columns or has_array_columns:
+            # Build CREATE TABLE with proper MAP/ARRAY types using raw SQL
             col_defs = []
             for col in columns:
                 if col.name in map_column_names:
                     col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
-                elif type(col.type).__name__ == "ARRAY":
+                elif type(col.type).__name__ == "ArrayType":
                     # Determine array element type
-                    if isinstance(col.type, ARRAY):
-                        elem_type = col.type.item_type
-                        if isinstance(elem_type, Integer):
-                            col_defs.append(f'"{col.name}" INTEGER[]')
-                        elif isinstance(elem_type, Float) or isinstance(
-                            elem_type, Double
-                        ):
-                            col_defs.append(f'"{col.name}" DOUBLE[]')
-                        elif isinstance(elem_type, Boolean):
-                            col_defs.append(f'"{col.name}" BOOLEAN[]')
-                        else:
-                            col_defs.append(f'"{col.name}" VARCHAR[]')
+                    elem_type = col.type.element_type
+                    if elem_type.__class__.__name__ == "LongType":
+                        col_defs.append(f'"{col.name}" INTEGER[]')
+                    elif elem_type.__class__.__name__ in ["FloatType", "DoubleType"]:
+                        col_defs.append(f'"{col.name}" DOUBLE[]')
+                    elif elem_type.__class__.__name__ == "BooleanType":
+                        col_defs.append(f'"{col.name}" BOOLEAN[]')
                     else:
                         col_defs.append(f'"{col.name}" VARCHAR[]')
                 elif isinstance(col.type, Integer):
@@ -163,11 +159,26 @@ class DuckDBTableManager:
                             insert_values[col.name] = text(map_sql)
                         else:
                             insert_values[col.name] = None
+                    # Convert Python list to DuckDB ARRAY
+                    elif isinstance(value, list):
+                        # Convert list to ARRAY syntax: [element1, element2, ...]
+                        if value:
+                            # Escape string values properly
+                            array_elements = []
+                            for elem in value:
+                                if isinstance(elem, str):
+                                    array_elements.append(f"'{elem}'")
+                                else:
+                                    array_elements.append(str(elem))
+                            array_sql = f"[{', '.join(array_elements)}]"
+                            insert_values[col.name] = text(array_sql)
+                        else:
+                            insert_values[col.name] = None
                     else:
                         insert_values[col.name] = value
 
-                # Insert using parameterized values for non-MAP columns
-                # and raw SQL for MAP columns
+                # Insert using parameterized values for non-MAP/ARRAY columns
+                # and raw SQL for MAP/ARRAY columns
                 if any(isinstance(v, type(text(""))) for v in insert_values.values()):
                     # Has MAP columns - use raw SQL
                     col_names = []

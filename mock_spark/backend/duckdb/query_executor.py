@@ -167,6 +167,10 @@ class SQLAlchemyMaterializer:
             next_table_name = f"temp_table_{self._temp_table_counter}_{temp_counter}"
             temp_counter += 1
 
+            # Ensure source table exists
+            if current_table_name not in self._created_tables:
+                raise ValueError(f"Table {current_table_name} not found")
+
             if op_name == "filter":
                 self._apply_filter(current_table_name, next_table_name, op_val)
             elif op_name == "select":
@@ -3308,11 +3312,66 @@ class SQLAlchemyMaterializer:
     def _apply_select_with_window_functions(
         self, source_table: str, target_table: str, columns: Tuple[Any, ...]
     ) -> None:
-        """Apply select operation with window functions using raw SQL.
+        """Apply select operation with window functions using raw SQL."""
+        from sqlalchemy import text
+        from sqlalchemy.orm import Session
         
-        Delegates to WindowFunctionProcessor for consistency.
-        """
-        return self.window_processor.apply_select_with_window_functions(source_table, target_table, columns)
+        source_table_obj = self._created_tables[source_table]
+        
+        # Build the SQL query using CTE builder
+        cte_query = self.cte_builder.build_select_with_window_cte(
+            source_table, columns, source_table_obj
+        )
+        
+        # Execute the query and create the target table
+        with Session(self.engine) as session:
+            # Execute the CTE query
+            results = session.execute(text(cte_query)).all()
+            
+            # Get column information from the results
+            if results:
+                # Create target table with appropriate columns
+                new_columns = []
+                for i, col in enumerate(columns):
+                    if isinstance(col, str):
+                        if col == "*":
+                            # Add all columns from source table
+                            for source_col in source_table_obj.columns:
+                                new_columns.append(Column(source_col.name, source_col.type, primary_key=False))
+                        else:
+                            new_columns.append(Column(col, String, primary_key=False))
+                    elif hasattr(col, "name"):
+                        new_columns.append(Column(col.name, String, primary_key=False))
+                    else:
+                        new_columns.append(Column(f"col_{i}", String, primary_key=False))
+                
+                # Create target table
+                target_table_obj = Table(target_table, self.metadata, *new_columns)
+                target_table_obj.create(self.engine, checkfirst=True)
+                self._created_tables[target_table] = target_table_obj
+                
+                # Insert results
+                for result in results:
+                    result_dict = {}
+                    for i, column in enumerate(new_columns):
+                        if i < len(result):
+                            result_dict[column.name] = result[i]
+                    insert_stmt = target_table_obj.insert().values(result_dict)
+                    session.execute(insert_stmt)
+                session.commit()
+            else:
+                # Handle empty results
+                new_columns = []
+                for col in columns:
+                    if isinstance(col, str) and col == "*":
+                        for source_col in source_table_obj.columns:
+                            new_columns.append(Column(source_col.name, source_col.type, primary_key=False))
+                    elif hasattr(col, "name"):
+                        new_columns.append(Column(col.name, String, primary_key=False))
+                
+                target_table_obj = Table(target_table, self.metadata, *new_columns)
+                target_table_obj.create(self.engine, checkfirst=True)
+                self._created_tables[target_table] = target_table_obj
 
     def _apply_window_function(
         self, source_table: str, target_table: str, window_func: Any
