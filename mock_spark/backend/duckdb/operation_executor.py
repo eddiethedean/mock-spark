@@ -4,7 +4,7 @@ DataFrame operation executor for Mock Spark.
 This module provides execution of DataFrame operations (filter, select, join, etc.).
 """
 
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 from sqlalchemy import (
     select,
     func,
@@ -48,6 +48,8 @@ class DataFrameOperationExecutor:
         self.expression_translator = expression_translator
         self.error_translator = DuckDBErrorTranslator()
         self._strict_column_validation = False
+        # Share the created tables dictionary with table manager
+        self._created_tables = self.table_manager._created_tables
 
     def apply_filter(
         self, source_table: str, target_table: str, condition: Any
@@ -476,3 +478,61 @@ class DataFrameOperationExecutor:
         # Simplified implementation - would need full union logic
         # For now, just copy the table structure
         self.table_manager.copy_table_structure(source_table, target_table)
+
+    def create_table_with_data(
+        self, table_name: str, data: List[Dict[str, Any]]
+    ) -> None:
+        """Create a table and insert data using SQLAlchemy Table.
+
+        Args:
+            table_name: Name of the table to create
+            data: List of dictionaries containing the data to insert
+        """
+        if not data:
+            return
+
+        # Get column names and types from first row
+        first_row = data[0]
+        columns = []
+        for col_name, value in first_row.items():
+            if isinstance(value, int):
+                columns.append(Column(col_name, Integer, primary_key=False))
+            elif isinstance(value, float):
+                columns.append(Column(col_name, Double, primary_key=False))
+            elif isinstance(value, bool):
+                columns.append(Column(col_name, Boolean, primary_key=False))
+            else:
+                columns.append(Column(col_name, String, primary_key=False))
+
+        # Create table
+        metadata = MetaData()
+        table_obj = Table(table_name, metadata, *columns)
+        table_obj.create(self.engine, checkfirst=True)
+        self.table_manager._created_tables[table_name] = table_obj
+
+        # Insert data
+        with Session(self.engine) as session:
+            for row in data:
+                insert_stmt = table_obj.insert().values(row)
+                session.execute(insert_stmt)
+            session.commit()
+
+    def copy_table_structure(self, source_table: str, target_table: str) -> None:
+        """Copy table structure from source to target.
+
+        Args:
+            source_table: Name of source table
+            target_table: Name of target table
+        """
+        self.table_manager.copy_table_structure(source_table, target_table)
+
+    def get_table_results(self, table_name: str) -> List[Any]:
+        """Get all results from a table as MockRow objects.
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            List of MockRow objects
+        """
+        return self.table_manager.get_table_results(table_name)

@@ -54,100 +54,43 @@ class SQLAlchemyMaterializer:
         self._temp_table_counter = 0
         self._created_tables: Dict[str, Any] = {}  # Track created tables
         self.metadata = MetaData()
+        
+        # Inject modular components for Single Responsibility Principle
+        from .table_manager import DuckDBTableManager
+        from .sql_expression_translator import SQLExpressionTranslator
+        from .cte_query_builder import CTEQueryBuilder
+        from .operation_executor import DataFrameOperationExecutor
+        from .window_processor import WindowFunctionProcessor
+        from .error_translator import DuckDBErrorTranslator
+        from .date_format_converter import DateFormatConverter
+        
+        self.table_manager = DuckDBTableManager(self.engine, self.metadata)
+        # Share the created tables dictionary
+        self.table_manager._created_tables = self._created_tables
+        self.expression_translator = SQLExpressionTranslator(self.table_manager)
+        self.cte_builder = CTEQueryBuilder(self.expression_translator)
+        self.operation_executor = DataFrameOperationExecutor(
+            self.engine, self.table_manager, self.expression_translator
+        )
+        self.window_processor = WindowFunctionProcessor(self.expression_translator)
+        self.error_translator = DuckDBErrorTranslator()
+        self.format_converter = DateFormatConverter()
 
     def _convert_java_to_duckdb_format(self, java_format: str) -> str:
-        """Convert Java SimpleDateFormat to DuckDB strptime format."""
-        # Common Java to DuckDB format conversions
-        format_map = {
-            "yyyy": "%Y",  # 4-digit year
-            "yy": "%y",  # 2-digit year
-            "MM": "%m",  # Month (01-12)
-            "M": "%m",  # Month (1-12)
-            "dd": "%d",  # Day (01-31)
-            "d": "%d",  # Day (1-31)
-            "HH": "%H",  # Hour (00-23)
-            "H": "%H",  # Hour (0-23)
-            "hh": "%I",  # Hour (01-12)
-            "h": "%I",  # Hour (1-12)
-            "mm": "%M",  # Minute (00-59)
-            "m": "%M",  # Minute (0-59)
-            "ss": "%S",  # Second (00-59)
-            "s": "%S",  # Second (0-59)
-            "SSS": "%f",  # Millisecond (000-999)
-            "a": "%p",  # AM/PM
-            "E": "%a",  # Day of week (abbreviated)
-            "EEEE": "%A",  # Day of week (full)
-            "z": "%Z",  # Timezone
-            "Z": "%z",  # Timezone offset
-        }
-
-        # Replace Java format patterns with DuckDB equivalents
-        # Use placeholders to avoid conflicts during replacement
-        # Sort patterns by length (descending) to process longest matches first
-        sorted_patterns = sorted(
-            format_map.items(), key=lambda x: len(x[0]), reverse=True
-        )
-
-        # First pass: replace with unique placeholders using special unicode characters
-        duckdb_format = java_format
-        replacements = {}
-        for i, (java_pattern, duckdb_pattern) in enumerate(sorted_patterns):
-            # Use unicode placeholder that won't conflict with format patterns
-            placeholder = f"\ue000{i}\ue001"
-            duckdb_format = duckdb_format.replace(java_pattern, placeholder)
-            replacements[placeholder] = duckdb_pattern
-
-        # Second pass: replace placeholders with actual patterns
-        for placeholder, duckdb_pattern in replacements.items():
-            duckdb_format = duckdb_format.replace(placeholder, duckdb_pattern)
-
-        return duckdb_format
+        """Convert Java SimpleDateFormat to DuckDB strptime format.
+        
+        Delegates to DateFormatConverter for consistency.
+        """
+        return self.format_converter.convert_java_to_duckdb_format(java_format)
 
     def _translate_duckdb_error(
         self, error: Exception, context: Dict[str, Any]
     ) -> Exception:
-        """Translate DuckDB errors to helpful MockSpark errors."""
-        error_msg = str(error).lower()
-
-        if "syntax error" in error_msg or "parser error" in error_msg:
-            operation = context.get("operation", "unknown")
-            column = context.get("column", "unknown")
-            return MockSparkOperationError(
-                operation=operation,
-                column=column,
-                issue="SQL syntax error in generated query",
-                suggestion="Check column types and operation compatibility",
-            )
-        elif "column" in error_msg and "not found" in error_msg:
-            # Extract column name from error message
-            import re
-
-            match = re.search(r"column ['\"]([^'\"]+)['\"]", error_msg)
-            column_name = match.group(1) if match else "unknown"
-            available_columns = context.get("available_columns", [])
-            return MockSparkColumnNotFoundError(column_name, available_columns)
-        elif "type" in error_msg and (
-            "mismatch" in error_msg or "incompatible" in error_msg
-        ):
-            operation = context.get("operation", "unknown")
-            return MockSparkTypeMismatchError(
-                operation=operation,
-                expected_type=context.get("expected_type", "unknown"),
-                actual_type=context.get("actual_type", "unknown"),
-                column=context.get("column", ""),
-            )
-        elif "function" in error_msg and "not found" in error_msg:
-            operation = context.get("operation", "unknown")
-            return MockSparkSQLGenerationError(
-                operation=operation,
-                sql_fragment=context.get("sql_fragment", ""),
-                error=str(error),
-            )
-        else:
-            # Generic query execution error
-            return MockSparkQueryExecutionError(
-                sql=context.get("sql", ""), error=str(error), context=context
-            )
+        """Translate DuckDB errors to helpful MockSpark errors.
+        
+        Delegates to DuckDBErrorTranslator for consistency.
+        """
+        return self.error_translator.translate_error(error, context)
 
     def materialize(
         self,
@@ -252,185 +195,77 @@ class SQLAlchemyMaterializer:
     def _create_table_with_data(
         self, table_name: str, data: List[Dict[str, Any]]
     ) -> None:
-        """Create a table and insert data using SQLAlchemy Table."""
-        if not data:
-            # Create a minimal table with at least one column to avoid "Table must have at least one column!" error
-            columns = [Column("id", Integer)]
-            table = Table(table_name, self.metadata, *columns)
-            table.create(self.engine, checkfirst=True)
-            self._created_tables[table_name] = table
-            return
+        """Create a table and insert data using SQLAlchemy Table.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.create_table_with_data(table_name, data)
 
-        # Create table using SQLAlchemy Table approach
-        columns = []
-        has_map_columns = False
-        map_column_names = []
+    def _copy_table_structure(self, source_table: str, target_table: str) -> None:
+        """Copy table structure from source to target.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.copy_table_structure(source_table, target_table)
 
-        if data:
-            for key, value in data[0].items():
-                # Debug type detection
-                # print(f"DEBUG: Column {key}, value type: {type(value)}, value: {value}")
+    def _get_table_results(self, table_name: str) -> List[MockRow]:
+        """Get all results from a table as MockRow objects.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.get_table_results(table_name)
 
-                if isinstance(value, int):
-                    columns.append(Column(key, Integer))
-                elif isinstance(value, float):
-                    columns.append(Column(key, Float))
-                elif isinstance(value, bool):
-                    columns.append(Column(key, Boolean))
-                elif isinstance(value, list):
-                    # For arrays, infer element type from first element
-                    from sqlalchemy import ARRAY, VARCHAR
+    def _apply_union(self, source_table: str, target_table: str, other_df: Any) -> None:
+        """Apply union operation.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.apply_union(source_table, target_table, other_df)
 
-                    if value and len(value) > 0:
-                        # Infer element type from first non-None element
-                        first_elem = next(
-                            (elem for elem in value if elem is not None), None
-                        )
-                        if isinstance(first_elem, int):
-                            columns.append(Column(key, ARRAY(Integer)))
-                        elif isinstance(first_elem, float):
-                            columns.append(Column(key, ARRAY(Float)))
-                        elif isinstance(first_elem, bool):
-                            columns.append(Column(key, ARRAY(Boolean)))
-                        else:
-                            columns.append(Column(key, ARRAY(VARCHAR)))
-                    else:
-                        # Empty array - default to VARCHAR
-                        columns.append(Column(key, ARRAY(VARCHAR)))
-                elif isinstance(value, dict):
-                    # For maps, mark for raw SQL handling
-                    has_map_columns = True
-                    map_column_names.append(key)
-                    # print(f"DEBUG: Found MAP column: {key}")
-                    columns.append(Column(key, String))  # Placeholder
-                else:
-                    columns.append(Column(key, String))
+    def _expression_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
+        """Convert expression to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.expression_to_sql(expr, source_table)
 
-        # Create table - use raw SQL for MAP columns
-        if has_map_columns:
-            # Build CREATE TABLE with proper MAP types using raw SQL
-            from sqlalchemy import ARRAY
-            # print(f"DEBUG: Creating table {table_name} with MAP columns: {map_column_names}")
+    def _column_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
+        """Convert column to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.column_to_sql(expr, source_table)
 
-            col_defs = []
-            for col in columns:
-                if col.name in map_column_names:
-                    col_defs.append(f'"{col.name}" MAP(VARCHAR, VARCHAR)')
-                elif type(col.type).__name__ == "ARRAY":
-                    # Determine array element type
-                    from sqlalchemy import ARRAY
+    def _value_to_sql(self, value: Any) -> str:
+        """Convert value to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.value_to_sql(value)
 
-                    if isinstance(col.type, ARRAY):
-                        elem_type = col.type.item_type
-                        if isinstance(elem_type, Integer):
-                            col_defs.append(f'"{col.name}" INTEGER[]')
-                        elif isinstance(elem_type, Float) or isinstance(
-                            elem_type, Double
-                        ):
-                            col_defs.append(f'"{col.name}" DOUBLE[]')
-                        elif isinstance(elem_type, Boolean):
-                            col_defs.append(f'"{col.name}" BOOLEAN[]')
-                        else:
-                            col_defs.append(f'"{col.name}" VARCHAR[]')
-                    else:
-                        col_defs.append(f'"{col.name}" VARCHAR[]')
-                elif isinstance(col.type, Integer):
-                    col_defs.append(f'"{col.name}" INTEGER')
-                elif isinstance(col.type, Float) or isinstance(col.type, Double):
-                    col_defs.append(f'"{col.name}" DOUBLE')
-                elif isinstance(col.type, Boolean):
-                    col_defs.append(f'"{col.name}" BOOLEAN')
-                else:
-                    col_defs.append(f'"{col.name}" VARCHAR')
+        """Apply union operation.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.apply_union(source_table, target_table, other_df)
 
-            create_sql = f"CREATE TABLE {table_name} ({', '.join(col_defs)})"
-            with Session(self.engine) as session:
-                session.execute(text(create_sql))
-                session.commit()
+        """Convert expression to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.expression_to_sql(expr, source_table)
 
-            # Register table in metadata manually
-            table = Table(table_name, self.metadata, *columns, extend_existing=True)
-            self._created_tables[table_name] = table
-        else:
-            # Normal table creation
-            table = Table(table_name, self.metadata, *columns)
-            table.create(self.engine, checkfirst=True)
-            self._created_tables[table_name] = table
+        """Convert column to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.column_to_sql(expr, source_table)
 
-        # Insert data using raw SQL - handle dict/list conversion for DuckDB
-        with Session(self.engine) as session:
-            for row_data in data:
-                # Convert row data to values for insert, handling special types
-                insert_values: Dict[str, Any] = {}
-                for col in columns:
-                    value = row_data[col.name]
-
-                    # Convert Python dict to DuckDB MAP
-                    if isinstance(value, dict):
-                        # Convert dict to MAP syntax: MAP(['keys'], ['values'])
-                        if value:
-                            keys = list(value.keys())
-                            vals = list(value.values())
-                            # Create MAP using raw SQL
-                            map_sql = f"MAP({keys!r}, {vals!r})"
-                            insert_values[col.name] = text(map_sql)
-                        else:
-                            insert_values[col.name] = None
-                    else:
-                        insert_values[col.name] = value
-
-                # Insert using parameterized values for non-MAP columns
-                # and raw SQL for MAP columns
-                if any(isinstance(v, type(text(""))) for v in insert_values.values()):
-                    # Has MAP columns - use raw SQL
-                    col_names = []
-                    col_values = []
-                    for col_name, col_value in insert_values.items():
-                        col_names.append(f'"{col_name}"')
-                        if hasattr(col_value, "text"):  # TextClause
-                            col_values.append(col_value.text)
-                        elif isinstance(col_value, str):
-                            col_values.append(f"'{col_value}'")
-                        elif col_value is None:
-                            col_values.append("NULL")
-                        else:
-                            col_values.append(str(col_value))
-
-                    raw_sql = f"INSERT INTO {table_name} ({', '.join(col_names)}) VALUES ({', '.join(col_values)})"
-                    session.execute(text(raw_sql))
-                else:
-                    # Normal insert - handle overflow values gracefully
-                    try:
-                        insert_stmt = table.insert().values(insert_values)
-                        session.execute(insert_stmt)
-                    except Exception as e:
-                        if "out of range" in str(e) or "Conversion Error" in str(e):
-                            # Rollback the failed transaction
-                            session.rollback()
-
-                            # Handle overflow by inserting NULL for problematic values
-                            safe_values: Dict[str, Any] = {}
-                            for key, value in insert_values.items():
-                                col_type = table.c[key].type
-                                # Check if this is an Integer column and value is too large
-                                if isinstance(col_type, Integer):
-                                    if isinstance(value, (int, float)):
-                                        # Check if value exceeds INT32 range
-                                        if value > 2147483647 or value < -2147483648:
-                                            safe_values[key] = None
-                                        else:
-                                            safe_values[key] = value
-                                    else:
-                                        safe_values[key] = value
-                                else:
-                                    safe_values[key] = value
-
-                            if safe_values:
-                                safe_insert_stmt = table.insert().values(safe_values)
-                                session.execute(safe_insert_stmt)
-                        else:
-                            raise e
-            session.commit()
+        """Convert value to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.value_to_sql(value)
 
     def _apply_filter(
         self, source_table: str, target_table: str, condition: Any
@@ -3473,689 +3308,43 @@ class SQLAlchemyMaterializer:
     def _apply_select_with_window_functions(
         self, source_table: str, target_table: str, columns: Tuple[Any, ...]
     ) -> None:
-        """Apply select operation with window functions using raw SQL."""
-        source_table_obj = self._created_tables[source_table]
-
-        # Build the SELECT clause
-        select_parts = []
-        new_columns: List[Any] = []
-
-        for col in columns:
-            # print(f"DEBUG _apply_select_with_window_functions: Processing {type(col).__name__}, name={getattr(col, 'name', 'N/A')}, has_operation={hasattr(col, 'operation')}, has_function_name={hasattr(col, 'function_name')}")
-            if isinstance(col, str):
-                if col == "*":
-                    # Select all columns
-                    for column in source_table_obj.columns:
-                        select_parts.append(f'"{column.name}"')
-                        new_columns.append(
-                            Column(column.name, column.type, primary_key=False)
-                        )
-                else:
-                    select_parts.append(f'"{col}"')
-                    source_column = source_table_obj.c[col]
-                    new_columns.append(
-                        Column(col, source_column.type, primary_key=False)
-                    )
-            elif (
-                hasattr(col, "function_name")
-                and hasattr(col, "column")
-                and col.__class__.__name__ == "MockAggregateFunction"
-            ):
-                # Handle MockAggregateFunction objects like F.count(), F.sum(), etc.
-                if col.function_name == "count":
-                    if col.column is None or col.column == "*":
-                        select_parts.append("COUNT(*)")
-                    else:
-                        column_name = (
-                            col.column.name
-                            if hasattr(col.column, "name")
-                            else col.column
-                        )
-                        select_parts.append(f"COUNT({column_name})")
-                elif col.function_name == "countDistinct":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"COUNT(DISTINCT {column_name})")
-                elif col.function_name == "percentile_approx":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    # DuckDB doesn't have percentile functions, use AVG as approximation
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "corr":
-                    # CORR function requires two columns, but we only have one
-                    # This is a limitation - we'll use AVG as fallback
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "covar_samp":
-                    # COVAR_SAMP function requires two columns, but we only have one
-                    # This is a limitation - we'll use AVG as fallback
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "sum":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"SUM({column_name})")
-                elif col.function_name == "avg":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "max":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"MAX({column_name})")
-                elif col.function_name == "min":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"MIN({column_name})")
-                elif col.function_name == "bool_and":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"BOOL_AND({column_name})")
-                elif col.function_name == "bool_or":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"BOOL_OR({column_name})")
-                elif col.function_name == "max_by":
-                    # max_by(col, ord) -> ARG_MAX(col, ord)
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    ord_column = (
-                        col.ord_column.name
-                        if hasattr(col.ord_column, "name")
-                        else col.ord_column
-                    )
-                    select_parts.append(f"ARG_MAX({column_name}, {ord_column})")
-                elif col.function_name == "min_by":
-                    # min_by(col, ord) -> ARG_MIN(col, ord)
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    ord_column = (
-                        col.ord_column.name
-                        if hasattr(col.ord_column, "name")
-                        else col.ord_column
-                    )
-                    select_parts.append(f"ARG_MIN({column_name}, {ord_column})")
-                elif col.function_name == "count_if":
-                    # count_if(condition) - column is the condition expression
-                    # Convert the condition expression to SQL
-                    condition_sql = self._expression_to_sql(
-                        col.column, source_table=source_table
-                    )
-                    # DuckDB supports COUNT_IF directly
-                    select_parts.append(f"COUNT_IF({condition_sql})")
-                elif col.function_name == "any_value":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    # DuckDB supports ANY_VALUE
-                    select_parts.append(f"ANY_VALUE({column_name})")
-                else:
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"{col.function_name.upper()}({column_name})")
-
-                # Add appropriate column type
-                if col.function_name in ["count", "countDistinct", "count_if"]:
-                    new_columns.append(
-                        Column(col.name, Integer, primary_key=False, nullable=False)
-                    )
-                elif col.function_name in ["bool_and", "bool_or"]:
-                    new_columns.append(Column(col.name, Boolean, primary_key=False))
-                elif col.function_name == "sum":
-                    # Preserve source column type for SUM
-                    if col.column and hasattr(col.column, "name"):
-                        column_name = col.column.name
-                        source_column = source_table_obj.c[column_name]
-                        source_type = str(source_column.type).upper()
-                        # Use Integer for integer types, Float for floating types
-                        if any(
-                            int_type in source_type
-                            for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
-                        ):
-                            new_columns.append(
-                                Column(col.name, Integer, primary_key=False)
-                            )
-                        else:
-                            new_columns.append(
-                                Column(col.name, Float, primary_key=False)
-                            )
-                    elif isinstance(col.column, str):
-                        column_name = col.column
-                        if column_name in source_table_obj.c:
-                            source_column = source_table_obj.c[column_name]
-                            source_type = str(source_column.type).upper()
-                            if any(
-                                int_type in source_type
-                                for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
-                            ):
-                                new_columns.append(
-                                    Column(col.name, Integer, primary_key=False)
-                                )
-                            else:
-                                new_columns.append(
-                                    Column(col.name, Float, primary_key=False)
-                                )
-                        else:
-                            new_columns.append(
-                                Column(col.name, Float, primary_key=False)
-                            )
-                    else:
-                        new_columns.append(Column(col.name, Float, primary_key=False))
-                elif col.function_name in [
-                    "avg",
-                    "percentile_approx",
-                    "corr",
-                    "covar_samp",
-                ]:
-                    new_columns.append(Column(col.name, Float, primary_key=False))
-                elif col.function_name in ["max", "min"]:
-                    # For max/min, use the same type as the source column
-                    if col.column and hasattr(col.column, "name"):
-                        source_column = source_table_obj.c[col.column.name]
-                        new_columns.append(
-                            Column(col.name, source_column.type, primary_key=False)
-                        )
-                    else:
-                        new_columns.append(Column(col.name, Integer, primary_key=False))
-                elif col.function_name in ["max_by", "min_by", "any_value"]:
-                    # For max_by/min_by/any_value, use the same type as the value column
-                    if col.column and hasattr(col.column, "name"):
-                        source_column = source_table_obj.c[col.column.name]
-                        new_columns.append(
-                            Column(col.name, source_column.type, primary_key=False)
-                        )
-                    else:
-                        new_columns.append(Column(col.name, String, primary_key=False))
-                else:
-                    new_columns.append(Column(col.name, String, primary_key=False))
-            elif hasattr(col, "name") and col.name == "*":
-                # Handle F.col("*") case - only add columns from source table
-                # Check which columns are already in new_columns to avoid duplicates
-                existing_col_names = {c.name for c in new_columns}
-                for column in source_table_obj.columns:
-                    if column.name not in existing_col_names:
-                        select_parts.append(f'"{column.name}"')
-                        new_columns.append(
-                            Column(column.name, column.type, primary_key=False)
-                        )
-            elif hasattr(col, "name") and not hasattr(col, "alias"):
-                # Handle F.col("column_name") case (but not window functions)
-                select_parts.append(f'"{col.name}"')
-                source_column = source_table_obj.c[col.name]
-                new_columns.append(
-                    Column(col.name, source_column.type, primary_key=False)
-                )
-            elif (
-                hasattr(col, "operation")
-                and hasattr(col, "column")
-                and hasattr(col, "value")
-            ):
-                # Handle MockColumnOperation objects (arithmetic and string operations)
-                # Check if this is an arithmetic operation (not a function)
-                if hasattr(col, "function_name") and col.function_name in [
-                    "+",
-                    "-",
-                    "*",
-                    "/",
-                    "%",
-                ]:
-                    # This is an arithmetic operation, not a function
-                    col_expr = self._expression_to_sql(col, source_table=source_table)
-                    # Add proper aliasing so the column is available in the result
-                    select_parts.append(f'({col_expr}) AS "{col.name}"')
-                    # For arithmetic operations, handle division specially
-                    if col.function_name == "/":
-                        # Division always returns floating-point type
-                        new_columns.append(Column(col.name, Float, primary_key=False))
-                    elif hasattr(col, "column") and hasattr(col.column, "name"):
-                        # Check if col.column is a MockColumnOperation (complex expression)
-                        if hasattr(col.column, "operation"):
-                            # This is a complex expression, use generic type
-                            new_columns.append(
-                                Column(col.name, Float, primary_key=False)
-                            )
-                        elif col.column.name in source_table_obj.c:
-                            # This is a simple column reference
-                            source_column = source_table_obj.c[col.column.name]
-                            new_columns.append(
-                                Column(col.name, source_column.type, primary_key=False)
-                            )
-                        else:
-                            # Column not found, use generic type
-                            new_columns.append(
-                                Column(col.name, Float, primary_key=False)
-                            )
-                    else:
-                        new_columns.append(Column(col.name, Float, primary_key=False))
-                elif hasattr(col, "function_name") and col.function_name in [
-                    "upper",
-                    "lower",
-                    "trim",
-                ]:
-                    # This is a string function operation
-                    col_expr = self._expression_to_sql(col, source_table=source_table)
-                    select_parts.append(f'({col_expr}) AS "{col.name}"')
-                    new_columns.append(Column(col.name, String, primary_key=False))
-                elif hasattr(col, "function_name") and col.function_name in [
-                    "length",
-                    "abs",
-                    "round",
-                ]:
-                    # This is a math function operation that returns numeric types
-                    col_expr = self._expression_to_sql(col, source_table=source_table)
-                    select_parts.append(f'({col_expr}) AS "{col.name}"')
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
-                elif hasattr(col, "function_name") and col.function_name in [
-                    "==",
-                    "!=",
-                    ">",
-                    "<",
-                    ">=",
-                    "<=",
-                ]:
-                    # This is a comparison operation (returns boolean)
-                    col_expr = self._expression_to_sql(col, source_table=source_table)
-                    select_parts.append(f'{col_expr} AS "{col.name}"')
-                    new_columns.append(Column(col.name, Boolean, primary_key=False))
-                elif hasattr(col, "function_name") and col.function_name in [
-                    "hour",
-                    "minute",
-                    "second",
-                    "year",
-                    "month",
-                    "day",
-                    "dayofmonth",
-                    "dayofweek",
-                    "dayofyear",
-                    "weekofyear",
-                    "quarter",
-                ]:
-                    # Handle datetime extraction functions with proper aliasing
-                    datetime_sql = self._expression_to_sql(
-                        col, source_table=source_table
-                    )
-                    select_parts.append(f'{datetime_sql} AS "{col.name}"')
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
-                elif not hasattr(col, "function_name"):
-                    # This is an operation without function_name (must be arithmetic)
-                    col_expr = self._expression_to_sql(col, source_table=source_table)
-                    select_parts.append(f'({col_expr}) AS "{col.name}"')
-                    # Arithmetic operation (returns numeric)
-                    new_columns.append(Column(col.name, Float, primary_key=False))
-            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Handle MockWindowFunction objects like F.row_number().over(...).alias("rank")
-                if col.function_name == "row_number":
-                    # Build the window specification from the window_spec
-                    window_sql = self._window_spec_to_sql(
-                        col.window_spec, source_table_obj
-                    )
-                    select_parts.append(f"ROW_NUMBER() OVER ({window_sql})")
-                    new_columns.append(
-                        Column(col.name, Integer, primary_key=False, nullable=False)
-                    )
-                elif col.function_name == "rank":
-                    window_sql = self._window_spec_to_sql(
-                        col.window_spec, source_table_obj
-                    )
-                    select_parts.append(f"RANK() OVER ({window_sql})")
-                    new_columns.append(
-                        Column(col.name, Integer, primary_key=False, nullable=False)
-                    )
-                elif col.function_name == "dense_rank":
-                    window_sql = self._window_spec_to_sql(
-                        col.window_spec, source_table_obj
-                    )
-                    select_parts.append(f"DENSE_RANK() OVER ({window_sql})")
-                    new_columns.append(
-                        Column(col.name, Integer, primary_key=False, nullable=False)
-                    )
-                else:
-                    # Generic window function - handle parameters
-                    window_sql = self._window_spec_to_sql(
-                        col.window_spec, source_table_obj
-                    )
-
-                    # Build function call with parameters
-                    # Get parameters from the original function stored in the MockWindowFunction
-                    original_function = getattr(col, "function", None)
-                    if (
-                        original_function
-                        and hasattr(original_function, "value")
-                        and original_function.value is not None
-                    ):
-                        # Handle parameters for functions like NTH_VALUE, LAG, LEAD, etc.
-                        if isinstance(original_function.value, tuple):
-                            # Special handling for LAG and LEAD which need column name + tuple params
-                            if col.function_name in ["lag", "lead"]:
-                                # Get the column name from the original function
-                                column_name = getattr(
-                                    getattr(original_function, "column", None),
-                                    "name",
-                                    "unknown",
-                                )
-                                # Extract offset and default_value from tuple
-                                params = [f'"{column_name}"']
-                                for param in original_function.value:
-                                    if param is not None:
-                                        if isinstance(param, str):
-                                            params.append(f"'{param}'")
-                                        else:
-                                            params.append(str(param))
-                                param_str = ", ".join(params)
-                                select_parts.append(
-                                    f"{col.function_name.upper()}({param_str}) OVER ({window_sql})"
-                                )
-                            else:
-                                # Extract parameters from tuple for other functions
-                                params = []
-                                for param in original_function.value:
-                                    if param is not None:
-                                        if isinstance(param, str):
-                                            params.append(f"'{param}'")
-                                        else:
-                                            params.append(str(param))
-                                param_str = ", ".join(params)
-                                select_parts.append(
-                                    f"{col.function_name.upper()}({param_str}) OVER ({window_sql})"
-                                )
-                        else:
-                            # For functions like NTH_VALUE, we need both the column and the value
-                            if col.function_name in ["nth_value"]:
-                                # Extract column name from the original function's column attribute
-                                column_name = getattr(
-                                    getattr(original_function, "column", None),
-                                    "name",
-                                    "unknown",
-                                )
-                                param_str = (
-                                    f'"{column_name}", {original_function.value}'
-                                )
-                                select_parts.append(
-                                    f"{col.function_name.upper()}({param_str}) OVER ({window_sql})"
-                                )
-                            else:
-                                # Single parameter for other functions
-                                if isinstance(original_function.value, str):
-                                    select_parts.append(
-                                        f"{col.function_name.upper()}('{original_function.value}') OVER ({window_sql})"
-                                    )
-                                else:
-                                    select_parts.append(
-                                        f"{col.function_name.upper()}({original_function.value}) OVER ({window_sql})"
-                                    )
-                    else:
-                        # No parameters in value, but check if there's a column (for aggregate functions)
-                        # Some functions like CUME_DIST, PERCENT_RANK, RANK, DENSE_RANK don't take parameters
-                        if col.function_name in [
-                            "cume_dist",
-                            "percent_rank",
-                            "rank",
-                            "dense_rank",
-                        ]:
-                            # These functions don't take parameters
-                            select_parts.append(
-                                f"{col.function_name.upper()}() OVER ({window_sql})"
-                            )
-                        elif (
-                            original_function
-                            and hasattr(original_function, "column")
-                            and original_function.column
-                        ):
-                            # Extract column name - handle both string and column objects
-                            if isinstance(original_function.column, str):
-                                column_name = original_function.column
-                            else:
-                                column_name = getattr(
-                                    original_function.column, "name", "unknown"
-                                )
-                            # Check if column exists in table before adding to SQL
-                            if (
-                                column_name != "unknown"
-                                and column_name in source_table_obj.c
-                            ):
-                                select_parts.append(
-                                    f'{col.function_name.upper()}("{column_name}") OVER ({window_sql})'
-                                )
-                            else:
-                                # Column doesn't exist, skip this window function or use placeholder
-                                # Add NULL as placeholder to maintain column position
-                                select_parts.append(f"NULL AS {col.name}")
-                                new_columns.append(
-                                    Column(col.name, String, primary_key=False)
-                                )
-                                continue
-                        else:
-                            # Truly no parameters
-                            select_parts.append(
-                                f"{col.function_name.upper()}() OVER ({window_sql})"
-                            )
-
-                    # Window ranking functions never return NULL
-                    if col.function_name in [
-                        "row_number",
-                        "rank",
-                        "dense_rank",
-                        "cume_dist",
-                        "percent_rank",
-                    ]:
-                        new_columns.append(
-                            Column(col.name, Integer, primary_key=False, nullable=False)
-                        )
-                    else:
-                        new_columns.append(Column(col.name, Integer, primary_key=False))
-            elif (
-                hasattr(col, "operation")
-                and hasattr(col, "column")
-                and hasattr(col, "function_name")
-            ):
-                # Handle MockColumnOperation objects with function operations like F.upper()
-                # Note: These need AS alias clause when col.name differs from column.name
-                if col.function_name == "upper":
-                    select_parts.append(f"UPPER({col.column.name}) AS {col.name}")
-                elif col.function_name == "lower":
-                    select_parts.append(f"LOWER({col.column.name}) AS {col.name}")
-                elif col.function_name == "length":
-                    select_parts.append(f"LENGTH({col.column.name}) AS {col.name}")
-                elif col.function_name == "abs":
-                    select_parts.append(f"ABS({col.column.name}) AS {col.name}")
-                elif col.function_name == "round":
-                    # For round function, check if there's a precision parameter
-                    if hasattr(col, "value") and col.value is not None:
-                        select_parts.append(
-                            f"ROUND({col.column.name}, {col.value}) AS {col.name}"
-                        )
-                    else:
-                        select_parts.append(f"ROUND({col.column.name}) AS {col.name}")
-                elif col.function_name == "ceil":
-                    select_parts.append(f"CEIL({col.column.name}) AS {col.name}")
-                elif col.function_name == "floor":
-                    select_parts.append(f"FLOOR({col.column.name}) AS {col.name}")
-                elif col.function_name == "sqrt":
-                    select_parts.append(f"SQRT({col.column.name}) AS {col.name}")
-                elif col.function_name == "months_between":
-                    # For months_between, we need both column names
-                    column1_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    column2_name = (
-                        col.value.name if hasattr(col.value, "name") else col.value
-                    )
-                    select_parts.append(
-                        f"MONTHS_BETWEEN({column1_name}, {column2_name}) AS {col.name}"
-                    )
-                elif col.function_name == "split":
-                    # For split, use DuckDB's string_split or str_split function
-                    delimiter = (
-                        col.value if isinstance(col.value, str) else str(col.value)
-                    )
-                    select_parts.append(
-                        f"STRING_SPLIT({col.column.name}, '{delimiter}') AS {col.name}"
-                    )
-                else:
-                    # Fallback to raw SQL for unknown functions
-                    select_parts.append(
-                        f"{col.function_name}({col.column.name}) AS {col.name}"
-                    )
-
-                # Infer column type based on function
-                if col.function_name in ["length", "abs", "ceil", "floor"]:
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
-                elif col.function_name in ["round", "sqrt", "months_between"]:
-                    new_columns.append(Column(col.name, Float, primary_key=False))
-                elif col.function_name == "split":
-                    # split returns an array type - use String with JSON for now (DuckDB arrays)
-                    # We'll mark it but DuckDB will handle the array natively
-                    from sqlalchemy import ARRAY
-
-                    try:
-                        new_columns.append(
-                            Column(col.name, ARRAY(String), primary_key=False)
-                        )
-                    except:  # noqa: E722
-                        # Fallback to String if ARRAY not supported
-                        new_columns.append(Column(col.name, String, primary_key=False))
-                else:
-                    new_columns.append(Column(col.name, String, primary_key=False))
-            elif hasattr(col, "value") and hasattr(col, "data_type"):
-                # Handle MockLiteral objects (literal values)
-                if isinstance(col.value, str):
-                    select_parts.append(f"'{col.value}'")
-                else:
-                    select_parts.append(str(col.value))
-                # Use appropriate column type based on the literal value
-                if isinstance(col.value, int):
-                    new_columns.append(Column(col.name, Integer, primary_key=False))
-                elif isinstance(col.value, float):
-                    new_columns.append(Column(col.name, Float, primary_key=False))
-                elif isinstance(col.value, str):
-                    new_columns.append(Column(col.name, String, primary_key=False))
-                else:
-                    new_columns.append(Column(col.name, String, primary_key=False))
-            elif (
-                hasattr(col, "function_name")
-                and hasattr(col, "column")
-                and col.__class__.__name__ == "MockAggregateFunction"
-            ):
-                # Handle MockAggregateFunction objects like F.count(), F.sum(), etc.
-                if col.function_name == "count":
-                    if col.column is None or col.column == "*":
-                        select_parts.append("COUNT(*)")
-                    else:
-                        column_name = (
-                            col.column.name
-                            if hasattr(col.column, "name")
-                            else col.column
-                        )
-                        select_parts.append(f"COUNT({column_name})")
-                elif col.function_name == "countDistinct":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"COUNT(DISTINCT {column_name})")
-                elif col.function_name == "percentile_approx":
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    # DuckDB doesn't have percentile functions, use AVG as approximation
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "corr":
-                    # CORR function requires two columns, but we only have one
-                    # This is a limitation - we'll use AVG as fallback
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "covar_samp":
-                    # COVAR_SAMP function requires two columns, but we only have one
-                    # This is a limitation - we'll use AVG as fallback
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    select_parts.append(f"AVG({column_name})")
-                elif col.function_name == "sum":
-                    select_parts.append(f"SUM({col.column.name})")
-                elif col.function_name == "avg":
-                    select_parts.append(f"AVG({col.column.name})")
-                elif col.function_name == "max":
-                    select_parts.append(f"MAX({col.column.name})")
-                elif col.function_name == "min":
-                    select_parts.append(f"MIN({col.column.name})")
-                else:
-                    # Fallback for unknown aggregate functions
-                    select_parts.append(
-                        f"{col.function_name.upper()}({col.column.name if col.column else '*'})"
-                    )
-
-                # Add column with appropriate type
-                if col.function_name == "count":
-                    new_columns.append(
-                        Column(col.name, Integer, primary_key=False, nullable=False)
-                    )
-                elif col.function_name == "sum":
-                    # Preserve source column type for SUM
-                    column_name = (
-                        col.column.name if hasattr(col.column, "name") else col.column
-                    )
-                    if column_name in source_table_obj.c:
-                        source_type = str(source_table_obj.c[column_name].type).upper()
-                        # Use Integer for integer types, Float for floating types
-                        if any(
-                            int_type in source_type
-                            for int_type in ["INTEGER", "BIGINT", "SMALLINT", "INT"]
-                        ):
-                            new_columns.append(
-                                Column(col.name, Integer, primary_key=False)
-                            )
-                        else:
-                            new_columns.append(
-                                Column(col.name, Float, primary_key=False)
-                            )
-                    else:
-                        new_columns.append(Column(col.name, Float, primary_key=False))
-                elif col.function_name == "avg":
-                    new_columns.append(Column(col.name, Float, primary_key=False))
-                else:
-                    new_columns.append(Column(col.name, String, primary_key=False))
-            else:
-                pass
-
-        # Ensure we have at least one column
-        if not new_columns:
-            # Add a placeholder column to avoid "Table must have at least one column!" error
-            new_columns = [Column("placeholder", String, primary_key=False)]
-            select_parts = ["'placeholder' as placeholder"]
-
-        # Create target table using SQLAlchemy Table
-        target_table_obj = Table(target_table, self.metadata, *new_columns)
-        target_table_obj.create(self.engine, checkfirst=True)
-        self._created_tables[target_table] = target_table_obj
-
-        # Build and execute raw SQL
-        select_clause = ", ".join(select_parts)
-        sql = f"""
-        INSERT INTO {target_table}
-        SELECT {select_clause}
-        FROM {source_table}
+        """Apply select operation with window functions using raw SQL.
+        
+        Delegates to WindowFunctionProcessor for consistency.
         """
+        return self.window_processor.apply_select_with_window_functions(source_table, target_table, columns)
 
-        with Session(self.engine) as session:
-            session.execute(text(sql))
-            session.commit()
+    def _apply_window_function(
+        self, source_table: str, target_table: str, window_func: Any
+    ) -> None:
+        """Apply window function operation.
+        
+        Delegates to WindowFunctionProcessor for consistency.
+        """
+        return self.window_processor.apply_window_function(source_table, target_table, window_func)
+
+    def _window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
+        """Convert window function to ORM expression.
+        
+        Delegates to WindowFunctionProcessor for consistency.
+        """
+        return self.window_processor.window_function_to_orm(table_class, window_func)
+
+    def _window_spec_to_sql(self, window_spec: Any, table_obj: Any = None) -> str:
+        """Convert window specification to SQL.
+        
+        Delegates to WindowFunctionProcessor for consistency.
+        """
+        return self.window_processor.window_spec_to_sql(window_spec, table_obj)
+
+    def _build_select_with_window_cte(
+        self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
+    ) -> str:
+        """Build CTE SQL for select with window functions.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_select_with_window_cte(source_name, columns, source_table_obj)
 
     def _apply_with_column(
         self, source_table: str, target_table: str, col_name: str, col: Any
@@ -4611,169 +3800,18 @@ class SQLAlchemyMaterializer:
         return " ".join(sql_parts)
 
     def _condition_to_sql(self, condition: Any, source_table_obj: Any) -> str:
-        """Convert a condition to SQL."""
-        # Handle MockLiteral objects directly
-        if isinstance(condition, MockLiteral):
-            return self._value_to_sql(condition.value)
-        elif hasattr(condition, "column") and hasattr(condition, "function_name"):
-            # Handle column operations like F.col("age") > 30
-            column_name = condition.column.name
-            value = condition.value
-
-            # Handle between operation
-            if condition.function_name == "between":
-                if isinstance(value, tuple) and len(value) == 2:
-                    lower, upper = value
-                    return f'"{column_name}" BETWEEN {lower} AND {upper}'
-                else:
-                    raise ValueError(f"Invalid between operation: {condition}")
-
-            # Handle isin operation
-            elif condition.function_name == "isin":
-                if isinstance(value, list):
-                    # Convert list to SQL IN clause
-                    value_list = ", ".join(str(v) for v in value)
-                    return f'"{column_name}" IN ({value_list})'
-                else:
-                    raise ValueError(f"Invalid isin operation: {condition}")
-
-            # Handle not_in operation
-            elif condition.function_name == "not_in":
-                if isinstance(value, list):
-                    # Convert list to SQL NOT IN clause
-                    value_list = ", ".join(str(v) for v in value)
-                    return f'"{column_name}" NOT IN ({value_list})'
-                else:
-                    raise ValueError(f"Invalid not_in operation: {condition}")
-
-            # Convert value to SQL
-            value_sql = self._value_to_sql(value)
-
-            if condition.function_name == ">" or condition.function_name == "gt":
-                return f'"{column_name}" > {value_sql}'
-            elif condition.function_name == "<" or condition.function_name == "lt":
-                return f'"{column_name}" < {value_sql}'
-            elif condition.function_name == "==" or condition.function_name == "eq":
-                return f'"{column_name}" = {value_sql}'
-            elif condition.function_name == "!=" or condition.function_name == "ne":
-                return f'"{column_name}" != {value_sql}'
-            elif condition.function_name == ">=" or condition.function_name == "ge":
-                return f'"{column_name}" >= {value_sql}'
-            elif condition.function_name == "<=" or condition.function_name == "le":
-                return f'"{column_name}" <= {value_sql}'
-            elif condition.function_name == "&":
-                # Handle AND operation
-                left_sql = self._condition_to_sql(condition.column, source_table_obj)
-                right_sql = self._condition_to_sql(condition.value, source_table_obj)
-                return f"({left_sql}) AND ({right_sql})"
-            elif condition.function_name == "|":
-                # Handle OR operation
-                left_sql = self._condition_to_sql(condition.column, source_table_obj)
-                right_sql = self._condition_to_sql(condition.value, source_table_obj)
-                return f"({left_sql}) OR ({right_sql})"
-        elif (
-            hasattr(condition, "operation")
-            and hasattr(condition, "column")
-            and hasattr(condition, "value")
-        ):
-            # Handle MockColumnOperation objects (like between, &, |)
-            column_name = condition.column.name
-            if condition.operation == "between":
-                if isinstance(condition.value, tuple) and len(condition.value) == 2:
-                    lower, upper = condition.value
-                    return f'"{column_name}" BETWEEN {lower} AND {upper}'
-                else:
-                    raise ValueError(f"Invalid between operation: {condition}")
-            elif condition.operation == "&":
-                # Handle AND operation
-                left_sql = self._condition_to_sql(condition.column, source_table_obj)
-                right_sql = self._condition_to_sql(condition.value, source_table_obj)
-                return f"({left_sql}) AND ({right_sql})"
-            elif condition.operation == "|":
-                # Handle OR operation
-                left_sql = self._condition_to_sql(condition.column, source_table_obj)
-                right_sql = self._condition_to_sql(condition.value, source_table_obj)
-                return f"({left_sql}) OR ({right_sql})"
-        return str(condition)
+        """Convert a condition to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.condition_to_sql(condition, source_table_obj)
 
     def _value_to_sql(self, value: Any) -> str:
-        """Convert a value to SQL."""
-        if value is None:
-            return "NULL"
-        elif isinstance(value, bool):
-            # Handle booleans BEFORE str check (bool is subclass of int)
-            return "TRUE" if value else "FALSE"
-        elif isinstance(value, str):
-            # Check if this looks like a date literal
-            import re
-
-            if re.match(r"^\d{4}-\d{2}-\d{2}$", value):
-                # Date literal - cast it
-                return f"DATE '{value}'"
-            elif re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", value):
-                # Timestamp literal - cast it
-                return f"TIMESTAMP '{value}'"
-            elif value.lower() in [
-                "int",
-                "integer",
-                "long",
-                "bigint",
-                "double",
-                "float",
-                "string",
-                "varchar",
-                "boolean",
-                "bool",
-                "date",
-                "timestamp",
-            ]:
-                # Type name - don't quote it, convert to proper SQL type
-                type_mapping = {
-                    "int": "INTEGER",
-                    "integer": "INTEGER",
-                    "long": "BIGINT",
-                    "bigint": "BIGINT",
-                    "double": "DOUBLE",
-                    "float": "FLOAT",
-                    "string": "VARCHAR",
-                    "varchar": "VARCHAR",
-                    "boolean": "BOOLEAN",
-                    "bool": "BOOLEAN",
-                    "date": "DATE",
-                    "timestamp": "TIMESTAMP",
-                }
-                return type_mapping.get(value.lower(), value.upper())
-            else:
-                # Regular string
-                return f"'{value}'"
-        elif isinstance(value, (int, float)):
-            return str(value)
-        elif (
-            hasattr(value, "operation")
-            and hasattr(value, "column")
-            and hasattr(value, "value")
-        ):
-            # Handle arithmetic/comparison operations (MockColumnOperation)
-            return self._expression_to_sql(value)
-        elif hasattr(value, "name") and not hasattr(value, "operation"):
-            # Handle MockColumn - convert to SQL column reference
-            return self._column_to_sql(value)
-        elif hasattr(value, "value") and hasattr(value, "data_type"):
-            # Handle MockLiteral
-            if value.value is None:
-                return "NULL"
-            elif isinstance(value.value, bool):
-                # Handle booleans in MockLiteral
-                return "true" if value.value else "false"
-            elif isinstance(value.value, str):
-                return f"'{value.value}'"
-            else:
-                return str(value.value)
-        elif hasattr(value, "name"):
-            # Handle column references (MockColumn)
-            return f'"{value.name}"'
-        else:
-            return str(value)
+        """Convert a value to SQL.
+        
+        Delegates to SQLExpressionTranslator for consistency.
+        """
+        return self.expression_translator.value_to_sql(value)
 
     def _copy_table_structure(self, source_table: str, target_table: str) -> None:
         """Copy table structure from source to target."""
@@ -4794,7 +3832,11 @@ class SQLAlchemyMaterializer:
         self._created_tables[target_table] = target_table_obj
 
     def _get_table_results(self, table_name: str) -> List[MockRow]:
-        """Get all results from a table as MockRow objects."""
+        """Get all results from a table as MockRow objects.
+        
+        Delegates to DataFrameOperationExecutor for consistency.
+        """
+        return self.operation_executor.get_table_results(table_name)
         table_obj = self._created_tables[table_name]
 
         with Session(self.engine) as session:
@@ -5673,339 +4715,80 @@ class SQLAlchemyMaterializer:
         self, source_table_name: str, operations: List[Tuple[str, Any]]
     ) -> str:
         """Build a single SQL query with CTEs for all operations.
-
-        Args:
-            source_table_name: Name of the initial table with data
-            operations: List of (operation_name, operation_payload) tuples
-
-        Returns:
-            Complete SQL query with CTEs
+        
+        Delegates to CTEQueryBuilder for consistency.
         """
-        source_table_obj = self._created_tables[source_table_name]
-
-        cte_definitions = []
-        current_cte_name = source_table_name
-        # Track columns as we build CTEs for operations that modify schema
-        current_columns = [c.name for c in source_table_obj.columns]
-
-        for i, (op_name, op_val) in enumerate(operations):
-            cte_name = f"cte_{i}"
-
-            if op_name == "filter":
-                cte_sql = self._build_filter_cte(
-                    current_cte_name, op_val, source_table_obj
-                )
-            elif op_name == "select":
-                cte_sql = self._build_select_cte(
-                    current_cte_name, op_val, source_table_obj
-                )
-                # Update current columns for select operations
-                # Note: This is a simplification - full implementation would parse the select
-                # For now, we'll just use source columns as we don't modify in place
-            elif op_name == "withColumn":
-                col_name, col = op_val
-                cte_sql = self._build_with_column_cte(
-                    current_cte_name, col_name, col, current_columns
-                )
-                # Track the new column
-                if col_name not in current_columns:
-                    current_columns.append(col_name)
-            elif op_name == "orderBy":
-                cte_sql = self._build_order_by_cte(
-                    current_cte_name, op_val, source_table_obj
-                )
-            elif op_name == "limit":
-                cte_sql = self._build_limit_cte(current_cte_name, op_val)
-            elif op_name == "join":
-                cte_sql = self._build_join_cte(
-                    current_cte_name, op_val, source_table_obj
-                )
-            elif op_name == "union":
-                cte_sql = self._build_union_cte(
-                    current_cte_name, op_val, source_table_obj
-                )
-            else:
-                # Unknown operation, skip
-                continue
-
-            cte_definitions.append(f"{cte_name} AS ({cte_sql})")
-            current_cte_name = cte_name
-
-        # Build final query
-        if cte_definitions:
-            cte_clause = "WITH " + ",\n     ".join(cte_definitions)
-            final_query = f"{cte_clause}\nSELECT * FROM {current_cte_name}"
-        else:
-            final_query = f"SELECT * FROM {source_table_name}"
-
-        return final_query
+        return self.cte_builder.build_cte_query(source_table_name, operations)
 
     def _build_filter_cte(
         self, source_name: str, condition: Any, source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for filter operation."""
-        # Convert condition to SQL
-        filter_sql = self._condition_to_sql(condition, source_table_obj)
-        return f"SELECT * FROM {source_name} WHERE {filter_sql}"
+        """Build CTE SQL for filter operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_filter_cte(source_name, condition, source_table_obj)
 
     def _build_select_cte(
         self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for select operation."""
-        # Check for window functions
-        has_window_functions = any(
-            (hasattr(col, "function_name") and hasattr(col, "window_spec"))
-            or (
-                hasattr(col, "function_name")
-                and hasattr(col, "column")
-                and col.__class__.__name__ == "MockAggregateFunction"
-            )
-            for col in columns
-        )
-
-        if has_window_functions:
-            return self._build_select_with_window_cte(
-                source_name, columns, source_table_obj
-            )
-
-        # Build column list
-        select_parts = []
-        for col in columns:
-            if isinstance(col, str):
-                if col == "*":
-                    select_parts.append("*")
-                else:
-                    select_parts.append(f'"{col}"')
-            elif hasattr(col, "value") and hasattr(col, "data_type"):
-                # MockLiteral
-                if isinstance(col.value, str):
-                    select_parts.append(f"'{col.value}' AS \"{col.name}\"")
-                else:
-                    select_parts.append(f'{col.value} AS "{col.name}"')
-            elif hasattr(col, "operation"):
-                # Column operation
-                expr_sql = self._expression_to_sql(col)
-                col_name = getattr(col, "name", "result")
-                select_parts.append(f'{expr_sql} AS "{col_name}"')
-            elif hasattr(col, "name"):
-                # Check for alias
-                original_col = getattr(col, "_original_column", None) or getattr(
-                    col, "original_column", None
-                )
-                if original_col is not None:
-                    select_parts.append(f'"{original_col.name}" AS "{col.name}"')
-                elif col.name == "*":
-                    select_parts.append("*")
-                else:
-                    select_parts.append(f'"{col.name}"')
-
-        # Remove duplicate "*" entries and keep only one
-        if select_parts.count("*") > 1:
-            select_parts = ["*"]
-
-        columns_clause = ", ".join(select_parts) if select_parts else "*"
-        return f"SELECT {columns_clause} FROM {source_name}"
+        """Build CTE SQL for select operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_select_cte(source_name, columns, source_table_obj)
 
     def _build_select_with_window_cte(
         self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for select with window functions."""
-        select_parts = []
-
-        for col in columns:
-            if isinstance(col, str):
-                if col == "*":
-                    select_parts.append("*")
-                else:
-                    select_parts.append(f'"{col}"')
-            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Window function
-                func_name = col.function_name.upper()
-                if col.column is None or col.column == "*":
-                    col_expr = "*"
-                else:
-                    col_expr = f'"{col.column.name}"'
-
-                window_sql = self._window_spec_to_sql(col.window_spec, source_table_obj)
-                result_name = getattr(col, "name", f"{func_name.lower()}_result")
-                select_parts.append(
-                    f'{func_name}({col_expr}) OVER ({window_sql}) AS "{result_name}"'
-                )
-            elif (
-                hasattr(col, "function_name")
-                and col.__class__.__name__ == "MockAggregateFunction"
-            ):
-                # Aggregate function
-                func_name = col.function_name.upper()
-                if col.column is None or col.column == "*":
-                    col_expr = "*"
-                else:
-                    col_expr = f'"{col.column.name}"'
-                result_name = getattr(col, "name", f"{func_name.lower()}_result")
-                select_parts.append(f'{func_name}({col_expr}) AS "{result_name}"')
-            elif hasattr(col, "name"):
-                select_parts.append(f'"{col.name}"')
-
-        columns_clause = ", ".join(select_parts) if select_parts else "*"
-        return f"SELECT {columns_clause} FROM {source_name}"
+        """Build CTE SQL for select with window functions.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_select_with_window_cte(source_name, columns, source_table_obj)
 
     def _build_with_column_cte(
         self, source_name: str, col_name: str, col: Any, existing_columns: List[str]
     ) -> str:
         """Build CTE SQL for withColumn operation.
-
-        Args:
-            source_name: Name of the source CTE/table
-            col_name: Name of the column to add/replace
-            col: Column expression
-            existing_columns: List of column names in the source
+        
+        Delegates to CTEQueryBuilder for consistency.
         """
-        # Check if we're replacing an existing column or adding a new one
-        select_parts = []
-        column_added = False
-
-        for existing_col in existing_columns:
-            if existing_col == col_name:
-                # Replace this column with new expression
-                if hasattr(col, "value") and hasattr(col, "data_type"):
-                    # Literal value
-                    if isinstance(col.value, str):
-                        select_parts.append(f"'{col.value}' AS \"{col_name}\"")
-                    else:
-                        select_parts.append(f'{col.value} AS "{col_name}"')
-                elif hasattr(col, "operation"):
-                    # Expression
-                    expr_sql = self._expression_to_sql(col)
-                    select_parts.append(f'{expr_sql} AS "{col_name}"')
-                elif hasattr(col, "name"):
-                    # Column reference
-                    select_parts.append(f'"{col.name}" AS "{col_name}"')
-                else:
-                    # Fallback
-                    select_parts.append(f'"{col_name}"')
-                column_added = True
-            else:
-                select_parts.append(f'"{existing_col}"')
-
-        # If column doesn't exist, add it at the end
-        if not column_added:
-            if hasattr(col, "value") and hasattr(col, "data_type"):
-                # Literal value
-                if isinstance(col.value, str):
-                    select_parts.append(f"'{col.value}' AS \"{col_name}\"")
-                else:
-                    select_parts.append(f'{col.value} AS "{col_name}"')
-            elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Window function - convert window spec to SQL
-                func_name = col.function_name.upper()
-                if col.column is None or col.column == "*":
-                    col_expr = "*"
-                else:
-                    col_expr = f'"{col.column.name}"'
-
-                # Convert window spec to SQL
-                window_sql = self._window_spec_to_sql(col.window_spec, None)
-                select_parts.append(
-                    f'{func_name}({col_expr}) OVER ({window_sql}) AS "{col_name}"'
-                )
-            elif hasattr(col, "operation"):
-                # Expression
-                expr_sql = self._expression_to_sql(col)
-                select_parts.append(f'{expr_sql} AS "{col_name}"')
-            elif hasattr(col, "name"):
-                # Column reference
-                select_parts.append(f'"{col.name}" AS "{col_name}"')
-            else:
-                # Fallback - treat as literal
-                if isinstance(col, str):
-                    select_parts.append(f"'{col}' AS \"{col_name}\"")
-                else:
-                    select_parts.append(f'{col} AS "{col_name}"')
-
-        columns_clause = ", ".join(select_parts)
-        return f"SELECT {columns_clause} FROM {source_name}"
+        return self.cte_builder.build_with_column_cte(source_name, col_name, col, existing_columns)
 
     def _build_order_by_cte(
         self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for orderBy operation."""
-        order_parts = []
-
-        for col in columns:
-            if isinstance(col, str):
-                order_parts.append(f'"{col}"')
-            elif hasattr(col, "operation") and col.operation == "desc":
-                order_parts.append(f'"{col.column.name}" DESC')
-            elif hasattr(col, "operation") and col.operation == "asc":
-                order_parts.append(f'"{col.column.name}" ASC')
-            elif hasattr(col, "name"):
-                order_parts.append(f'"{col.name}"')
-
-        order_clause = ", ".join(order_parts)
-        return f"SELECT * FROM {source_name} ORDER BY {order_clause}"
+        """Build CTE SQL for orderBy operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_order_by_cte(source_name, columns, source_table_obj)
 
     def _build_limit_cte(self, source_name: str, limit_count: int) -> str:
-        """Build CTE SQL for limit operation."""
-        return f"SELECT * FROM {source_name} LIMIT {limit_count}"
+        """Build CTE SQL for limit operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_limit_cte(source_name, limit_count)
 
     def _build_join_cte(
         self, source_name: str, join_params: Tuple[Any, ...], source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for join operation."""
-        other_df, on, how = join_params
-
-        # Materialize the other DataFrame if it's lazy
-        if other_df._operations_queue:
-            other_df = other_df._materialize_if_lazy()
-
-        # Create a temporary table for the other DataFrame
-        other_table_name = f"temp_join_{self._temp_table_counter}"
-        self._temp_table_counter += 1
-        self._create_table_with_data(other_table_name, other_df.data)
-
-        # Build join condition
-        if isinstance(on, str):
-            join_condition = f'{source_name}."{on}" = {other_table_name}."{on}"'
-        elif isinstance(on, list):
-            conditions = [
-                f'{source_name}."{col}" = {other_table_name}."{col}"' for col in on
-            ]
-            join_condition = " AND ".join(conditions)
-        elif hasattr(on, "operation"):
-            # Column operation as join condition
-            join_condition = self._condition_to_sql(on, source_table_obj)
-        else:
-            join_condition = "1=1"  # Fallback
-
-        # Map join type
-        join_type_map = {
-            "inner": "INNER JOIN",
-            "left": "LEFT JOIN",
-            "right": "RIGHT JOIN",
-            "outer": "FULL OUTER JOIN",
-            "full": "FULL OUTER JOIN",
-            "left_outer": "LEFT JOIN",
-            "right_outer": "RIGHT JOIN",
-            "full_outer": "FULL OUTER JOIN",
-        }
-        join_type = join_type_map.get(how, "INNER JOIN")
-
-        return f"SELECT * FROM {source_name} {join_type} {other_table_name} ON {join_condition}"
+        """Build CTE SQL for join operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_join_cte(source_name, join_params, source_table_obj)
 
     def _build_union_cte(
         self, source_name: str, other_df: Any, source_table_obj: Any
     ) -> str:
-        """Build CTE SQL for union operation."""
-        # Materialize the other DataFrame if it's lazy
-        if other_df._operations_queue:
-            other_df = other_df._materialize_if_lazy()
-
-        # Create a temporary table for the other DataFrame
-        other_table_name = f"temp_union_{self._temp_table_counter}"
-        self._temp_table_counter += 1
-        self._create_table_with_data(other_table_name, other_df.data)
-
-        return f"SELECT * FROM {source_name} UNION ALL SELECT * FROM {other_table_name}"
+        """Build CTE SQL for union operation.
+        
+        Delegates to CTEQueryBuilder for consistency.
+        """
+        return self.cte_builder.build_union_cte(source_name, other_df, source_table_obj)
 
     def close(self) -> None:
         """Close the SQLAlchemy engine."""

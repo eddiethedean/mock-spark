@@ -34,7 +34,7 @@ class CTEQueryBuilder:
         # Get source table from table manager
         table_manager = self.expression_translator.table_manager
         source_table_obj = table_manager.get_table(source_table_name)
-        if not source_table_obj:
+        if source_table_obj is None:
             raise ValueError(f"Table {source_table_name} not found")
 
         cte_definitions = []
