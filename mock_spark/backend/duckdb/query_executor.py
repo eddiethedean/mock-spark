@@ -111,7 +111,7 @@ class SQLAlchemyMaterializer:
         self._temp_table_counter += 1
 
         # Create table and insert data
-        self._create_table_with_data(source_table_name, data)
+        self.table_manager.create_table_with_data(source_table_name, data)
 
         # Try CTE-based approach first for better performance
         try:
@@ -194,30 +194,10 @@ class SQLAlchemyMaterializer:
             current_table_name = next_table_name
 
         # Get final results
-        return self._get_table_results(current_table_name)
+        return self.table_manager.get_table_results(current_table_name)
 
-    def _create_table_with_data(
-        self, table_name: str, data: List[Dict[str, Any]]
-    ) -> None:
-        """Create a table and insert data using SQLAlchemy Table.
-        
-        Delegates to DataFrameOperationExecutor for consistency.
-        """
-        return self.operation_executor.create_table_with_data(table_name, data)
 
-    def _copy_table_structure(self, source_table: str, target_table: str) -> None:
-        """Copy table structure from source to target.
-        
-        Delegates to DataFrameOperationExecutor for consistency.
-        """
-        return self.operation_executor.copy_table_structure(source_table, target_table)
 
-    def _get_table_results(self, table_name: str) -> List[MockRow]:
-        """Get all results from a table as MockRow objects.
-        
-        Delegates to DataFrameOperationExecutor for consistency.
-        """
-        return self.operation_executor.get_table_results(table_name)
 
     def _apply_union(self, source_table: str, target_table: str, other_df: Any) -> None:
         """Apply union operation.
@@ -226,50 +206,15 @@ class SQLAlchemyMaterializer:
         """
         return self.operation_executor.apply_union(source_table, target_table, other_df)
 
-    def _expression_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
-        """Convert expression to SQL.
+    def _build_cte_query(
+        self, source_table_name: str, operations: List[Tuple[str, Any]]
+    ) -> str:
+        """Build a single SQL query with CTEs for all operations.
         
-        Delegates to SQLExpressionTranslator for consistency.
+        Delegates to CTEQueryBuilder for consistency.
         """
-        return self.expression_translator.expression_to_sql(expr, source_table)
+        return self.cte_builder.build_cte_query(source_table_name, operations)
 
-    def _column_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
-        """Convert column to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.column_to_sql(expr, source_table)
-
-    def _value_to_sql(self, value: Any) -> str:
-        """Convert value to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.value_to_sql(value)
-
-        """Apply union operation.
-        
-        Delegates to DataFrameOperationExecutor for consistency.
-        """
-        return self.operation_executor.apply_union(source_table, target_table, other_df)
-
-        """Convert expression to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.expression_to_sql(expr, source_table)
-
-        """Convert column to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.column_to_sql(expr, source_table)
-
-        """Convert value to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.value_to_sql(value)
 
     def _apply_filter(
         self, source_table: str, target_table: str, condition: Any
@@ -294,7 +239,7 @@ class SQLAlchemyMaterializer:
             self._strict_column_validation = False
 
         # Create target table with same structure
-        self._copy_table_structure(source_table, target_table)
+        self.table_manager.copy_table_structure(source_table, target_table)
         target_table_obj = self._created_tables[target_table]
 
         # Execute filter and insert results
@@ -743,7 +688,7 @@ class SQLAlchemyMaterializer:
                                 "current_timestamp",
                             ]:
                                 # Use raw SQL for these functions
-                                func_sql = self._expression_to_sql(
+                                func_sql = self.expression_translator.expression_to_sql(
                                     col, source_table=source_table
                                 )
                                 func_expr = text(func_sql)
@@ -830,7 +775,7 @@ class SQLAlchemyMaterializer:
                             "quarter",
                         ]:
                             # Handle datetime functions using raw SQL with proper type casting
-                            datetime_sql = self._expression_to_sql(
+                            datetime_sql = self.expression_translator.expression_to_sql(
                                 col, source_table=source_table
                             )
                             # Use text() instead of literal_column() to ensure proper SQL generation
@@ -842,7 +787,7 @@ class SQLAlchemyMaterializer:
                             "from_unixtime",
                         ]:
                             # Handle other datetime functions using raw SQL
-                            datetime_sql = self._expression_to_sql(
+                            datetime_sql = self.expression_translator.expression_to_sql(
                                 col, source_table=source_table
                             )
                             # Use text() to ensure proper SQL generation with table context
@@ -3373,37 +3318,7 @@ class SQLAlchemyMaterializer:
                 target_table_obj.create(self.engine, checkfirst=True)
                 self._created_tables[target_table] = target_table_obj
 
-    def _apply_window_function(
-        self, source_table: str, target_table: str, window_func: Any
-    ) -> None:
-        """Apply window function operation.
-        
-        Delegates to WindowFunctionProcessor for consistency.
-        """
-        return self.window_processor.apply_window_function(source_table, target_table, window_func)
 
-    def _window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
-        """Convert window function to ORM expression.
-        
-        Delegates to WindowFunctionProcessor for consistency.
-        """
-        return self.window_processor.window_function_to_orm(table_class, window_func)
-
-    def _window_spec_to_sql(self, window_spec: Any, table_obj: Any = None) -> str:
-        """Convert window specification to SQL.
-        
-        Delegates to WindowFunctionProcessor for consistency.
-        """
-        return self.window_processor.window_spec_to_sql(window_spec, table_obj)
-
-    def _build_select_with_window_cte(
-        self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for select with window functions.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_select_with_window_cte(source_name, columns, source_table_obj)
 
     def _apply_with_column(
         self, source_table: str, target_table: str, col_name: str, col: Any
@@ -3456,7 +3371,7 @@ class SQLAlchemyMaterializer:
         # Handle window functions
         if hasattr(col, "function_name") and hasattr(col, "window_spec"):
             # For window functions, we need to use raw SQL
-            self._apply_window_function(
+            self.window_processor.apply_window_function(
                 source_table, target_table, col_name, col, new_columns
             )
             return
@@ -3486,7 +3401,7 @@ class SQLAlchemyMaterializer:
         self._created_tables[target_table] = target_table_obj
 
         # Build window function SQL
-        window_sql = self._window_spec_to_sql(window_func.window_spec, source_table_obj)
+        window_sql = self.expression_translator.window_spec_to_sql(window_func.window_spec, source_table_obj)
         func_name = window_func.function_name.upper()
 
         # Generate function call based on type
@@ -3573,7 +3488,7 @@ class SQLAlchemyMaterializer:
                 # Nested operation - convert to SQL first, then wrap in literal_column
                 from sqlalchemy import literal_column
 
-                nested_sql = self._expression_to_sql(col.column)
+                nested_sql = self.expression_translator.expression_to_sql(col.column)
                 left_col = literal_column(nested_sql)
             else:
                 # Fallback
@@ -3658,7 +3573,7 @@ class SQLAlchemyMaterializer:
                 "date_format",
                 "from_unixtime",
             ]:
-                datetime_sql = self._expression_to_sql(col, source_table=source_table)
+                datetime_sql = self.expression_translator.expression_to_sql(col, source_table=source_table)
                 from sqlalchemy import literal_column
 
                 new_expr = literal_column(datetime_sql)
@@ -3678,7 +3593,7 @@ class SQLAlchemyMaterializer:
             # Fallback to raw SQL for other expressions
             from sqlalchemy import literal_column
 
-            new_col_sql = self._expression_to_sql(col)
+            new_col_sql = self.expression_translator.expression_to_sql(col)
             # For literals, use literal() instead of text()
             if hasattr(col, "value") and isinstance(col.value, str):
                 select_columns.append(literal(col.value).label(col_name))
@@ -3755,7 +3670,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy table structure
-        self._copy_table_structure(source_table, target_table)
+        self.table_manager.copy_table_structure(source_table, target_table)
         target_table_obj = self._created_tables[target_table]
 
         # Build SQLAlchemy order by expressions
@@ -3806,7 +3721,7 @@ class SQLAlchemyMaterializer:
         source_table_obj = self._created_tables[source_table]
 
         # Copy table structure
-        self._copy_table_structure(source_table, target_table)
+        self.table_manager.copy_table_structure(source_table, target_table)
         target_table_obj = self._created_tables[target_table]
 
         # Execute with LIMIT using SQLAlchemy
@@ -3833,15 +3748,15 @@ class SQLAlchemyMaterializer:
             # Convert condition to SQL - check if it's a complex expression
             if isinstance(condition, MockColumnOperation):
                 # Generate raw SQL without quoting for complex expressions
-                condition_sql = self._expression_to_sql(condition)
+                condition_sql = self.expression_translator.expression_to_sql(condition)
             else:
-                condition_sql = self._condition_to_sql(condition, source_table_obj)
+                condition_sql = self.expression_translator.condition_to_sql(condition, source_table_obj)
 
             # Convert value to SQL - handle MockLiteral with boolean values specially
             if hasattr(value, "value") and isinstance(value.value, bool):
                 value_sql = "TRUE" if value.value else "FALSE"
             else:
-                value_sql = self._value_to_sql(value)
+                value_sql = self.expression_translator.value_to_sql(value)
             sql_parts.append(f"WHEN {condition_sql} THEN {value_sql}")
 
         # Add ELSE clause if default_value is set
@@ -3852,139 +3767,13 @@ class SQLAlchemyMaterializer:
             ):
                 else_sql = "TRUE" if case_when_obj.default_value.value else "FALSE"
             else:
-                else_sql = self._value_to_sql(case_when_obj.default_value)
+                else_sql = self.expression_translator.value_to_sql(case_when_obj.default_value)
             sql_parts.append(f"ELSE {else_sql}")
 
         sql_parts.append("END")
         return " ".join(sql_parts)
 
-    def _condition_to_sql(self, condition: Any, source_table_obj: Any) -> str:
-        """Convert a condition to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.condition_to_sql(condition, source_table_obj)
 
-    def _value_to_sql(self, value: Any) -> str:
-        """Convert a value to SQL.
-        
-        Delegates to SQLExpressionTranslator for consistency.
-        """
-        return self.expression_translator.value_to_sql(value)
-
-    def _copy_table_structure(self, source_table: str, target_table: str) -> None:
-        """Copy table structure from source to target."""
-        source_table_obj = self._created_tables[source_table]
-
-        # Copy all columns from source table
-        new_columns: List[Any] = []
-        for column in source_table_obj.columns:
-            new_columns.append(Column(column.name, column.type, primary_key=False))
-
-        # print(f"DEBUG: Copying table structure from {source_table} to {target_table}")
-        # print(f"DEBUG: Source columns: {[c.name for c in source_table_obj.columns]}")
-        # print(f"DEBUG: Target columns: {[c.name for c in new_columns]}")
-
-        # Create target table using SQLAlchemy Table
-        target_table_obj = Table(target_table, self.metadata, *new_columns)
-        target_table_obj.create(self.engine, checkfirst=True)
-        self._created_tables[target_table] = target_table_obj
-
-    def _get_table_results(self, table_name: str) -> List[MockRow]:
-        """Get all results from a table as MockRow objects.
-        
-        Delegates to DataFrameOperationExecutor for consistency.
-        """
-        return self.operation_executor.get_table_results(table_name)
-        table_obj = self._created_tables[table_name]
-
-        with Session(self.engine) as session:
-            # Build raw SQL query
-            # Escape double quotes in column names by doubling them
-            column_names = [
-                f'"{col.name.replace(chr(34), chr(34) + chr(34))}"'
-                for col in table_obj.columns
-            ]
-            sql = f"SELECT {', '.join(column_names)} FROM {table_name}"
-            results = session.execute(text(sql)).all()
-
-            mock_rows = []
-            for result in results:
-                # Convert result to dict using column names with type conversion
-                result_dict: Dict[str, Any] = {}
-                for i, column in enumerate(table_obj.columns):
-                    value = result[i]
-                    # Convert value to appropriate type based on column type
-                    from sqlalchemy import ARRAY
-
-                    # Check for ARRAY type - need to check type name too since ARRAY is complex
-                    is_array_column = (
-                        isinstance(column.type, ARRAY)
-                        or type(column.type).__name__ == "ARRAY"
-                    )
-                    # DEBUG
-                    # print(f"DEBUG _get_table_results: column={column.name}, type={type(column.type).__name__}, is_array={is_array_column}, value_type={type(value)}, value={value}")
-                    if is_array_column and value is not None:
-                        # Array columns might be returned as lists or strings
-                        if isinstance(value, list):
-                            result_dict[column.name] = value
-                        elif isinstance(value, str):
-                            # Parse string representation back to list
-                            # DuckDB sometimes returns arrays as strings like "[1, 2, 3]"
-                            try:
-                                import ast
-
-                                result_dict[column.name] = ast.literal_eval(value)
-                            except (ValueError, SyntaxError):
-                                result_dict[column.name] = value
-                        else:
-                            result_dict[column.name] = value
-                    elif (
-                        isinstance(column.type, String)
-                        and isinstance(value, str)
-                        and value.startswith("{")
-                        and value.endswith("}")
-                    ):
-                        # Map columns returned as strings like "{a=1, b=2}" - parse to dict
-                        try:
-                            import ast
-
-                            # Try to parse as dict literal
-                            result_dict[column.name] = ast.literal_eval(value)
-                        except (ValueError, SyntaxError):
-                            # If that fails, leave as string
-                            result_dict[column.name] = value
-                    elif isinstance(value, dict):
-                        # Already a dict (map)
-                        result_dict[column.name] = value
-                    elif isinstance(column.type, Integer) and value is not None:
-                        try:
-                            result_dict[column.name] = int(value)
-                        except (ValueError, TypeError):
-                            result_dict[column.name] = value
-                    elif isinstance(column.type, Float) and value is not None:
-                        try:
-                            result_dict[column.name] = float(value)
-                        except (ValueError, TypeError):
-                            result_dict[column.name] = value
-                    elif isinstance(column.type, Boolean) and value is not None:
-                        if isinstance(value, str):
-                            result_dict[column.name] = value.lower() in (
-                                "true",
-                                "1",
-                                "yes",
-                                "on",
-                            )
-                        else:
-                            result_dict[column.name] = bool(value)
-                    elif isinstance(column.type, DateTime) and value is not None:
-                        # Preserve datetime/timestamp types - don't convert to string
-                        result_dict[column.name] = value
-                    else:
-                        result_dict[column.name] = value
-                mock_rows.append(MockRow(result_dict))
-
-            return mock_rows
 
     def _condition_to_sqlalchemy(self, table_obj: Any, condition: Any) -> Any:
         """Convert a condition to SQLAlchemy expression."""
@@ -4770,84 +4559,6 @@ class SQLAlchemyMaterializer:
                 return f'{source_table}."{str(expr)}"'
             return f'"{str(expr)}"'
 
-    def _build_cte_query(
-        self, source_table_name: str, operations: List[Tuple[str, Any]]
-    ) -> str:
-        """Build a single SQL query with CTEs for all operations.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_cte_query(source_table_name, operations)
-
-    def _build_filter_cte(
-        self, source_name: str, condition: Any, source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for filter operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_filter_cte(source_name, condition, source_table_obj)
-
-    def _build_select_cte(
-        self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for select operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_select_cte(source_name, columns, source_table_obj)
-
-    def _build_select_with_window_cte(
-        self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for select with window functions.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_select_with_window_cte(source_name, columns, source_table_obj)
-
-    def _build_with_column_cte(
-        self, source_name: str, col_name: str, col: Any, existing_columns: List[str]
-    ) -> str:
-        """Build CTE SQL for withColumn operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_with_column_cte(source_name, col_name, col, existing_columns)
-
-    def _build_order_by_cte(
-        self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for orderBy operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_order_by_cte(source_name, columns, source_table_obj)
-
-    def _build_limit_cte(self, source_name: str, limit_count: int) -> str:
-        """Build CTE SQL for limit operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_limit_cte(source_name, limit_count)
-
-    def _build_join_cte(
-        self, source_name: str, join_params: Tuple[Any, ...], source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for join operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_join_cte(source_name, join_params, source_table_obj)
-
-    def _build_union_cte(
-        self, source_name: str, other_df: Any, source_table_obj: Any
-    ) -> str:
-        """Build CTE SQL for union operation.
-        
-        Delegates to CTEQueryBuilder for consistency.
-        """
-        return self.cte_builder.build_union_cte(source_name, other_df, source_table_obj)
 
     def close(self) -> None:
         """Close the SQLAlchemy engine."""
