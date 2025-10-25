@@ -170,13 +170,14 @@ class MockDataFrame:
             return self._statistics
         elif name == "display":
             return self._display
-        
+
         # Handle column access for df.column_name syntax
         try:
             columns = object.__getattribute__(self, "columns")
             if name in columns:
                 # Use F.col to create MockColumn
                 from mock_spark.functions import F
+
                 return F.col(name)
         except AttributeError:
             pass

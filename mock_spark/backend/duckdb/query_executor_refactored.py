@@ -102,7 +102,9 @@ class SQLAlchemyMaterializer:
 
         # Execute the CTE query
         with self.engine.connect() as conn:
-            result = conn.execute(cte_query)
+            from sqlalchemy import text
+
+            result = conn.execute(text(cte_query))
             rows = result.fetchall()
 
             # Convert to MockRow objects
@@ -172,7 +174,7 @@ class SQLAlchemyMaterializer:
                     "operation": op_name,
                     "sql": f"Operation: {op_name}",
                     "available_columns": list(
-                        self.table_manager.get_table(current_table).c.keys()
+                        self.table_manager.get_table(current_table).c.keys()  # type: ignore[union-attr]
                     )
                     if self.table_manager.get_table(current_table)
                     else [],
@@ -187,7 +189,7 @@ class SQLAlchemyMaterializer:
         try:
             if hasattr(self, "engine") and self.engine:
                 self.engine.dispose()
-                self.engine = None
+                self.engine = None  # type: ignore[assignment]
         except Exception:
             pass  # Ignore errors during cleanup
 

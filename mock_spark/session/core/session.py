@@ -8,7 +8,6 @@ maintaining compatibility with PySpark's SparkSession interface.
 from typing import Any, Dict, List, Optional, Union, Tuple, cast
 from ...core.interfaces.session import ISession
 from ...core.interfaces.dataframe import IDataFrame
-from ...core.exceptions.validation import IllegalArgumentException
 from ..context import MockSparkContext
 from ..catalog import MockCatalog
 from ..config import MockConfiguration, MockSparkConfig
@@ -18,9 +17,17 @@ from mock_spark.backend.protocols import StorageBackend
 from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
 from ...spark_types import (
     MockStructType,
-    MockStructField,
-    StringType,
 )
+from ..services.protocols import (
+    IDataFrameFactory,
+    ISQLParameterBinder,
+    ISessionLifecycleManager,
+    IMockingCoordinator,
+)
+from ..services.dataframe_factory import DataFrameFactory
+from ..services.sql_parameter_binder import SQLParameterBinder
+from ..services.lifecycle_manager import SessionLifecycleManager
+from ..services.mocking_coordinator import MockingCoordinator
 
 
 class MockSparkSession:
@@ -103,7 +110,6 @@ class MockSparkSession:
         self._plugins: List[Any] = []
 
         # Error simulation
-        self._error_rules: Dict[str, Any] = {}
 
         # Validation settings (Phase 2 plumbing)
         self._engine_config = MockSparkConfig(
@@ -116,6 +122,12 @@ class MockSparkSession:
         from ..performance_tracker import SessionPerformanceTracker
 
         self._performance_tracker = SessionPerformanceTracker()
+
+        # Service dependencies (injected, typed with Protocols)
+        self._dataframe_factory: IDataFrameFactory = DataFrameFactory()
+        self._sql_parameter_binder: ISQLParameterBinder = SQLParameterBinder()
+        self._lifecycle_manager: ISessionLifecycleManager = SessionLifecycleManager()
+        self._mocking_coordinator: IMockingCoordinator = MockingCoordinator()
 
     @property
     def appName(self) -> str:
@@ -148,33 +160,8 @@ class MockSparkSession:
         schema: Optional[Union[MockStructType, List[str]]] = None,
     ) -> "MockDataFrame":
         """Create a DataFrame from data (mockable version)."""
-        # Plugin hook: before_create_dataframe
-        for plugin in getattr(self, "_plugins", []):
-            if hasattr(plugin, "before_create_dataframe"):
-                try:
-                    data, schema = plugin.before_create_dataframe(self, data, schema)
-                except Exception:
-                    pass
-        df = self._createDataFrame_impl(data, schema)
-        # Apply lazy/eager mode based on session config (but not for mocked returns)
-        # Check if this is a mocked return by seeing if _createDataFrame_impl is not the original
-        is_mocked = self._createDataFrame_impl != self._original_createDataFrame_impl
-        try:
-            if not is_mocked and hasattr(df, "withLazy"):
-                lazy_enabled = getattr(
-                    self._engine_config, "enable_lazy_evaluation", True
-                )
-                df = df.withLazy(lazy_enabled)
-        except Exception:
-            pass
-        # Plugin hook: after_create_dataframe
-        for plugin in getattr(self, "_plugins", []):
-            if hasattr(plugin, "after_create_dataframe"):
-                try:
-                    df = plugin.after_create_dataframe(self, df)
-                except Exception:
-                    pass
-        return df
+        # Use the mock implementation if set, otherwise use the real implementation
+        return self._createDataFrame_impl(data, schema)
 
     def _real_createDataFrame(
         self,
@@ -198,85 +185,37 @@ class MockSparkSession:
             >>> df = spark.createDataFrame(data)
             >>> df = spark.createDataFrame(data, ["name", "age"])
         """
-        if not isinstance(data, list):
-            raise IllegalArgumentException(
-                "Data must be a list of dictionaries or tuples"
-            )
+        # Plugin hook: before_create_dataframe
+        for plugin in getattr(self, "_plugins", []):
+            if hasattr(plugin, "before_create_dataframe"):
+                try:
+                    data, schema = plugin.before_create_dataframe(self, data, schema)
+                except Exception:
+                    pass
 
-        # Handle DDL schema strings
-        if isinstance(schema, str):
-            from ...core.ddl_adapter import parse_ddl_schema
+        # Delegate to DataFrameFactory service
+        df = self._dataframe_factory.create_dataframe(
+            data, schema, self._engine_config, self.storage
+        )
 
-            schema = parse_ddl_schema(schema)
+        # Apply lazy/eager mode based on session config
+        try:
+            if hasattr(df, "withLazy"):
+                lazy_enabled = getattr(
+                    self._engine_config, "enable_lazy_evaluation", True
+                )
+                df = df.withLazy(lazy_enabled)
+        except Exception:
+            pass
 
-        # Handle list of column names as schema
-        if isinstance(schema, list):
-            # Convert tuples to dictionaries using provided column names first
-            if data and isinstance(data[0], tuple):
-                reordered_data = []
-                column_names = schema
-                for row in data:
-                    if isinstance(row, tuple):
-                        row_dict = {column_names[i]: row[i] for i in range(len(row))}
-                        reordered_data.append(row_dict)
-                    else:
-                        reordered_data.append(row)
-                data = reordered_data
+        # Plugin hook: after_create_dataframe
+        for plugin in getattr(self, "_plugins", []):
+            if hasattr(plugin, "after_create_dataframe"):
+                try:
+                    df = plugin.after_create_dataframe(self, df)
+                except Exception:
+                    pass
 
-                # Now infer schema from the converted data
-                from ...core.schema_inference import SchemaInferenceEngine
-
-                schema, data = SchemaInferenceEngine.infer_from_data(data)
-            else:
-                # For non-tuple data with column names, use StringType as default
-                fields = [MockStructField(name, StringType()) for name in schema]
-                schema = MockStructType(fields)
-
-        if schema is None:
-            # Infer schema from data using SchemaInferenceEngine
-            if not data:
-                # For empty dataset, create empty schema
-                schema = MockStructType([])
-            else:
-                # Check if data is in expected format
-                sample_row = data[0]
-                if not isinstance(sample_row, (dict, tuple)):
-                    raise IllegalArgumentException(
-                        "Data must be a list of dictionaries or tuples"
-                    )
-
-                if isinstance(sample_row, dict):
-                    # Use SchemaInferenceEngine for dictionary data
-                    from ...core.schema_inference import SchemaInferenceEngine
-
-                    schema, data = SchemaInferenceEngine.infer_from_data(data)
-                elif isinstance(sample_row, tuple):
-                    # For tuples, we need column names - this should have been handled earlier
-                    # If we get here, it's an error
-                    raise IllegalArgumentException(
-                        "Cannot infer schema from tuples without column names. "
-                        "Please provide schema or use list of column names."
-                    )
-
-        # Apply validation and optional type coercion per mode
-        if isinstance(schema, MockStructType) and data:
-            from ...core.data_validation import DataValidator
-
-            validator = DataValidator(
-                schema,
-                validation_mode=self._engine_config.validation_mode,
-                enable_coercion=self._engine_config.enable_type_coercion,
-            )
-
-            # Validate if in strict mode
-            if self._engine_config.validation_mode == "strict":
-                validator.validate(data)
-
-            # Coerce if enabled
-            if self._engine_config.enable_type_coercion:
-                data = validator.coerce(data)
-
-        df = MockDataFrame(data, schema, self.storage)  # type: ignore[return-value]
         # Track memory usage for newly created DataFrame
         try:
             self._track_dataframe(df)
@@ -367,7 +306,7 @@ class MockSparkSession:
         """
         # Process parameters if provided
         if args or kwargs:
-            query = self._bind_parameters(query, args, kwargs)
+            query = self._sql_parameter_binder.bind_parameters(query, args, kwargs)
 
         return self._sql_executor.execute(query)
 
@@ -384,31 +323,8 @@ class MockSparkSession:
         Returns:
             Query with parameters bound.
         """
-        # Handle positional parameters (?)
-        if args:
-            # Count placeholders
-            placeholder_count = query.count("?")
-            if len(args) != placeholder_count:
-                raise ValueError(
-                    f"Number of parameters ({len(args)}) does not match "
-                    f"number of placeholders ({placeholder_count})"
-                )
-
-            # Replace each ? with the corresponding parameter
-            result = query
-            for arg in args:
-                result = result.replace("?", self._format_param(arg), 1)
-            query = result
-
-        # Handle named parameters (:name)
-        if kwargs:
-            for name, value in kwargs.items():
-                placeholder = f":{name}"
-                if placeholder not in query:
-                    raise ValueError(f"Parameter '{name}' not found in query")
-                query = query.replace(placeholder, self._format_param(value))
-
-        return query
+        # Delegate to SQLParameterBinder service
+        return self._sql_parameter_binder.bind_parameters(query, args, kwargs)
 
     def _format_param(self, value: Any) -> str:
         """Format a parameter value for SQL safely.
@@ -419,19 +335,8 @@ class MockSparkSession:
         Returns:
             Formatted parameter string.
         """
-        if value is None:
-            return "NULL"
-        elif isinstance(value, str):
-            # Escape single quotes for SQL safety
-            escaped = value.replace("'", "''")
-            return f"'{escaped}'"
-        elif isinstance(value, bool):
-            return "TRUE" if value else "FALSE"
-        elif isinstance(value, (int, float)):
-            return str(value)
-        else:
-            # Default to string representation
-            return f"'{str(value)}'"
+        # Delegate to SQLParameterBinder service
+        return self._sql_parameter_binder._format_param(value)
 
     def table(self, table_name: str) -> IDataFrame:
         """Get table as DataFrame (mockable version)."""
@@ -549,18 +454,8 @@ class MockSparkSession:
 
     def stop(self) -> None:
         """Stop the session and clean up resources."""
-        # Close DuckDB connections to prevent leaks between tests
-        try:
-            if hasattr(self, "storage") and hasattr(self.storage, "close"):
-                self.storage.close()
-        except Exception:
-            pass  # Ignore errors during cleanup
-
-        # Clear any cached data
-        try:
-            self.clear_cache()
-        except Exception:
-            pass
+        # Delegate to SessionLifecycleManager service
+        self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
 
     def __enter__(self) -> "MockSparkSession":
         """Context manager entry."""
@@ -568,7 +463,8 @@ class MockSparkSession:
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
-        self.stop()
+        # Delegate to SessionLifecycleManager service
+        self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
 
     def newSession(self) -> "MockSparkSession":
         """Create new session.
@@ -583,98 +479,80 @@ class MockSparkSession:
         self, side_effect: Any = None, return_value: Any = None
     ) -> None:
         """Mock createDataFrame method for testing."""
-        if side_effect:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                raise side_effect
-
-            self._createDataFrame_impl = mock_impl
-        elif return_value:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                return return_value
-
-            self._createDataFrame_impl = mock_impl
+        # Delegate to MockingCoordinator service
+        self._createDataFrame_impl = self._mocking_coordinator.setup_mock_impl(
+            "createDataFrame", side_effect, return_value
+        )
 
     def mock_table(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock table method for testing."""
-        if side_effect:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                raise side_effect
-
-            self._table_impl = mock_impl
-        elif return_value:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                return return_value
-
-            self._table_impl = mock_impl
+        # Delegate to MockingCoordinator service
+        self._table_impl = self._mocking_coordinator.setup_mock_impl(
+            "table", side_effect, return_value
+        )
 
     def mock_sql(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock sql method for testing."""
-        if side_effect:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                raise side_effect
-
-            self._sql_impl = mock_impl
-        elif return_value:
-
-            def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                return return_value
-
-            self._sql_impl = mock_impl
+        # Delegate to MockingCoordinator service
+        self._sql_impl = self._mocking_coordinator.setup_mock_impl(
+            "sql", side_effect, return_value
+        )
 
     # Error simulation methods
     def add_error_rule(
         self, method_name: str, error_condition: Any, error_exception: Any
     ) -> None:
         """Add error simulation rule."""
-        self._error_rules[method_name] = (error_condition, error_exception)
+        # Delegate to MockingCoordinator service
+        self._mocking_coordinator.add_error_rule(
+            method_name, error_condition, error_exception
+        )
 
     def clear_error_rules(self) -> None:
         """Clear all error simulation rules."""
-        self._error_rules.clear()
+        # Delegate to MockingCoordinator service
+        self._mocking_coordinator.clear_error_rules()
 
     def reset_mocks(self) -> None:
         """Reset all mocks to original implementations."""
+        # Delegate to MockingCoordinator service
+        original_impls = {
+            "createDataFrame": self._real_createDataFrame,
+            "table": self._real_table,
+            "sql": self._real_sql,
+        }
+        self._mocking_coordinator.reset_all_mocks(original_impls)
+
+        # Reset implementations to original
         self._createDataFrame_impl = self._real_createDataFrame
         self._table_impl = self._real_table
         self._sql_impl = self._real_sql
-        self.clear_error_rules()
 
     def _check_error_rules(self, method_name: str, *args: Any, **kwargs: Any) -> None:
         """Check if error should be raised for method."""
-        if method_name in self._error_rules:
-            for condition, exception in self._error_rules[method_name]:
-                if condition(*args, **kwargs):
-                    raise exception
+        # Delegate to MockingCoordinator service
+        exception = self._mocking_coordinator.check_error_rules(
+            method_name, *args, **kwargs
+        )
+        if exception:
+            raise exception
 
     # Integration with MockErrorSimulator
     def _add_error_rule(self, method_name: str, condition: Any, exception: Any) -> None:
         """Add error rule (used by MockErrorSimulator)."""
-        if method_name not in self._error_rules:
-            self._error_rules[method_name] = []
-        self._error_rules[method_name].append((condition, exception))
+        # Delegate to MockingCoordinator service
+        self._mocking_coordinator.add_error_rule(method_name, condition, exception)
 
     def _remove_error_rule(self, method_name: str, condition: Any = None) -> None:
         """Remove error rule (used by MockErrorSimulator)."""
-        if method_name in self._error_rules:
-            if condition is None:
-                self._error_rules[method_name] = []
-            else:
-                self._error_rules[method_name] = [
-                    (c, e) for c, e in self._error_rules[method_name] if c != condition
-                ]
+        # Note: MockingCoordinator doesn't support removal yet, but we can clear all rules
+        if condition is None:
+            self._mocking_coordinator.clear_error_rules()
 
     def _should_raise_error(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
         """Check if error should be raised (used by MockErrorSimulator)."""
-        if method_name in self._error_rules:
-            for condition, exception in self._error_rules[method_name]:
-                if condition(*args, **kwargs):
-                    return exception
-        return None
+        # Delegate to MockingCoordinator service
+        return self._mocking_coordinator.check_error_rules(method_name, *args, **kwargs)
 
 
 # Set the builder attribute on MockSparkSession

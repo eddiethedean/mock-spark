@@ -9,7 +9,6 @@ from sqlalchemy import (
     select,
     func,
     text,
-    Session,
     Column,
     Integer,
     Float,
@@ -21,6 +20,7 @@ from sqlalchemy import (
     MetaData,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from .table_manager import DuckDBTableManager
 from .sql_expression_translator import SQLExpressionTranslator
@@ -106,7 +106,7 @@ class DataFrameOperationExecutor:
                 result_dict = {}
                 for i, column in enumerate(source_table_obj.columns):
                     result_dict[column.name] = result[i]
-                insert_stmt = target_table_obj.insert().values(result_dict)
+                insert_stmt = target_table_obj.insert().values(result_dict)  # type: ignore[union-attr]
                 session.execute(insert_stmt)
             session.commit()
 
@@ -195,9 +195,9 @@ class DataFrameOperationExecutor:
             elif hasattr(col, "value") and hasattr(col, "data_type"):
                 # Handle MockLiteral objects (literal values) - check this before MockColumn
                 if isinstance(col.value, str):
-                    select_columns.append(text(f"'{col.value}'"))
+                    select_columns.append(text(f"'{col.value}'"))  # type: ignore[arg-type]
                 else:
-                    select_columns.append(text(str(col.value)))
+                    select_columns.append(text(str(col.value)))  # type: ignore[arg-type]
                 # Use appropriate column type based on the literal value
                 if isinstance(col.value, int):
                     # Check for overflow values that exceed INT32 range
@@ -265,7 +265,7 @@ class DataFrameOperationExecutor:
                     else:
                         # Column doesn't exist in source, might come from join
                         # Add as text column reference with default String type
-                        select_columns.append(text(f'"{col_name}"'))
+                        select_columns.append(text(f'"{col_name}"'))  # type: ignore[arg-type]
                         new_columns.append(Column(col_name, String, primary_key=False))
             elif hasattr(col, "conditions") and hasattr(col, "default_value"):
                 # Handle MockCaseWhen objects
@@ -274,7 +274,7 @@ class DataFrameOperationExecutor:
                     case_expr = self.expression_translator.build_case_when_sql(
                         col, source_table_obj
                     )
-                    select_columns.append(text(case_expr))
+                    select_columns.append(text(case_expr))  # type: ignore[arg-type]
 
                     # Infer the correct column type from MockCaseWhen
                     from ...spark_types import (

@@ -69,9 +69,9 @@ class DuckDBTableManager:
                 if isinstance(value, int):
                     columns.append(Column(key, Integer))
                 elif isinstance(value, float):
-                    columns.append(Column(key, Float))
+                    columns.append(Column(key, Float))  # type: ignore[arg-type]
                 elif isinstance(value, bool):
-                    columns.append(Column(key, Boolean))
+                    columns.append(Column(key, Boolean))  # type: ignore[arg-type]
                 elif isinstance(value, list):
                     # For arrays, infer element type from first element
                     if value and len(value) > 0:
@@ -94,9 +94,9 @@ class DuckDBTableManager:
                     # For maps, mark for raw SQL handling
                     has_map_columns = True
                     map_column_names.append(key)
-                    columns.append(Column(key, String))  # Placeholder
+                    columns.append(Column(key, String))  # type: ignore[arg-type] # Placeholder
                 else:
-                    columns.append(Column(key, String))
+                    columns.append(Column(key, String))  # type: ignore[arg-type]
 
         # Create table - use raw SQL for MAP columns
         if has_map_columns:

@@ -513,11 +513,13 @@ class SQLExpressionTranslator:
                         )
                         return f"({left} IN ({values}))"
                     else:
-                        return None
+                        raise NotImplementedError(
+                            f"Unsupported condition value type: {type(condition.value)}"
+                        )
         elif isinstance(condition, MockColumn):
             return f'"{condition.name}"'
 
-        return None  # Fallback
+        raise NotImplementedError(f"Unsupported condition type: {type(condition)}")
 
     def column_to_sqlalchemy(self, table_obj: Any, column: Any) -> Any:
         """Convert a MockColumn to SQLAlchemy expression.
