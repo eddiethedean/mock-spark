@@ -15,6 +15,7 @@ from sqlalchemy import (
 from ...functions import MockColumn, MockColumnOperation, MockLiteral
 from .table_manager import DuckDBTableManager
 from .date_format_converter import DateFormatConverter
+from .datetime_operations_handler import DatetimeOperationsHandler
 
 
 class SQLExpressionTranslator:
@@ -28,6 +29,7 @@ class SQLExpressionTranslator:
         """
         self.table_manager = table_manager
         self.format_converter = DateFormatConverter()
+        self.datetime_handler = DatetimeOperationsHandler()
 
     def column_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
         """Convert a column reference to SQL with quotes for expressions.
@@ -114,6 +116,10 @@ class SQLExpressionTranslator:
             and hasattr(expr, "column")
             and hasattr(expr, "value")
         ):
+            # Check if this is a datetime operation first
+            if self.datetime_handler.is_datetime_operation(expr):
+                return self.datetime_handler.convert_datetime_operation_to_sql(expr, source_table)
+            
             # Handle string/math functions like upper, lower, abs, etc.
             if expr.operation in [
                 "upper",
@@ -915,3 +921,89 @@ class SQLExpressionTranslator:
             parts.append(f"RANGE BETWEEN {start_clause} AND {end_clause}")
 
         return " ".join(parts)
+
+    def column_to_orm(self, table_class: Any, column: Any) -> Any:
+        """Convert a MockColumn to SQLAlchemy ORM expression."""
+        if isinstance(column, MockColumn):
+            return getattr(table_class, column.name)
+        elif isinstance(column, str):
+            return getattr(table_class, column)
+        else:
+            return getattr(table_class, str(column))
+
+    def value_to_orm(self, value: Any) -> Any:
+        """Convert a value to SQLAlchemy ORM expression."""
+        if isinstance(value, MockLiteral):
+            return value.value
+        else:
+            return value
+
+    def window_function_to_orm(self, table_class: Any, window_func: Any) -> Any:
+        """Convert a window function to SQLAlchemy ORM expression."""
+        function_name = getattr(window_func, "function_name", "window_function")
+        
+        # Get the column from the window function
+        if hasattr(window_func, "column"):
+            column = self.column_to_orm(table_class, window_func.column)
+        else:
+            column = None
+
+        # Apply the window function
+        if function_name.upper() == "ROW_NUMBER":
+            return func.row_number().over()
+        elif function_name.upper() == "RANK":
+            return func.rank().over()
+        elif function_name.upper() == "DENSE_RANK":
+            return func.dense_rank().over()
+        elif function_name.upper() == "LAG":
+            offset = getattr(window_func, "offset", 1)
+            default = getattr(window_func, "default", None)
+            if column is not None:
+                return func.lag(column, offset, default).over()
+            else:
+                return None
+        elif function_name.upper() == "LEAD":
+            offset = getattr(window_func, "offset", 1)
+            default = getattr(window_func, "default", None)
+            if column is not None:
+                return func.lead(column, offset, default).over()
+            else:
+                return None
+        elif function_name.upper() == "FIRST_VALUE":
+            if column is not None:
+                return func.first_value(column).over()
+            else:
+                return None
+        elif function_name.upper() == "LAST_VALUE":
+            if column is not None:
+                return func.last_value(column).over()
+            else:
+                return None
+        elif function_name.upper() == "SUM":
+            if column is not None:
+                return func.sum(column).over()
+            else:
+                return None
+        elif function_name.upper() == "AVG":
+            if column is not None:
+                return func.avg(column).over()
+            else:
+                return None
+        elif function_name.upper() == "COUNT":
+            if column is not None:
+                return func.count(column).over()
+            else:
+                return func.count().over()
+        elif function_name.upper() == "MIN":
+            if column is not None:
+                return func.min(column).over()
+            else:
+                return None
+        elif function_name.upper() == "MAX":
+            if column is not None:
+                return func.max(column).over()
+            else:
+                return None
+        else:
+            # Unsupported window function
+            return None

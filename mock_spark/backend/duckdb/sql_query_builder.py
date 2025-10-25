@@ -7,7 +7,7 @@ CASE WHEN expressions, and other SQL construction utilities.
 
 from typing import Any, List, Tuple
 from .cte_query_builder import CTEQueryBuilder
-from .sql_expression_converter import SQLExpressionConverter
+from .sql_expression_translator import SQLExpressionTranslator
 
 
 class SQLQueryBuilder:
@@ -20,7 +20,7 @@ class SQLQueryBuilder:
             cte_builder: CTE query builder instance
         """
         self.cte_builder = cte_builder
-        self.sql_converter = SQLExpressionConverter()
+        self.sql_converter = SQLExpressionTranslator(None)
 
     def build_cte_query(
         self, source_table_name: str, operations: List[Tuple[str, Any]]

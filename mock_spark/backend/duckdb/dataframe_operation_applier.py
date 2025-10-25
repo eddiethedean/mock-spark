@@ -10,8 +10,7 @@ from sqlalchemy import Session, select, func, text, and_, or_, literal_column, l
 from sqlalchemy.sql import ColumnElement
 
 from .table_manager import DuckDBTableManager
-from .sqlalchemy_expression_converter import SQLAlchemyExpressionConverter
-from .sql_expression_converter import SQLExpressionConverter
+from .sql_expression_translator import SQLExpressionTranslator
 
 
 class DataFrameOperationApplier:
@@ -29,8 +28,7 @@ class DataFrameOperationApplier:
         self.metadata = metadata
         self._created_tables = created_tables
         self.table_manager = DuckDBTableManager(engine, metadata, created_tables)
-        self.sqlalchemy_converter = SQLAlchemyExpressionConverter()
-        self.sql_converter = SQLExpressionConverter()
+        self.sql_converter = SQLExpressionTranslator(self.table_manager)
         self._strict_column_validation = False
 
     def apply_filter(
@@ -51,7 +49,7 @@ class DataFrameOperationApplier:
 
         # Convert condition to SQLAlchemy expression
         try:
-            filter_expr = self.sqlalchemy_converter.condition_to_sqlalchemy(source_table_obj, condition)
+            filter_expr = self.sql_converter.condition_to_sqlalchemy(source_table_obj, condition)
         finally:
             self._strict_column_validation = False
 

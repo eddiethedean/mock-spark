@@ -10,7 +10,7 @@ from sqlalchemy import Session, text, func, Column, String, Table
 from sqlalchemy.sql import ColumnElement
 
 from .table_manager import DuckDBTableManager
-from .sql_expression_converter import SQLExpressionConverter
+from .sql_expression_translator import SQLExpressionTranslator
 
 
 class WindowFunctionHandler:
@@ -28,7 +28,7 @@ class WindowFunctionHandler:
         self.metadata = metadata
         self._created_tables = created_tables
         self.table_manager = DuckDBTableManager(engine, metadata, created_tables)
-        self.sql_converter = SQLExpressionConverter()
+        self.sql_converter = SQLExpressionTranslator(self.table_manager)
 
     def apply_select_with_window_functions(
         self, source_table: str, target_table: str, columns: Tuple[Any, ...]
