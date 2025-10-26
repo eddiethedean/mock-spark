@@ -290,6 +290,12 @@ class SQLExpressionTranslator:
                         return f"LIST_MAX({left})"
                     elif expr.operation == "array_min":
                         return f"LIST_MIN({left})"
+                elif expr.operation == "isnull":
+                    # IS NULL operation
+                    return f"({left} IS NULL)"
+                elif expr.operation == "isnotnull":
+                    # PySpark's isnotnull is implemented as ~isnull, generates (NOT (column IS NULL))
+                    return f"(NOT ({left} IS NULL))"
                 else:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"

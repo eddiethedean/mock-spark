@@ -405,7 +405,8 @@ class ConditionalFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "isnotnull", name=f"({column.name} IS NOT NULL)")
+        # PySpark's isnotnull is implemented as ~isnull, so it generates (NOT (column IS NULL))
+        operation = MockColumnOperation(column, "isnotnull", name=f"(NOT ({column.name} IS NULL))")
         return operation
 
     @staticmethod
