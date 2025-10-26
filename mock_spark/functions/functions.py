@@ -1001,13 +1001,10 @@ class MockFunctions:
 
     @staticmethod
     def nvl(column: Union[MockColumn, str], default_value: Any) -> MockColumnOperation:
-        """Return default if null."""
-        if isinstance(column, str):
-            column = MockColumn(column)
-
-        operation = MockColumnOperation(column, "nvl", default_value)
-        operation.name = f"nvl({column.name}, {default_value})"
-        return operation
+        """Return default if null. PySpark uses coalesce internally."""
+        # Use coalesce for SQL generation compatibility
+        from .conditional import ConditionalFunctions
+        return ConditionalFunctions.coalesce(column, default_value)
 
     @staticmethod
     def nvl2(
