@@ -23,20 +23,21 @@ class ExpectedOutputLoader:
         self._cache: Dict[str, Any] = {}
     
     @lru_cache(maxsize=128)
-    def load_output(self, category: str, test_name: str) -> Dict[str, Any]:
+    def load_output(self, category: str, test_name: str, pyspark_version: str = "3.2") -> Dict[str, Any]:
         """
         Load expected output for a specific test.
         
         Args:
             category: Test category (e.g., 'dataframe_operations', 'functions')
             test_name: Name of the test file (without .json extension)
+            pyspark_version: PySpark version to load (default: "3.2")
             
         Returns:
             Dictionary containing the expected output data
             
         Raises:
             FileNotFoundError: If the expected output file doesn't exist
-            ValueError: If the JSON file is malformed
+            ValueError: If the JSON file is malformed or invalid schema
         """
         file_path = self.base_dir / category / f"{test_name}.json"
         
@@ -47,13 +48,39 @@ class ExpectedOutputLoader:
             with open(file_path, 'r') as f:
                 data = json.load(f)
             
+            # Validate expected output schema
+            self._validate_output_schema(data, category, test_name)
+            
             # Cache the loaded data
-            cache_key = f"{category}/{test_name}"
+            cache_key = f"{category}/{test_name}/{pyspark_version}"
             self._cache[cache_key] = data
             
             return data
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in expected output file {file_path}: {e}")
+    
+    def _validate_output_schema(self, data: Dict[str, Any], category: str, test_name: str):
+        """Validate that the expected output has the required schema."""
+        required_fields = ["test_id", "pyspark_version", "generated_at", "input_data", "expected_output"]
+        
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing required field '{field}' in {category}/{test_name}.json")
+        
+        expected_output = data.get("expected_output", {})
+        required_output_fields = ["schema", "data", "row_count"]
+        
+        for field in required_output_fields:
+            if field not in expected_output:
+                raise ValueError(f"Missing required field 'expected_output.{field}' in {category}/{test_name}.json")
+        
+        # Validate schema structure
+        schema = expected_output.get("schema", {})
+        required_schema_fields = ["field_count", "field_names", "field_types", "fields"]
+        
+        for field in required_schema_fields:
+            if field not in schema:
+                raise ValueError(f"Missing required field 'expected_output.schema.{field}' in {category}/{test_name}.json")
     
     def load_category(self, category: str) -> Dict[str, Dict[str, Any]]:
         """
@@ -125,9 +152,9 @@ def get_loader() -> ExpectedOutputLoader:
     return _loader
 
 
-def load_expected_output(category: str, test_name: str) -> Dict[str, Any]:
+def load_expected_output(category: str, test_name: str, pyspark_version: str = "3.2") -> Dict[str, Any]:
     """Convenience function to load expected output."""
-    return get_loader().load_output(category, test_name)
+    return get_loader().load_output(category, test_name, pyspark_version)
 
 
 def load_category_outputs(category: str) -> Dict[str, Dict[str, Any]]:

@@ -440,8 +440,15 @@ class CTEQueryBuilder:
                 f'{source_name}."{col}" = {other_table_name}."{col}"' for col in on
             ]
             join_condition = " AND ".join(conditions)
+        elif hasattr(on, "operation") and on.operation == "==":
+            # Handle MockColumnOperation (e.g., emp_df.dept_id == dept_df.dept_id)
+            # Extract column names from equality condition
+            left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
+            # For join conditions with two different DataFrames, use the column name
+            # from both sides (they should be the same in most cases)
+            join_condition = f'{source_name}."{left_col}" = {other_table_name}."{left_col}"'
         elif hasattr(on, "operation"):
-            # Column operation as join condition
+            # Other column operation as join condition - fallback
             join_condition = self.expression_translator.condition_to_sql(
                 on, source_table_obj
             )
@@ -460,8 +467,33 @@ class CTEQueryBuilder:
             "full_outer": "FULL OUTER JOIN",
         }
         join_type = join_type_map.get(how, "INNER JOIN")
+        
+        # Explicitly select columns to avoid ambiguous column names
+        # Get columns from source table
+        source_columns = [f'{source_name}."{col.name}"' for col in source_table_obj.columns]
+        # Get columns from other table (excluding join keys to avoid duplication)
+        other_schema = other_df.schema if hasattr(other_df, 'schema') else other_df
+        other_column_names = [field.name for field in other_schema.fields]
+        
+        # Determine join keys for exclusion
+        if isinstance(on, str):
+            join_keys = [on]
+        elif isinstance(on, list):
+            join_keys = on
+        else:
+            join_keys = []
+        
+        other_columns = [
+            f'{other_table_name}."{col}"' 
+            for col in other_column_names 
+            if col not in join_keys
+        ]
+        
+        # Combine columns: source columns first, then other columns
+        all_columns = source_columns + other_columns
+        select_clause = ", ".join(all_columns)
 
-        return f"SELECT * FROM {source_name} {join_type} {other_table_name} ON {join_condition}"
+        return f"SELECT {select_clause} FROM {source_name} {join_type} {other_table_name} ON {join_condition}"
 
     def build_union_cte(
         self, source_name: str, other_df: Any, source_table_obj: Any

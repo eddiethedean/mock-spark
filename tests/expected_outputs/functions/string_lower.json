@@ -1,7 +1,7 @@
 {
   "test_id": "string_lower",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T19:32:59.935970",
+  "generated_at": "2025-10-25T20:22:03.309511",
   "input_data": [
     {
       "id": 1,

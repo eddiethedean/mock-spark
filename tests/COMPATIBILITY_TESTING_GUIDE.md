@@ -1,286 +1,385 @@
 # Compatibility Testing Guide
 
-## Overview
+This guide explains how to add new compatibility tests using the new expected-output architecture. This system allows us to test Mock-Spark against PySpark without requiring PySpark as a runtime dependency.
 
-Mock-spark includes a comprehensive compatibility testing system that verifies the package works correctly across multiple Python and PySpark version combinations using Docker.
+## Architecture Overview
 
-## Quick Start
+The compatibility testing system has three main components:
 
-### Prerequisites
+1. **Expected Output Generator** (`tests/tools/generate_expected_outputs.py`) - Runs PySpark code to generate "golden" outputs
+2. **Output Loader** (`tests/tools/output_loader.py`) - Loads and caches expected outputs during tests
+3. **Comparison Utils** (`tests/tools/comparison_utils.py`) - Compares Mock-Spark results with expected outputs
 
-1. **Docker Desktop** - Install from https://www.docker.com/products/docker-desktop
-2. **5-10 GB disk space** - For Docker images
-3. **30-60 minutes** - For full test run
+### Key Benefits
 
-### Validate Setup
+- **No PySpark Runtime Dependency**: Tests run without PySpark installed
+- **Deterministic Results**: Expected outputs are pre-generated and versioned
+- **Fast Test Execution**: No need to start PySpark sessions during testing
+- **Version Control**: Expected outputs are stored in JSON files and can be versioned
+- **Easy Debugging**: Clear comparison of actual vs expected results
 
-Before running tests, validate your setup:
+## Directory Structure
 
-```bash
-python tests/compatibility_matrix/validate_setup.py
+```
+tests/
+├── tools/                          # Test infrastructure
+│   ├── generate_expected_outputs.py    # PySpark output generator
+│   ├── output_loader.py               # Expected output loader
+│   └── comparison_utils.py            # Comparison utilities
+├── expected_outputs/               # Generated expected outputs
+│   ├── functions/                  # Function tests
+│   ├── dataframe_operations/       # DataFrame operation tests
+│   ├── joins/                      # Join operation tests
+│   ├── aggregations/               # Aggregation tests
+│   └── ...                        # Other categories
+├── compatibility/                  # Compatibility test files
+│   ├── test_functions_compatibility.py
+│   ├── test_joins_compatibility.py
+│   └── ...
+└── generate_expected_outputs.sh   # Generation script
 ```
 
-### Run All Tests
+## How to Add New Compatibility Tests
 
-```bash
-./run_compatibility_tests.sh
-```
+### Step 1: Add Test Case to Generator
 
-This will:
-1. Build Docker images for each Python/PySpark combination
-2. Run critical tests in isolated containers
-3. Generate `COMPATIBILITY_REPORT.md` with results
-
-## Test Coverage
-
-### Version Matrix
-
-Tests 20 combinations:
-- **Python**: 3.9, 3.10, 3.11, 3.12, 3.13
-- **PySpark**: 3.2.4, 3.3.4, 3.4.3, 3.5.1
-- **Java**: 11 (for PySpark 3.2-3.4), 17 (for PySpark 3.5+)
-
-### Tests Run
-
-Each combination runs:
-1. ✓ Package import verification
-2. ✓ Basic DataFrame operations
-3. ✓ Data type handling
-4. ✓ SQL operations
-5. ✓ PySpark compatibility
-
-## Usage Examples
-
-### Run Full Matrix
-
-```bash
-# Interactive mode (with confirmation)
-./run_compatibility_tests.sh
-
-# Direct execution
-python tests/compatibility_matrix/run_matrix_tests.py
-```
-
-### Test Single Combination
-
-```bash
-# Test Python 3.10 + PySpark 3.3.4
-./tests/compatibility_matrix/test_single_combination.sh 3.10 3.3.4
-
-# Test Python 3.11 + PySpark 3.5.1
-./tests/compatibility_matrix/test_single_combination.sh 3.11 3.5.1
-```
-
-### Custom Python/PySpark Versions
-
-Edit `tests/compatibility_matrix/run_matrix_tests.py`:
+First, add your test case to the `ExpectedOutputGenerator` class in `tests/tools/generate_expected_outputs.py`:
 
 ```python
-def get_pyspark_versions(self):
-    return [
-        ("3.2.4", "11"),
-        ("3.3.4", "11"),
-        # Add your versions here
-    ]
-
-def get_python_versions(self):
-    return ["3.9", "3.10", "3.11", "3.12", "3.13"]
+def _generate_your_category_outputs(self):
+    """Generate expected outputs for your category."""
+    test_cases = {
+        "your_test_name": lambda df: df.select(F.your_function(df.column)),
+        "another_test": lambda df: df.groupBy("col").agg(F.sum(df.value)),
+    }
+    
+    for test_name, test_func in test_cases.items():
+        self._generate_single_output("your_category", test_name, test_func)
 ```
 
-## Output
+### Step 2: Create Test Data
 
-### COMPATIBILITY_REPORT.md
+Define input data for your tests. The generator will use this data with both PySpark and Mock-Spark:
 
-Generated report includes:
-
-1. **Summary Statistics**
-   - Total combinations tested
-   - Pass/fail counts
-   - Test duration
-
-2. **Compatibility Matrix Table**
-   - Visual grid showing pass/fail for each combination
-   - Easy to spot compatibility issues
-
-3. **Detailed Results**
-   - Individual results for each combination
-   - Error messages for failures
-   - Test duration per combination
-
-### Example Report
-
-```markdown
-# Mock-Spark Compatibility Matrix
-
-**Generated:** 2024-01-15 10:30:00
-**Total test time:** 45.2 minutes
-
-## Summary
-- **Total combinations tested:** 20
-- **Passed:** 18 ✓
-- **Failed:** 2 ✗
-
-## Compatibility Matrix
-
-| Python | PySpark 3.2 | PySpark 3.3 | PySpark 3.4 | PySpark 3.5 |
-|--------|-------------|-------------|-------------|-------------|
-| 3.9    | ✓ Pass      | ✓ Pass      | ✓ Pass      | ✓ Pass      |
-| 3.10   | ✓ Pass      | ✓ Pass      | ✓ Pass      | ✗ Fail      |
-| 3.11   | ✓ Pass      | ✓ Pass      | ✓ Pass      | ✓ Pass      |
-| 3.12   | ✓ Pass      | ✓ Pass      | ✓ Pass      | ✓ Pass      |
-| 3.13   | ✓ Pass      | ✓ Pass      | ✗ Fail      | ✗ Fail      |
-
-## Detailed Results
-
-### Python 3.10 + PySpark 3.5.1 (Java 17)
-**Status:** ✗ FAIL
-**Duration:** 45.23s
-**Error:** 
-```
-ImportError: cannot import name 'DataFrame' from 'pyspark.sql'
+```python
+# In the generator, define input data
+input_data = [
+    {"id": 1, "name": "Alice", "value": 100.5},
+    {"id": 2, "name": "Bob", "value": 200.0},
+    {"id": 3, "name": "Charlie", "value": None},
+]
 ```
 
-...
+### Step 3: Generate Expected Outputs
+
+Run the generation script to create expected output files:
+
+```bash
+# Generate all outputs
+bash tests/generate_expected_outputs.sh
+
+# Generate specific category
+python tests/tools/generate_expected_outputs.py --category your_category
+
+# Generate for specific PySpark version
+python tests/tools/generate_expected_outputs.py --category your_category --pyspark-version 3.5
+```
+
+### Step 4: Create Compatibility Test File
+
+Create a new test file in `tests/compatibility/`:
+
+```python
+"""
+Compatibility tests for your category using expected outputs.
+"""
+
+import pytest
+from tests.tools.output_loader import load_expected_output
+from tests.tools.comparison_utils import assert_dataframes_equal
+from mock_spark import F
+
+
+class TestYourCategoryCompatibility:
+    """Test your category compatibility against expected PySpark outputs."""
+    
+    @pytest.fixture
+    def spark(self):
+        """Create a MockSparkSession for testing."""
+        from mock_spark import MockSparkSession
+        session = MockSparkSession("your_category_test")
+        yield session
+        session.stop()
+    
+    def test_your_test_name(self, spark):
+        """Test your function against expected outputs."""
+        expected = load_expected_output("your_category", "your_test_name")
+        
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.your_function(df.column))
+        
+        assert_dataframes_equal(result, expected)
+    
+    def test_another_test(self, spark):
+        """Test another function against expected outputs."""
+        expected = load_expected_output("your_category", "another_test")
+        
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.groupBy("col").agg(F.sum(df.value))
+        
+        assert_dataframes_equal(result, expected)
+```
+
+### Step 5: Run Tests
+
+Run your new compatibility tests:
+
+```bash
+# Run specific test file
+pytest tests/compatibility/test_your_category_compatibility.py
+
+# Run all compatibility tests
+pytest tests/compatibility/
+
+# Run with verbose output
+pytest tests/compatibility/test_your_category_compatibility.py -v
+```
+
+## Expected Output File Format
+
+Each expected output file is a JSON file with this structure:
+
+```json
+{
+  "test_id": "unique_test_identifier",
+  "pyspark_version": "3.2",
+  "generated_at": "2024-01-15T10:30:00Z",
+  "input_data": [
+    {"id": 1, "name": "Alice", "value": 100.5},
+    {"id": 2, "name": "Bob", "value": 200.0}
+  ],
+  "expected_output": {
+    "schema": {
+      "field_count": 1,
+      "field_names": ["your_function(column)"],
+      "field_types": ["double"],
+      "fields": [
+        {
+          "name": "your_function(column)",
+          "type": "double",
+          "nullable": true
+        }
+      ]
+    },
+    "data": [
+      {"your_function(column)": 150.75},
+      {"your_function(column)": 200.0}
+    ],
+    "row_count": 2
+  }
+}
+```
+
+## Best Practices
+
+### 1. Test Data Design
+
+- **Use realistic data**: Include edge cases like nulls, empty strings, extreme values
+- **Keep data small**: Tests should be fast and focused
+- **Include variety**: Test different data types and scenarios
+
+```python
+# Good test data
+input_data = [
+    {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0},
+    {"id": 2, "name": "Bob", "age": None, "salary": 60000.0},
+    {"id": 3, "name": "", "age": 30, "salary": None},
+    {"id": 4, "name": "Charlie", "age": 35, "salary": 70000.0},
+]
+```
+
+### 2. Test Naming
+
+- **Use descriptive names**: `test_string_upper_with_mixed_case` not `test_upper`
+- **Group related tests**: Use consistent prefixes for related functionality
+- **Include edge cases**: `test_math_sqrt_with_negative_numbers`
+
+### 3. Error Handling
+
+- **Test error conditions**: Invalid inputs, type mismatches
+- **Use appropriate assertions**: Check for specific error types
+- **Document expected behavior**: Add docstrings explaining test purpose
+
+### 4. Performance Considerations
+
+- **Keep tests focused**: One test per specific behavior
+- **Use fixtures efficiently**: Reuse common setup
+- **Avoid complex operations**: Keep test data and operations simple
+
+## Common Patterns
+
+### 1. String Function Tests
+
+```python
+def test_string_upper(self, spark):
+    """Test upper function against expected outputs."""
+    expected = load_expected_output("functions", "string_upper")
+    
+    df = spark.createDataFrame(expected["input_data"])
+    result = df.select(F.upper(df.name))
+    
+    assert_dataframes_equal(result, expected)
+```
+
+### 2. Math Function Tests
+
+```python
+def test_math_sqrt(self, spark):
+    """Test sqrt function against expected outputs."""
+    expected = load_expected_output("functions", "math_sqrt")
+    
+    df = spark.createDataFrame(expected["input_data"])
+    result = df.select(F.sqrt(df.value))
+    
+    assert_dataframes_equal(result, expected)
+```
+
+### 3. Aggregation Tests
+
+```python
+def test_agg_sum(self, spark):
+    """Test sum aggregation against expected outputs."""
+    expected = load_expected_output("functions", "agg_sum")
+    
+    df = spark.createDataFrame(expected["input_data"])
+    result = df.groupBy("category").agg(F.sum(df.value))
+    
+    assert_dataframes_equal(result, expected)
+```
+
+### 4. Join Tests
+
+```python
+def test_inner_join(self, spark):
+    """Test inner join against expected outputs."""
+    expected = load_expected_output("joins", "inner_join")
+    
+    df1 = spark.createDataFrame(expected["input_data"]["left"])
+    df2 = spark.createDataFrame(expected["input_data"]["right"])
+    result = df1.join(df2, df1.id == df2.id, "inner")
+    
+    assert_dataframes_equal(result, expected)
 ```
 
 ## Troubleshooting
 
-### Docker Not Running
+### 1. Missing Expected Output Files
 
-**Error:** `docker: command not found`
+**Error**: `FileNotFoundError: Expected output file not found`
 
-**Solution:**
-1. Install Docker Desktop
-2. Start Docker Desktop application
-3. Verify: `docker info`
-
-### Out of Disk Space
-
-**Error:** `no space left on device`
-
-**Solution:**
+**Solution**: Generate the missing expected outputs:
 ```bash
-# Clean up old Docker images
-docker system prune -a
-
-# Check disk usage
-docker system df
+python tests/tools/generate_expected_outputs.py --category your_category
 ```
 
-### Test Timeout
+### 2. Schema Mismatches
 
-**Error:** Tests hang or timeout
+**Error**: `Schema field names mismatch: mock=['col1'], expected=['col2']`
 
-**Solution:**
-1. Increase timeout in `run_matrix_tests.py`:
-   ```python
-   timeout=600,  # 10 minutes
-   ```
-2. Check Docker resources (CPU/memory allocation)
+**Solution**: Check that Mock-Spark and PySpark generate the same column names. You may need to update Mock-Spark's function implementations.
 
-### Specific Combination Fails
+### 3. Data Mismatches
 
-**Solution:**
-1. Check detailed error in `COMPATIBILITY_REPORT.md`
-2. Run single combination for debugging:
-   ```bash
-   ./tests/compatibility_matrix/test_single_combination.sh 3.10 3.3.4
-   ```
-3. Some combinations may be inherently incompatible
+**Error**: `Numerical mismatch in column 'value' row 0: mock=1.0, expected=2.0`
 
-### Permission Denied
+**Solution**: Verify that Mock-Spark's implementation produces the same results as PySpark. Check for:
+- Different calculation logic
+- Type conversion issues
+- Precision differences
 
-**Error:** `Permission denied`
+### 4. Generation Failures
 
-**Solution:**
-```bash
-chmod +x run_compatibility_tests.sh
-chmod +x tests/compatibility_matrix/test_single_combination.sh
-chmod +x tests/compatibility_matrix/run_matrix_tests.py
-```
+**Error**: PySpark generation fails with specific functions
+
+**Solution**: 
+- Check PySpark version compatibility
+- Use equivalent functions for different PySpark versions
+- Add error handling in the generator
 
 ## Advanced Usage
 
-### Parallel Testing (Future Enhancement)
+### 1. Custom Comparison Logic
 
-Currently tests run sequentially. To add parallel execution:
+For complex data types, you can extend the comparison utilities:
 
 ```python
-# In run_matrix_tests.py
-from concurrent.futures import ThreadPoolExecutor
-
-with ThreadPoolExecutor(max_workers=4) as executor:
-    futures = [executor.submit(self.run_tests, ...) for ...]
+def custom_compare_values(mock_val, expected_val, tolerance, context):
+    """Custom comparison for specific data types."""
+    if isinstance(mock_val, CustomType) and isinstance(expected_val, CustomType):
+        return mock_val.equals(expected_val), ""
+    # Fall back to default comparison
+    return _compare_values(mock_val, expected_val, tolerance, context)
 ```
 
-### CI/CD Integration
+### 2. Version-Specific Tests
 
-Add to GitHub Actions workflow:
+Test against multiple PySpark versions:
 
-```yaml
-name: Compatibility Tests
-
-on: [push, pull_request]
-
-jobs:
-  compatibility:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run compatibility tests
-        run: |
-          python tests/compatibility_matrix/run_matrix_tests.py
-      - name: Upload report
-        uses: actions/upload-artifact@v2
-        with:
-          name: compatibility-report
-          path: COMPATIBILITY_REPORT.md
+```python
+@pytest.mark.parametrize("pyspark_version", ["3.2", "3.3", "3.4"])
+def test_function_with_version(self, spark, pyspark_version):
+    """Test function against specific PySpark version."""
+    expected = load_expected_output("functions", "test_name", pyspark_version)
+    # ... test implementation
 ```
 
-### Custom Test Selection
+### 3. Conditional Test Generation
 
-Modify `tests/compatibility_matrix/test_runner.sh` to run different tests:
+Generate different test cases based on PySpark version:
 
-```bash
-# Add more tests
-python -m pytest tests/unit/test_window_functions.py -v
-python -m pytest tests/compatibility/test_delta_compat.py -v
+```python
+def _generate_version_specific_tests(self):
+    """Generate tests specific to PySpark version."""
+    if self.pyspark_version >= "3.3":
+        # New features available in 3.3+
+        test_cases["new_feature"] = lambda df: df.select(F.new_feature(df.col))
+    else:
+        # Fallback for older versions
+        test_cases["legacy_feature"] = lambda df: df.select(F.legacy_feature(df.col))
 ```
-
-## Performance Tips
-
-1. **Use SSD** - Faster Docker image builds
-2. **Allocate Resources** - Give Docker 4+ GB RAM and 2+ CPUs
-3. **Run Overnight** - Full matrix takes 30-60 minutes
-4. **Test Subset** - Edit versions list to test fewer combinations
 
 ## Maintenance
 
-### Adding New Python Version
+### 1. Updating Expected Outputs
 
-1. Edit `get_python_versions()` in `run_matrix_tests.py`
-2. Add version to list: `return ["3.9", ..., "3.14"]`
+When PySpark behavior changes or new versions are released:
 
-### Adding New PySpark Version
+```bash
+# Regenerate all outputs
+bash tests/generate_expected_outputs.sh
 
-1. Edit `get_pyspark_versions()` in `run_matrix_tests.py`
-2. Add tuple: `("3.6.0", "17")`  # (version, java_version)
+# Regenerate specific category
+python tests/tools/generate_expected_outputs.py --category functions --pyspark-version 3.5
+```
 
-### Updating Test Coverage
+### 2. Adding New PySpark Versions
 
-1. Edit `tests/compatibility_matrix/test_runner.sh`
-2. Add/remove test files as needed
+1. Update the `PYSPARK_VERSIONS` array in `generate_expected_outputs.sh`
+2. Add version-specific test cases in the generator
+3. Regenerate expected outputs for the new version
 
-## Related Documentation
+### 3. Cleaning Up
 
-- [tests/compatibility_matrix/README.md](tests/compatibility_matrix/README.md) - Detailed documentation
-- [tests/compatibility_matrix/QUICK_START.md](tests/compatibility_matrix/QUICK_START.md) - Quick reference
-- [COMPATIBILITY_TESTING_SETUP.md](COMPATIBILITY_TESTING_SETUP.md) - Implementation details
+Remove outdated expected output files:
 
-## Support
+```bash
+# Remove old version files
+find tests/expected_outputs -name "*_3_0.json" -delete
+find tests/expected_outputs -name "*_3_1.json" -delete
+```
 
-For issues or questions:
-- Check troubleshooting section above
-- Review detailed error in `COMPATIBILITY_REPORT.md`
-- Open issue on GitHub with test output
+## Conclusion
 
+This architecture provides a robust, maintainable way to test Mock-Spark compatibility with PySpark. The separation of concerns between generation, loading, and comparison makes it easy to add new tests and debug issues.
+
+For questions or issues, refer to the existing test files as examples or consult the development team.

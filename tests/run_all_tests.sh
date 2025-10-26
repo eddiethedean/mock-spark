@@ -21,6 +21,16 @@ unit_exit=$?
 
 # Step 2: Compatibility tests - validate against expected outputs (no PySpark required)
 echo "Running compatibility tests..."
+echo "  - DataFrame operations compatibility"
+echo "  - Function operations compatibility" 
+echo "  - Join operations compatibility"
+echo "  - Aggregation operations compatibility"
+echo "  - Window functions compatibility"
+echo "  - Array functions compatibility"
+echo "  - Datetime functions compatibility"
+echo "  - Null handling compatibility"
+echo "  - Set operations compatibility"
+echo "  - Complex scenarios compatibility"
 python3 -m pytest tests/compatibility/ -v $PARALLEL_FLAGS --tb=short
 compatibility_exit=$?
 
@@ -40,12 +50,42 @@ echo "Running documentation tests..."
 python3 -m pytest tests/documentation/ -v --tb=short
 doc_exit=$?
 
+# Generate test summary
+echo ""
+echo "Test Summary"
+echo "============"
+echo "Unit tests: $([ $unit_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
+echo "Compatibility tests: $([ $compatibility_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
+echo "Performance tests: $([ $performance_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
+echo "Documentation tests: $([ $doc_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
+
+# Count total tests
+total_tests=$(python3 -c "
+import subprocess
+import sys
+try:
+    result = subprocess.run([sys.executable, '-m', 'pytest', '--collect-only', '-q', 'tests/'], 
+                          capture_output=True, text=True)
+    lines = result.stdout.split('\n')
+    for line in lines:
+        if 'collected' in line and 'item' in line:
+            print(line.split()[0])
+            break
+except:
+    print('Unknown')
+" 2>/dev/null)
+
+echo "Total tests: $total_tests"
+
 # Final result
 if [ $unit_exit -ne 0 ] || [ $compatibility_exit -ne 0 ] || [ $performance_exit -ne 0 ] || [ $doc_exit -ne 0 ]; then
-    echo "Test suite FAILED"
+    echo ""
+    echo "❌ Test suite FAILED"
     exit 1
 else
-    echo "Test suite PASSED"
+    echo ""
+    echo "✅ Test suite PASSED"
     echo "✅ All tests completed successfully without PySpark runtime dependency"
+    echo "✅ Comprehensive compatibility testing across all major MockSpark features"
     exit 0
 fi

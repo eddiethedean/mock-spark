@@ -786,6 +786,12 @@ class SQLAlchemyMaterializer:
                                 func_expr = func.power(source_column, 2)
                         elif col.function_name == "exp":
                             func_expr = func.exp(source_column)
+                        elif col.function_name == "sin":
+                            func_expr = func.sin(source_column)
+                        elif col.function_name == "cos":
+                            func_expr = func.cos(source_column)
+                        elif col.function_name == "tan":
+                            func_expr = func.tan(source_column)
                         elif col.function_name in [
                             "hour",
                             "minute",
@@ -4180,12 +4186,19 @@ class SQLAlchemyMaterializer:
         other_schema = other_materialized.schema
 
         # Normalize 'on' parameter to list
-        if isinstance(on, str):
+        if isinstance(on, MockColumnOperation) and on.operation == "==":
+            # Handle MockColumnOperation (e.g., emp_df.dept_id == dept_df.dept_id)
+            # Extract column names from equality condition
+            left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
+            right_col = on.value.name if hasattr(on.value, 'name') else str(on.value)
+            # Assume both DataFrames use same column name for join
+            on_columns = [left_col]  # Use left column as join key
+        elif isinstance(on, str):
             on_columns = [on]
         elif isinstance(on, list):
             on_columns = on
         else:
-            on_columns = [on]
+            raise ValueError(f"Unsupported join condition type: {type(on)}")
 
         # Create target table with combined schema
         new_columns: List[Any] = []
@@ -4195,18 +4208,21 @@ class SQLAlchemyMaterializer:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 
         # Add columns from other DataFrame (except join keys already in source)
+        # For PySpark compatibility: if a column name exists in both DataFrames, 
+        # the value from the right DataFrame overwrites the left
         for field in other_schema.fields:
-            if field.name not in on_columns and field.name not in [
-                c.name for c in source_table_obj.columns
-            ]:
-                # Convert MockSpark types to SQLAlchemy types
-                sql_type: Any = String  # Default, can be Integer, Float, or other types
-                field_type_name = type(field.dataType).__name__
-                if field_type_name in ["LongType", "IntegerType"]:
-                    sql_type = Integer
-                elif field_type_name in ["DoubleType", "FloatType"]:
-                    sql_type = Float
-                new_columns.append(Column(field.name, sql_type, primary_key=False))
+            if field.name not in on_columns:
+                # If column name already exists in target, it will be overwritten (PySpark behavior)
+                # So we don't add it again to schema - just include it in the data
+                if field.name not in [c.name for c in new_columns]:
+                    # Convert MockSpark types to SQLAlchemy types
+                    sql_type: Any = String  # Default, can be Integer, Float, or other types
+                    field_type_name = type(field.dataType).__name__
+                    if field_type_name in ["LongType", "IntegerType"]:
+                        sql_type = Integer
+                    elif field_type_name in ["DoubleType", "FloatType"]:
+                        sql_type = Float
+                    new_columns.append(Column(field.name, sql_type, primary_key=False))
 
         # Create target table
         target_table_obj = Table(target_table, self.metadata, *new_columns)
@@ -4241,11 +4257,9 @@ class SQLAlchemyMaterializer:
                         combined_row = row_dict.copy()
 
                         # Add columns from other DataFrame
+                        # For duplicate column names, the right DataFrame's value takes precedence (PySpark behavior)
                         for field in other_schema.fields:
-                            if (
-                                field.name not in on_columns
-                                and field.name not in combined_row
-                            ):
+                            if field.name not in on_columns:
                                 combined_row[field.name] = other_row.get(field.name)
 
                         # Ensure all target columns have values

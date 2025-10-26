@@ -1,7 +1,7 @@
 {
   "test_id": "agg_sum",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T19:33:02.167685",
+  "generated_at": "2025-10-25T20:22:06.335502",
   "input_data": [
     {
       "id": 1,

@@ -1,7 +1,7 @@
 {
   "test_id": "distinct",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T18:51:59.326900",
+  "generated_at": "2025-10-25T20:19:21.633912",
   "input_data": [
     {
       "id": 1,
@@ -52,18 +52,15 @@
     },
     "data": [
       {
-        "department": "IT"
-      },
-      {
         "department": "HR"
       },
       {
-        "department": "IT"
+        "department": "Finance"
       },
       {
-        "department": "Finance"
+        "department": "IT"
       }
     ],
-    "row_count": 4
+    "row_count": 3
   }
 }

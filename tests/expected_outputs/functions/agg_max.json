@@ -1,7 +1,7 @@
 {
   "test_id": "agg_max",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T19:33:04.431720",
+  "generated_at": "2025-10-25T20:22:08.611473",
   "input_data": [
     {
       "id": 1,

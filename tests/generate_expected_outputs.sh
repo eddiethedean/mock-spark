@@ -23,9 +23,34 @@ echo "✅ PySpark available"
 echo "📁 Expected outputs directory: tests/expected_outputs"
 echo ""
 
-# Generate expected outputs
-echo "Generating expected outputs..."
-python3 tests/tools/generate_expected_outputs.py --all
+# Define PySpark versions to generate outputs for
+PYSPARK_VERSIONS=("3.2") # Add more versions as needed
+
+# Define categories to generate outputs for
+CATEGORIES=("dataframe_operations" "functions" "sql_operations" "window_operations" "joins" "arrays" "datetime" "windows" "null_handling" "set_operations" "chained_operations")
+
+OUTPUT_DIR="tests/expected_outputs"
+
+echo "Generating expected outputs for Mock-Spark compatibility tests..."
+echo "-----------------------------------------------------------------"
+
+# Loop through each PySpark version and category to generate outputs
+for version in "${PYSPARK_VERSIONS[@]}"; do
+    export MOCK_SPARK_PYSPARK_VERSION=$version
+    echo "Generating outputs for PySpark version: $version"
+    for category in "${CATEGORIES[@]}"; do
+        echo "  Category: $category"
+        python3 tests/tools/generate_expected_outputs.py --category "$category" --pyspark-version "$version" --output-dir "$OUTPUT_DIR"
+        if [ $? -ne 0 ]; then
+            echo "Error generating outputs for category $category, PySpark version $version. Aborting."
+            exit 1
+        fi
+    done
+done
+
+echo "-----------------------------------------------------------------"
+echo "Expected output generation complete."
+unset MOCK_SPARK_PYSPARK_VERSION
 
 if [ $? -eq 0 ]; then
     echo ""

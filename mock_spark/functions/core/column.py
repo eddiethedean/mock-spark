@@ -268,6 +268,9 @@ class MockColumnOperation(ColumnOperatorMixin):
         # If there's an alias, use it
         if hasattr(self, "_alias_name") and self._alias_name:
             return self._alias_name
+        # If _name was explicitly set (e.g., by datetime functions), use it
+        if self._name and self._name != self._generate_name():
+            return self._name
         # For datetime and comparison operations, use the SQL representation
         if self.operation in [
             "hour",

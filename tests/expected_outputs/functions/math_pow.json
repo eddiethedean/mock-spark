@@ -1,7 +1,7 @@
 {
   "test_id": "math_pow",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T19:33:00.548724",
+  "generated_at": "2025-10-25T20:22:04.359262",
   "input_data": [
     {
       "id": 1,

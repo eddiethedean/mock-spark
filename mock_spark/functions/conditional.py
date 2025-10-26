@@ -389,8 +389,7 @@ class ConditionalFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "isnull")
-        operation.name = f"isnull({column.name})"
+        operation = MockColumnOperation(column, "isnull", name=f"({column.name} IS NULL)")
         return operation
 
     @staticmethod
@@ -406,8 +405,7 @@ class ConditionalFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "isnotnull")
-        operation.name = f"isnotnull({column.name})"
+        operation = MockColumnOperation(column, "isnotnull", name=f"({column.name} IS NOT NULL)")
         return operation
 
     @staticmethod

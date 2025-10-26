@@ -1,7 +1,7 @@
 {
   "test_id": "filter_with_boolean",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T18:51:57.898708",
+  "generated_at": "2025-10-25T20:19:19.846343",
   "input_data": [
     {
       "id": 1,

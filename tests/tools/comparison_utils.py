@@ -233,10 +233,11 @@ def _compare_values(
             f"Null mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
         )
     
+    # Enhanced array comparison with better error messages
     if isinstance(mock_val, (list, tuple)) and isinstance(expected_val, (list, tuple)):
         if len(mock_val) != len(expected_val):
             return False, (
-                f"Sequence length mismatch in {context}: mock={len(mock_val)}, expected={len(expected_val)}"
+                f"Array length mismatch in {context}: mock={len(mock_val)}, expected={len(expected_val)}"
             )
         for idx, (mock_item, expected_item) in enumerate(zip(mock_val, expected_val)):
             equivalent, error = _compare_values(
@@ -249,20 +250,19 @@ def _compare_values(
                 return False, error
         return True, ""
     
-    if isinstance(mock_val, set) and isinstance(expected_val, set):
-        if mock_val == expected_val:
-            return True, ""
-        return False, (
-            f"Set mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
-        )
-    
+    # Enhanced map/dict comparison
     if isinstance(mock_val, dict) and isinstance(expected_val, dict):
         mock_keys = set(mock_val.keys())
         expected_keys = set(expected_val.keys())
         if mock_keys != expected_keys:
-            return False, (
-                f"Dictionary key mismatch in {context}: mock={sorted(mock_keys)}, expected={sorted(expected_keys)}"
-            )
+            missing_in_mock = expected_keys - mock_keys
+            extra_in_mock = mock_keys - expected_keys
+            error_msg = f"Map key mismatch in {context}:"
+            if missing_in_mock:
+                error_msg += f" missing keys {sorted(missing_in_mock)}"
+            if extra_in_mock:
+                error_msg += f" extra keys {sorted(extra_in_mock)}"
+            return False, error_msg
         for key in sorted(mock_keys):
             equivalent, error = _compare_values(
                 mock_val[key], expected_val[key], tolerance, f"{context}.{key}"
@@ -270,6 +270,13 @@ def _compare_values(
             if not equivalent:
                 return False, error
         return True, ""
+    
+    if isinstance(mock_val, set) and isinstance(expected_val, set):
+        if mock_val == expected_val:
+            return True, ""
+        return False, (
+            f"Set mismatch in {context}: mock={mock_val!r}, expected={expected_val!r}"
+        )
     
     if isinstance(mock_val, bool) or isinstance(expected_val, bool):
         if bool(mock_val) == bool(expected_val):

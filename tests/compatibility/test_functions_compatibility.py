@@ -183,3 +183,117 @@ class TestFunctionsCompatibility:
         result = df.groupBy("active").agg(F.min(df.salary))
         
         assert_dataframes_equal(result, expected)
+
+    # Additional comprehensive function tests
+    
+    def test_string_trim(self, spark):
+        """Test trim function against expected outputs."""
+        expected = load_expected_output("functions", "string_trim")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.trim(df.name))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_ltrim(self, spark):
+        """Test ltrim function against expected outputs."""
+        expected = load_expected_output("functions", "string_ltrim")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.ltrim(df.name))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_rtrim(self, spark):
+        """Test rtrim function against expected outputs."""
+        expected = load_expected_output("functions", "string_rtrim")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.rtrim(df.name))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_lpad(self, spark):
+        """Test lpad function against expected outputs."""
+        expected = load_expected_output("functions", "string_lpad")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.lpad(df.name, 10, " "))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_rpad(self, spark):
+        """Test rpad function against expected outputs."""
+        expected = load_expected_output("functions", "string_rpad")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.rpad(df.name, 10, " "))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_like(self, spark):
+        """Test like function against expected outputs."""
+        expected = load_expected_output("functions", "string_like")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.col("name").like("%a%"))
+        assert_dataframes_equal(result, expected)
+
+    def test_string_rlike(self, spark):
+        """Test rlike function against expected outputs."""
+        expected = load_expected_output("functions", "string_rlike")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.col("name").rlike("^[A-Z]"))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_sin(self, spark):
+        """Test sin function against expected outputs."""
+        expected = load_expected_output("functions", "math_sin")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.sin(df.angle))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_cos(self, spark):
+        """Test cos function against expected outputs."""
+        expected = load_expected_output("functions", "math_cos")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.cos(df.angle))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_tan(self, spark):
+        """Test tan function against expected outputs."""
+        expected = load_expected_output("functions", "math_tan")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.tan(df.angle))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_ceil(self, spark):
+        """Test ceil function against expected outputs."""
+        expected = load_expected_output("functions", "math_ceil")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.ceil(df.value))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_floor(self, spark):
+        """Test floor function against expected outputs."""
+        expected = load_expected_output("functions", "math_floor")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.floor(df.value))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_greatest(self, spark):
+        """Test greatest function against expected outputs."""
+        expected = load_expected_output("functions", "math_greatest")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.greatest(df.a, df.b, df.c))
+        assert_dataframes_equal(result, expected)
+
+    def test_math_least(self, spark):
+        """Test least function against expected outputs."""
+        expected = load_expected_output("functions", "math_least")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.least(df.a, df.b, df.c))
+        assert_dataframes_equal(result, expected)
+
+    def test_conditional_when_otherwise(self, spark):
+        """Test when/otherwise function against expected outputs."""
+        expected = load_expected_output("functions", "conditional_when_otherwise")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.when(df.age > 30, "Senior").otherwise("Junior").alias("level"))
+        assert_dataframes_equal(result, expected)
+
+    def test_conditional_coalesce(self, spark):
+        """Test coalesce function against expected outputs."""
+        expected = load_expected_output("functions", "conditional_coalesce")
+        df = spark.createDataFrame(expected["input_data"])
+        result = df.select(F.coalesce(df.col1, df.col2, df.col3).alias("first_non_null"))
+        assert_dataframes_equal(result, expected)
