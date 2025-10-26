@@ -1010,15 +1010,10 @@ class MockFunctions:
     def nvl2(
         column: Union[MockColumn, str], value_if_not_null: Any, value_if_null: Any
     ) -> MockColumnOperation:
-        """Return value based on null check."""
-        if isinstance(column, str):
-            column = MockColumn(column)
-
-        operation = MockColumnOperation(
-            column, "nvl2", (value_if_not_null, value_if_null)
-        )
-        operation.name = f"nvl2({column.name}, {value_if_not_null}, {value_if_null})"
-        return operation
+        """Return value based on null check. PySpark uses when/otherwise internally."""
+        # Use when/otherwise for SQL generation compatibility
+        from .conditional import ConditionalFunctions
+        return ConditionalFunctions.when(column, value_if_null).otherwise(value_if_not_null)
 
     # Window functions
     @staticmethod
