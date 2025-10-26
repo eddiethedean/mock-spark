@@ -373,7 +373,20 @@ class ConditionalFunctions:
 
         # Create operation with first column as base
         operation = MockColumnOperation(mock_columns[0], "coalesce", mock_columns[1:])
-        operation.name = f"coalesce({', '.join([str(c) for c in mock_columns])})"
+        # Generate column name, handling MockLiterals specially
+        name_parts = []
+        for c in mock_columns:
+            if hasattr(c, 'value') and hasattr(c, '_name'):  # MockLiteral
+                from mock_spark.functions.core.literals import MockLiteral
+                if isinstance(c, MockLiteral):
+                    name_parts.append(str(c.value))
+                else:
+                    name_parts.append(str(c))
+            elif hasattr(c, 'name'):
+                name_parts.append(c.name)
+            else:
+                name_parts.append(str(c))
+        operation.name = f"coalesce({', '.join(name_parts)})"
         return operation
 
     @staticmethod

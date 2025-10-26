@@ -443,8 +443,6 @@ class SQLExpressionTranslator:
             elif expr.operation == "log":
                 # DuckDB uses log10 for base-10 logarithm, but PySpark uses natural log
                 # For compatibility with PySpark, we need to use ln (natural log)
-                print(f"DEBUG sql_expression_translator: log function - left={left}, returning ln({left})")
-                print(f"DEBUG sql_expression_translator: expr.operation={expr.operation}, expr.name={getattr(expr, 'name', 'no name')}")
                 return f"ln({left})"
             elif expr.operation == "exp":
                 # DuckDB uses exp for exponential function
@@ -455,6 +453,29 @@ class SQLExpressionTranslator:
             elif expr.operation == "sqrt":
                 # DuckDB uses sqrt function
                 return f"sqrt({left})"
+            elif expr.operation == "coalesce":
+                # Handle coalesce with multiple columns
+                if isinstance(expr.value, (list, tuple)):
+                    # Multiple columns: coalesce(col1, col2, col3)
+                    column_list = []
+                    column_list.append(left)
+                    for col in expr.value:
+                        if isinstance(col, MockColumn):
+                            column_list.append(self.column_to_sql(col, source_table))
+                        elif isinstance(col, str):
+                            column_list.append(self.column_to_sql(col, source_table))
+                        elif isinstance(col, MockLiteral):
+                            # Handle MockLiteral
+                            column_list.append(self.value_to_sql(col.value))
+                        else:
+                            column_list.append(str(col))
+                    return f"coalesce({', '.join(column_list)})"
+                else:
+                    # Single column: coalesce(col1, col2)
+                    # Check if right is a MockLiteral
+                    if isinstance(expr.value, MockLiteral):
+                        return f"coalesce({left}, {self.value_to_sql(expr.value.value)})"
+                    return f"coalesce({left}, {right})"
             else:
                 return f"({left} {expr.operation} {right})"
         elif hasattr(expr, "name"):
