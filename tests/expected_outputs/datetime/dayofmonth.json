@@ -1,56 +1,23 @@
 {
-  "test_id": "dayofmonth",
-  "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:19:09.421676",
-  "input_data": [
-    {
-      "id": 1,
-      "name": "Alice",
-      "hire_date": "2020-01-15",
-      "birth_date": "1990-05-20"
-    },
-    {
-      "id": 2,
-      "name": "Bob",
-      "hire_date": "2019-03-10",
-      "birth_date": "1985-12-03"
-    },
-    {
-      "id": 3,
-      "name": "Charlie",
-      "hire_date": "2021-07-22",
-      "birth_date": "1992-08-14"
-    }
-  ],
-  "operation": "DataFrame operation: dayofmonth",
   "expected_output": {
     "schema": {
-      "field_count": 1,
-      "field_names": [
-        "dayofmonth(hire_date)"
-      ],
-      "field_types": [
-        "integer"
-      ],
       "fields": [
         {
-          "name": "dayofmonth(hire_date)",
-          "type": "integer",
-          "nullable": true
+          "name": "day(hire_date)",
+          "nullable": true,
+          "type": "integer"
         }
-      ]
+      ],
+      "field_names": ["day(hire_date)"]
     },
     "data": [
-      {
-        "dayofmonth(hire_date)": 15
-      },
-      {
-        "dayofmonth(hire_date)": 10
-      },
-      {
-        "dayofmonth(hire_date)": 22
-      }
+      {"day(hire_date)": 10},
+      {"day(hire_date)": 15},
+      {"day(hire_date)": 22}
     ],
     "row_count": 3
-  }
+  },
+  "test_name": "day",
+  "category": "datetime",
+  "pyspark_version": "3.2"
 }
