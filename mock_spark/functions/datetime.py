@@ -340,7 +340,7 @@ class DateTimeFunctions:
             column1,
             "months_between",
             column2,
-            name=f"months_between({column1.name}, {column2.name})",
+            name=f"months_between({column1.name}, {column2.name}, true)",
         )
         return operation
 
@@ -400,7 +400,7 @@ class DateTimeFunctions:
             column,
             "date_format",
             format,
-            name=f"date_format({column.name}, '{format}')",
+            name=f"date_format({column.name}, {format})",
         )
         return operation
 

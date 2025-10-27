@@ -1345,11 +1345,17 @@ class MockDataFrame:
         """Return distinct rows."""
         seen = set()
         distinct_data = []
+        
+        # Get field names in schema order
+        field_names = [f.name for f in self.schema.fields]
+        
         for row in self.data:
-            row_tuple = tuple(sorted(row.items()))
+            # Create tuple in schema order for consistent hashing
+            row_tuple = tuple(row.get(name) for name in field_names)
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)
+        
         return MockDataFrame(distinct_data, self.schema, self.storage)
 
     def dropDuplicates(self, subset: Optional[List[str]] = None) -> "MockDataFrame":

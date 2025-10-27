@@ -310,9 +310,21 @@ class MockColumnOperation(ColumnOperatorMixin):
             part = "day" if self.operation == "dayofmonth" else self.operation
             return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
         elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
-            return (
-                f"extract({self.operation} from TRY_CAST({self.column.name} AS DATE))"
-            )
+            part_map = {
+                "dayofweek": "dow",
+                "dayofyear": "doy", 
+                "weekofyear": "week",
+                "quarter": "quarter",
+            }
+            part = part_map.get(self.operation, self.operation)
+            
+            # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
+            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
+            # Add 1 to dayofweek to match PySpark
+            if self.operation == "dayofweek":
+                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) + 1 AS INTEGER)"
+            else:
+                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) AS INTEGER)"
         elif self.operation in ["to_date", "to_timestamp"]:
             if self.value is not None:
                 return f"STRPTIME({self.column.name}, '{self.value}')"

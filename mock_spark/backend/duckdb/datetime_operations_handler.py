@@ -66,9 +66,13 @@ class DatetimeOperationsHandler:
                 "quarter": "quarter",
             }
             part = part_map.get(operation, operation)
-            return (
-                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
-            )
+            # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
+            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
+            # Add 1 to dayofweek to match PySpark
+            if operation == "dayofweek":
+                return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) + 1 AS INTEGER)"
+            else:
+                return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
 
         # Handle date formatting
         if operation == "date_format":
@@ -259,9 +263,13 @@ class DatetimeOperationsHandler:
                 "quarter": "quarter",
             }
             part = part_map.get(operation, operation)
-            return (
-                f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
-            )
+            # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
+            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
+            # Add 1 to dayofweek to match PySpark
+            if operation == "dayofweek":
+                return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) + 1 AS INTEGER)"
+            else:
+                return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
         elif operation in ["to_date", "to_timestamp"]:
             if value is not None:
                 duckdb_format = self.format_converter.convert_java_to_duckdb_format(

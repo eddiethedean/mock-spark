@@ -223,7 +223,14 @@ class SQLExpressionTranslator:
                         "quarter": "quarter",
                     }
                     part = part_map.get(expr.operation, expr.operation)
-                    return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) AS INTEGER)"
+                    
+                    # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
+                    # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
+                    # Add 1 to dayofweek to match PySpark
+                    if expr.operation == "dayofweek":
+                        return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) + 1 AS INTEGER)"
+                    else:
+                        return f"CAST(extract({part} from TRY_CAST({left} AS DATE)) AS INTEGER)"
                 elif expr.operation == "log":
                     # DuckDB uses log10 for base-10 logarithm, but PySpark uses natural log
                     # For compatibility with PySpark, we need to use ln (natural log)

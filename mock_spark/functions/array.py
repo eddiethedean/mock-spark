@@ -488,11 +488,12 @@ class ArrayFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
+        # PySpark's array_append is implemented as array_union(array, array(element))
         return MockColumnOperation(
             column,
             "array_append",
             element,
-            name=f"array_append({column.name}, {element})",
+            name=f"array_union({column.name}, array({element}))",
         )
 
     @staticmethod

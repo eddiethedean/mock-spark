@@ -704,7 +704,7 @@ class SQLAlchemyMaterializer:
                                 func_sql = self.expression_translator.expression_to_sql(
                                     col, source_table=source_table
                                 )
-                                func_expr = text(func_sql)
+                                func_expr = text(f"({func_sql}) AS \"{col.name}\"")
                                 select_columns.append(func_expr)
                                 new_columns.append(
                                     Column(col.name, String, primary_key=False)
@@ -809,8 +809,10 @@ class SQLAlchemyMaterializer:
                             datetime_sql = self.expression_translator.expression_to_sql(
                                 col, source_table=source_table
                             )
-                            # Use text() instead of literal_column() to ensure proper SQL generation
-                            func_expr = text(datetime_sql)
+                            # Use text() with AS clause since TextClause doesn't support .label()
+                            select_columns.append(text(f"({datetime_sql}) AS \"{col.name}\""))
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            continue
                         elif col.function_name in [
                             "to_date",
                             "to_timestamp",
@@ -821,8 +823,10 @@ class SQLAlchemyMaterializer:
                             datetime_sql = self.expression_translator.expression_to_sql(
                                 col, source_table=source_table
                             )
-                            # Use text() to ensure proper SQL generation with table context
-                            func_expr = text(datetime_sql)
+                            # Use text() with AS clause since TextClause doesn't support .label()
+                            select_columns.append(text(f"({datetime_sql}) AS \"{col.name}\""))
+                            new_columns.append(Column(col.name, String, primary_key=False))
+                            continue
                         else:
                             # Map PySpark function names to DuckDB function names
                             function_mapping = {
@@ -869,10 +873,10 @@ class SQLAlchemyMaterializer:
 
                             # Special handling for functions that need custom SQL generation
                             special_functions = {
-                                "add_months": "({} + INTERVAL {} MONTH)",
-                                "months_between": "DATEDIFF('MONTH', {}, {})",
-                                "date_add": "({} + INTERVAL {} DAY)",
-                                "date_sub": "({} - INTERVAL {} DAY)",
+                                "add_months": "CAST(({} + INTERVAL {} MONTH) AS DATE)",
+                                "months_between": "EXTRACT(YEAR FROM AGE({}, {})) * 12 + EXTRACT(MONTH FROM AGE({}, {})) + EXTRACT(DAY FROM AGE({}, {})) / 30.0",
+                                "date_add": "CAST(({} + INTERVAL {} DAY) AS DATE)",
+                                "date_sub": "CAST(({} - INTERVAL {} DAY) AS DATE)",
                                 "timestampadd": "timestampadd",  # Special handling below
                                 "timestampdiff": "timestampdiff",  # Special handling below
                                 "initcap": "initcap",  # Special handling below
@@ -1581,11 +1585,13 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_position":
                                         # array_position(array, element) -> list_position(array, element)
+                                        # PySpark returns 0 when not found, DuckDB returns NULL
+                                        # Use COALESCE to convert NULL to 0
                                         if isinstance(col.value, str):
                                             element = f"'{col.value}'"
                                         else:
                                             element = str(col.value)
-                                        special_sql = f"LIST_POSITION(CAST({column_expr} AS VARCHAR[]), {element})"
+                                        special_sql = f"COALESCE(LIST_POSITION({column_expr}, {element}), 0)"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_remove":
                                         # array_remove(array, element) - DuckDB doesn't have direct remove
@@ -2130,8 +2136,8 @@ class SQLAlchemyMaterializer:
                                         )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_append":
-                                        # array_append(array, element) -> LIST_CONCAT(array, [element])
-                                        # DuckDB doesn't have LIST_APPEND
+                                        # array_append(array, element) is implemented as array_union(array, array(element))
+                                        # PySpark treats array_append as array_union
                                         element = col.value
                                         if isinstance(element, str):
                                             element_sql = f"'{element}'"
@@ -4203,26 +4209,21 @@ class SQLAlchemyMaterializer:
         # Create target table with combined schema
         new_columns: List[Any] = []
 
-        # Add all columns from source table
+        # Add all columns from source table (left DataFrame)
         for column in source_table_obj.columns:
             new_columns.append(Column(column.name, column.type, primary_key=False))
 
-        # Add columns from other DataFrame (except join keys already in source)
-        # For PySpark compatibility: if a column name exists in both DataFrames, 
-        # the value from the right DataFrame overwrites the left
+        # Add columns from other DataFrame (right DataFrame)  
+        # PySpark behavior: ALL columns from right are added, creating duplicate column names
         for field in other_schema.fields:
-            if field.name not in on_columns:
-                # If column name already exists in target, it will be overwritten (PySpark behavior)
-                # So we don't add it again to schema - just include it in the data
-                if field.name not in [c.name for c in new_columns]:
-                    # Convert MockSpark types to SQLAlchemy types
-                    sql_type: Any = String  # Default, can be Integer, Float, or other types
-                    field_type_name = type(field.dataType).__name__
-                    if field_type_name in ["LongType", "IntegerType"]:
-                        sql_type = Integer
-                    elif field_type_name in ["DoubleType", "FloatType"]:
-                        sql_type = Float
-                    new_columns.append(Column(field.name, sql_type, primary_key=False))
+            # Convert MockSpark types to SQLAlchemy types
+            sql_type: Any = String  # Default, can be Integer, Float, or other types
+            field_type_name = type(field.dataType).__name__
+            if field_type_name in ["LongType", "IntegerType"]:
+                sql_type = Integer
+            elif field_type_name in ["DoubleType", "FloatType"]:
+                sql_type = Float
+            new_columns.append(Column(field.name, sql_type, primary_key=False))
 
         # Create target table
         target_table_obj = Table(target_table, self.metadata, *new_columns)
@@ -4257,10 +4258,9 @@ class SQLAlchemyMaterializer:
                         combined_row = row_dict.copy()
 
                         # Add columns from other DataFrame
-                        # For duplicate column names, the right DataFrame's value takes precedence (PySpark behavior)
+                        # In PySpark, ALL columns from right are added, overwriting left columns with same name
                         for field in other_schema.fields:
-                            if field.name not in on_columns:
-                                combined_row[field.name] = other_row.get(field.name)
+                            combined_row[field.name] = other_row.get(field.name)
 
                         # Ensure all target columns have values
                         target_column_names = [
