@@ -1,7 +1,7 @@
 {
   "test_id": "complex_string_operations",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:10:12.154179",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:23.273795",
   "input_data": [
     {
       "id": 1,

@@ -1004,16 +1004,25 @@ class MockFunctions:
         """Return default if null. PySpark uses coalesce internally."""
         # Use coalesce for SQL generation compatibility
         from .conditional import ConditionalFunctions
+
         return ConditionalFunctions.coalesce(column, default_value)
 
     @staticmethod
     def nvl2(
         column: Union[MockColumn, str], value_if_not_null: Any, value_if_null: Any
-    ) -> MockColumnOperation:
+    ) -> Any:
         """Return value based on null check. PySpark uses when/otherwise internally."""
         # Use when/otherwise for SQL generation compatibility
         from .conditional import ConditionalFunctions
-        return ConditionalFunctions.when(column, value_if_null).otherwise(value_if_not_null)
+        from mock_spark.functions.base import MockColumn
+
+        # Convert string to MockColumn if needed
+        col = MockColumn(column) if isinstance(column, str) else column
+
+        # nvl2 should check if column IS NULL, not if column is truthy
+        return ConditionalFunctions.when(col.isNull(), value_if_null).otherwise(
+            value_if_not_null
+        )
 
     # Window functions
     @staticmethod

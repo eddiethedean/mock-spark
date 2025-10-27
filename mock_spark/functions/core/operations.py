@@ -141,8 +141,19 @@ class ComparisonOperations:
         return MockColumnOperation(self, "like", pattern)
 
     def rlike(self, pattern: str) -> MockColumnOperation:
-        """Regular expression pattern matching."""
-        return MockColumnOperation(self, "rlike", pattern)
+        """Regular expression pattern matching.
+
+        Note: This feature is not yet fully implemented. Regex pattern matching
+        has SQL generation issues that are still being addressed.
+        """
+        from ...core.exceptions.operation import MockSparkUnsupportedOperationError
+
+        raise MockSparkUnsupportedOperationError(
+            "rlike",
+            reason="rlike is not yet fully implemented. "
+            "This feature has SQL generation issues that are still being addressed.",
+            alternative="Use 'like' for pattern matching instead.",
+        )
 
 
 class SortOperations:

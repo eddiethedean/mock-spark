@@ -104,7 +104,7 @@ from .errors import (  # noqa: E402
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "2.12.1"
+__version__ = "2.13.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -180,12 +180,14 @@ __all__ = [
     "PySparkTypeError",  # Type error
     "PySparkRuntimeError",  # Runtime error
     "IllegalArgumentException",  # Illegal argument exception
+    "Window",  # Window alias for PySpark compatibility
 ]
 
 
 # Add type aliases for PySpark compatibility
 StructType = MockStructType
 StructField = MockStructField
+Window = MockWindow  # Alias for PySpark compatibility
 
 # ==============================================================================
 # DELTA MODULE ALIASING - Support "from delta.tables import DeltaTable"

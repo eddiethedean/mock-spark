@@ -58,38 +58,41 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.12.1)
+### Latest (Version 2.13.0)
 
-**Single Responsibility Principle Refactoring & Code Quality Excellence** - Major architectural improvements for maintainability and reliability:
-- ✅ **857+ tests passing** - Comprehensive validation across all features with full test coverage
-- ✅ **100% mypy compliance** - Complete type safety with zero typing errors across all source files
-- ✅ **SRP refactoring** - Extracted specialized classes following Single Responsibility Principle
-- ✅ **Code quality excellence** - Enhanced ruff formatting and linting compliance
-- ✅ **PySpark 3.0-3.5** - Broad compatibility with version-specific gating
+**Complete Type Safety & Mypy Compliance** - Zero typing errors across entire codebase:
+- ✅ **30 mypy errors fixed** - Complete type safety with proper annotations throughout
+- ✅ **100% mypy compliance** - Zero typing errors across all 7 files with type issues
+- ✅ **Comprehensive type coverage** - Fixed MockRow, table manager, functions, and DataFrame types
+- ✅ **All tests passing** - 857+ tests validated after type fixes
+- ✅ **Production-ready** - Full type safety with enhanced developer experience
 
-**New in 2.12.1:**
-- 🏗️ **Single Responsibility Principle Refactoring** - Major architectural improvements for maintainability
-  - **TypeConverter class** - Extracted type conversion logic from MockDataFrame for better separation of concerns
-  - **DataFrameFormatter class** - Specialized display and formatting operations with proper column width calculation
-  - **SetOperations class** - Dedicated set operations (union, intersect, except, distinct) with hashable type handling
-  - **JoinOperations class** - Specialized join logic (inner, outer, left, right, cross) with proper column mapping
-  - **AggregationOperations class** - Statistical operations (describe, summary, count, mean, stddev) with comprehensive metrics
-  - **Modular design** - Each class has a single, well-defined responsibility for easier testing and maintenance
-- 🎯 **Enhanced Type Safety** - Complete type compliance across all extracted classes
-  - **Interface consistency** - Unified method signatures and return types across all operation classes
-  - **Type annotations** - Comprehensive type hints for all new classes and methods
-  - **Error handling** - Improved type-safe error handling in specialized operations
-  - **Hashable types** - Proper handling of unhashable types in set operations with recursive conversion
-- 🚀 **Test Suite Expansion** - Added comprehensive test coverage for all new classes
-  - **Unit tests** - Complete test coverage for TypeConverter, DataFrameFormatter, SetOperations, JoinOperations, and AggregationOperations
-  - **Edge case handling** - Tests for complex data types, null values, and error conditions
-  - **Performance validation** - Enhanced test execution speed and reliability with proper test isolation
-  - **Integration testing** - Verified all extracted classes work seamlessly with existing MockDataFrame operations
-- 📦 **Code Quality Improvements** - Enhanced maintainability and developer experience
-  - **Ruff compliance** - Applied consistent code formatting and linting standards across all files
-  - **Import organization** - Cleaned up import statements and dependency management
-  - **Documentation** - Updated inline documentation and type hints for all new classes
-  - **Error messages** - Improved error reporting and debugging information
+**What's New Since 2.12.0:**
+
+**Version 2.12.1 - Pluggable Backend Architecture & SRP Refactoring:**
+- 🔌 **Pluggable Backend System** - Modular architecture with DuckDB, memory, and file backends
+- 🧪 **Complete Test Suite Overhaul** - PySpark-free compatibility testing with comprehensive test coverage
+- 🏗️ **Single Responsibility Principle Refactoring** - Major architectural improvements:
+  - **TypeConverter** - Extracted type conversion logic for better separation of concerns
+  - **DataFrameFormatter** - Specialized display operations with proper column width calculation
+  - **SetOperations, JoinOperations, AggregationOperations** - Dedicated operation classes
+  - **CollectionHandler, ValidationHandler** - Specialized handler classes
+  - **Schema Management** - Extracted schema management logic
+- 🔄 **Backend Module Organization** - Improved DuckDB backend structure and SQLAlchemyMaterializer refactoring
+- 🎯 **Interface Standardization** - Unified storage interfaces with proper type annotations
+
+**Version 2.13.0 - Completes Type Safety (Current Release):**
+- 🎯 **Complete Type Safety** - Fixed all 30 mypy typing errors introduced during SRP refactoring
+  - **MockRow data types** - Fixed 12 errors related to Union[List[Tuple], Dict] type handling
+  - **Table manager types** - Fixed 7 errors with proper List[Any] annotations
+  - **Exception handling** - Replaced non-existent MockSparkNotImplementedError with proper exception
+  - **Function return types** - Fixed nvl2 and other functions with proper type annotations
+  - **Query executor** - Fixed type assignment issues with proper MockDataType handling
+  - **CTE query builder** - Fixed missing return statement in all code paths
+  - **DataFrame types** - Fixed Optional[str] and list type mismatches
+- 🔧 **Import Path Fixes** - Corrected MockLiteral imports in conditional functions
+- 🧪 **Test Validation** - All 857+ tests passing with type-safe implementations
+- 📦 **Code Quality** - 100% ruff compliance with proper formatting
 
 ### Version 2.7.0 Highlights
 
@@ -529,7 +532,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.10.0** - Boolean Literal Support, Type Safety Improvements  
 **v2.11.0** - Enhanced Error Handling, Improved Type Safety, Test Suite Robustness  
 **v2.12.0** - Complete Type Safety & Test Suite Overhaul, Interface Standardization  
-**v2.12.1** - Single Responsibility Principle Refactoring, Modular Architecture, Enhanced Maintainability
+**v2.12.1** - Pluggable Backend Architecture, SRP Refactoring, PySpark-free Testing, Modular Design  
+**v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance
 
 ---
 

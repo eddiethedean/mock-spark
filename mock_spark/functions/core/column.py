@@ -312,12 +312,12 @@ class MockColumnOperation(ColumnOperatorMixin):
         elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
             part_map = {
                 "dayofweek": "dow",
-                "dayofyear": "doy", 
+                "dayofyear": "doy",
                 "weekofyear": "week",
                 "quarter": "quarter",
             }
             part = part_map.get(self.operation, self.operation)
-            
+
             # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
             # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
             # Add 1 to dayofweek to match PySpark

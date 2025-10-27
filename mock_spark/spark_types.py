@@ -32,6 +32,8 @@ from typing import (
     KeysView,
     ValuesView,
     ItemsView,
+    Tuple,
+    Union,
 )
 from dataclasses import dataclass
 
@@ -507,18 +509,33 @@ class MockRow:
         """Initialize MockRow.
 
         Args:
-            data: Row data. Accepts dict-like (name -> value) or sequence-like (values).
+            data: Row data. Accepts dict, list of tuples, or sequence-like.
             schema: Optional schema providing ordered field names for index access.
         """
         self._schema = schema
-        # Normalize to dict storage while preserving order based on schema if provided
-        if isinstance(data, dict):
+
+        # Handle list of tuples - preserves duplicate column names
+        if (
+            isinstance(data, (list, tuple))
+            and len(data) > 0
+            and isinstance(data[0], (list, tuple))
+        ):
+            # List of (name, value) tuples - preserve duplicates
+            self.data: Union[List[Tuple[str, Any]], Dict[str, Any]] = list(
+                data
+            )  # Keep as list
+            self._data_dict = {k: v for k, v in data}  # For backward compatibility
+        elif isinstance(data, dict):
             if schema is not None and getattr(schema, "fields", None):
                 # Reorder dict according to schema field order
                 ordered_items = [(f.name, data.get(f.name)) for f in schema.fields]
-                self.data = {k: v for k, v in ordered_items}
+                self.data = list(ordered_items)  # Store as list of tuples
+                self._data_dict = {
+                    k: v for k, v in ordered_items
+                }  # For backward compatibility
             else:
-                self.data = dict(data)
+                self.data = list(data.items())
+                self._data_dict = dict(data)
         else:
             # sequence-like data paired with schema
             if schema is None or not getattr(schema, "fields", None):
@@ -530,39 +547,80 @@ class MockRow:
                 values = values + [None] * (len(names) - len(values))
             if len(values) > len(names):
                 values = values[: len(names)]
-            self.data = {name: values[idx] for idx, name in enumerate(names)}
+            self.data = list(zip(names, values))  # Store as list of tuples
+            self._data_dict = {name: values[idx] for idx, name in enumerate(names)}
 
     def __getitem__(self, key: Any) -> Any:
         """Get item by column name or index (PySpark-compatible)."""
         if isinstance(key, str):
-            if key not in self.data:
+            # Use dict for backward compatibility
+            if hasattr(self, "_data_dict"):
+                if key not in self._data_dict:
+                    raise KeyError(f"Key '{key}' not found in row")
+                return self._data_dict[key]
+            # Fallback for old format - check if data is dict or list
+            data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+            if key not in data_dict:
                 raise KeyError(f"Key '{key}' not found in row")
-            return self.data[key]
+            return data_dict[key]
         # Support integer index access using schema order
         if isinstance(key, int):
+            # If data is list of tuples, access directly
+            if isinstance(self.data, list) and len(self.data) > 0:
+                if key >= len(self.data):
+                    raise IndexError("Row index out of range")
+                return self.data[key][1]  # Return value (second element)
+            # Fallback for dict format
             field_names = self._get_field_names_ordered()
             try:
                 name = field_names[key]
             except IndexError:
                 raise IndexError("Row index out of range")
-            return self.data.get(name)
+            if hasattr(self, "_data_dict"):
+                return self._data_dict.get(name)
+            data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+            return data_dict.get(name)
         raise TypeError("Row indices must be integers or strings")
 
     def __contains__(self, key: str) -> bool:
         """Check if key exists."""
+        if hasattr(self, "_data_dict"):
+            return key in self._data_dict
+        if isinstance(self.data, list):
+            return any(k == key for k, v in self.data)
         return key in self.data
 
     def keys(self) -> KeysView[str]:
         """Get keys."""
+        if hasattr(self, "_data_dict"):
+            return self._data_dict.keys()
+        if isinstance(self.data, list):
+            from collections import OrderedDict
+
+            return OrderedDict(self.data).keys()
         return self.data.keys()
 
     def values(self) -> ValuesView[Any]:
         """Get values."""
-        return self.data.values()
+        if hasattr(self, "_data_dict"):
+            return self._data_dict.values()
+        if isinstance(self.data, list):
+            from collections import OrderedDict
+
+            return OrderedDict(self.data).values()
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+        return data_dict.values()
 
     def items(self) -> ItemsView[str, Any]:
         """Get items."""
-        return self.data.items()
+        if hasattr(self, "_data_dict"):
+            return self._data_dict.items()
+        if isinstance(self.data, list):
+            from collections import OrderedDict
+
+            return OrderedDict(self.data).items()
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+        return data_dict.items()
 
     def __len__(self) -> int:
         """Get length."""
@@ -578,7 +636,18 @@ class MockRow:
             # Compare with PySpark Row object
             # PySpark Row objects have attributes for each column
             try:
-                for key, value in self.data.items():
+                from collections import OrderedDict
+
+                data_dict: Union[Dict[str, Any], OrderedDict[str, Any]]
+                if isinstance(self.data, list):
+                    data_dict = OrderedDict(self.data)
+                else:
+                    # self.data is dict-like or list
+                    if isinstance(self.data, dict):
+                        data_dict = dict(self.data)
+                    else:
+                        data_dict = dict(self.data)
+                for key, value in data_dict.items():
                     if not hasattr(other, key) or getattr(other, key) != value:
                         return False
                 return True
@@ -589,39 +658,74 @@ class MockRow:
 
     def asDict(self) -> Dict[str, Any]:
         """Convert to dictionary (PySpark compatibility)."""
-        # Ensure order follows schema if provided
+        # If we have _data_dict, use it (last value for duplicates)
+        if hasattr(self, "_data_dict"):
+            if self._schema is not None:
+                # Return in schema order with last value for duplicates
+                return {
+                    name: self._data_dict.get(name)
+                    for name in self._get_field_names_ordered()
+                }
+            return self._data_dict
+        # Handle list of tuples format
+        if (
+            isinstance(self.data, list)
+            and len(self.data) > 0
+            and isinstance(self.data[0], (list, tuple))
+        ):
+            # Convert list of tuples to dict (last value for duplicates)
+            result = dict(self.data)
+            if self._schema is not None:
+                # Return in schema order
+                return {
+                    name: result.get(name) for name in self._get_field_names_ordered()
+                }
+            return result
+        # Fallback for dict format
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
         if self._schema is not None:
             return {
-                name: self.data.get(name) for name in self._get_field_names_ordered()
+                name: data_dict.get(name) for name in self._get_field_names_ordered()
             }
-        return self.data.copy()
+        if isinstance(self.data, dict):
+            return self.data.copy()
+        return dict(self.data)
 
     def __getattr__(self, name: str) -> Any:
         """Get value by attribute name (PySpark compatibility)."""
-        if name in self.data:
-            return self.data[name]
+        if isinstance(self.data, dict):
+            if name in self.data:
+                return self.data[name]
+        elif isinstance(self.data, list):
+            data_dict = dict(self.data)
+            if name in data_dict:
+                return data_dict[name]
         raise AttributeError(
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )
 
     def __iter__(self) -> Iterator[Any]:
         """Iterate values in schema order if available, else dict order."""
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
         for name in self._get_field_names_ordered():
-            yield self.data.get(name)
+            yield data_dict.get(name)
 
     def __repr__(self) -> str:
         """String representation matching PySpark format."""
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
         values_str = ", ".join(
-            f"{k}={self.data.get(k)}" for k in self._get_field_names_ordered()
+            f"{k}={data_dict.get(k)}" for k in self._get_field_names_ordered()
         )
         return f"Row({values_str})"
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get value by key with default."""
-        return self.data.get(key, default)
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+        return data_dict.get(key, default)
 
     def _get_field_names_ordered(self) -> List[str]:
         if self._schema is not None and getattr(self._schema, "fields", None):
             return [f.name for f in self._schema.fields]
         # fallback to dict insertion order
-        return list(self.data.keys())
+        data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
+        return list(data_dict.keys())

@@ -76,6 +76,29 @@ class SQLExpressionTranslator:
         elif isinstance(expr, MockLiteral):
             # Handle MockLiteral objects by extracting their value
             return self.value_to_sql(expr.value)
+        elif hasattr(expr, "operation") and hasattr(expr, "column"):
+            # Handle MockColumnOperation (arithmetic operations like *, +, -, /)
+            if hasattr(expr, "value"):
+                # Binary operation
+                left = self.column_to_sql(expr.column, source_table)
+                right = self.value_to_sql(expr.value)
+                op_map = {
+                    "*": "*",
+                    "+": "+",
+                    "-": "-",
+                    "/": "/",
+                    "%": "%",
+                }
+                op = op_map.get(expr.operation, expr.operation)
+                return f"({left} {op} {right})"
+            else:
+                # Unary operation or function
+                col_ref = self.column_to_sql(expr.column, source_table)
+                if expr.operation in ["upper", "lower", "length", "abs", "round"]:
+                    return f"{expr.operation.upper()}({col_ref})"
+                else:
+                    # Default: just return the column reference
+                    return col_ref
         elif hasattr(expr, "name"):
             # Check if this is referencing an aliased expression
             if source_table:
@@ -223,7 +246,7 @@ class SQLExpressionTranslator:
                         "quarter": "quarter",
                     }
                     part = part_map.get(expr.operation, expr.operation)
-                    
+
                     # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
                     # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
                     # Add 1 to dayofweek to match PySpark
@@ -281,6 +304,8 @@ class SQLExpressionTranslator:
                     "array_size",
                     "array_max",
                     "array_min",
+                    "explode",
+                    "explode_outer",
                 ]:
                     if expr.operation == "array_sort":
                         # array_sort(array, asc) -> LIST_SORT or LIST_REVERSE_SORT
@@ -297,6 +322,12 @@ class SQLExpressionTranslator:
                         return f"LIST_MAX({left})"
                     elif expr.operation == "array_min":
                         return f"LIST_MIN({left})"
+                    elif expr.operation == "explode":
+                        # explode(array) -> UNNEST(array)
+                        return f"UNNEST({left})"
+                    elif expr.operation == "explode_outer":
+                        # explode_outer(array) -> UNNEST(COALESCE(array, [NULL]))
+                        return f"UNNEST(COALESCE({left}, [NULL]))"
                 elif expr.operation == "isnull":
                     # IS NULL operation
                     return f"({left} IS NULL)"
@@ -355,10 +386,10 @@ class SQLExpressionTranslator:
                     right_parts = []
                     for val in expr.value:
                         # Check for MockLiteral first (has both name and value)
-                        if hasattr(val, 'value') and hasattr(val, '_name'):
+                        if hasattr(val, "value") and hasattr(val, "_name"):
                             # Handle MockLiteral objects
                             right_parts.append(f"'{val.value}'")
-                        elif hasattr(val, 'name'):
+                        elif hasattr(val, "name"):
                             # Handle MockColumn objects
                             right_parts.append(val.name)
                         else:
@@ -481,7 +512,9 @@ class SQLExpressionTranslator:
                     # Single column: coalesce(col1, col2)
                     # Check if right is a MockLiteral
                     if isinstance(expr.value, MockLiteral):
-                        return f"coalesce({left}, {self.value_to_sql(expr.value.value)})"
+                        return (
+                            f"coalesce({left}, {self.value_to_sql(expr.value.value)})"
+                        )
                     return f"coalesce({left}, {right})"
             else:
                 return f"({left} {expr.operation} {right})"

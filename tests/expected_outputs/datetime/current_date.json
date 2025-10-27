@@ -1,7 +1,7 @@
 {
   "test_id": "current_date",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T21:02:50.039596",
+  "generated_at": "2025-10-27T14:13:17.451230",
   "input_data": [
     {
       "id": 1,
@@ -42,13 +42,13 @@
     },
     "data": [
       {
-        "current_date()": "2025-10-25"
+        "current_date()": "2025-10-27"
       },
       {
-        "current_date()": "2025-10-25"
+        "current_date()": "2025-10-27"
       },
       {
-        "current_date()": "2025-10-25"
+        "current_date()": "2025-10-27"
       }
     ],
     "row_count": 3

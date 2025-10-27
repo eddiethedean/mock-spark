@@ -281,10 +281,14 @@ class DuckDBTableManager:
 
             mock_rows = []
             for result in results:
-                # Convert result to dict using column names with type conversion
-                result_dict: Dict[str, Any] = {}
+                # Convert result to list of values in schema order (preserves duplicates)
+                # Don't use dict to avoid losing duplicate column names
+                row_values: List[Any] = []
+                field_names = []
+
                 for i, column in enumerate(table_obj.columns):
                     value = result[i]
+
                     # Convert value to appropriate type based on column type
                     is_array_column = (
                         isinstance(column.type, ARRAY)
@@ -293,18 +297,18 @@ class DuckDBTableManager:
                     if is_array_column and value is not None:
                         # Array columns might be returned as lists or strings
                         if isinstance(value, list):
-                            result_dict[column.name] = value
+                            row_values.append(value)
                         elif isinstance(value, str):
                             # Parse string representation back to list
                             # DuckDB sometimes returns arrays as strings like "[1, 2, 3]"
                             try:
                                 import ast
 
-                                result_dict[column.name] = ast.literal_eval(value)
+                                row_values.append(ast.literal_eval(value))
                             except (ValueError, SyntaxError):
-                                result_dict[column.name] = value
+                                row_values.append(value)
                         else:
-                            result_dict[column.name] = value
+                            row_values.append(value)
                     elif (
                         isinstance(column.type, String)
                         and isinstance(value, str)
@@ -316,39 +320,48 @@ class DuckDBTableManager:
                             import ast
 
                             # Try to parse as dict literal
-                            result_dict[column.name] = ast.literal_eval(value)
+                            row_values.append(ast.literal_eval(value))
                         except (ValueError, SyntaxError):
                             # If that fails, leave as string
-                            result_dict[column.name] = value
+                            row_values.append(value)
                     elif isinstance(value, dict):
                         # Already a dict (map)
-                        result_dict[column.name] = value
+                        row_values.append(value)
                     elif isinstance(column.type, Integer) and value is not None:
                         try:
-                            result_dict[column.name] = int(value)
+                            row_values.append(int(value))
                         except (ValueError, TypeError):
-                            result_dict[column.name] = value
+                            row_values.append(value)
                     elif isinstance(column.type, Float) and value is not None:
                         try:
-                            result_dict[column.name] = float(value)
+                            row_values.append(float(value))
                         except (ValueError, TypeError):
-                            result_dict[column.name] = value
+                            row_values.append(value)
                     elif isinstance(column.type, Boolean) and value is not None:
                         if isinstance(value, str):
-                            result_dict[column.name] = value.lower() in (
-                                "true",
-                                "1",
-                                "yes",
-                                "on",
+                            row_values.append(
+                                value.lower()
+                                in (
+                                    "true",
+                                    "1",
+                                    "yes",
+                                    "on",
+                                )
                             )
                         else:
-                            result_dict[column.name] = bool(value)
+                            row_values.append(bool(value))
                     elif isinstance(column.type, DateTime) and value is not None:
                         # Preserve datetime/timestamp types - don't convert to string
-                        result_dict[column.name] = value
+                        row_values.append(value)
                     else:
-                        result_dict[column.name] = value
-                mock_rows.append(MockRow(result_dict))
+                        row_values.append(value)
+
+                    field_names.append(column.name)
+
+                # Create MockRow with values in order
+                # Convert to list of tuples to preserve duplicate column names
+                row_data = list(zip(field_names, row_values))
+                mock_rows.append(MockRow(row_data))
 
             return mock_rows
 

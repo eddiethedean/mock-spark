@@ -142,43 +142,79 @@ class CTEQueryBuilder:
                 source_name, columns, source_table_obj
             )
 
-        # Build column list
-        select_parts = []
+        # Check for explode operations - need special handling
+        explode_cols = []
+        non_explode_parts = []
+
         for col in columns:
-            if isinstance(col, str):
+            is_explode = hasattr(col, "operation") and col.operation in [
+                "explode",
+                "explode_outer",
+            ]
+
+            if is_explode:
+                explode_cols.append(col)
+            elif isinstance(col, str):
                 if col == "*":
-                    select_parts.append("*")
+                    non_explode_parts.append("*")
                 else:
-                    select_parts.append(f'"{col}"')
+                    non_explode_parts.append(f'"{col}"')
             elif hasattr(col, "value") and hasattr(col, "data_type"):
                 # MockLiteral
                 if isinstance(col.value, str):
-                    select_parts.append(f"'{col.value}' AS \"{col.name}\"")
+                    non_explode_parts.append(f"'{col.value}' AS \"{col.name}\"")
                 else:
-                    select_parts.append(f'{col.value} AS "{col.name}"')
+                    non_explode_parts.append(f'{col.value} AS "{col.name}"')
             elif hasattr(col, "operation"):
-                # Column operation
+                # Column operation (but not explode)
                 expr_sql = self.expression_translator.expression_to_sql(col)
                 col_name = getattr(col, "name", "result")
-                select_parts.append(f'{expr_sql} AS "{col_name}"')
+                non_explode_parts.append(f'{expr_sql} AS "{col_name}"')
             elif hasattr(col, "name"):
-                # Check for alias
+                # Check for alias or regular column
                 original_col = getattr(col, "_original_column", None) or getattr(
                     col, "original_column", None
                 )
                 if original_col is not None:
-                    select_parts.append(f'"{original_col.name}" AS "{col.name}"')
+                    non_explode_parts.append(f'"{original_col.name}" AS "{col.name}"')
                 elif col.name == "*":
-                    select_parts.append("*")
+                    non_explode_parts.append("*")
                 else:
-                    select_parts.append(f'"{col.name}"')
+                    # Regular column reference (e.g., MockColumn)
+                    non_explode_parts.append(f'"{col.name}"')
 
-        # Remove duplicate "*" entries and keep only one
-        if select_parts.count("*") > 1:
-            select_parts = ["*"]
+        # Handle explode operations - use simpler UNNEST pattern
+        if explode_cols:
+            # For explode, we need to select other columns plus the UNNEST result
+            columns_list = ", ".join(non_explode_parts) if non_explode_parts else "*"
 
-        columns_clause = ", ".join(select_parts) if select_parts else "*"
-        return f"SELECT {columns_clause} FROM {source_name}"
+            # For each explode column, create UNNEST in SELECT
+            explode_parts = []
+            for explode_col in explode_cols:
+                array_col = explode_col.column.name
+                alias = getattr(explode_col, "name", "exploded")
+
+                if explode_col.operation == "explode_outer":
+                    unnest_expr = f'UNNEST(COALESCE("{array_col}", [NULL]))'
+                else:
+                    unnest_expr = f'UNNEST("{array_col}")'
+
+                # Use UNNEST as scalar subquery: SELECT ..., UNNEST(...) AS col FROM table
+                # Note: This syntax doesn't expand rows, it just returns the array as-is
+                # We need to detect this and handle it differently - for now, return
+                # a placeholder that will be handled in _apply_select for table-based execution
+                explode_parts.append(f'{unnest_expr} AS "{alias}"')
+
+            all_parts = [columns_list] if columns_list else []
+            all_parts.extend(explode_parts)
+            return f"SELECT {', '.join(all_parts)} FROM {source_name}"
+        else:
+            # No explode operations - build regular SELECT
+            if non_explode_parts.count("*") > 1:
+                non_explode_parts = ["*"]
+
+            columns_clause = ", ".join(non_explode_parts) if non_explode_parts else "*"
+            return f"SELECT {columns_clause} FROM {source_name}"
 
     def build_select_with_window_cte(
         self, source_name: str, columns: Tuple[Any, ...], source_table_obj: Any
@@ -443,10 +479,12 @@ class CTEQueryBuilder:
         elif hasattr(on, "operation") and on.operation == "==":
             # Handle MockColumnOperation (e.g., emp_df.dept_id == dept_df.dept_id)
             # Extract column names from equality condition
-            left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
+            left_col = on.column.name if hasattr(on.column, "name") else str(on.column)
             # For join conditions with two different DataFrames, use the column name
             # from both sides (they should be the same in most cases)
-            join_condition = f'{source_name}."{left_col}" = {other_table_name}."{left_col}"'
+            join_condition = (
+                f'{source_name}."{left_col}" = {other_table_name}."{left_col}"'
+            )
         elif hasattr(on, "operation"):
             # Other column operation as join condition - fallback
             join_condition = self.expression_translator.condition_to_sql(
@@ -467,14 +505,16 @@ class CTEQueryBuilder:
             "full_outer": "FULL OUTER JOIN",
         }
         join_type = join_type_map.get(how, "INNER JOIN")
-        
+
         # Explicitly select columns to avoid ambiguous column names
         # Get columns from source table
-        source_columns = [f'{source_name}."{col.name}"' for col in source_table_obj.columns]
+        source_columns = [
+            f'{source_name}."{col.name}"' for col in source_table_obj.columns
+        ]
         # Get columns from other table (excluding join keys to avoid duplication)
-        other_schema = other_df.schema if hasattr(other_df, 'schema') else other_df
+        other_schema = other_df.schema if hasattr(other_df, "schema") else other_df
         other_column_names = [field.name for field in other_schema.fields]
-        
+
         # Determine join keys for exclusion
         if isinstance(on, str):
             join_keys = [on]
@@ -482,13 +522,13 @@ class CTEQueryBuilder:
             join_keys = on
         else:
             join_keys = []
-        
+
         other_columns = [
-            f'{other_table_name}."{col}"' 
-            for col in other_column_names 
+            f'{other_table_name}."{col}"'
+            for col in other_column_names
             if col not in join_keys
         ]
-        
+
         # Combine columns: source columns first, then other columns
         all_columns = source_columns + other_columns
         select_clause = ", ".join(all_columns)

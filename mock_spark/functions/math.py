@@ -253,7 +253,11 @@ class MathFunctions:
             column = MockColumn(column)
 
         # PySpark uses uppercase POWER in column names with decimal exponent
-        exponent_str = f"{float(exponent)}" if isinstance(exponent, (int, float)) else str(exponent)
+        exponent_str = (
+            f"{float(exponent)}"
+            if isinstance(exponent, (int, float))
+            else str(exponent)
+        )
         operation = MockColumnOperation(
             column, "pow", exponent, name=f"POWER({column.name}, {exponent_str})"
         )

@@ -1,7 +1,7 @@
 {
   "test_id": "current_timestamp",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T21:02:50.081535",
+  "generated_at": "2025-10-27T14:13:17.463696",
   "input_data": [
     {
       "id": 1,
@@ -42,13 +42,13 @@
     },
     "data": [
       {
-        "current_timestamp()": "2025-10-25 21:02:50.048052"
+        "current_timestamp()": "2025-10-27 14:13:17.454564"
       },
       {
-        "current_timestamp()": "2025-10-25 21:02:50.048052"
+        "current_timestamp()": "2025-10-27 14:13:17.454564"
       },
       {
-        "current_timestamp()": "2025-10-25 21:02:50.048052"
+        "current_timestamp()": "2025-10-27 14:13:17.454564"
       }
     ],
     "row_count": 3

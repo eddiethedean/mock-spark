@@ -1,7 +1,7 @@
 {
   "test_id": "union_all",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:07:51.168677",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:20.793927",
   "input_data": [
     {
       "id": 1,

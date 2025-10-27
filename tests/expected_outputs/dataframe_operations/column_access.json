@@ -1,7 +1,7 @@
 {
   "test_id": "column_access",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:19:22.116563",
+  "generated_at": "2025-10-27T14:13:11.109555",
   "input_data": [
     {
       "id": 1,

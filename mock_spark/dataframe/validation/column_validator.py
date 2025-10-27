@@ -12,6 +12,38 @@ from ...functions import MockColumn, MockColumnOperation
 from ...core.exceptions.operation import MockSparkColumnNotFoundError
 
 
+def is_literal(expression: Any) -> bool:
+    """Check if expression is a literal value that doesn't need column validation.
+
+    Args:
+        expression: The expression to check
+
+    Returns:
+        True if expression is a literal value (MockLiteral, str, int, etc)
+    """
+    from ...functions.core.literals import MockLiteral
+
+    # Check if it's a MockLiteral
+    if isinstance(expression, MockLiteral):
+        return True
+
+    # Check if it's a MockColumnOperation with a MockLiteral
+    if isinstance(expression, MockColumnOperation):
+        if hasattr(expression, "value") and isinstance(expression.value, MockLiteral):
+            return True
+        if hasattr(expression, "column") and isinstance(expression.column, MockLiteral):
+            return True
+
+    # Check if it's a string representation of a MockLiteral
+    if (
+        isinstance(expression, str)
+        and "<mock_spark.functions.core.literals.MockLiteral" in expression
+    ):
+        return True
+
+    return False
+
+
 class ColumnValidator:
     """Validates column existence and expressions for DataFrame operations.
 
@@ -83,6 +115,17 @@ class ColumnValidator:
         # Skip validation for complex expressions - let SQL generation handle them
         # Only validate simple column references
 
+        # If condition is a column operation (has operation attribute), skip validation
+        # as it's likely an expression
+        if hasattr(condition, "operation"):
+            return
+
+        # If condition is a MockColumnOperation, skip validation - it's an expression
+        from mock_spark.functions.base import MockColumnOperation
+
+        if isinstance(condition, MockColumnOperation):
+            return
+
         # Skip validation for operations that create complex expressions
         if hasattr(condition, "operation") and condition.operation in [
             "between",
@@ -93,6 +136,16 @@ class ColumnValidator:
             "isin",
             "not_in",
             "!",
+            ">",
+            "<",
+            ">=",
+            "<=",
+            "==",
+            "!=",
+            "*",
+            "+",
+            "-",
+            "/",
         ]:
             # These are complex expressions that may combine multiple columns, skip validation
             return
@@ -108,6 +161,16 @@ class ColumnValidator:
                 "isin",
                 "not_in",
                 "!",
+                ">",
+                "<",
+                ">=",
+                "<=",
+                "==",
+                "!=",
+                "*",
+                "+",
+                "-",
+                "/",
             ]:
                 return
             # Simple column reference
@@ -140,7 +203,15 @@ class ColumnValidator:
             operation: Name of the operation being performed.
             in_lazy_materialization: Whether we're in lazy materialization context.
         """
+        # Skip validation for literal values
+        if is_literal(expression):
+            return
+
         if isinstance(expression, MockColumnOperation):
+            # Skip validation for expr operations - they don't reference actual columns
+            if hasattr(expression, "operation") and expression.operation == "expr":
+                return
+
             # Check if this is a column reference
             if hasattr(expression, "column"):
                 # Check if it's a MockDataFrame (has 'data' attribute) - skip validation
@@ -149,6 +220,10 @@ class ColumnValidator:
                 ):
                     pass  # Skip MockDataFrame objects
                 elif isinstance(expression.column, MockColumn):
+                    # Skip validation for the dummy "__expr__" column created by F.expr()
+                    if expression.column.name == "__expr__":
+                        return
+
                     if not in_lazy_materialization:
                         # Skip validation for wildcard selector
                         if expression.column.name != "*":

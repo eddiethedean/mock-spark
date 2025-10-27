@@ -1,7 +1,7 @@
 {
   "test_id": "drop_column",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:19:20.002296",
+  "generated_at": "2025-10-27T14:13:10.343702",
   "input_data": [
     {
       "id": 1,

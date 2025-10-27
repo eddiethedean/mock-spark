@@ -357,7 +357,7 @@ class MockGroupedData:
                             continue  # Skip non-numeric strings
                     values.append(val)
             result_key = alias_name if alias_name else f"avg({col_name})"
-            return result_key, sum(values) / len(values) if values else 0
+            return result_key, sum(values) / len(values) if values else None
         elif func_name == "count":
             if col_name == "*" or col_name == "":
                 # For count(*), use alias if available, otherwise use the function's generated name

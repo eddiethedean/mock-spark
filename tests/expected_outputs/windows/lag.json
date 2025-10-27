@@ -1,33 +1,33 @@
 {
   "test_id": "lag",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:09:53.217970",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:26.175054",
   "input_data": [
     {
       "id": 1,
       "name": "Alice",
-      "department": "IT",
+      "dept": "IT",
       "salary": 50000,
       "hire_date": "2020-01-15"
     },
     {
       "id": 2,
       "name": "Bob",
-      "department": "HR",
+      "dept": "HR",
       "salary": 60000,
       "hire_date": "2019-03-10"
     },
     {
       "id": 3,
       "name": "Charlie",
-      "department": "IT",
+      "dept": "IT",
       "salary": 70000,
       "hire_date": "2021-07-22"
     },
     {
       "id": 4,
       "name": "David",
-      "department": "IT",
+      "dept": "IT",
       "salary": 55000,
       "hire_date": "2020-11-05"
     }
@@ -37,12 +37,12 @@
     "schema": {
       "field_count": 6,
       "field_names": [
-        "department",
+        "dept",
         "hire_date",
         "id",
         "name",
         "salary",
-        "prev_salary"
+        "lag_salary"
       ],
       "field_types": [
         "string",
@@ -54,7 +54,7 @@
       ],
       "fields": [
         {
-          "name": "department",
+          "name": "dept",
           "type": "string",
           "nullable": true
         },
@@ -79,7 +79,7 @@
           "nullable": true
         },
         {
-          "name": "prev_salary",
+          "name": "lag_salary",
           "type": "long",
           "nullable": true
         }
@@ -87,36 +87,36 @@
     },
     "data": [
       {
-        "department": "HR",
+        "dept": "HR",
         "hire_date": "2019-03-10",
         "id": 2,
         "name": "Bob",
         "salary": 60000,
-        "prev_salary": null
+        "lag_salary": null
       },
       {
-        "department": "IT",
+        "dept": "IT",
         "hire_date": "2020-01-15",
         "id": 1,
         "name": "Alice",
         "salary": 50000,
-        "prev_salary": null
+        "lag_salary": null
       },
       {
-        "department": "IT",
+        "dept": "IT",
         "hire_date": "2020-11-05",
         "id": 4,
         "name": "David",
         "salary": 55000,
-        "prev_salary": 50000
+        "lag_salary": 50000
       },
       {
-        "department": "IT",
+        "dept": "IT",
         "hire_date": "2021-07-22",
         "id": 3,
         "name": "Charlie",
         "salary": 70000,
-        "prev_salary": 55000
+        "lag_salary": 55000
       }
     ],
     "row_count": 4

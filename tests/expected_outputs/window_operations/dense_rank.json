@@ -1,7 +1,7 @@
 {
   "test_id": "dense_rank",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:06:29.711536",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:14.569926",
   "input_data": [
     {
       "id": 1,

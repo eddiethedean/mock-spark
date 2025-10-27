@@ -1,7 +1,7 @@
 {
   "test_id": "conditional_when_otherwise",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:22:09.295913",
+  "generated_at": "2025-10-27T14:13:13.589022",
   "input_data": [
     {
       "id": 1,

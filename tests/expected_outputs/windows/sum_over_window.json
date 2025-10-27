@@ -1,7 +1,7 @@
 {
   "test_id": "sum_over_window",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:09:55.911738",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:20.108769",
   "input_data": [
     {
       "id": 1,

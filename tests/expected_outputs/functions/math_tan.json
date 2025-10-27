@@ -1,7 +1,7 @@
 {
   "test_id": "math_tan",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:22:04.610066",
+  "generated_at": "2025-10-27T14:13:12.309871",
   "input_data": [
     {
       "id": 1,
@@ -54,7 +54,7 @@
         "TAN(angle)": 1255.7655915007897
       },
       {
-        "TAN(angle)": 1255.848311175138
+        "TAN(angle)": 0.0
       }
     ],
     "row_count": 3

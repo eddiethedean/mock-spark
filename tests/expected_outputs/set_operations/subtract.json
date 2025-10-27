@@ -1,7 +1,7 @@
 {
   "test_id": "subtract",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:07:59.846161",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:22.484299",
   "input_data": [
     {
       "id": 1,

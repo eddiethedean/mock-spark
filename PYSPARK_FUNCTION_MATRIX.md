@@ -40,7 +40,7 @@ Total functions cataloged: 444
 | `aes_encrypt` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `aggregate` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `any_value` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `approxCountDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| `approxCountDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ |
 | `approx_count_distinct` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `approx_percentile` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `array` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -89,7 +89,7 @@ Total functions cataloged: 444
 | `bitmap_construct_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `bitmap_count` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `bitmap_or_agg` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `bitwiseNOT` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| `bitwiseNOT` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ |
 | `bitwise_not` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `bool_and` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `bool_or` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -384,15 +384,15 @@ Total functions cataloged: 444
 | `substring` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `substring_index` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sum` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `sumDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| `sumDistinct` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ |
 | `sum_distinct` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `tan` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `tanh` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `timestamp_micros` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `timestamp_millis` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `timestamp_seconds` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `toDegrees` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| `toRadians` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| `toDegrees` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ |
+| `toRadians` | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ⚠️ |
 | `to_binary` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `to_char` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `to_csv` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -573,4 +573,4 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 271 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 289 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 451 functions, 94 DataFrame methods
-- **Mock-Spark**: 123 functions, 83 DataFrame methods (100% PySpark 3.0-3.5 + high-value 3.4+ features!)
+- **Mock-Spark**: 368 functions, 83 DataFrame methods (comprehensive PySpark compatibility!)

@@ -171,15 +171,17 @@ class MockCaseWhen:
             Self for method chaining.
         """
         self.default_value = value
-        
+
         # Generate full SQL expression for the name
         # Format: CASE WHEN (condition) THEN value ELSE otherwise END
         if self.conditions:
             condition, then_value = self.conditions[0]
-            condition_str = str(condition) if hasattr(condition, '__str__') else str(condition)
+            condition_str = (
+                str(condition) if hasattr(condition, "__str__") else str(condition)
+            )
             name = f"CASE WHEN ({condition_str}) THEN {then_value} ELSE {value} END"
             self.name = name
-        
+
         return self
 
     def alias(self, name: str) -> "MockCaseWhen":
@@ -387,13 +389,14 @@ class ConditionalFunctions:
         # Generate column name, handling MockLiterals specially
         name_parts = []
         for c in mock_columns:
-            if hasattr(c, 'value') and hasattr(c, '_name'):  # MockLiteral
+            if hasattr(c, "value") and hasattr(c, "_name"):  # MockLiteral
                 from mock_spark.functions.core.literals import MockLiteral
+
                 if isinstance(c, MockLiteral):
                     name_parts.append(str(c.value))
                 else:
                     name_parts.append(str(c))
-            elif hasattr(c, 'name'):
+            elif hasattr(c, "name"):
                 name_parts.append(c.name)
             else:
                 name_parts.append(str(c))
@@ -413,7 +416,9 @@ class ConditionalFunctions:
         if isinstance(column, str):
             column = MockColumn(column)
 
-        operation = MockColumnOperation(column, "isnull", name=f"({column.name} IS NULL)")
+        operation = MockColumnOperation(
+            column, "isnull", name=f"({column.name} IS NULL)"
+        )
         return operation
 
     @staticmethod
@@ -430,7 +435,9 @@ class ConditionalFunctions:
             column = MockColumn(column)
 
         # PySpark's isnotnull is implemented as ~isnull, so it generates (NOT (column IS NULL))
-        operation = MockColumnOperation(column, "isnotnull", name=f"(NOT ({column.name} IS NULL))")
+        operation = MockColumnOperation(
+            column, "isnotnull", name=f"(NOT ({column.name} IS NULL))"
+        )
         return operation
 
     @staticmethod
@@ -504,9 +511,7 @@ class ConditionalFunctions:
         return ConditionalFunctions.coalesce(col1, col2)
 
     @staticmethod
-    def nullif(
-        col1: Union[MockColumn, str], col2: Any
-    ) -> MockColumnOperation:
+    def nullif(col1: Union[MockColumn, str], col2: Any) -> MockColumnOperation:
         """Returns null if col1 equals col2, otherwise returns col1 (PySpark 3.5+).
 
         Args:
@@ -516,30 +521,32 @@ class ConditionalFunctions:
         Returns:
             MockColumnOperation representing the nullif function.
         """
-        from ..functions import lit
-        
+        from typing import Union, Any
+        from ..functions.core.literals import MockLiteral
+
         column1 = MockColumn(col1) if isinstance(col1, str) else col1
-        
+
         # col2 can be a column, column name, or literal value
-        if isinstance(col2, (int, float, str, bool, type(None))):
+        column2: Union[MockLiteral, MockColumn, Any]
+        if isinstance(col2, (int, float, bool, type(None))):
             # It's a literal value
-            column2 = lit(col2)
+            column2 = MockLiteral(col2)
         elif isinstance(col2, str):
-            # It's a column name
+            # It's a column name (str not in literal tuple above)
             column2 = MockColumn(col2)
         else:
             # It's already a MockColumn or MockColumnOperation
             column2 = col2
 
         # Get proper name for the column expression
-        col2_name = column2.name if hasattr(column2, 'name') else str(column2)
-        
-        # PySpark's nullif is implemented as CASE WHEN (col1 = col2) THEN NULL ELSE col1 END
+        col2_name = column2.name if hasattr(column2, "name") else str(column2)
+
+        # Use NULLIF function for DuckDB
         return MockColumnOperation(
             column1,
             "nullif",
             value=column2,
-            name=f"CASE WHEN ({column1.name} = {col2_name}) THEN NULL ELSE {column1.name} END",
+            name=f"nullif({column1.name}, {col2_name})",
         )
 
     @staticmethod

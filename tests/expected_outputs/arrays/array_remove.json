@@ -1,7 +1,7 @@
 {
   "test_id": "array_remove",
   "pyspark_version": "3.5",
-  "generated_at": "2025-10-25T20:19:00.063275",
+  "generated_at": "2025-10-27T14:13:17.177213",
   "input_data": [
     {
       "id": 1,

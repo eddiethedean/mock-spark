@@ -1,7 +1,7 @@
 {
   "test_id": "filter_select_groupby_agg",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:10:08.697612",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:22.693175",
   "input_data": [
     {
       "id": 1,

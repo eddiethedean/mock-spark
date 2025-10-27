@@ -1,7 +1,7 @@
 {
   "test_id": "semi_join",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:06:49.261752",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:16.853488",
   "input_data": [
     {
       "id": 1,

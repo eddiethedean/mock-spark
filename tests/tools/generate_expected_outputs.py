@@ -630,6 +630,582 @@ class ExpectedOutputGenerator:
         """Generate expected outputs for chained operations."""
         self._generate_chained_operations_outputs()
     
+    # Extended generator methods for comprehensive compatibility testing
+    
+    def generate_string_functions_extended(self):
+        """Generate expected outputs for extended string functions."""
+        self.start_spark_session()
+        
+        # Test data for string operations
+        test_data = [
+            {"id": 1, "name": "Alice", "text": "Hello World", "email": "alice@example.com"},
+            {"id": 2, "name": "Bob", "text": "Test String", "email": "bob@test.com"},
+            {"id": 3, "name": "Charlie", "text": "Python Data", "email": "charlie@company.org"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        # Extended string function tests
+        string_tests = [
+            # Basic string operations
+            ("concat_ws", lambda: df.select(F.concat_ws("-", df.name, df.email))),
+            ("ascii", lambda: df.select(F.ascii(df.name))),
+            ("char_length", lambda: df.select(F.char_length(df.text))),
+            ("character_length", lambda: df.select(F.character_length(df.text))),
+            # Encoding/decoding
+            ("encode", lambda: df.select(F.encode(df.name, "UTF-8"))),
+            ("decode", lambda: df.select(F.decode(F.encode(df.name, "UTF-8"), "UTF-8"))),
+            ("hex", lambda: df.select(F.hex(df.name))),
+            ("unhex", lambda: df.select(F.unhex(F.hex(df.name)))),
+            ("base64", lambda: df.select(F.base64(df.name))),
+            ("unbase64", lambda: df.select(F.unbase64(F.base64(df.name)))),
+            # String manipulation
+            ("initcap", lambda: df.select(F.initcap(df.text))),
+            ("repeat", lambda: df.select(F.repeat(df.name, 2))),
+            ("reverse", lambda: df.select(F.reverse(df.name))),
+            ("soundex", lambda: df.select(F.soundex(df.name))),
+            ("translate", lambda: df.select(F.translate(df.text, "aeiou", "AEIOU"))),
+            # String matching
+            ("levenshtein", lambda: df.select(F.levenshtein(df.name, F.lit("Alice")))),
+            # Hashing
+            ("crc32", lambda: df.select(F.crc32(df.text))),
+            ("md5", lambda: df.select(F.md5(df.text))),
+            ("sha1", lambda: df.select(F.sha1(df.text))),
+            ("sha2", lambda: df.select(F.sha2(df.text, 256))),
+            ("xxhash64", lambda: df.select(F.xxhash64(df.text))),
+            # URL encoding
+            ("url_encode", lambda: df.select(F.url_encode(df.text))),
+            ("url_decode", lambda: df.select(F.url_decode(F.url_encode(df.text)))),
+            # Regex operations
+            ("regexp_replace", lambda: df.select(F.regexp_replace(df.text, "World", "Universe"))),
+            ("regexp_extract_all", lambda: df.select(F.regexp_extract_all(df.email, r'(\w+)', 1))),
+            # JSON operations
+            ("get_json_object", lambda: df.select(F.get_json_object(F.lit('{"name":"Alice","age":25}'), "$.name"))),
+            ("json_tuple", lambda: df.select(F.json_tuple(F.lit('{"name":"Alice","age":25}'), "name", "age"))),
+            # String position/finding
+            ("instr", lambda: df.select(F.instr(df.text, "World"))),
+            ("locate", lambda: df.select(F.locate("World", df.text))),
+            ("substring_index", lambda: df.select(F.substring_index(df.email, "@", 1))),
+        ]
+        
+        for test_name, operation in string_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", test_name, test_data, result_df)
+                print(f"✓ Generated string function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed string function {test_name}: {e}")
+    
+    def generate_math_functions_extended(self):
+        """Generate expected outputs for extended math functions."""
+        self.start_spark_session()
+        
+        # Test data for math operations
+        test_data = [
+            {"id": 1, "x": 0.5, "y": 1.2, "angle": 0.785, "value": 4.5},
+            {"id": 2, "x": 1.0, "y": 2.5, "angle": 1.57, "value": 3.2},
+            {"id": 3, "x": 2.0, "y": 3.0, "angle": 0.0, "value": 7.8},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        # Extended math function tests
+        math_tests = [
+            # Trigonometric functions
+            ("acos", lambda: df.select(F.acos(df.x))),
+            ("asin", lambda: df.select(F.asin(df.x))),
+            ("atan", lambda: df.select(F.atan(df.x))),
+            ("atan2", lambda: df.select(F.atan2(df.x, df.y))),
+            ("acosh", lambda: df.select(F.acosh(df.x + 1.5))),
+            ("asinh", lambda: df.select(F.asinh(df.x))),
+            ("atanh", lambda: df.select(F.atanh(df.x * 0.5))),
+            ("cosh", lambda: df.select(F.cosh(df.x))),
+            ("sinh", lambda: df.select(F.sinh(df.x))),
+            ("tanh", lambda: df.select(F.tanh(df.x))),
+            ("cot", lambda: df.select(F.cot(df.angle))),
+            ("csc", lambda: df.select(F.csc(df.angle))),
+            ("sec", lambda: df.select(F.sec(df.angle))),
+            # Other math functions
+            ("cbrt", lambda: df.select(F.cbrt(df.value))),
+            ("degrees", lambda: df.select(F.degrees(df.angle))),
+            ("radians", lambda: df.select(F.radians(df.x))),
+            ("expm1", lambda: df.select(F.expm1(df.x))),
+            ("log1p", lambda: df.select(F.log1p(df.x))),
+            ("log2", lambda: df.select(F.log2(df.value))),
+            ("log10", lambda: df.select(F.log10(df.value))),
+            ("ln", lambda: df.select(F.ln(df.value))),
+            ("rint", lambda: df.select(F.rint(df.value))),
+            ("bround", lambda: df.select(F.bround(df.value, 2))),
+            ("factorial", lambda: df.select(F.factorial(df.id))),
+            ("hypot", lambda: df.select(F.hypot(df.x, df.y))),
+            ("signum", lambda: df.select(F.signum(df.value))),
+            ("sign", lambda: df.select(F.sign(df.value))),
+            ("e", lambda: df.select(F.expr("e()"))),
+            ("pi", lambda: df.select(F.expr("pi()"))),
+            # Random numbers
+            ("rand", lambda: df.select(F.rand())),
+            ("randn", lambda: df.select(F.randn())),
+            # Number conversion
+            ("conv", lambda: df.select(F.conv(F.col("id"), 10, 2))),
+            ("bin", lambda: df.select(F.bin(df.id))),
+            ("hex", lambda: df.select(F.hex(df.id))),
+            ("bitwise_not", lambda: df.select(F.bitwise_not(df.id))),
+        ]
+        
+        for test_name, operation in math_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", f"math_{test_name}", test_data, result_df)
+                print(f"✓ Generated math function: math_{test_name}")
+            except Exception as e:
+                print(f"✗ Failed math function math_{test_name}: {e}")
+    
+    def generate_array_functions_extended(self):
+        """Generate expected outputs for extended array functions."""
+        self.start_spark_session()
+        
+        # Test data with arrays
+        test_data = [
+            {"id": 1, "arr1": [1, 2, 3], "arr2": [4, 5], "arr3": [1, 2, 3, 4, 5], "value": 2},
+            {"id": 2, "arr1": [10, 20], "arr2": [30, 40, 50], "arr3": [10, 20, 30], "value": 20},
+            {"id": 3, "arr1": [5, 10, 15], "arr2": [20, 25], "arr3": [5, 5, 10, 10], "value": 5},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        # Extended array function tests
+        array_tests = [
+            ("array", lambda: df.select(F.array(df.id, df.value))),
+            ("array_agg", lambda: df.agg(F.array_agg("value"))),
+            ("array_compact", lambda: df.select(F.array_compact(df.arr3))),
+            ("array_except", lambda: df.select(F.array_except(df.arr1, df.arr2))),
+            ("array_insert", lambda: df.select(F.array_insert(df.arr1, 1, 0))),
+            ("array_intersect", lambda: df.select(F.array_intersect(df.arr1, df.arr2))),
+            ("array_join", lambda: df.select(F.array_join(df.arr1, "-"))),
+            ("array_max", lambda: df.select(F.array_max(df.arr1))),
+            ("array_min", lambda: df.select(F.array_min(df.arr1))),
+            ("array_prepend", lambda: df.select(F.array_prepend(df.arr1, 0))),
+            ("array_repeat", lambda: df.select(F.array_repeat(df.value, 3))),
+            ("array_size", lambda: df.select(F.array_size(df.arr1))),
+            ("array_sort", lambda: df.select(F.array_sort(df.arr3))),
+            ("array_union", lambda: df.select(F.array_union(df.arr1, df.arr2))),
+            ("arrays_overlap", lambda: df.select(F.arrays_overlap(df.arr1, df.arr2))),
+            ("arrays_zip", lambda: df.select(F.arrays_zip(df.arr1, df.arr2))),
+            ("flatten", lambda: df.select(F.flatten(F.array(df.arr1, df.arr2)))),
+            ("reverse", lambda: df.select(F.reverse(df.arr1))),
+            ("sequence", lambda: df.select(F.sequence(F.lit(1), F.lit(5)))),
+            ("shuffle", lambda: df.select(F.shuffle(df.arr1))),
+            ("slice", lambda: df.select(F.slice(df.arr1, 1, 2))),
+            ("sort_array", lambda: df.select(F.sort_array(df.arr1, False))),
+            ("aggregate", lambda: df.select(F.aggregate(df.arr1, F.lit(0), lambda acc, x: acc + x))),
+            ("exists", lambda: df.select(F.exists(df.arr1, lambda x: x > 10))),
+            ("forall", lambda: df.select(F.forall(df.arr1, lambda x: x > 0))),
+            ("transform", lambda: df.select(F.transform(df.arr1, lambda x: x * 2))),
+            ("cardinality", lambda: df.select(F.cardinality(df.arr1))),
+            ("zip_with", lambda: df.select(F.zip_with(df.arr1, df.arr2, lambda x, y: x + y))),
+        ]
+        
+        for test_name, operation in array_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("arrays", test_name, test_data, result_df)
+                print(f"✓ Generated array function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed array function {test_name}: {e}")
+    
+    def generate_map_functions_extended(self):
+        """Generate expected outputs for map functions."""
+        self.start_spark_session()
+        
+        # Test data with maps
+        test_data = [
+            {"id": 1, "map1": {"a": 1, "b": 2}, "map2": {"c": 3, "d": 4}, "key": "a"},
+            {"id": 2, "map1": {"x": 10, "y": 20}, "map2": {"z": 30}, "key": "x"},
+            {"id": 3, "map1": {"p": 100, "q": 200}, "map2": {"r": 300}, "key": "p"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        # Map function tests
+        map_tests = [
+            ("create_map", lambda: df.select(F.create_map(F.lit("key"), F.lit("value")))),
+            ("map_concat", lambda: df.select(F.map_concat(df.map1, df.map2))),
+            ("map_contains_key", lambda: df.select(F.map_contains_key(df.map1, df.key))),
+            ("map_entries", lambda: df.select(F.map_entries(df.map1))),
+            ("map_filter", lambda: df.select(F.map_filter(df.map1, lambda k, v: k == "a"))),
+            ("map_from_arrays", lambda: df.select(F.map_from_arrays(F.array(F.lit("a"), F.lit("b")), F.array(F.lit(1), F.lit(2))))),
+            ("map_from_entries", lambda: df.select(F.map_from_entries(F.array(F.struct(F.lit("a"), F.lit(1)))))),
+            ("map_keys", lambda: df.select(F.map_keys(df.map1))),
+            ("map_values", lambda: df.select(F.map_values(df.map1))),
+            ("map_zip_with", lambda: df.select(F.map_zip_with(df.map1, df.map2, lambda k, v1, v2: v1 + v2))),
+            ("transform_keys", lambda: df.select(F.transform_keys(df.map1, lambda k, v: F.upper(k)))),
+            ("transform_values", lambda: df.select(F.transform_values(df.map1, lambda k, v: v * 2))),
+        ]
+        
+        for test_name, operation in map_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("maps", test_name, test_data, result_df)
+                print(f"✓ Generated map function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed map function {test_name}: {e}")
+    
+    def generate_datetime_functions_extended(self):
+        """Generate expected outputs for extended datetime functions."""
+        self.start_spark_session()
+        
+        # Test data with dates
+        test_data = [
+            {"id": 1, "date": "2020-01-15", "timestamp": "2020-01-15 10:30:00"},
+            {"id": 2, "date": "2019-03-10", "timestamp": "2019-03-10 14:20:00"},
+            {"id": 3, "date": "2021-07-22", "timestamp": "2021-07-22 08:15:00"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        # Extended datetime function tests
+        datetime_tests = [
+            ("add_months", lambda: df.select(F.add_months(df.date, 3))),
+            ("date_part", lambda: df.select(F.date_part(F.lit("year"), df.date))),
+            ("date_trunc", lambda: df.select(F.date_trunc(F.lit("month"), df.date))),
+            ("datediff", lambda: df.select(F.datediff(df.date, F.lit("2020-01-01")))),
+            ("dayofmonth", lambda: df.select(F.dayofmonth(df.date))),
+            ("current_timezone", lambda: df.select(F.current_timezone())),
+            ("convert_timezone", lambda: df.select(F.convert_timezone(F.lit("UTC"), F.lit("America/New_York"), df.timestamp))),
+            ("extract", lambda: df.select(F.extract(F.lit("year"), df.date))),
+            ("from_unixtime", lambda: df.select(F.from_unixtime(F.lit(1577836800)))),
+            ("from_utc_timestamp", lambda: df.select(F.from_utc_timestamp(df.timestamp, F.lit("America/New_York")))),
+            ("hour", lambda: df.select(F.hour(df.timestamp))),
+            ("minute", lambda: df.select(F.minute(df.timestamp))),
+            ("second", lambda: df.select(F.second(df.timestamp))),
+            ("last_day", lambda: df.select(F.last_day(df.date))),
+            ("make_date", lambda: df.select(F.make_date(F.lit(2020), F.lit(1), F.lit(15)))),
+            ("months_between", lambda: df.select(F.months_between(df.date, F.lit("2019-01-01")))),
+            ("next_day", lambda: df.select(F.next_day(df.date, F.lit("Monday")))),
+            ("timestamp_seconds", lambda: df.select(F.timestamp_seconds(F.lit(1577836800)))),
+            ("to_timestamp", lambda: df.select(F.to_timestamp(df.timestamp))),
+            ("to_utc_timestamp", lambda: df.select(F.to_utc_timestamp(df.timestamp, F.lit("America/New_York")))),
+            ("trunc", lambda: df.select(F.trunc(df.date, F.lit("year")))),
+            ("unix_timestamp", lambda: df.select(F.unix_timestamp(df.timestamp))),
+            ("weekday", lambda: df.select(F.weekday(df.date))),
+        ]
+        
+        for test_name, operation in datetime_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("datetime", test_name, test_data, result_df)
+                print(f"✓ Generated datetime function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed datetime function {test_name}: {e}")
+    
+    def generate_window_functions_extended(self):
+        """Generate expected outputs for extended window functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "dept": "IT", "salary": 50000, "hire_date": "2020-01-15"},
+            {"id": 2, "name": "Bob", "dept": "HR", "salary": 60000, "hire_date": "2019-03-10"},
+            {"id": 3, "name": "Charlie", "dept": "IT", "salary": 70000, "hire_date": "2021-07-22"},
+            {"id": 4, "name": "David", "dept": "IT", "salary": 55000, "hire_date": "2020-11-05"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        from pyspark.sql.window import Window
+        
+        window_spec = Window.partitionBy("dept").orderBy("salary")
+        
+        window_tests = [
+            ("cume_dist", lambda: df.withColumn("cume_dist", F.cume_dist().over(window_spec))),
+            ("dense_rank", lambda: df.withColumn("dense_rank", F.dense_rank().over(window_spec))),
+            ("first_value", lambda: df.withColumn("first_salary", F.first("salary").over(window_spec))),
+            ("lag", lambda: df.withColumn("lag_salary", F.lag("salary", 1).over(window_spec))),
+            ("last_value", lambda: df.withColumn("last_salary", F.last("salary").over(window_spec))),
+            ("lead", lambda: df.withColumn("lead_salary", F.lead("salary", 1).over(window_spec))),
+            ("nth_value", lambda: df.withColumn("nth", F.nth_value("salary", 2).over(window_spec))),
+            ("ntile", lambda: df.withColumn("ntile", F.ntile(2).over(window_spec))),
+            ("percent_rank", lambda: df.withColumn("percent_rank", F.percent_rank().over(window_spec))),
+            ("rank", lambda: df.withColumn("rank", F.rank().over(window_spec))),
+            ("row_number", lambda: df.withColumn("row_num", F.row_number().over(window_spec))),
+        ]
+        
+        for test_name, operation in window_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("windows", test_name, test_data, result_df)
+                print(f"✓ Generated window function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed window function {test_name}: {e}")
+    
+    def generate_aggregation_functions_extended(self):
+        """Generate expected outputs for extended aggregation functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0, "dept": "IT"},
+            {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0, "dept": "HR"},
+            {"id": 3, "name": "Charlie", "age": 35, "salary": 70000.0, "dept": "IT"},
+            {"id": 4, "name": "David", "age": 40, "salary": 80000.0, "dept": "IT"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        agg_tests = [
+            ("any_value", lambda: df.agg(F.any_value("name"))),
+            ("approx_count_distinct", lambda: df.agg(F.approx_count_distinct("age"))),
+            ("collect_list", lambda: df.agg(F.collect_list("name"))),
+            ("collect_set", lambda: df.agg(F.collect_set("name"))),
+            ("corr", lambda: df.agg(F.corr("age", "salary"))),
+            ("count_if", lambda: df.agg(F.count_if(F.col("salary") > 60000))),
+            ("covar_pop", lambda: df.agg(F.covar_pop("age", "salary"))),
+            ("covar_samp", lambda: df.agg(F.covar_samp("age", "salary"))),
+            ("countDistinct", lambda: df.agg(F.countDistinct("dept"))),
+            ("every", lambda: df.agg(F.every(F.col("age") > 20))),
+            ("kurtosis", lambda: df.agg(F.kurtosis("salary"))),
+            ("max_by", lambda: df.agg(F.max_by("name", "salary"))),
+            ("mean", lambda: df.agg(F.mean("salary"))),
+            ("median", lambda: df.agg(F.median("salary"))),
+            ("min_by", lambda: df.agg(F.min_by("name", "salary"))),
+            ("mode", lambda: df.agg(F.mode("dept"))),
+            ("skewness", lambda: df.agg(F.skewness("salary"))),
+            ("stddev", lambda: df.agg(F.stddev("salary"))),
+            ("stddev_pop", lambda: df.agg(F.stddev_pop("salary"))),
+            ("stddev_samp", lambda: df.agg(F.stddev_samp("salary"))),
+            ("var_pop", lambda: df.agg(F.var_pop("salary"))),
+            ("var_samp", lambda: df.agg(F.var_samp("salary"))),
+            ("variance", lambda: df.agg(F.variance("salary"))),
+            ("bool_and", lambda: df.agg(F.bool_and(F.col("age") > 20))),
+            ("bool_or", lambda: df.agg(F.bool_or(F.col("age") > 35))),
+        ]
+        
+        for test_name, operation in agg_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("aggregations", test_name, test_data, result_df)
+                print(f"✓ Generated aggregation function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed aggregation function {test_name}: {e}")
+    
+    def generate_bitwise_functions(self):
+        """Generate expected outputs for bitwise functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "num": 5, "num2": 3},
+            {"id": 2, "num": 10, "num2": 7},
+            {"id": 3, "num": 15, "num2": 12},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        bitwise_tests = [
+            ("bit_and", lambda: df.select(F.bit_and(df.num, df.num2))),
+            ("bit_count", lambda: df.select(F.bit_count(df.num))),
+            ("bit_get", lambda: df.select(F.bit_get(df.num, 1))),
+            ("bit_or", lambda: df.select(F.bit_or(df.num, df.num2))),
+            ("bit_xor", lambda: df.select(F.bit_xor(df.num, df.num2))),
+            ("bitwise_not", lambda: df.select(F.bitwise_not(df.num))),
+        ]
+        
+        for test_name, operation in bitwise_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", f"bitwise_{test_name}", test_data, result_df)
+                print(f"✓ Generated bitwise function: bitwise_{test_name}")
+            except Exception as e:
+                print(f"✗ Failed bitwise function bitwise_{test_name}: {e}")
+    
+    def generate_json_csv_functions(self):
+        """Generate expected outputs for JSON/CSV functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "json_str": '{"name":"Alice","age":25}', "name": "Alice", "age": 25},
+            {"id": 2, "json_str": '{"name":"Bob","age":30}', "name": "Bob", "age": 30},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        json_csv_tests = [
+            ("from_json", lambda: df.select(F.from_json(df.json_str, F.lit("name string, age int")))),
+            ("to_json", lambda: df.select(F.to_json(F.struct(df.name, df.age)))),
+            ("to_str", lambda: df.select(F.to_str(F.struct(df.name, df.age)))),
+            ("to_csv", lambda: df.select(F.to_csv(F.struct(df.name, df.age)))),
+        ]
+        
+        for test_name, operation in json_csv_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", test_name, test_data, result_df)
+                print(f"✓ Generated JSON/CSV function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed JSON/CSV function {test_name}: {e}")
+    
+    def generate_struct_functions(self):
+        """Generate expected outputs for struct functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25},
+            {"id": 2, "name": "Bob", "age": 30},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        struct_tests = [
+            ("named_struct", lambda: df.select(F.named_struct("name", df.name, "age", df.age))),
+            ("struct", lambda: df.select(F.struct(df.name, df.age))),
+        ]
+        
+        for test_name, operation in struct_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", test_name, test_data, result_df)
+                print(f"✓ Generated struct function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed struct function {test_name}: {e}")
+    
+    def generate_conditional_functions_extended(self):
+        """Generate expected outputs for conditional functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "age": 25, "salary": 50000, "col1": None, "col2": "backup", "col3": "default"},
+            {"id": 2, "age": 35, "salary": None, "col1": "primary", "col2": None, "col3": "default"},
+            {"id": 3, "age": 45, "salary": 70000, "col1": "primary", "col2": "backup", "col3": None},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        conditional_tests = [
+            ("ifnull", lambda: df.select(F.when(df.salary.isNull(), 0).otherwise(df.salary))),
+            ("nanvl", lambda: df.select(F.when(df.salary != df.salary, 0).otherwise(df.salary))),
+        ]
+        
+        for test_name, operation in conditional_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", test_name, test_data, result_df)
+                print(f"✓ Generated conditional function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed conditional function {test_name}: {e}")
+    
+    def generate_special_functions(self):
+        """Generate expected outputs for special functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "text": "Hello World"},
+            {"id": 2, "name": "Bob", "text": "Test"},
+            {"id": 3, "name": "Charlie", "text": "Python"},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        special_tests = [
+            ("hash", lambda: df.select(F.hash(df.name))),
+            ("input_file_name", lambda: df.select(F.input_file_name())),
+            ("isnan", lambda: df.select(F.isnan(F.lit(float('nan'))))),
+            ("monotonically_increasing_id", lambda: df.select(F.monotonically_increasing_id())),
+            ("overlay", lambda: df.select(F.overlay(df.text, F.lit("X"), 1, 1))),
+            ("version", lambda: df.select(F.version())),
+        ]
+        
+        for test_name, operation in special_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", test_name, test_data, result_df)
+                print(f"✓ Generated special function: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed special function {test_name}: {e}")
+    
+    def generate_column_ordering_functions(self):
+        """Generate expected outputs for column/ordering functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0},
+            {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0},
+            {"id": 3, "name": "Charlie", "age": 35, "salary": 70000.0},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        column_tests = [
+            ("asc", lambda: df.select(df.age.asc())),
+            ("asc_nulls_first", lambda: df.select(df.age.asc_nulls_first())),
+            ("asc_nulls_last", lambda: df.select(df.age.asc_nulls_last())),
+            ("desc", lambda: df.select(df.age.desc())),
+            ("desc_nulls_first", lambda: df.select(df.age.desc_nulls_first())),
+            ("desc_nulls_last", lambda: df.select(df.age.desc_nulls_last())),
+            ("col", lambda: df.select(F.col("name"))),
+            ("column", lambda: df.select(F.column("name"))),
+            ("lit", lambda: df.select(F.lit("test"))),
+            ("expr", lambda: df.select(F.expr("age + 1"))),
+        ]
+        
+        for test_name, operation in column_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", f"column_{test_name}", test_data, result_df)
+                print(f"✓ Generated column function: column_{test_name}")
+            except Exception as e:
+                print(f"✗ Failed column function column_{test_name}: {e}")
+    
+    def generate_type_class_functions(self):
+        """Generate expected outputs for type/class functions."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0},
+            {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0},
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        type_tests = [
+            ("string_type", lambda: df.select(F.col("name").cast("string"))),
+            ("array_type", lambda: df.select(F.array(F.lit(1), F.lit(2)))),
+            ("struct_type", lambda: df.select(F.struct(F.col("name"), F.col("age")))),
+        ]
+        
+        for test_name, operation in type_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("functions", f"type_{test_name}", test_data, result_df)
+                print(f"✓ Generated type function: type_{test_name}")
+            except Exception as e:
+                print(f"✗ Failed type function type_{test_name}: {e}")
+    
+    def generate_dataframe_methods_extended(self):
+        """Generate expected outputs for DataFrame methods."""
+        self.start_spark_session()
+        
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25, "salary": 50000.0, "department": "IT"},
+            {"id": 2, "name": "Bob", "age": 30, "salary": 60000.0, "department": "HR"},
+            {"id": 3, "name": "Charlie", "age": 35, "salary": 70000.0, "department": "IT"},
+            {"id": 4, "name": "David", "age": 40, "salary": 80000.0, "department": "Finance"}
+        ]
+        
+        df = self.spark.createDataFrame(test_data)
+        
+        dataframe_tests = [
+            ("coalesce", lambda: df.coalesce(1)),
+            ("repartition", lambda: df.repartition(2)),
+            ("sample", lambda: df.sample(0.5)),
+            ("random_split", lambda: df.randomSplit([0.5, 0.5])[0]),
+            ("describe", lambda: df.describe()),
+            ("summary", lambda: df.summary()),
+        ]
+        
+        for test_name, operation in dataframe_tests:
+            try:
+                result_df = operation()
+                self._save_expected_output("dataframe_methods", test_name, test_data, result_df)
+                print(f"✓ Generated DataFrame method: {test_name}")
+            except Exception as e:
+                print(f"✗ Failed DataFrame method {test_name}: {e}")
+    
     def _save_expected_output(
         self, 
         category: str, 
@@ -715,6 +1291,23 @@ class ExpectedOutputGenerator:
             self.generate_set_operations()
             self.generate_chained_operations()
             
+            # Extended compatibility testing categories
+            self.generate_string_functions_extended()
+            self.generate_math_functions_extended()
+            self.generate_array_functions_extended()
+            self.generate_map_functions_extended()
+            self.generate_datetime_functions_extended()
+            self.generate_window_functions_extended()
+            self.generate_aggregation_functions_extended()
+            self.generate_bitwise_functions()
+            self.generate_json_csv_functions()
+            self.generate_struct_functions()
+            self.generate_conditional_functions_extended()
+            self.generate_special_functions()
+            self.generate_column_ordering_functions()
+            self.generate_type_class_functions()
+            self.generate_dataframe_methods_extended()
+            
             # Save metadata
             categories = [
                 "dataframe_operations", "functions", "window_operations", "sql_operations",
@@ -775,6 +1368,21 @@ def main():
             "null_handling": generator.generate_null_handling,
             "set_operations": generator.generate_set_operations,
             "chained_operations": generator.generate_chained_operations,
+            "string_functions_extended": generator.generate_string_functions_extended,
+            "math_functions_extended": generator.generate_math_functions_extended,
+            "array_functions_extended": generator.generate_array_functions_extended,
+            "map_functions_extended": generator.generate_map_functions_extended,
+            "datetime_functions_extended": generator.generate_datetime_functions_extended,
+            "window_functions_extended": generator.generate_window_functions_extended,
+            "aggregation_functions_extended": generator.generate_aggregation_functions_extended,
+            "bitwise_functions": generator.generate_bitwise_functions,
+            "json_csv_functions": generator.generate_json_csv_functions,
+            "struct_functions": generator.generate_struct_functions,
+            "conditional_functions_extended": generator.generate_conditional_functions_extended,
+            "special_functions": generator.generate_special_functions,
+            "column_ordering_functions": generator.generate_column_ordering_functions,
+            "type_class_functions": generator.generate_type_class_functions,
+            "dataframe_methods_extended": generator.generate_dataframe_methods_extended,
         }
         
         if args.category in category_methods:

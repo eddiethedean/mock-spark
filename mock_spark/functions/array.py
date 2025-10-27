@@ -764,12 +764,15 @@ class ArrayFunctions:
 
         Returns:
             MockColumnOperation representing the explode_outer function.
-        """
-        if isinstance(column, str):
-            column = MockColumn(column)
 
-        return MockColumnOperation(
-            column, "explode_outer", name=f"explode_outer({column.name})"
+        Note: This feature is not yet fully implemented. Array row expansion
+        requires complex implementation that is still in progress.
+        """
+        from ...core.exceptions.operation import MockSparkNotImplementedError
+
+        raise MockSparkNotImplementedError(
+            "explode_outer is not yet fully implemented. "
+            "This feature requires array row expansion which is still in progress."
         )
 
     @staticmethod

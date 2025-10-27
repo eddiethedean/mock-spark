@@ -1,7 +1,7 @@
 {
   "test_id": "inner_join",
-  "pyspark_version": "3.2",
-  "generated_at": "2025-10-25T20:06:43.667028",
+  "pyspark_version": "3.5",
+  "generated_at": "2025-10-27T14:13:15.897473",
   "input_data": [
     {
       "id": 1,

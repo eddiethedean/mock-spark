@@ -863,17 +863,23 @@ class MockDataFrame:
                         fields_map[col_name] = MockStructField(col_name, StringType())
             elif op_name == "join":
                 other_df, on, how = op_val
-                # Add fields from the other DataFrame to the schema
+                # For semi/anti joins, only return left DataFrame columns
+                if how in ("left_semi", "left_anti"):
+                    # Semi/anti joins only return left columns
+                    return MockStructType(list(fields_map.values()))
+
+                # For regular joins, build a list instead of dict to preserve duplicates
+                # All fields from left DataFrame
+                fields_list = []
+                for field in fields_map.values():
+                    fields_list.append(field)
+
+                # All fields from right DataFrame (may create duplicates - that's PySpark behavior)
                 for field in other_df.schema.fields:
-                    # Avoid duplicate field names
-                    if field.name not in fields_map:
-                        fields_map[field.name] = field
-                    else:
-                        # Handle field name conflicts by prefixing
-                        new_field = MockStructField(
-                            f"right_{field.name}", field.dataType, field.nullable
-                        )
-                        fields_map[f"right_{field.name}"] = new_field
+                    fields_list.append(field)
+
+                # Return immediately since we have all fields
+                return MockStructType(fields_list)
 
         return MockStructType(list(fields_map.values()))
 
@@ -1269,7 +1275,7 @@ class MockDataFrame:
             New MockDataFrame with Cartesian product of rows.
         """
         # Create new schema combining both DataFrames
-        from ..spark_types import MockStructType, MockStructField
+        from ..spark_types import MockStructType
 
         # Combine field names, handling duplicates
         new_fields = []
@@ -1280,25 +1286,16 @@ class MockDataFrame:
             new_fields.append(field)
             field_names.add(field.name)
 
-        # Add fields from other DataFrame, handling name conflicts
+        # Add fields from other DataFrame - keep duplicate names as in PySpark
         for field in other.schema.fields:
-            if field.name in field_names:
-                # Create a unique name for the conflict
-                new_name = f"{field.name}_right"
-                counter = 1
-                while new_name in field_names:
-                    new_name = f"{field.name}_right_{counter}"
-                    counter += 1
-                new_fields.append(MockStructField(new_name, field.dataType))
-                field_names.add(new_name)
-            else:
-                new_fields.append(field)
-                field_names.add(field.name)
+            new_fields.append(field)  # Keep original name even if duplicate
+            field_names.add(field.name)
 
         new_schema = MockStructType(new_fields)
 
         # Create Cartesian product
         result_data = []
+
         for left_row in self.data:
             for right_row in other.data:
                 new_row = {}
@@ -1307,23 +1304,11 @@ class MockDataFrame:
                 for field in self.schema.fields:
                     new_row[field.name] = left_row.get(field.name)
 
-                # Add fields from right DataFrame, handling name conflicts
+                # Add fields from right DataFrame - allow duplicates
                 for field in other.schema.fields:
-                    if field.name in [f.name for f in self.schema.fields]:
-                        # Find the renamed field
-                        from typing import Optional
-
-                        renamed: Optional[str] = None
-                        for new_field in new_fields:
-                            if new_field.name.endswith(
-                                "_right"
-                            ) and new_field.name.startswith(field.name):
-                                renamed = new_field.name
-                                break
-                    if renamed is not None:
-                        new_row[renamed] = right_row.get(field.name)
-                    else:
-                        new_row[field.name] = right_row.get(field.name)
+                    # When accessing by key, duplicate columns get overwritten
+                    # Use a dict which naturally handles this (last value wins)
+                    new_row[field.name] = right_row.get(field.name)
 
                 result_data.append(new_row)
 
@@ -1345,17 +1330,17 @@ class MockDataFrame:
         """Return distinct rows."""
         seen = set()
         distinct_data = []
-        
+
         # Get field names in schema order
         field_names = [f.name for f in self.schema.fields]
-        
+
         for row in self.data:
             # Create tuple in schema order for consistent hashing
             row_tuple = tuple(row.get(name) for name in field_names)
             if row_tuple not in seen:
                 seen.add(row_tuple)
                 distinct_data.append(row)
-        
+
         return MockDataFrame(distinct_data, self.schema, self.storage)
 
     def dropDuplicates(self, subset: Optional[List[str]] = None) -> "MockDataFrame":
@@ -1734,40 +1719,127 @@ class MockDataFrame:
     def selectExpr(self, *exprs: str) -> "MockDataFrame":
         """Select columns or expressions using SQL-like syntax.
 
-        Note: Simplified - treats exprs as column names for mock compatibility.
+        Supports:
+        - Simple column names: "col"
+        - Aliases: "col AS alias" or "col alias"
+        - Complex SQL expressions (CASE WHEN, etc.): Uses F.expr()
         """
-        # For mock purposes, support bare column names, '*' and simple aliases "col AS alias" or "col alias"
         from typing import Union, List
 
-        columns: List[Union[str, MockColumn]] = []
+        # Keywords that indicate complex SQL expressions
+        complex_keywords = {
+            "case",
+            "when",
+            "then",
+            "else",
+            "end",
+            "select",
+            "from",
+            "where",
+            "group by",
+            "order by",
+            "count",
+            "sum",
+            "avg",
+            "max",
+            "min",
+            "upper",
+            "lower",
+            "length",
+            "concat",
+            "round",
+            "floor",
+            "ceil",
+            "abs",
+            "substring",
+            "replace",
+            "trim",
+            "cast",
+            "as",
+        }
+
+        def is_simple_column_name(text: str) -> bool:
+            """Check if text is a simple column name."""
+            # Simple column names don't contain operators, keywords, or function calls
+            if not text or text == "*":
+                return False
+            # Check for SQL operators
+            operators = ["+", "-", "*", "/", "=", ">", "<", "<>", "!=", "%", "(", ")"]
+            if any(op in text for op in operators):
+                return False
+            # Check for SQL keywords
+            text_lower = text.lower()
+            for keyword in complex_keywords:
+                if keyword in text_lower:
+                    return False
+            # Check for function calls (contains parentheses)
+            if "(" in text:
+                return False
+            return True
+
+        from ..functions.core.column import MockColumnOperation
+
+        columns: List[Union[str, MockColumn, MockColumnOperation]] = []
         for expr in exprs:
             text = expr.strip()
             if text == "*":
                 columns.extend([f.name for f in self.schema.fields])
                 continue
-            lower = text.lower()
-            alias = None
-            colname = text
-            if " as " in lower:
-                # split on AS preserving original case of alias
-                parts = text.split()
-                # find 'as' index case-insensitively
-                try:
-                    idx = next(i for i, p in enumerate(parts) if p.lower() == "as")
-                    colname = " ".join(parts[:idx])
-                    alias = " ".join(parts[idx + 1 :])
-                except StopIteration:
-                    colname = text
-            else:
-                # support "col alias" form
-                parts = text.split()
-                if len(parts) == 2:
-                    colname, alias = parts[0], parts[1]
 
-            if alias:
-                columns.append(MockColumn(colname).alias(alias))
+            # Check if this is a complex SQL expression
+            text_lower = text.lower()
+            has_alias = " as " in text_lower or (
+                text.count(" ") == 1
+                and not any(
+                    is_simple_column_name(part)
+                    for part in text.split()
+                    if len(part) > 0
+                )
+            )
+
+            if has_alias:
+                # Parse alias
+                alias = None
+                colname = text
+                if " as " in text_lower:
+                    parts = text.split()
+                    try:
+                        idx = next(i for i, p in enumerate(parts) if p.lower() == "as")
+                        colname = " ".join(parts[:idx])
+                        alias = " ".join(parts[idx + 1 :])
+                    except StopIteration:
+                        colname = text
+                else:
+                    parts = text.split()
+                    if len(parts) == 2:
+                        colname, alias = parts[0], parts[1]
+
+                # Check if it's a complex expression
+                if is_simple_column_name(colname):
+                    if alias:
+                        columns.append(MockColumn(colname).alias(alias))
+                    else:
+                        columns.append(MockColumn(colname))
+                else:
+                    # Complex expression with alias
+                    from ..functions import F
+
+                    if alias:
+                        expr_col = F.expr(colname).alias(alias)
+                        columns.append(expr_col)
+                    else:
+                        expr_col = F.expr(colname)
+                        columns.append(expr_col)
             else:
-                columns.append(colname)
+                # No alias
+                if is_simple_column_name(text):
+                    columns.append(text)
+                else:
+                    # Complex expression without alias
+                    from ..functions import F
+
+                    columns.append(F.expr(text))
+
         return self.select(*columns)
 
     def head(self, n: int = 1) -> Union[MockRow, List[MockRow], None]:

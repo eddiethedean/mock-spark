@@ -106,18 +106,23 @@ class SQLAlchemyMaterializer:
         # Create table and insert data
         self.table_manager.create_table_with_data(source_table_name, data)
 
-        # Try CTE-based approach first for better performance
-        try:
-            return self._materialize_with_cte(source_table_name, operations)
-        except Exception as e:
-            # Fallback to old table-per-operation approach if CTE fails
-            # This ensures backward compatibility for complex operations
-            import warnings
+        # Check if any operation is a join - CTE approach doesn't handle duplicates correctly
+        has_join = any(op_name == "join" for op_name, _ in operations)
 
-            warnings.warn(
-                f"CTE optimization failed, falling back to table-per-operation: {e}"
-            )
-            return self._materialize_with_tables(source_table_name, operations)
+        if not has_join:
+            # Try CTE-based approach first for better performance
+            try:
+                return self._materialize_with_cte(source_table_name, operations)
+            except Exception as e:
+                # Fallback to old table-per-operation approach if CTE fails
+                import warnings
+
+                warnings.warn(
+                    f"CTE optimization failed, falling back to table-per-operation: {e}"
+                )
+
+        # For joins or if CTE fails, use table-per-operation which handles duplicates correctly
+        return self._materialize_with_tables(source_table_name, operations)
 
     def _materialize_with_cte(
         self, source_table_name: str, operations: List[Tuple[str, Any]]
@@ -179,7 +184,12 @@ class SQLAlchemyMaterializer:
                 self._apply_limit(current_table_name, next_table_name, op_val)
             elif op_name == "join":
                 other_df, on, how = op_val
-                self._apply_join(current_table_name, next_table_name, op_val)
+                # Join returns MockRow list directly - bypass table creation
+                result_rows = self._apply_join(
+                    current_table_name, next_table_name, op_val
+                )
+                # Return immediately with join results (bypassing remaining operations)
+                return result_rows if result_rows else []
             elif op_name == "union":
                 other_df = op_val
                 self._apply_union(current_table_name, next_table_name, other_df)
@@ -262,11 +272,31 @@ class SQLAlchemyMaterializer:
             sql = f"SELECT {', '.join(column_names)} FROM {source_table}"
 
             if filter_expr is not None:
-                # Convert SQLAlchemy expression to SQL string
-                filter_sql = str(
-                    filter_expr.compile(compile_kwargs={"literal_binds": True})
-                )
-                sql += f" WHERE {filter_sql}"
+                # Convert condition to SQL string properly
+                try:
+                    # Use expression translator to convert to SQL
+                    filter_sql = self.expression_translator.condition_to_sql(
+                        filter_expr, source_table_obj
+                    )
+                    if filter_sql:
+                        # Replace any table references to use just the column names in WHERE clause
+                        # Since we're filtering FROM source_table, we should reference columns directly
+                        import re
+
+                        # Remove table prefixes like "temp_table_0." or "cte_0."
+                        filter_sql = re.sub(r'"[a-z0-9_]+"\.', "", filter_sql)
+                        sql += f" WHERE {filter_sql}"
+                except Exception as e:
+                    print(f"DEBUG: Error converting filter to SQL: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+                    # Fallback: try SQLAlchemy compile
+                    if hasattr(filter_expr, "compile"):
+                        filter_sql = str(
+                            filter_expr.compile(compile_kwargs={"literal_binds": True})
+                        )
+                        sql += f" WHERE {filter_sql}"
 
             results = session.execute(text(sql)).all()
 
@@ -704,7 +734,7 @@ class SQLAlchemyMaterializer:
                                 func_sql = self.expression_translator.expression_to_sql(
                                     col, source_table=source_table
                                 )
-                                func_expr = text(f"({func_sql}) AS \"{col.name}\"")
+                                func_expr = text(f'({func_sql}) AS "{col.name}"')
                                 select_columns.append(func_expr)
                                 new_columns.append(
                                     Column(col.name, String, primary_key=False)
@@ -776,7 +806,9 @@ class SQLAlchemyMaterializer:
                             func_expr = func.sqrt(source_column)
                         elif col.function_name == "log":
                             # PySpark's log() uses natural logarithm (ln)
-                            print(f"DEBUG query_executor: log function - using func.ln({source_column})")
+                            print(
+                                f"DEBUG query_executor: log function - using func.ln({source_column})"
+                            )
                             func_expr = func.ln(source_column)
                         elif col.function_name == "pow":
                             # Handle pow function with exponent parameter
@@ -792,6 +824,35 @@ class SQLAlchemyMaterializer:
                             func_expr = func.cos(source_column)
                         elif col.function_name == "tan":
                             func_expr = func.tan(source_column)
+                        elif col.function_name in ["explode", "explode_outer"]:
+                            # explode and explode_outer need special handling
+                            # Use raw SQL with CROSS JOIN UNNEST pattern
+                            if col.function_name == "explode_outer":
+                                unnest_expr = (
+                                    f'UNNEST(COALESCE("{col.column.name}", [NULL]))'
+                                )
+                            else:
+                                unnest_expr = f'UNNEST("{col.column.name}")'
+                            func_expr = text(f'({unnest_expr}) AS "{col.name}"')
+                            select_columns.append(func_expr)
+                            # Infer column type from array element type
+                            from sqlalchemy import ARRAY
+
+                            source_col = source_table_obj.c[col.column.name]
+                            if isinstance(source_col.type, ARRAY):
+                                new_columns.append(
+                                    Column(
+                                        col.name,
+                                        source_col.type.item_type,
+                                        primary_key=False,
+                                    )
+                                )
+                            else:
+                                # Default to Integer for array elements
+                                new_columns.append(
+                                    Column(col.name, Integer, primary_key=False)
+                                )
+                            continue
                         elif col.function_name in [
                             "hour",
                             "minute",
@@ -810,8 +871,12 @@ class SQLAlchemyMaterializer:
                                 col, source_table=source_table
                             )
                             # Use text() with AS clause since TextClause doesn't support .label()
-                            select_columns.append(text(f"({datetime_sql}) AS \"{col.name}\""))
-                            new_columns.append(Column(col.name, Integer, primary_key=False))
+                            select_columns.append(
+                                text(f'({datetime_sql}) AS "{col.name}"')
+                            )
+                            new_columns.append(
+                                Column(col.name, Integer, primary_key=False)
+                            )
                             continue
                         elif col.function_name in [
                             "to_date",
@@ -824,8 +889,12 @@ class SQLAlchemyMaterializer:
                                 col, source_table=source_table
                             )
                             # Use text() with AS clause since TextClause doesn't support .label()
-                            select_columns.append(text(f"({datetime_sql}) AS \"{col.name}\""))
-                            new_columns.append(Column(col.name, String, primary_key=False))
+                            select_columns.append(
+                                text(f'({datetime_sql}) AS "{col.name}"')
+                            )
+                            new_columns.append(
+                                Column(col.name, String, primary_key=False)
+                            )
                             continue
                         else:
                             # Map PySpark function names to DuckDB function names
@@ -848,6 +917,7 @@ class SQLAlchemyMaterializer:
                                 "date_add": "date_add",
                                 "date_sub": "date_sub",
                                 "coalesce": "coalesce",
+                                "nullif": "nullif",  # DuckDB supports NULLIF
                                 "isnull": "isnull",  # Handled by special_functions with IS NULL syntax
                                 "isnan": "isnan",
                                 # Array functions - DuckDB uses list_ prefix
@@ -874,7 +944,7 @@ class SQLAlchemyMaterializer:
                             # Special handling for functions that need custom SQL generation
                             special_functions = {
                                 "add_months": "CAST(({} + INTERVAL {} MONTH) AS DATE)",
-                                "months_between": "EXTRACT(YEAR FROM AGE({}, {})) * 12 + EXTRACT(MONTH FROM AGE({}, {})) + EXTRACT(DAY FROM AGE({}, {})) / 30.0",
+                                "months_between": "EXTRACT(YEAR FROM AGE({}, {})) * 12 + EXTRACT(MONTH FROM AGE({}, {})) + EXTRACT(DAY FROM AGE({}, {})) / 31.0",
                                 "date_add": "CAST(({} + INTERVAL {} DAY) AS DATE)",
                                 "date_sub": "CAST(({} - INTERVAL {} DAY) AS DATE)",
                                 "timestampadd": "timestampadd",  # Special handling below
@@ -1003,10 +1073,6 @@ class SQLAlchemyMaterializer:
                             duckdb_function_name = function_mapping.get(
                                 col.function_name, col.function_name
                             )
-                            if col.function_name == "log":
-                                print(f"DEBUG: log function - mapped to {duckdb_function_name}")
-                                print(f"DEBUG: column_expr: {column_expr}")
-                                print(f"DEBUG: func_expr will be: {duckdb_function_name}({column_expr})")
 
                             # Handle raise_error immediately (before column_expr setup)
                             if col.function_name == "raise_error":
@@ -1550,6 +1616,8 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_distinct":
                                         # array_distinct(array) -> list_distinct(array)
+                                        # Note: DuckDB's list_distinct doesn't preserve element order
+                                        # but PySpark does. This is a known limitation.
                                         special_sql = f"LIST_DISTINCT({column_expr})"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "array_intersect":
@@ -1657,6 +1725,12 @@ class SQLAlchemyMaterializer:
                                     elif col.function_name == "explode":
                                         # explode(array) -> UNNEST(array)
                                         special_sql = f"UNNEST({column_expr})"
+                                        func_expr = text(special_sql)
+                                    elif col.function_name == "explode_outer":
+                                        # explode_outer(array) -> UNNEST(COALESCE(array, [NULL]))
+                                        special_sql = (
+                                            f"UNNEST(COALESCE({column_expr}, [NULL]))"
+                                        )
                                         func_expr = text(special_sql)
                                     elif col.function_name == "size":
                                         # size(array) -> LEN(array) or CARDINALITY(array)
@@ -4178,8 +4252,17 @@ class SQLAlchemyMaterializer:
 
     def _apply_join(
         self, source_table: str, target_table: str, join_params: Tuple[Any, ...]
-    ) -> None:
-        """Apply a join operation."""
+    ) -> List[MockRow]:
+        """Apply a join operation and return MockRow list directly (bypasses SQL tables)."""
+        from ...spark_types import (
+            MockRow,
+            MockStructType,
+            MockStructField,
+            StringType,
+            LongType,
+            DoubleType,
+        )
+
         other_df, on, how = join_params
 
         source_table_obj = self._created_tables[source_table]
@@ -4195,8 +4278,7 @@ class SQLAlchemyMaterializer:
         if isinstance(on, MockColumnOperation) and on.operation == "==":
             # Handle MockColumnOperation (e.g., emp_df.dept_id == dept_df.dept_id)
             # Extract column names from equality condition
-            left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
-            right_col = on.value.name if hasattr(on.value, 'name') else str(on.value)
+            left_col = on.column.name if hasattr(on.column, "name") else str(on.column)
             # Assume both DataFrames use same column name for join
             on_columns = [left_col]  # Use left column as join key
         elif isinstance(on, str):
@@ -4206,31 +4288,35 @@ class SQLAlchemyMaterializer:
         else:
             raise ValueError(f"Unsupported join condition type: {type(on)}")
 
-        # Create target table with combined schema
-        new_columns: List[Any] = []
+        # Determine if semi/anti join (should only have left columns)
+        is_semi_or_anti = how in ("left_semi", "left_anti")
 
-        # Add all columns from source table (left DataFrame)
+        # Build result schema with duplicate column names preserved
+        result_schema_fields = []
+
+        # Add all fields from source table (left DataFrame)
         for column in source_table_obj.columns:
-            new_columns.append(Column(column.name, column.type, primary_key=False))
+            field_name = column.name
+            # Map SQLAlchemy types to MockSpark types
+            from ...spark_types import MockDataType
 
-        # Add columns from other DataFrame (right DataFrame)  
-        # PySpark behavior: ALL columns from right are added, creating duplicate column names
-        for field in other_schema.fields:
-            # Convert MockSpark types to SQLAlchemy types
-            sql_type: Any = String  # Default, can be Integer, Float, or other types
-            field_type_name = type(field.dataType).__name__
-            if field_type_name in ["LongType", "IntegerType"]:
-                sql_type = Integer
-            elif field_type_name in ["DoubleType", "FloatType"]:
-                sql_type = Float
-            new_columns.append(Column(field.name, sql_type, primary_key=False))
+            data_type: MockDataType
+            if isinstance(column.type, Integer):
+                data_type = LongType()
+            elif isinstance(column.type, Float):
+                data_type = DoubleType()
+            else:
+                data_type = StringType()
+            result_schema_fields.append(MockStructField(field_name, data_type))
 
-        # Create target table
-        target_table_obj = Table(target_table, self.metadata, *new_columns)
-        target_table_obj.create(self.engine, checkfirst=True)
-        self._created_tables[target_table] = target_table_obj
+        # Add fields from other DataFrame (right DataFrame) only if not semi/anti
+        if not is_semi_or_anti:
+            result_schema_fields.extend(other_schema.fields)  # Keep duplicate names!
 
-        # Perform the actual join operation
+        # Create result schema
+        result_schema = MockStructType(result_schema_fields)
+
+        # Perform the actual join operation - build MockRow objects directly
         with Session(self.engine) as session:
             # Get source data
             source_data = session.execute(select(*source_table_obj.columns)).all()
@@ -4244,7 +4330,13 @@ class SQLAlchemyMaterializer:
                     other_lookup[join_key] = []
                 other_lookup[join_key].append(other_row)
 
-            # Perform join - create one output row for each matching pair
+            # Track which right keys had matches (for outer joins)
+            matched_right_keys = set()
+
+            # Result rows list
+            result_rows = []
+
+            # Perform join and build MockRow objects
             for row in source_data:
                 row_dict = dict(row._mapping)
 
@@ -4253,28 +4345,109 @@ class SQLAlchemyMaterializer:
 
                 # Look up all matching rows from other DataFrame
                 if source_join_key in other_lookup:
-                    for other_row in other_lookup[source_join_key]:
-                        # Create a new combined row for each match
-                        combined_row = row_dict.copy()
+                    matched_right_keys.add(source_join_key)
 
-                        # Add columns from other DataFrame
-                        # In PySpark, ALL columns from right are added, overwriting left columns with same name
+                    if how.lower() in (
+                        "inner",
+                        "left",
+                        "right",
+                        "outer",
+                        "full",
+                        "left_outer",
+                        "right_outer",
+                        "full_outer",
+                        "fullouter",
+                        "full_outer",
+                        "fullouter",
+                    ):
+                        # Inner/Left/Right/Outer join: output matched rows
+                        for other_row in other_lookup[source_join_key]:
+                            # Build row as list of (name, value) tuples to preserve duplicate column names
+                            row_tuples = []
+
+                            # Add all left DataFrame columns
+                            for col in source_table_obj.columns:
+                                row_tuples.append((col.name, row_dict.get(col.name)))
+
+                            # Add all right DataFrame columns
+                            if not is_semi_or_anti:
+                                for field in other_schema.fields:
+                                    # other_row is a dict from other_materialized.data
+                                    val = other_row.get(field.name)
+                                    row_tuples.append((field.name, val))
+
+                            # Create MockRow with list of tuples
+                            result_rows.append(MockRow(row_tuples, result_schema))
+
+                    elif how.lower() == "left_semi":
+                        # Semi join: output left row only once
+                        row_tuples = []
+                        for col in source_table_obj.columns:
+                            row_tuples.append((col.name, row_dict.get(col.name)))
+                        result_rows.append(MockRow(row_tuples, result_schema))
+
+                    elif how.lower() == "left_anti":
+                        # Anti join: skip matching rows (don't output them)
+                        pass
+                    # else: other join types
+
+                else:
+                    # No match found for this source row
+                    if how.lower() in (
+                        "left",
+                        "left_outer",
+                        "outer",
+                        "full",
+                        "full_outer",
+                        "fullouter",
+                    ):
+                        # Left/Outer join: output source row with NULLs for right columns
+                        row_tuples = []
+
+                        # Add all left DataFrame columns
+                        for col in source_table_obj.columns:
+                            row_tuples.append((col.name, row_dict.get(col.name)))
+
+                        # Add NULL for all right DataFrame columns
+                        if not is_semi_or_anti:
+                            for field in other_schema.fields:
+                                row_tuples.append((field.name, None))
+
+                        result_rows.append(MockRow(row_tuples, result_schema))
+
+                    elif how.lower() == "left_anti":
+                        # Anti join: output left row with no match
+                        row_tuples = []
+                        for col in source_table_obj.columns:
+                            row_tuples.append((col.name, row_dict.get(col.name)))
+                        result_rows.append(MockRow(row_tuples, result_schema))
+
+            # For right/outer joins, add unmatched right rows
+            if how.lower() in (
+                "right",
+                "right_outer",
+                "outer",
+                "full",
+                "full_outer",
+                "fullouter",
+            ):
+                for right_row in other_data:
+                    right_join_key = tuple(right_row.get(col) for col in on_columns)
+                    if right_join_key not in matched_right_keys:
+                        # Right row with no match
+                        row_tuples = []
+
+                        # Add NULL for all left DataFrame columns
+                        for col in source_table_obj.columns:
+                            row_tuples.append((col.name, None))
+
+                        # Add all right DataFrame columns
                         for field in other_schema.fields:
-                            combined_row[field.name] = other_row.get(field.name)
+                            row_tuples.append((field.name, right_row.get(field.name)))
 
-                        # Ensure all target columns have values
-                        target_column_names = [
-                            col.name for col in target_table_obj.columns
-                        ]
-                        complete_row = {}
-                        for col_name in target_column_names:
-                            complete_row[col_name] = combined_row.get(col_name, None)
+                        result_rows.append(MockRow(row_tuples, result_schema))
 
-                        # Insert into target table
-                        insert_stmt = target_table_obj.insert().values(complete_row)
-                        session.execute(insert_stmt)
-
-            session.commit()
+        return result_rows
 
     def _expression_to_sql(self, expr: Any, source_table: Optional[str] = None) -> str:
         """Convert an expression to SQL."""
