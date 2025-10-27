@@ -22,17 +22,17 @@ class TestSetOperationsCompatibility:
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
         ]
-        
+
         df2_data = [
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
             {"id": 4, "name": "David", "age": 40},
         ]
-        
+
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
         result = df1.union(df2)
-        
+
         expected = load_expected_output("set_operations", "union")
         assert_dataframes_equal(result, expected)
 
@@ -43,17 +43,17 @@ class TestSetOperationsCompatibility:
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
         ]
-        
+
         df2_data = [
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
             {"id": 4, "name": "David", "age": 40},
         ]
-        
+
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
         result = df1.unionAll(df2)
-        
+
         expected = load_expected_output("set_operations", "union_all")
         assert_dataframes_equal(result, expected)
 
@@ -64,17 +64,17 @@ class TestSetOperationsCompatibility:
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
         ]
-        
+
         df2_data = [
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
             {"id": 4, "name": "David", "age": 40},
         ]
-        
+
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
         result = df1.intersect(df2)
-        
+
         expected = load_expected_output("set_operations", "intersect")
         assert_dataframes_equal(result, expected)
 
@@ -85,17 +85,17 @@ class TestSetOperationsCompatibility:
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
         ]
-        
+
         df2_data = [
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
             {"id": 4, "name": "David", "age": 40},
         ]
-        
+
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
         result = df1.exceptAll(df2)
-        
+
         expected = load_expected_output("set_operations", "except")
         assert_dataframes_equal(result, expected)
 
@@ -106,16 +106,16 @@ class TestSetOperationsCompatibility:
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
         ]
-        
+
         df2_data = [
             {"id": 2, "name": "Bob", "age": 30},
             {"id": 3, "name": "Charlie", "age": 35},
             {"id": 4, "name": "David", "age": 40},
         ]
-        
+
         df1 = mock_spark_session.createDataFrame(df1_data)
         df2 = mock_spark_session.createDataFrame(df2_data)
         result = df1.subtract(df2)
-        
+
         expected = load_expected_output("set_operations", "subtract")
         assert_dataframes_equal(result, expected)

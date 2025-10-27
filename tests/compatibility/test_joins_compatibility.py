@@ -29,24 +29,26 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         # Perform inner join
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "inner")
-        
+
         # Load expected output
         expected = load_expected_output("joins", "inner_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="left join: Returns 0 rows instead of expected rows - needs investigation")
+    @pytest.mark.skip(
+        reason="left join: Returns 0 rows instead of expected rows - needs investigation"
+    )
     def test_left_join(self, mock_spark_session):
         """Test left join against expected output."""
         employees_data = [
@@ -55,22 +57,24 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "left")
-        
+
         expected = load_expected_output("joins", "left_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="right join: Returns 0 rows instead of expected rows - needs investigation")
+    @pytest.mark.skip(
+        reason="right join: Returns 0 rows instead of expected rows - needs investigation"
+    )
     def test_right_join(self, mock_spark_session):
         """Test right join against expected output."""
         employees_data = [
@@ -79,22 +83,24 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "right")
-        
+
         expected = load_expected_output("joins", "right_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="outer join: Returns 0 rows instead of expected rows - needs investigation")
+    @pytest.mark.skip(
+        reason="outer join: Returns 0 rows instead of expected rows - needs investigation"
+    )
     def test_outer_join(self, mock_spark_session):
         """Test outer join against expected output."""
         employees_data = [
@@ -103,18 +109,18 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "outer")
-        
+
         expected = load_expected_output("joins", "outer_join")
         assert_dataframes_equal(result, expected)
 
@@ -126,18 +132,18 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.crossJoin(dept_df)
-        
+
         expected = load_expected_output("joins", "cross_join")
         assert_dataframes_equal(result, expected)
 
@@ -149,18 +155,18 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "left_semi")
-        
+
         expected = load_expected_output("joins", "semi_join")
         assert_dataframes_equal(result, expected)
 
@@ -172,17 +178,17 @@ class TestJoinsCompatibility:
             {"id": 3, "name": "Charlie", "dept_id": 10, "salary": 70000},
             {"id": 4, "name": "David", "dept_id": 30, "salary": 55000},
         ]
-        
+
         departments_data = [
             {"dept_id": 10, "name": "IT", "location": "NYC"},
             {"dept_id": 20, "name": "HR", "location": "LA"},
             {"dept_id": 40, "name": "Finance", "location": "Chicago"},
         ]
-        
+
         emp_df = mock_spark_session.createDataFrame(employees_data)
         dept_df = mock_spark_session.createDataFrame(departments_data)
-        
+
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "left_anti")
-        
+
         expected = load_expected_output("joins", "anti_join")
         assert_dataframes_equal(result, expected)

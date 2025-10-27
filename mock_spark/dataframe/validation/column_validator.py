@@ -115,39 +115,17 @@ class ColumnValidator:
         # Skip validation for complex expressions - let SQL generation handle them
         # Only validate simple column references
 
-        # If condition is a column operation (has operation attribute), skip validation
-        # as it's likely an expression
-        if hasattr(condition, "operation"):
-            return
-
-        # If condition is a MockColumnOperation, skip validation - it's an expression
+        # Import MockColumnOperation for type checking
         from mock_spark.functions.base import MockColumnOperation
 
+        # If condition is a MockColumnOperation, validate its column references
         if isinstance(condition, MockColumnOperation):
-            return
-
-        # Skip validation for operations that create complex expressions
-        if hasattr(condition, "operation") and condition.operation in [
-            "between",
-            "and",
-            "or",
-            "&",
-            "|",
-            "isin",
-            "not_in",
-            "!",
-            ">",
-            "<",
-            ">=",
-            "<=",
-            "==",
-            "!=",
-            "*",
-            "+",
-            "-",
-            "/",
-        ]:
-            # These are complex expressions that may combine multiple columns, skip validation
+            # Validate operations that reference columns
+            if hasattr(condition, "column"):
+                # Recursively validate the column references in the expression
+                ColumnValidator.validate_expression_columns(
+                    schema, condition, operation, in_lazy_materialization=False
+                )
             return
 
         if hasattr(condition, "column") and hasattr(condition.column, "name"):
@@ -172,6 +150,10 @@ class ColumnValidator:
                 "-",
                 "/",
             ]:
+                # Validate column references in the expression
+                ColumnValidator.validate_expression_columns(
+                    schema, condition, operation, in_lazy_materialization=False
+                )
                 return
             # Simple column reference
             ColumnValidator.validate_column_exists(

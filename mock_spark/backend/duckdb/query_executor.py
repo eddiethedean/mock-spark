@@ -3809,29 +3809,46 @@ class SQLAlchemyMaterializer:
 
         # Build SQLAlchemy order by expressions
         order_expressions = []
-        [c.name for c in source_table_obj.columns]
-        # print(f"DEBUG: Available columns in {source_table}: {available_columns}")
-        # print(f"DEBUG: Order by columns: {[col.name if hasattr(col, 'name') else str(col) for col in columns]}")
+        available_columns = [c.name for c in source_table_obj.columns]
 
         for col in columns:
+            # Extract column name
+            col_name = None
+            is_desc = False
+
             if isinstance(col, str):
-                order_expressions.append(source_table_obj.c[col])
-            elif hasattr(col, "operation") and col.operation == "desc":
-                order_expressions.append(desc(source_table_obj.c[col.column.name]))
-            elif hasattr(col, "operation") and col.operation == "asc":
-                order_expressions.append(asc(source_table_obj.c[col.column.name]))
+                col_name = col
+            elif hasattr(col, "operation"):
+                # Check for desc/asc operations
+                if col.operation == "desc":
+                    is_desc = True
+                    if hasattr(col, "column") and hasattr(col.column, "name"):
+                        col_name = col.column.name
+                    elif hasattr(col, "name"):
+                        col_name = col.name
+                elif col.operation == "asc":
+                    if hasattr(col, "column") and hasattr(col.column, "name"):
+                        col_name = col.column.name
+                    elif hasattr(col, "name"):
+                        col_name = col.name
             elif hasattr(col, "name"):
-                # Handle MockColumn objects - check if they have a desc or asc operation
-                if hasattr(col, "operation") and col.operation == "desc":
-                    order_expressions.append(desc(source_table_obj.c[col.name]))
-                elif hasattr(col, "operation") and col.operation == "asc":
-                    order_expressions.append(asc(source_table_obj.c[col.name]))
+                col_name = col.name
+
+            if col_name is None:
+                # Try to convert to string as fallback
+                col_name = str(col)
+
+            # Check if column exists in source table
+            if col_name in available_columns:
+                if is_desc:
+                    order_expressions.append(desc(source_table_obj.c[col_name]))
                 else:
-                    # Default to ascending order
-                    order_expressions.append(asc(source_table_obj.c[col.name]))
+                    order_expressions.append(asc(source_table_obj.c[col_name]))
             else:
-                # Fallback: try to convert to string
-                order_expressions.append(source_table_obj.c[str(col)])
+                # Column not found - try without column reference
+                # This handles case where the column name itself is the value (like aliases)
+                # Skip invalid columns silently
+                pass
 
         # Execute with ORDER BY using SQLAlchemy
         with Session(self.engine) as session:

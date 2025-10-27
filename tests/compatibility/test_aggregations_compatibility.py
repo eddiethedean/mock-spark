@@ -23,10 +23,10 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "Finance", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.sum("salary").alias("total_salary"))
-        
+
         expected = load_expected_output("aggregations", "sum_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -38,10 +38,10 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "Finance", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.avg("salary").alias("avg_salary"))
-        
+
         expected = load_expected_output("aggregations", "avg_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -53,10 +53,10 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "Finance", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.count("id").alias("employee_count"))
-        
+
         expected = load_expected_output("aggregations", "count_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -68,10 +68,10 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "Finance", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.max("salary").alias("max_salary"))
-        
+
         expected = load_expected_output("aggregations", "max_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -83,10 +83,10 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "Finance", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.min("salary").alias("min_salary"))
-        
+
         expected = load_expected_output("aggregations", "min_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -95,33 +95,71 @@ class TestAggregationsCompatibility:
         test_data = [
             {"id": 1, "name": "Alice", "department": "IT", "salary": 50000, "age": 25},
             {"id": 2, "name": "Bob", "department": "HR", "salary": 60000, "age": 30},
-            {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000, "age": 35},
-            {"id": 4, "name": "David", "department": "Finance", "salary": 80000, "age": 40},
+            {
+                "id": 3,
+                "name": "Charlie",
+                "department": "IT",
+                "salary": 70000,
+                "age": 35,
+            },
+            {
+                "id": 4,
+                "name": "David",
+                "department": "Finance",
+                "salary": 80000,
+                "age": 40,
+            },
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(
             F.sum("salary").alias("total_salary"),
             F.avg("salary").alias("avg_salary"),
             F.count("id").alias("employee_count"),
-            F.max("age").alias("max_age")
+            F.max("age").alias("max_age"),
         )
-        
+
         expected = load_expected_output("aggregations", "multiple_aggregations")
         assert_dataframes_equal(result, expected)
 
     def test_groupby_multiple_columns(self, mock_spark_session):
         """Test groupBy with multiple columns against expected output."""
         test_data = [
-            {"id": 1, "name": "Alice", "department": "IT", "level": "Senior", "salary": 50000},
-            {"id": 2, "name": "Bob", "department": "HR", "level": "Junior", "salary": 60000},
-            {"id": 3, "name": "Charlie", "department": "IT", "level": "Senior", "salary": 70000},
-            {"id": 4, "name": "David", "department": "IT", "level": "Junior", "salary": 45000},
+            {
+                "id": 1,
+                "name": "Alice",
+                "department": "IT",
+                "level": "Senior",
+                "salary": 50000,
+            },
+            {
+                "id": 2,
+                "name": "Bob",
+                "department": "HR",
+                "level": "Junior",
+                "salary": 60000,
+            },
+            {
+                "id": 3,
+                "name": "Charlie",
+                "department": "IT",
+                "level": "Senior",
+                "salary": 70000,
+            },
+            {
+                "id": 4,
+                "name": "David",
+                "department": "IT",
+                "level": "Junior",
+                "salary": 45000,
+            },
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        result = df.groupBy("department", "level").agg(F.avg("salary").alias("avg_salary"))
-        
+        result = df.groupBy("department", "level").agg(
+            F.avg("salary").alias("avg_salary")
+        )
+
         expected = load_expected_output("aggregations", "groupby_multiple_columns")
         assert_dataframes_equal(result, expected)
 
@@ -133,14 +171,14 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "salary": 70000},
             {"id": 4, "name": "David", "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.agg(
             F.sum("salary").alias("total_salary"),
             F.avg("salary").alias("avg_salary"),
-            F.count("id").alias("total_employees")
+            F.count("id").alias("total_employees"),
         )
-        
+
         expected = load_expected_output("aggregations", "global_aggregation")
         assert_dataframes_equal(result, expected)
 
@@ -152,9 +190,9 @@ class TestAggregationsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": None, "salary": 80000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.groupBy("department").agg(F.avg("salary").alias("avg_salary"))
-        
+
         expected = load_expected_output("aggregations", "aggregation_with_nulls")
         assert_dataframes_equal(result, expected)

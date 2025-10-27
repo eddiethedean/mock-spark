@@ -16,8 +16,8 @@ class TestBitwiseFunctionsCompatibility:
     def test_bitwise_not(self, spark):
         """Test bitwise_not function."""
         expected = load_expected_output("functions", "bitwise_bitwise_not")
-        
+
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(df.num.bitwise_not())
-        
+
         assert_dataframes_equal(result, expected)

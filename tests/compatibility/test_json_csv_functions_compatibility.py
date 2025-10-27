@@ -12,15 +12,16 @@ from mock_spark import F
 
 class TestJsonCsvFunctionsCompatibility:
     """Test JSON/CSV functions against expected PySpark outputs."""
-    
+
     @pytest.fixture
     def spark(self):
         """Create a MockSparkSession for testing."""
         from mock_spark import MockSparkSession
+
         session = MockSparkSession("json_csv_functions_test")
         yield session
         session.stop()
-    
+
     @pytest.mark.skip(reason="not yet implemented")
     def test_from_json(self, spark):
         """Test from_json function."""
@@ -28,7 +29,7 @@ class TestJsonCsvFunctionsCompatibility:
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.from_json(df.json_str, F.lit("name string, age int")))
         assert_dataframes_equal(result, expected)
-    
+
     @pytest.mark.skip(reason="not yet implemented")
     def test_to_json(self, spark):
         """Test to_json function."""
@@ -36,7 +37,7 @@ class TestJsonCsvFunctionsCompatibility:
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.to_json(F.struct(df.name, df.age)))
         assert_dataframes_equal(result, expected)
-    
+
     @pytest.mark.skip(reason="not yet implemented")
     def test_to_csv(self, spark):
         """Test to_csv function."""
@@ -44,4 +45,3 @@ class TestJsonCsvFunctionsCompatibility:
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.to_csv(F.struct(df.name, df.age)))
         assert_dataframes_equal(result, expected)
-

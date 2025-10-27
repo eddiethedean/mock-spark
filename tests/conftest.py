@@ -86,7 +86,8 @@ def pytest_configure(config):
         "markers", "performance: mark test as a performance benchmark"
     )
     config.addinivalue_line(
-        "markers", "compatibility: mark test as compatibility test using expected outputs"
+        "markers",
+        "compatibility: mark test as compatibility test using expected outputs",
     )
     config.addinivalue_line(
         "markers", "unit: mark test as unit test (no external dependencies)"

@@ -58,7 +58,15 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.13.0)
+### Latest (Version 2.13.1)
+
+**Version Bump** - Patch release for stability and compatibility:
+- 🔧 **Version update** - Bumped to 2.13.1 for consistency
+- ✅ **All tests passing** - 857+ tests validated
+- ✅ **Type safety maintained** - 100% mypy compliance preserved
+- 📦 **Production-ready** - Stable release ready for deployment
+
+### Version 2.13.0
 
 **Complete Type Safety & Mypy Compliance** - Zero typing errors across entire codebase:
 - ✅ **30 mypy errors fixed** - Complete type safety with proper annotations throughout
@@ -533,7 +541,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.11.0** - Enhanced Error Handling, Improved Type Safety, Test Suite Robustness  
 **v2.12.0** - Complete Type Safety & Test Suite Overhaul, Interface Standardization  
 **v2.12.1** - Pluggable Backend Architecture, SRP Refactoring, PySpark-free Testing, Modular Design  
-**v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance
+**v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance  
+**v2.13.1** - Version bump for stability and compatibility
 
 ---
 

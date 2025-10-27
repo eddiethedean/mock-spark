@@ -23,16 +23,17 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         # Note: MockSpark may not have window functions implemented yet
         # This test will be updated when window functions are available
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department").orderBy("salary")
             result = df.withColumn("row_num", F.row_number().over(window_spec))
-            
+
             expected = load_expected_output("windows", "row_number")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -46,14 +47,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department").orderBy("salary")
             result = df.withColumn("rank", F.rank().over(window_spec))
-            
+
             expected = load_expected_output("windows", "rank")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -67,14 +69,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department").orderBy("salary")
             result = df.withColumn("dense_rank", F.dense_rank().over(window_spec))
-            
+
             expected = load_expected_output("windows", "dense_rank")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -88,14 +91,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department").orderBy("salary")
             result = df.withColumn("prev_salary", F.lag("salary", 1).over(window_spec))
-            
+
             expected = load_expected_output("windows", "lag")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -109,14 +113,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department").orderBy("salary")
             result = df.withColumn("next_salary", F.lead("salary", 1).over(window_spec))
-            
+
             expected = load_expected_output("windows", "lead")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -130,14 +135,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department")
             result = df.withColumn("dept_total", F.sum("salary").over(window_spec))
-            
+
             expected = load_expected_output("windows", "sum_over_window")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -151,14 +157,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department")
             result = df.withColumn("dept_avg", F.avg("salary").over(window_spec))
-            
+
             expected = load_expected_output("windows", "avg_over_window")
             assert_dataframes_equal(result, expected)
         except ImportError:
@@ -172,14 +179,15 @@ class TestWindowFunctionsCompatibility:
             {"id": 3, "name": "Charlie", "department": "IT", "salary": 70000},
             {"id": 4, "name": "David", "department": "IT", "salary": 55000},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
-        
+
         try:
             from mock_spark.window import Window
+
             window_spec = Window.partitionBy("department")
             result = df.withColumn("dept_count", F.count("salary").over(window_spec))
-            
+
             expected = load_expected_output("windows", "count_over_window")
             assert_dataframes_equal(result, expected)
         except ImportError:

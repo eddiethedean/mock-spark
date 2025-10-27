@@ -22,10 +22,10 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.array_contains(df.scores, 90))
-        
+
         expected = load_expected_output("arrays", "array_contains")
         assert_dataframes_equal(result, expected)
 
@@ -36,10 +36,10 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.array_position(df.scores, 90))
-        
+
         expected = load_expected_output("arrays", "array_position")
         assert_dataframes_equal(result, expected)
 
@@ -50,10 +50,10 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.size(df.scores))
-        
+
         expected = load_expected_output("arrays", "size")
         assert_dataframes_equal(result, expected)
 
@@ -64,10 +64,10 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.element_at(df.scores, 2))
-        
+
         expected = load_expected_output("arrays", "element_at")
         assert_dataframes_equal(result, expected)
 
@@ -78,10 +78,10 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.array_append(df.scores, 100))
-        
+
         expected = load_expected_output("arrays", "array_append")
         assert_dataframes_equal(result, expected)
 
@@ -92,14 +92,16 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.array_remove(df.scores, 90))
-        
+
         expected = load_expected_output("arrays", "array_remove")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="array_distinct: DuckDB LIST_DISTINCT sorts elements; PySpark preserves insertion order")
+    @pytest.mark.skip(
+        reason="array_distinct: DuckDB LIST_DISTINCT sorts elements; PySpark preserves insertion order"
+    )
     def test_array_distinct(self, mock_spark_session):
         """Test array_distinct function against expected output."""
         test_data = [
@@ -107,11 +109,15 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "tags": ["java", "backend", "java"]},
             {"id": 3, "name": "Charlie", "tags": ["python", "ml", "python"]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         # Maintain deterministic order by including id temporarily for sorting
-        result = df.select(df.id, F.array_distinct(df.tags)).orderBy("id").select("array_distinct(tags)")
-        
+        result = (
+            df.select(df.id, F.array_distinct(df.tags))
+            .orderBy("id")
+            .select("array_distinct(tags)")
+        )
+
         expected = load_expected_output("arrays", "array_distinct")
         assert_dataframes_equal(result, expected)
 
@@ -122,15 +128,21 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         # Explode and sort by name, then score for deterministic order
-        result = df.select(df.id, df.name, F.explode(df.scores).alias("score")).orderBy("id", "score").select("name", "score")
-        
+        result = (
+            df.select(df.id, df.name, F.explode(df.scores).alias("score"))
+            .orderBy("id", "score")
+            .select("name", "score")
+        )
+
         expected = load_expected_output("arrays", "explode")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="explode_outer: Array row expansion not yet implemented in DuckDB backend")
+    @pytest.mark.skip(
+        reason="explode_outer: Array row expansion not yet implemented in DuckDB backend"
+    )
     def test_explode_outer(self, mock_spark_session):
         """Test explode_outer function against expected output."""
         test_data = [
@@ -138,10 +150,14 @@ class TestArrayFunctionsCompatibility:
             {"id": 2, "name": "Bob", "scores": None},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         # Explode and sort by name, then score for deterministic order
-        result = df.select(df.id, df.name, F.explode_outer(df.scores).alias("score")).orderBy("id", "score").select("name", "score")
-        
+        result = (
+            df.select(df.id, df.name, F.explode_outer(df.scores).alias("score"))
+            .orderBy("id", "score")
+            .select("name", "score")
+        )
+
         expected = load_expected_output("arrays", "explode_outer")
         assert_dataframes_equal(result, expected)

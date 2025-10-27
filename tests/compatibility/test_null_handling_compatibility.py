@@ -23,10 +23,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.isnull(df.name))
-        
+
         expected = load_expected_output("null_handling", "isnull")
         assert_dataframes_equal(result, expected)
 
@@ -38,10 +38,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.isnotnull(df.name))
-        
+
         expected = load_expected_output("null_handling", "isnotnull")
         assert_dataframes_equal(result, expected)
 
@@ -53,10 +53,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.coalesce(df.salary, F.lit(0)))
-        
+
         expected = load_expected_output("null_handling", "coalesce")
         assert_dataframes_equal(result, expected)
 
@@ -68,10 +68,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.when(df.salary.isNull(), 0).otherwise(df.salary))
-        
+
         expected = load_expected_output("null_handling", "when_otherwise")
         assert_dataframes_equal(result, expected)
 
@@ -83,10 +83,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.nvl(df.salary, 0))
-        
+
         expected = load_expected_output("null_handling", "nvl")
         assert_dataframes_equal(result, expected)
 
@@ -98,10 +98,10 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.nvl2(df.salary, df.salary * 1.1, 0))
-        
+
         expected = load_expected_output("null_handling", "nvl2")
         assert_dataframes_equal(result, expected)
 
@@ -113,9 +113,9 @@ class TestNullHandlingCompatibility:
             {"id": 3, "name": "Charlie", "age": None, "salary": 70000.0},
             {"id": 4, "name": "David", "age": 40, "salary": 80000.0},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.nullif(df.age, 30))
-        
+
         expected = load_expected_output("null_handling", "nullif")
         assert_dataframes_equal(result, expected)

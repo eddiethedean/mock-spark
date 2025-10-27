@@ -12,15 +12,16 @@ from mock_spark import F
 
 class TestStructFunctionsCompatibility:
     """Test struct functions against expected PySpark outputs."""
-    
+
     @pytest.fixture
     def spark(self):
         """Create a MockSparkSession for testing."""
         from mock_spark import MockSparkSession
+
         session = MockSparkSession("struct_functions_test")
         yield session
         session.stop()
-    
+
     @pytest.mark.skip(reason="struct not yet implemented correctly")
     def test_struct(self, spark):
         """Test struct function."""
@@ -28,4 +29,3 @@ class TestStructFunctionsCompatibility:
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.struct(df.name, df.age))
         assert_dataframes_equal(result, expected)
-

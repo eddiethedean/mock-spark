@@ -22,10 +22,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.year(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "year")
         assert_dataframes_equal(result, expected)
 
@@ -36,10 +36,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.month(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "month")
         assert_dataframes_equal(result, expected)
 
@@ -51,10 +51,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.day(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "day")
         assert_dataframes_equal(result, expected)
 
@@ -65,10 +65,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.dayofweek(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "dayofweek")
         assert_dataframes_equal(result, expected)
 
@@ -79,10 +79,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.dayofyear(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "dayofyear")
         assert_dataframes_equal(result, expected)
 
@@ -93,10 +93,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.weekofyear(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "weekofyear")
         assert_dataframes_equal(result, expected)
 
@@ -107,10 +107,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.quarter(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "quarter")
         assert_dataframes_equal(result, expected)
 
@@ -121,10 +121,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.date_add(df.hire_date, 30))
-        
+
         expected = load_expected_output("datetime", "date_add")
         assert_dataframes_equal(result, expected)
 
@@ -135,10 +135,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.date_sub(df.hire_date, 30))
-        
+
         expected = load_expected_output("datetime", "date_sub")
         assert_dataframes_equal(result, expected)
 
@@ -146,14 +146,29 @@ class TestDatetimeFunctionsCompatibility:
     def test_months_between_function(self, mock_spark_session):
         """Test months_between function against expected output."""
         test_data = [
-            {"id": 1, "name": "Alice", "hire_date": "2020-01-15", "birth_date": "1990-05-20"},
-            {"id": 2, "name": "Bob", "hire_date": "2019-03-10", "birth_date": "1985-12-03"},
-            {"id": 3, "name": "Charlie", "hire_date": "2021-07-22", "birth_date": "1992-08-14"},
+            {
+                "id": 1,
+                "name": "Alice",
+                "hire_date": "2020-01-15",
+                "birth_date": "1990-05-20",
+            },
+            {
+                "id": 2,
+                "name": "Bob",
+                "hire_date": "2019-03-10",
+                "birth_date": "1985-12-03",
+            },
+            {
+                "id": 3,
+                "name": "Charlie",
+                "hire_date": "2021-07-22",
+                "birth_date": "1992-08-14",
+            },
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.months_between(df.hire_date, df.birth_date))
-        
+
         expected = load_expected_output("datetime", "months_between")
         assert_dataframes_equal(result, expected)
 
@@ -164,10 +179,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.date_format(df.hire_date, "yyyy-MM"))
-        
+
         expected = load_expected_output("datetime", "date_format")
         assert_dataframes_equal(result, expected)
 
@@ -178,10 +193,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
             {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.to_date(df.hire_date))
-        
+
         expected = load_expected_output("datetime", "to_date")
         assert_dataframes_equal(result, expected)
 
@@ -192,10 +207,10 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob"},
             {"id": 3, "name": "Charlie"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.current_date())
-        
+
         expected = load_expected_output("datetime", "current_date")
         assert_dataframes_equal(result, expected)
 
@@ -206,9 +221,9 @@ class TestDatetimeFunctionsCompatibility:
             {"id": 2, "name": "Bob"},
             {"id": 3, "name": "Charlie"},
         ]
-        
+
         df = mock_spark_session.createDataFrame(test_data)
         result = df.select(F.current_timestamp())
-        
+
         expected = load_expected_output("datetime", "current_timestamp")
         assert_dataframes_equal(result, expected)
