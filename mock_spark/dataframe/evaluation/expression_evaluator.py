@@ -201,20 +201,88 @@ class ExpressionEvaluator:
             # The column is itself a MockColumnOperation, evaluate it first
             value = self.evaluate_expression(row, operation.column)
         else:
-            # Simple column reference or literal
+            # Regular column reference or literal
             if hasattr(operation.column, "value") and hasattr(operation.column, "name"):
-                # It's a MockLiteral - evaluate it
                 value = self._evaluate_value(row, operation.column)
             else:
-                # Regular column reference
-                column_name = (
+                col_name = (
                     operation.column.name
                     if hasattr(operation.column, "name")
                     else str(operation.column)
                 )
-                value = row.get(column_name)
+                value = row.get(col_name)
 
         func_name = operation.operation
+
+        # Fast-path datediff using direct row values by column name
+        if func_name == "datediff":
+            left_raw = None
+            right_raw = None
+            try:
+                # Prefer direct lookup by column names when available
+                if hasattr(operation.column, "name"):
+                    left_raw = row.get(operation.column.name)
+                if hasattr(operation, "value") and hasattr(operation.value, "name"):
+                    right_raw = row.get(operation.value.name)
+                # Fall back to evaluated values
+                if left_raw is None:
+                    # Force evaluation of left expression if needed
+                    try:
+                        left_raw = self.evaluate_expression(row, operation.column)
+                    except Exception:
+                        left_raw = value
+                if right_raw is None:
+                    right_raw = self.evaluate_expression(
+                        row, getattr(operation, "value", None)
+                    )
+            except Exception:
+                pass
+
+            # If left_raw is still None and the left is a to_date/to_timestamp op, try extracting inner column
+            if (
+                left_raw is None
+                and hasattr(operation, "column")
+                and hasattr(operation.column, "operation")
+            ):
+                inner_op = getattr(operation.column, "operation", None)
+                if inner_op in ("to_date", "to_timestamp") and hasattr(
+                    operation.column, "column"
+                ):
+                    try:
+                        inner_col = operation.column.column
+                        inner_name = getattr(inner_col, "name", None)
+                        if inner_name:
+                            left_raw = row.get(inner_name)
+                    except Exception:
+                        pass
+
+            def _to_date(v: Any) -> Optional[dt_module.date]:
+                if isinstance(v, dt_module.date) and not isinstance(
+                    v, dt_module.datetime
+                ):
+                    return v
+                if isinstance(v, dt_module.datetime):
+                    return v.date()
+                if isinstance(v, str):
+                    try:
+                        return dt_module.date.fromisoformat(v.strip().split(" ")[0])
+                    except Exception:
+                        try:
+                            dt = dt_module.datetime.fromisoformat(
+                                v.replace("Z", "+00:00").replace(" ", "T")
+                            )
+                            return dt.date()
+                        except Exception:
+                            return None
+                return None
+
+            end_date = _to_date(left_raw)
+            start_date = _to_date(right_raw)
+            if end_date is None or start_date is None:
+                return None
+            return (end_date - start_date).days
+
+        # Let the earlier datediff block handle computation or defer to SQL
 
         # Handle coalesce function before the None check
         if func_name == "coalesce":
@@ -658,6 +726,8 @@ class ExpressionEvaluator:
             # Cast function
             "cast": self._func_cast,
             # Datetime functions
+            "to_date": self._func_to_date,
+            "to_timestamp": self._func_to_timestamp,
             "hour": self._func_hour,
             "minute": self._func_minute,
             "second": self._func_second,
@@ -811,6 +881,34 @@ class ExpressionEvaluator:
             return value
 
     # Datetime function implementations
+    def _func_to_date(self, value: Any, operation: MockColumnOperation) -> Any:
+        """to_date function."""
+        if value is None:
+            return None
+        try:
+            if isinstance(value, str):
+                # Accept 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS[.fff]'
+                date_part = value.strip().split(" ")[0]
+                return dt_module.date.fromisoformat(date_part)
+            if hasattr(value, "date"):
+                return value.date()
+        except Exception:
+            return None
+        return None
+
+    def _func_to_timestamp(self, value: Any, operation: MockColumnOperation) -> Any:
+        """to_timestamp function."""
+        if value is None:
+            return None
+        try:
+            if isinstance(value, str):
+                return dt_module.datetime.fromisoformat(
+                    value.replace("Z", "+00:00").replace(" ", "T")
+                )
+        except Exception:
+            return None
+        return None
+
     def _func_hour(self, value: Any, operation: MockColumnOperation) -> Any:
         """Hour function."""
         return self._extract_datetime_component(value, "hour")
@@ -877,19 +975,12 @@ class ExpressionEvaluator:
         return dt.isocalendar()[1]
 
     def _func_datediff(self, value: Any, operation: MockColumnOperation) -> Any:
-        """Date difference function."""
-        # Get the second date from the operation's value attribute
-        date2_col = getattr(operation, "value", None)
-        if date2_col is None:
-            return None
+        """Date difference function (days).
 
-        # For now, if both dates are the same, return 0
-        # This is a simplified implementation for testing
-        if hasattr(date2_col, "name") and hasattr(operation.column, "name"):
-            if date2_col.name == operation.column.name:
-                return 0
-
-        # This would need to be evaluated in context - placeholder for now
+        Evaluated via SQL translation during materialization; return None here
+        to defer computation unless both operands are trivial literals (which
+        are handled earlier in _evaluate_function_call).
+        """
         return None
 
     def _func_months_between(self, value: Any, operation: MockColumnOperation) -> Any:

@@ -6,7 +6,6 @@ to ensure compatibility across different join types and conditions.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 

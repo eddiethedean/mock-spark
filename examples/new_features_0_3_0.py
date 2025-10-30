@@ -15,6 +15,12 @@ This example showcases all the new features introduced in Mock Spark 0.3.0:
 Current Status: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 """
 
+import os
+import sys
+
+# Allow running this script directly without installing the package
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
 

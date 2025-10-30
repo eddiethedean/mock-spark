@@ -4,7 +4,7 @@ Unit tests for base aggregate functions.
 
 import pytest
 from mock_spark.functions.base import MockAggregateFunction
-from mock_spark.spark_types import LongType, StringType, DoubleType
+from mock_spark.spark_types import LongType
 
 
 @pytest.mark.unit
@@ -191,4 +191,4 @@ class TestMockAggregateFunction:
     def test_init_with_custom_data_type_nullable(self):
         """Test initialization with custom nullable data type."""
         func = MockAggregateFunction("col", "count", LongType(nullable=False))
-        assert func.data_type.nullable == False
+        assert not func.data_type.nullable

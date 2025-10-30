@@ -270,7 +270,7 @@ class LazyEvaluationEngine:
                         # Check for operations that require MockDataFrame evaluation
                         if col.operation in [
                             "months_between",
-                            "datediff",
+                            # Allow DuckDB to handle datediff via SQL path
                             "cast",
                             "when",
                             "otherwise",

@@ -6,7 +6,7 @@ the same results as PySpark by comparing against pre-generated expected outputs.
 """
 
 import pytest
-from tests.tools.output_loader import load_expected_output, get_available_tests
+from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 
 

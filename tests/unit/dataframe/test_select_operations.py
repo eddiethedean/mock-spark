@@ -4,14 +4,6 @@ Unit tests for DataFrame select operations.
 
 import pytest
 from mock_spark import MockSparkSession, F
-from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
-    StringType,
-    IntegerType,
-    DoubleType,
-    BooleanType,
-)
 
 
 @pytest.mark.unit

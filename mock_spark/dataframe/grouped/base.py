@@ -288,7 +288,9 @@ class MockGroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
-                        expr_result = self.df._evaluate_column_expression(row_data, expr.column)
+                        expr_result = self.df._evaluate_column_expression(
+                            row_data, expr.column
+                        )
                         if expr_result is not None:
                             # Coerce booleans to ints to mirror Spark when user casts
                             if isinstance(expr_result, bool):
@@ -296,7 +298,11 @@ class MockGroupedData:
                             # Convert numeric-looking strings
                             if isinstance(expr_result, str):
                                 try:
-                                    expr_result = float(expr_result) if "." in expr_result else int(expr_result)
+                                    expr_result = (
+                                        float(expr_result)
+                                        if "." in expr_result
+                                        else int(expr_result)
+                                    )
                                 except ValueError:
                                     continue
                             values.append(expr_result)
@@ -307,7 +313,20 @@ class MockGroupedData:
             # Simple column: validate and sum
             if (
                 col_name
-                and not any(op in col_name for op in ["+", "-", "*", "/", "(", ")", "extract", "TRY_CAST", "AS"])
+                and not any(
+                    op in col_name
+                    for op in [
+                        "+",
+                        "-",
+                        "*",
+                        "/",
+                        "(",
+                        ")",
+                        "extract",
+                        "TRY_CAST",
+                        "AS",
+                    ]
+                )
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]
@@ -334,13 +353,19 @@ class MockGroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
-                        expr_result = self.df._evaluate_column_expression(row_data, expr.column)
+                        expr_result = self.df._evaluate_column_expression(
+                            row_data, expr.column
+                        )
                         if expr_result is not None:
                             if isinstance(expr_result, bool):
                                 expr_result = 1 if expr_result else 0
                             if isinstance(expr_result, str):
                                 try:
-                                    expr_result = float(expr_result) if "." in expr_result else int(expr_result)
+                                    expr_result = (
+                                        float(expr_result)
+                                        if "." in expr_result
+                                        else int(expr_result)
+                                    )
                                 except ValueError:
                                     continue
                             values.append(expr_result)
@@ -351,7 +376,20 @@ class MockGroupedData:
             # Simple column: validate and average
             if (
                 col_name
-                and not any(op in col_name for op in ["+", "-", "*", "/", "(", ")", "extract", "TRY_CAST", "AS"])
+                and not any(
+                    op in col_name
+                    for op in [
+                        "+",
+                        "-",
+                        "*",
+                        "/",
+                        "(",
+                        ")",
+                        "extract",
+                        "TRY_CAST",
+                        "AS",
+                    ]
+                )
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]

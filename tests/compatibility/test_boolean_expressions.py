@@ -31,7 +31,7 @@ class TestBooleanExpressionsCompatibility:
         df = spark.createDataFrame(test_data)
         result = df.withColumn(
             "out_of_range",
-            (F.col("value") < F.col("min")) | (F.col("value") > F.col("max"))
+            (F.col("value") < F.col("min")) | (F.col("value") > F.col("max")),
         )
 
         rows = result.collect()
@@ -53,8 +53,7 @@ class TestBooleanExpressionsCompatibility:
 
         df = spark.createDataFrame(test_data)
         result = df.withColumn(
-            "can_drive",
-            (F.col("age") >= 18) & (F.col("has_license") == F.lit(True))
+            "can_drive", (F.col("age") >= 18) & (F.col("has_license") == F.lit(True))
         )
 
         rows = result.collect()
@@ -75,10 +74,7 @@ class TestBooleanExpressionsCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        result = df.withColumn(
-            "is_inactive",
-            ~F.col("is_active")
-        )
+        result = df.withColumn("is_inactive", ~F.col("is_active"))
 
         rows = result.collect()
         assert len(rows) == 3
@@ -97,8 +93,8 @@ class TestBooleanExpressionsCompatibility:
         df = spark.createDataFrame(test_data)
         result = df.withColumn(
             "is_valid",
-            ((F.col("value") >= F.col("min")) & (F.col("value") <= F.col("max"))) |
-            (F.col("value") > F.col("threshold"))
+            ((F.col("value") >= F.col("min")) & (F.col("value") <= F.col("max")))
+            | (F.col("value") > F.col("threshold")),
         )
 
         rows = result.collect()
@@ -115,11 +111,8 @@ class TestBooleanExpressionsCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        result = df.filter(
-            (F.col("age") >= 18) | (F.col("name") == "Bob")
-        )
+        result = df.filter((F.col("age") >= 18) | (F.col("name") == "Bob"))
 
         rows = result.collect()
         # Should include Alice (>=18), Bob (name match), and Charlie (>=18)
         assert len(rows) == 3
-

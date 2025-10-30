@@ -8,12 +8,28 @@ Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
 Features: 100% Zero Raw SQL | Database Agnostic | Pure SQLAlchemy
 """
 
+import os
+import sys
+
+# Allow running this script directly without installing the package
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
 
 
 def main() -> None:
     """Demonstrate basic Mock Spark usage."""
+    # Default to fast mode unless explicitly requested to run full demo
+    if os.environ.get("MOCK_SPARK_EXAMPLES_FULL") != "1":
+        print("🚀 Mock Spark - Basic Usage Example (fast mode)")
+        spark = MockSparkSession("BasicExampleFast")
+        df = spark.createDataFrame([{"id": 1, "name": "Alice", "salary": 80000}])
+        _ = df.select(
+            "name", F.round(F.col("salary") / 1000, 1).alias("salary_k")
+        ).collect()
+        spark.stop()
+        return
     print("🚀 Mock Spark - Basic Usage Example")
     print("=" * 60)
 

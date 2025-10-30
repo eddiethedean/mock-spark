@@ -29,18 +29,23 @@ class TestCTEOptimizationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        
+
         # Complex chain: filter -> withColumn (datetime) -> withColumn (calculation) -> select
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # Fail on CTE fallback warnings
             try:
-                result = (df
-                    .filter(F.col("value") > 50)
-                    .withColumn("parsed_timestamp", 
-                               F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"))
+                result = (
+                    df.filter(F.col("value") > 50)
+                    .withColumn(
+                        "parsed_timestamp",
+                        F.to_timestamp(
+                            F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
+                        ),
+                    )
                     .withColumn("doubled", F.col("value") * 2)
-                    .select("id", "parsed_timestamp", "doubled"))
-                
+                    .select("id", "parsed_timestamp", "doubled")
+                )
+
                 rows = result.collect()
                 assert len(rows) == 2
                 # Verify results are correct
@@ -58,18 +63,19 @@ class TestCTEOptimizationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        
+
         # Chain of 5+ operations
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             try:
-                result = (df
-                    .withColumn("age_plus_1", F.col("age") + 1)
+                result = (
+                    df.withColumn("age_plus_1", F.col("age") + 1)
                     .withColumn("age_plus_2", F.col("age_plus_1") + 1)
                     .withColumn("bonus", F.col("salary") * 0.1)
                     .withColumn("total", F.col("salary") + F.col("bonus"))
-                    .select("name", "age_plus_2", "total"))
-                
+                    .select("name", "age_plus_2", "total")
+                )
+
                 rows = result.collect()
                 assert len(rows) == 2
                 assert rows[0].age_plus_2 == 27
@@ -87,17 +93,20 @@ class TestCTEOptimizationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        
+
         # Chain with string operations
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             try:
-                result = (df
-                    .withColumn("full_name", F.concat_ws(" ", F.col("first"), F.col("last")))
+                result = (
+                    df.withColumn(
+                        "full_name", F.concat_ws(" ", F.col("first"), F.col("last"))
+                    )
                     .withColumn("greeting", F.lit("Hello ") + F.col("full_name"))
                     .withColumn("upper_greeting", F.upper(F.col("greeting")))
-                    .select("full_name", "upper_greeting"))
-                
+                    .select("full_name", "upper_greeting")
+                )
+
                 rows = result.collect()
                 assert len(rows) == 2
                 assert rows[0].full_name == "John Doe"
@@ -115,19 +124,26 @@ class TestCTEOptimizationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        
+
         # Chain with boolean operations
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             try:
-                result = (df
-                    .withColumn("is_valid", 
-                               (F.col("value") >= F.col("min")) & (F.col("value") <= F.col("max")))
-                    .withColumn("is_extreme", 
-                               (F.col("value") < F.col("min")) | (F.col("value") > F.col("max")))
+                result = (
+                    df.withColumn(
+                        "is_valid",
+                        (F.col("value") >= F.col("min"))
+                        & (F.col("value") <= F.col("max")),
+                    )
+                    .withColumn(
+                        "is_extreme",
+                        (F.col("value") < F.col("min"))
+                        | (F.col("value") > F.col("max")),
+                    )
                     .filter(F.col("is_valid") == F.lit(True))
-                    .select("value", "is_valid"))
-                
+                    .select("value", "is_valid")
+                )
+
                 rows = result.collect()
                 assert len(rows) == 1  # Only valid value should pass filter
                 assert rows[0].is_valid is True
@@ -135,4 +151,3 @@ class TestCTEOptimizationCompatibility:
                 if "CTE optimization failed" in str(e):
                     pytest.fail(f"CTE optimization should succeed but fell back: {e}")
                 raise
-

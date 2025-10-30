@@ -65,7 +65,7 @@ class TestJSONFunctions:
 
     def test_from_json_column(self, spark, sample_data):
         """Test from_json returns a column operation."""
-        df = spark.createDataFrame(sample_data)
+        _ = spark.createDataFrame(sample_data)
 
         # Test that calling from_json creates an operation
         # Note: Actual implementation may vary
@@ -75,7 +75,7 @@ class TestJSONFunctions:
 
     def test_to_json_column(self, spark, sample_data):
         """Test to_json returns a column operation."""
-        df = spark.createDataFrame(sample_data)
+        _ = spark.createDataFrame(sample_data)
 
         # Test that calling to_json creates an operation
         # Note: Actual implementation may vary

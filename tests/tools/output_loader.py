@@ -6,9 +6,8 @@ and provides utilities for caching and accessing them during tests.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
 

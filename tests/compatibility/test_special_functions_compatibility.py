@@ -43,7 +43,6 @@ class TestSpecialFunctionsCompatibility:
         expected = load_expected_output("functions", "isnan")
         df = spark.createDataFrame(expected["input_data"])
         # Create a float('nan') value in the DataFrame
-        import math
 
         result = df.select(F.isnan(F.lit(float("nan"))))
         assert_dataframes_equal(result, expected)

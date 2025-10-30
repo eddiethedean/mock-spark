@@ -5,7 +5,6 @@ Tests error mapping from DuckDB exceptions to MockSpark exceptions.
 """
 
 import pytest
-from unittest.mock import Mock
 from mock_spark.backend.duckdb.error_translator import DuckDBErrorTranslator
 from mock_spark.core.exceptions.operation import (
     MockSparkOperationError,

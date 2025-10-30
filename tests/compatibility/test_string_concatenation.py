@@ -46,7 +46,9 @@ class TestStringConcatenationCompatibility:
 
         df = spark.createDataFrame(test_data)
         result = df.select(
-            F.concat_ws("-", F.col("first"), F.col("middle"), F.col("last")).alias("full_name")
+            F.concat_ws("-", F.col("first"), F.col("middle"), F.col("last")).alias(
+                "full_name"
+            )
         )
 
         rows = result.collect()
@@ -79,9 +81,7 @@ class TestStringConcatenationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        result = df.select(
-            (F.lit("Hello ") + F.col("name")).alias("greeting")
-        )
+        result = df.select((F.lit("Hello ") + F.col("name")).alias("greeting"))
 
         rows = result.collect()
         assert len(rows) == 2
@@ -96,12 +96,9 @@ class TestStringConcatenationCompatibility:
         ]
 
         df = spark.createDataFrame(test_data)
-        result = df.select(
-            (F.col("text") + F.lit(" World")).alias("greeting")
-        )
+        result = df.select((F.col("text") + F.lit(" World")).alias("greeting"))
 
         rows = result.collect()
         assert len(rows) == 2
         assert rows[0].greeting == "Hello World"
         assert rows[1].greeting == "World World"
-

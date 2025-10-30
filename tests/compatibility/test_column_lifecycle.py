@@ -70,7 +70,9 @@ class TestColumnLifecycleCompatibility:
 
         df = spark.createDataFrame(test_data)
         # Create column, then select it
-        df = df.withColumn("full_info", F.concat_ws(" - ", F.col("name"), F.col("age").cast("string")))
+        df = df.withColumn(
+            "full_info", F.concat_ws(" - ", F.col("name"), F.col("age").cast("string"))
+        )
         result = df.select("id", "full_info")
 
         rows = result.collect()
@@ -117,4 +119,3 @@ class TestColumnLifecycleCompatibility:
         assert rows[0].total == 110.0
         assert rows[1].tax == 30.0
         assert rows[1].total == 230.0
-

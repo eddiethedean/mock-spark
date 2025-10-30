@@ -31,7 +31,9 @@ class TestDatetimeParsingCompatibility:
         df = spark.createDataFrame(test_data)
         result = df.select(
             "timestamp_str",
-            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]").alias("parsed")
+            F.to_timestamp(
+                F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
+            ).alias("parsed"),
         )
 
         # Verify that parsing succeeded (should not raise error)
@@ -51,7 +53,9 @@ class TestDatetimeParsingCompatibility:
         df = spark.createDataFrame(test_data)
         result = df.select(
             "timestamp_str",
-            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]").alias("parsed")
+            F.to_timestamp(
+                F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
+            ).alias("parsed"),
         )
 
         # Verify that parsing succeeded
@@ -71,7 +75,9 @@ class TestDatetimeParsingCompatibility:
         df = spark.createDataFrame(test_data)
         result = df.select(
             "timestamp_str",
-            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]").alias("parsed")
+            F.to_timestamp(
+                F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
+            ).alias("parsed"),
         )
 
         # All should parse successfully despite mixed precision
@@ -91,7 +97,9 @@ class TestDatetimeParsingCompatibility:
         # Using [.SSS] pattern for milliseconds
         result = df.select(
             "timestamp_str",
-            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSS]").alias("parsed")
+            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSS]").alias(
+                "parsed"
+            ),
         )
 
         rows = result.collect()
@@ -108,11 +116,12 @@ class TestDatetimeParsingCompatibility:
 
         df = spark.createDataFrame(test_data)
         result = df.select(
-            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]").alias("parsed")
+            F.to_timestamp(
+                F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
+            ).alias("parsed")
         )
 
         # Should parse both formats
         rows = result.collect()
         assert len(rows) == 2
         assert all(row.parsed is not None for row in rows)
-

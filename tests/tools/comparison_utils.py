@@ -8,7 +8,7 @@ expected outputs from PySpark, replacing the runtime comparison approach.
 import math
 import datetime as dt
 from decimal import Decimal
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Sequence, Tuple
 from dataclasses import dataclass
 
 
@@ -561,13 +561,13 @@ def assert_dataframes_equal(
 
         # Check column exists (we can't check exact values for current date/time)
         if len(mock_columns) != expected_schema.get("field_count", 0):
-            raise AssertionError(f"Column count mismatch for current_datetime")
+            raise AssertionError("Column count mismatch for current_datetime")
 
         # Values will always be current, so just check they're not None
         for row in mock_rows:
             for col_name, value in row.items():
                 if "current" in col_name.lower() and value is None:
-                    raise AssertionError(f"current_datetime function returned None")
+                    raise AssertionError("current_datetime function returned None")
 
         return  # Skip normal comparison for current date/time tests
 

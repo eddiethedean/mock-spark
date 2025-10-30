@@ -30,7 +30,9 @@ class TestTypeCoercionCompatibility:
         df = spark.createDataFrame(test_data)
         # String + numeric should coerce numeric to string
         result = df.select(
-            (F.col("name") + F.lit(": $") + F.col("price").cast("string")).alias("description")
+            (F.col("name") + F.lit(": $") + F.col("price").cast("string")).alias(
+                "description"
+            )
         )
 
         rows = result.collect()
@@ -48,7 +50,9 @@ class TestTypeCoercionCompatibility:
 
         df = spark.createDataFrame(test_data)
         # Sum of boolean should work
-        result = df.groupBy("category").agg(F.sum(F.col("is_active").cast("int")).alias("active_count"))
+        result = df.groupBy("category").agg(
+            F.sum(F.col("is_active").cast("int")).alias("active_count")
+        )
 
         rows = result.collect()
         assert len(rows) == 2
@@ -64,9 +68,7 @@ class TestTypeCoercionCompatibility:
 
         df = spark.createDataFrame(test_data)
         # Int + Float should promote to Float
-        result = df.select(
-            (F.col("int_val") + F.col("float_val")).alias("sum")
-        )
+        result = df.select((F.col("int_val") + F.col("float_val")).alias("sum"))
 
         rows = result.collect()
         assert len(rows) == 2
@@ -105,4 +107,3 @@ class TestTypeCoercionCompatibility:
         rows = result.collect()
         assert len(rows) == 1
         assert rows[0].value == "200"
-

@@ -20,6 +20,7 @@ Example:
 
 import ast
 import inspect
+import textwrap
 from typing import Any, Callable, List
 
 
@@ -56,13 +57,13 @@ class LambdaParser:
         # Get the source code of the lambda
         try:
             source = inspect.getsource(lambda_func)
+            source = textwrap.dedent(source)
         except (OSError, TypeError) as e:
             raise LambdaTranslationError(f"Cannot get source for lambda: {e}")
 
-        # Parse the lambda expression
+        # Parse the lambda expression or a simple def with a return expression
         try:
-            # Clean up the source - extract just the lambda part
-            # Look for "lambda " (with space) or "lambda:" to find the actual lambda keyword
+            # Prefer fast path: direct lambda in source
             lambda_start = -1
             for pattern in ["lambda ", "lambda:"]:
                 idx = source.find(pattern)
@@ -70,48 +71,56 @@ class LambdaParser:
                     lambda_start = idx
                     break
 
-            if lambda_start == -1:
-                raise LambdaTranslationError("Not a lambda function")
+            if lambda_start != -1:
+                # Extract from 'lambda' onward
+                lambda_expr = source[lambda_start:]
 
-            # Extract from 'lambda' onward
-            lambda_expr = source[lambda_start:]
-
-            # Remove trailing characters that might cause issues
-            # We need to find where the lambda expression ends
-            # This is tricky because lambda can be nested in function calls
-
-            # Try to find the end by matching parentheses
-            # Key insight: only after the ':' (colon) in lambda should we look for
-            # terminating commas. Before the colon, commas are parameter separators.
-            paren_depth = 0
-            end_idx = len(lambda_expr)
-            seen_colon = False
-
-            for i, char in enumerate(lambda_expr):
-                if char == ":":
-                    seen_colon = True
-                elif char == "(":
-                    paren_depth += 1
-                elif char == ")":
-                    if paren_depth == 0:
-                        # This closing paren is not part of the lambda
+                # Trim at the end of the lambda expression
+                paren_depth = 0
+                end_idx = len(lambda_expr)
+                seen_colon = False
+                for i, char in enumerate(lambda_expr):
+                    if char == ":":
+                        seen_colon = True
+                    elif char == "(":
+                        paren_depth += 1
+                    elif char == ")":
+                        if paren_depth == 0:
+                            end_idx = i
+                            break
+                        paren_depth -= 1
+                    elif char in [",", "\n"] and paren_depth == 0 and seen_colon:
                         end_idx = i
                         break
-                    paren_depth -= 1
-                elif char in [",", "\n"] and paren_depth == 0 and seen_colon:
-                    # End of lambda expression (only after we've seen the colon)
-                    end_idx = i
-                    break
 
-            lambda_expr = lambda_expr[:end_idx].strip()
+                lambda_expr = lambda_expr[:end_idx].strip()
+                tree = ast.parse(lambda_expr, mode="eval")
+                if not isinstance(tree.body, ast.Lambda):
+                    raise LambdaTranslationError("Parsed expression is not a lambda")
+                self.ast_node = tree.body
+            else:
+                # Fallback: allow regular function definitions with a single return expression
+                mod = ast.parse(source)
+                func_node = None
+                for n in mod.body:
+                    if isinstance(n, ast.FunctionDef):
+                        func_node = n
+                        break
+                if func_node is None:
+                    raise LambdaTranslationError("Not a lambda function")
 
-            # Try to parse as an expression
-            tree = ast.parse(lambda_expr, mode="eval")
+                # Validate body is a simple single return statement
+                if (
+                    len(func_node.body) != 1
+                    or not isinstance(func_node.body[0], ast.Return)
+                    or func_node.body[0].value is None
+                ):
+                    raise LambdaTranslationError(
+                        "Only simple functions with a single return expression are supported"
+                    )
 
-            if not isinstance(tree.body, ast.Lambda):
-                raise LambdaTranslationError("Parsed expression is not a lambda")
-
-            self.ast_node = tree.body
+                # Construct an equivalent Lambda node from the function signature and return value
+                self.ast_node = ast.Lambda(args=func_node.args, body=func_node.body[0].value)  # type: ignore[arg-type]
 
         except SyntaxError as e:
             raise LambdaTranslationError(f"Cannot parse lambda: {e}")

@@ -136,8 +136,8 @@ class TestMockRDD:
         """Test toDF operation."""
         from mock_spark import MockSparkSession
 
-        spark = MockSparkSession("test")
-        df = sample_rdd.toDF()
+        _ = MockSparkSession("test")
+        _ = sample_rdd.toDF()
         # Should return None or a dataframe - implementation dependent
         assert True
 
@@ -164,7 +164,7 @@ class TestMockGroupedRDD:
 
     def test_countByKey(self):
         """Test countByKey operation."""
-        groups = {"a": [1, 2], "b": [3], "a": [4]}
+        groups = {"a": [1, 2], "b": [3], "c": [4]}
         grouped = MockGroupedRDD(groups)
         result = grouped.countByKey()
         assert isinstance(result, dict)

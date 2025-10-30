@@ -6,7 +6,7 @@ to ensure compatibility across different date/time operations and formats.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import F
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 

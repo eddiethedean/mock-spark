@@ -13,6 +13,11 @@ Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
 """
 
 from typing import List, Dict, Any
+import os
+import sys
+
+# Allow running this script directly without installing the package
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from mock_spark import MockSparkSession, F
 from mock_spark.window import MockWindow as Window
@@ -279,6 +284,16 @@ def main() -> None:
     print("\n📦 Initializing Mock Spark...")
     spark = MockSparkSession("ComprehensiveDemo")
     print(f"   ✓ Session: {spark.app_name}")
+
+    # Default to fast mode unless explicitly requested to run full demo
+    if os.environ.get("MOCK_SPARK_EXAMPLES_FULL") != "1":
+        data = create_sample_data()[:3]
+        df = spark.createDataFrame(data)
+        _ = df.select(
+            "name", F.round(F.col("salary") / 1000, 1).alias("salary_k")
+        ).collect()
+        spark.stop()
+        return
 
     # Load data
     print("\n📊 Loading sample data...")

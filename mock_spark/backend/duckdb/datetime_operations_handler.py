@@ -115,12 +115,14 @@ class DatetimeOperationsHandler:
         if hasattr(expr, "value") and expr.value is not None:
             format_str = expr.value
             # Check for optional fractional seconds pattern like [.SSSSSS]
-            fractional_info = self.format_converter.extract_optional_fractional_seconds(format_str)
-            
+            fractional_info = self.format_converter.extract_optional_fractional_seconds(
+                format_str
+            )
+
             duckdb_format = self.format_converter.convert_java_to_duckdb_format(
                 format_str
             )
-            
+
             if fractional_info and expr.operation == "to_timestamp":
                 # Handle optional fractional seconds by normalizing input
                 # Strip microseconds from input if present before parsing
@@ -291,12 +293,16 @@ class DatetimeOperationsHandler:
             if value is not None:
                 format_str = value
                 # Check for optional fractional seconds pattern like [.SSSSSS]
-                fractional_info = self.format_converter.extract_optional_fractional_seconds(format_str)
-                
+                fractional_info = (
+                    self.format_converter.extract_optional_fractional_seconds(
+                        format_str
+                    )
+                )
+
                 duckdb_format = self.format_converter.convert_java_to_duckdb_format(
                     format_str
                 )
-                
+
                 if fractional_info and operation == "to_timestamp":
                     # Handle optional fractional seconds by normalizing input
                     # Strip microseconds from input if present before parsing

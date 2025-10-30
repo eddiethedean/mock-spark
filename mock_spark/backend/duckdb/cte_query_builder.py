@@ -56,7 +56,9 @@ class CTEQueryBuilder:
                 )
                 # Update current columns for select operations
                 # Extract column names from the select operation, including aliases
-                current_columns = self._extract_column_names_from_select(columns_to_select, current_columns)
+                current_columns = self._extract_column_names_from_select(
+                    columns_to_select, current_columns
+                )
             elif op_name == "withColumn":
                 col_name, col = op_val
                 cte_sql = self.build_with_column_cte(
@@ -99,16 +101,16 @@ class CTEQueryBuilder:
         self, columns: Tuple[Any, ...], existing_columns: List[str]
     ) -> List[str]:
         """Extract column names from a select operation.
-        
+
         Args:
             columns: Columns tuple from select operation
             existing_columns: Current list of available columns
-            
+
         Returns:
             Updated list of column names after select
         """
         selected_columns = []
-        
+
         for col in columns:
             if isinstance(col, str):
                 if col == "*":
@@ -131,7 +133,7 @@ class CTEQueryBuilder:
             elif hasattr(col, "value") and hasattr(col, "data_type"):
                 # MockLiteral - use its name
                 selected_columns.append(col.name)
-        
+
         # If no columns selected (shouldn't happen), return existing
         return selected_columns if selected_columns else existing_columns.copy()
 
@@ -148,6 +150,7 @@ class CTEQueryBuilder:
         Returns:
             SQL string for filter CTE
         """
+
         # Convert condition to SQL using the CURRENT CTE alias for qualification
         class _Alias:
             def __init__(self, name: str) -> None:
@@ -212,7 +215,9 @@ class CTEQueryBuilder:
                     non_explode_parts.append(f'{col.value} AS "{col.name}"')
             elif hasattr(col, "operation"):
                 # Column operation (but not explode)
-                expr_sql = self.expression_translator.expression_to_sql(col, source_name)
+                expr_sql = self.expression_translator.expression_to_sql(
+                    col, source_name
+                )
                 col_name = getattr(col, "name", "result")
                 non_explode_parts.append(f'{expr_sql} AS "{col_name}"')
             elif hasattr(col, "name"):
@@ -384,10 +389,14 @@ class CTEQueryBuilder:
                     original_name = col._original_column.name
                     alias_name = col.name
                     select_parts.append(f'"{original_name}" AS "{alias_name}"')
-                elif hasattr(col, "operation") or (hasattr(col, "column") and hasattr(col, "value")):
+                elif hasattr(col, "operation") or (
+                    hasattr(col, "column") and hasattr(col, "value")
+                ):
                     # This is a MockColumnOperation expression (e.g., col1 + col2, col.cast(...))
                     # Convert to SQL using expression translator
-                    col_expr_sql = self.expression_translator.expression_to_sql(col, source_name)
+                    col_expr_sql = self.expression_translator.expression_to_sql(
+                        col, source_name
+                    )
                     col_alias = col.name if hasattr(col, "name") else "col_expr"
                     select_parts.append(f'{col_expr_sql} AS "{col_alias}"')
                 else:
@@ -427,7 +436,9 @@ class CTEQueryBuilder:
                 elif hasattr(col, "operation"):
                     # Column operation
                     # Pass source_name to expression_to_sql so it can check column types
-                    expr_sql = self.expression_translator.expression_to_sql(col, source_table=source_name)
+                    expr_sql = self.expression_translator.expression_to_sql(
+                        col, source_table=source_name
+                    )
                     select_parts.append(f'{expr_sql} AS "{col_name}"')
                 else:
                     # Simple column reference
@@ -448,7 +459,9 @@ class CTEQueryBuilder:
             elif hasattr(col, "operation"):
                 # Column operation
                 # Pass source_name to expression_to_sql so it can check column types
-                expr_sql = self.expression_translator.expression_to_sql(col, source_table=source_name)
+                expr_sql = self.expression_translator.expression_to_sql(
+                    col, source_table=source_name
+                )
                 select_parts.append(f'{expr_sql} AS "{col_name}"')
             else:
                 # Simple column reference

@@ -218,13 +218,13 @@ class TestArrayFunctions:
         """Test sort_array with ascending=True."""
         result = ArrayFunctions.sort_array(F.col("values"), asc=True)
         assert result.operation == "array_sort"
-        assert result.value == True
+        assert result.value
 
     def test_sort_array_descending(self):
         """Test sort_array with ascending=False."""
         result = ArrayFunctions.sort_array(F.col("values"), asc=False)
         assert result.operation == "array_sort"
-        assert result.value == False
+        assert not result.value
 
     def test_array_agg(self):
         """Test array_agg aggregate function."""
@@ -238,7 +238,10 @@ class TestArrayFunctions:
 
     def test_transform_with_lambda(self):
         """Test transform with lambda function."""
-        func = lambda x: x * 2
+
+        def func(x):
+            return x * 2
+
         result = ArrayFunctions.transform(F.col("numbers"), func)
         assert result.operation == "transform"
         # Should be MockLambdaExpression wrapper
@@ -248,37 +251,57 @@ class TestArrayFunctions:
 
     def test_filter_with_lambda(self):
         """Test filter with lambda function."""
-        func = lambda x: x > 10
+
+        def func(x):
+            return x > 10
+
         result = ArrayFunctions.filter(F.col("numbers"), func)
         assert result.operation == "filter"
 
     def test_exists_with_lambda(self):
         """Test exists with lambda function."""
-        func = lambda x: x > 100
+
+        def func(x):
+            return x > 100
+
         result = ArrayFunctions.exists(F.col("numbers"), func)
         assert result.operation == "exists"
 
     def test_forall_with_lambda(self):
         """Test forall with lambda function."""
-        func = lambda x: x > 0
+
+        def func(x):
+            return x > 0
+
         result = ArrayFunctions.forall(F.col("numbers"), func)
         assert result.operation == "forall"
 
     def test_aggregate_with_lambda(self):
         """Test aggregate with lambda function."""
-        merge_func = lambda acc, x: acc + x
+
+        def merge_func(acc, x):
+            return acc + x
+
         result = ArrayFunctions.aggregate(F.col("nums"), 0, merge_func)
         assert result.operation == "aggregate"
 
     def test_aggregate_with_finish(self):
         """Test aggregate with finish function."""
-        merge_func = lambda acc, x: acc + x
-        finish_func = lambda x: x * 2
+
+        def merge_func(acc, x):
+            return acc + x
+
+        def finish_func(x):
+            return x * 2
+
         result = ArrayFunctions.aggregate(F.col("nums"), 0, merge_func, finish_func)
         assert result.operation == "aggregate"
 
     def test_zip_with_with_lambda(self):
         """Test zip_with with lambda function."""
-        merge_func = lambda x, y: x + y
+
+        def merge_func(x, y):
+            return x + y
+
         result = ArrayFunctions.zip_with(F.col("arr1"), F.col("arr2"), merge_func)
         assert result.operation == "zip_with"

@@ -17,7 +17,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 # Add project root to path
@@ -27,7 +27,7 @@ sys.path.insert(0, str(project_root))
 try:
     from pyspark.sql import SparkSession
     from pyspark.sql import functions as F
-    from pyspark.sql.types import *
+    from pyspark.sql.types import *  # noqa: F403
 
     PYSPARK_AVAILABLE = True
 except ImportError:

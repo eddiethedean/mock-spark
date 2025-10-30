@@ -91,4 +91,3 @@ class TestDateArithmeticCompatibility:
         rows = result.collect()
         assert len(rows) == 1
         assert rows[0].days_diff == 14
-

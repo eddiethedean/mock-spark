@@ -4,7 +4,6 @@ Unit tests for spark types.
 
 import pytest
 from mock_spark.spark_types import (
-    MockDataType,
     StringType,
     IntegerType,
     LongType,
@@ -16,14 +15,10 @@ from mock_spark.spark_types import (
     StructType,
     MockStructField,
     MockStructType,
-    TimestampType,
-    DateType,
     CharType,
     VarcharType,
     IntervalType,
     MockRow,
-    BinaryType,
-    FloatType,
 )
 
 
@@ -167,7 +162,7 @@ class TestArrayType:
     def test_array_type_nullable(self):
         """Test ArrayType nullable property."""
         at = ArrayType(StringType(), nullable=False)
-        assert at.nullable == False
+        assert not at.nullable
 
 
 @pytest.mark.unit
@@ -188,7 +183,7 @@ class TestMapType:
     def test_map_type_nullable(self):
         """Test MapType nullable property."""
         mt = MapType(StringType(), LongType(), nullable=False)
-        assert mt.nullable == False
+        assert not mt.nullable
 
 
 @pytest.mark.unit
