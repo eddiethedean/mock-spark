@@ -50,12 +50,13 @@ class CTEQueryBuilder:
                     current_cte_name, op_val, source_table_obj
                 )
             elif op_name == "select":
+                columns_to_select = op_val
                 cte_sql = self.build_select_cte(
-                    current_cte_name, op_val, source_table_obj
+                    current_cte_name, columns_to_select, source_table_obj
                 )
                 # Update current columns for select operations
-                # Note: This is a simplification - full implementation would parse the select
-                # For now, we'll just use source columns as we don't modify in place
+                # Extract column names from the select operation, including aliases
+                current_columns = self._extract_column_names_from_select(columns_to_select, current_columns)
             elif op_name == "withColumn":
                 col_name, col = op_val
                 cte_sql = self.build_with_column_cte(
@@ -94,6 +95,46 @@ class CTEQueryBuilder:
 
         return final_query
 
+    def _extract_column_names_from_select(
+        self, columns: Tuple[Any, ...], existing_columns: List[str]
+    ) -> List[str]:
+        """Extract column names from a select operation.
+        
+        Args:
+            columns: Columns tuple from select operation
+            existing_columns: Current list of available columns
+            
+        Returns:
+            Updated list of column names after select
+        """
+        selected_columns = []
+        
+        for col in columns:
+            if isinstance(col, str):
+                if col == "*":
+                    # Wildcard - include all existing columns
+                    return existing_columns.copy()
+                else:
+                    selected_columns.append(col)
+            elif hasattr(col, "name"):
+                # Column with name (alias or original)
+                col_name = col.name
+                if col_name == "*":
+                    return existing_columns.copy()
+                selected_columns.append(col_name)
+            elif hasattr(col, "operation"):
+                # Column operation - use its name attribute if available
+                col_name = getattr(col, "name", None)
+                if col_name:
+                    selected_columns.append(col_name)
+                # If no name, it's an expression without alias - skip for column tracking
+            elif hasattr(col, "value") and hasattr(col, "data_type"):
+                # MockLiteral - use its name
+                selected_columns.append(col.name)
+        
+        # If no columns selected (shouldn't happen), return existing
+        return selected_columns if selected_columns else existing_columns.copy()
+
     def build_filter_cte(
         self, source_name: str, condition: Any, source_table_obj: Any
     ) -> str:
@@ -107,9 +148,13 @@ class CTEQueryBuilder:
         Returns:
             SQL string for filter CTE
         """
-        # Convert condition to SQL
+        # Convert condition to SQL using the CURRENT CTE alias for qualification
+        class _Alias:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
         filter_sql = self.expression_translator.condition_to_sql(
-            condition, source_table_obj
+            condition, _Alias(source_name)
         )
         return f"SELECT * FROM {source_name} WHERE {filter_sql}"
 
@@ -167,7 +212,7 @@ class CTEQueryBuilder:
                     non_explode_parts.append(f'{col.value} AS "{col.name}"')
             elif hasattr(col, "operation"):
                 # Column operation (but not explode)
-                expr_sql = self.expression_translator.expression_to_sql(col)
+                expr_sql = self.expression_translator.expression_to_sql(col, source_name)
                 col_name = getattr(col, "name", "result")
                 non_explode_parts.append(f'{expr_sql} AS "{col_name}"')
             elif hasattr(col, "name"):
@@ -339,8 +384,14 @@ class CTEQueryBuilder:
                     original_name = col._original_column.name
                     alias_name = col.name
                     select_parts.append(f'"{original_name}" AS "{alias_name}"')
+                elif hasattr(col, "operation") or (hasattr(col, "column") and hasattr(col, "value")):
+                    # This is a MockColumnOperation expression (e.g., col1 + col2, col.cast(...))
+                    # Convert to SQL using expression translator
+                    col_expr_sql = self.expression_translator.expression_to_sql(col, source_name)
+                    col_alias = col.name if hasattr(col, "name") else "col_expr"
+                    select_parts.append(f'{col_expr_sql} AS "{col_alias}"')
                 else:
-                    # Regular column
+                    # Regular column name
                     select_parts.append(f'"{col.name}"')
 
         columns_clause = ", ".join(select_parts) if select_parts else "*"
@@ -375,7 +426,8 @@ class CTEQueryBuilder:
                         select_parts.append(f'{col.value} AS "{col_name}"')
                 elif hasattr(col, "operation"):
                     # Column operation
-                    expr_sql = self.expression_translator.expression_to_sql(col)
+                    # Pass source_name to expression_to_sql so it can check column types
+                    expr_sql = self.expression_translator.expression_to_sql(col, source_table=source_name)
                     select_parts.append(f'{expr_sql} AS "{col_name}"')
                 else:
                     # Simple column reference
@@ -395,7 +447,8 @@ class CTEQueryBuilder:
                     select_parts.append(f'{col.value} AS "{col_name}"')
             elif hasattr(col, "operation"):
                 # Column operation
-                expr_sql = self.expression_translator.expression_to_sql(col)
+                # Pass source_name to expression_to_sql so it can check column types
+                expr_sql = self.expression_translator.expression_to_sql(col, source_table=source_name)
                 select_parts.append(f'{expr_sql} AS "{col_name}"')
             else:
                 # Simple column reference

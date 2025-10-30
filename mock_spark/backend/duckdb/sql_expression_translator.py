@@ -77,28 +77,9 @@ class SQLExpressionTranslator:
             # Handle MockLiteral objects by extracting their value
             return self.value_to_sql(expr.value)
         elif hasattr(expr, "operation") and hasattr(expr, "column"):
-            # Handle MockColumnOperation (arithmetic operations like *, +, -, /)
-            if hasattr(expr, "value"):
-                # Binary operation
-                left = self.column_to_sql(expr.column, source_table)
-                right = self.value_to_sql(expr.value)
-                op_map = {
-                    "*": "*",
-                    "+": "+",
-                    "-": "-",
-                    "/": "/",
-                    "%": "%",
-                }
-                op = op_map.get(expr.operation, expr.operation)
-                return f"({left} {op} {right})"
-            else:
-                # Unary operation or function
-                col_ref = self.column_to_sql(expr.column, source_table)
-                if expr.operation in ["upper", "lower", "length", "abs", "round"]:
-                    return f"{expr.operation.upper()}({col_ref})"
-                else:
-                    # Default: just return the column reference
-                    return col_ref
+            # Handle MockColumnOperation - delegate to expression_to_sql for proper handling
+            # This ensures boolean operations, comparisons, and complex expressions are handled correctly
+            return self.expression_to_sql(expr, source_table)
         elif hasattr(expr, "name"):
             # Check if this is referencing an aliased expression
             if source_table:
@@ -118,6 +99,25 @@ class SQLExpressionTranslator:
         Returns:
             SQL string representation
         """
+        # Handle function-style expressions (e.g., concat_ws) that may carry a function_name attribute
+        if hasattr(expr, "function_name"):
+            func_name = getattr(expr, "function_name", "").lower()
+            # concat_ws(sep, col1, col2, ...) -> ARRAY_TO_STRING([col1, col2, ...], sep)
+            if func_name == "concat_ws":
+                sep, cols = getattr(expr, "value", ("", []))
+                # First argument may also be provided via expr.column
+                col_exprs = []
+                if hasattr(expr, "column") and expr.column is not None:
+                    col_exprs.append(self.column_to_sql(expr.column, source_table))
+                for c in (cols or []):
+                    if hasattr(c, "operation"):
+                        col_sql = self.expression_to_sql(c, source_table)
+                    else:
+                        col_sql = self.column_to_sql(c, source_table)
+                    col_exprs.append(col_sql)
+                all_cols_str = ", ".join(col_exprs)
+                return f"ARRAY_TO_STRING([{all_cols_str}], '{sep}')"
+
         if isinstance(expr, str):
             # If it's already SQL (contains function calls), return as-is
             if any(
@@ -142,7 +142,36 @@ class SQLExpressionTranslator:
             and hasattr(expr, "column")
             and hasattr(expr, "value")
         ):
-            # Check if this is a datetime operation first
+            # Handle datediff explicitly to ensure robust table-qualified casts
+            if getattr(expr, "operation", None) == "datediff":
+                # datediff(end, start) -> DATEDIFF('DAY', start, end)
+                # Use full column_to_sql for both operands with TRY_CAST to DATE
+                # Build end expression
+                end_sql = self.column_to_sql(expr.column, source_table)
+                end_expr = f"CAST({end_sql} AS DATE)"
+                # Build start expression (expr.value)
+                start_raw = expr.value
+                import re
+                if isinstance(start_raw, str):
+                    if re.match(r"^\d{4}-\d{2}-\d{2}$", start_raw):
+                        start_expr = f"DATE '{start_raw}'"
+                    else:
+                        start_expr = f"TRY_CAST('{start_raw}' AS DATE)"
+                elif hasattr(start_raw, "name"):
+                    start_sql = self.column_to_sql(start_raw, source_table)
+                    start_expr = f"CAST({start_sql} AS DATE)"
+                elif hasattr(start_raw, "value"):
+                    val_sql = self.value_to_sql(start_raw)
+                    # value_to_sql may have quoted already
+                    if isinstance(getattr(start_raw, "value", None), str) and re.match(r"^\d{4}-\d{2}-\d{2}$", start_raw.value):
+                        start_expr = f"DATE '{start_raw.value}'"
+                    else:
+                        start_expr = f"CAST({val_sql} AS DATE)"
+                else:
+                    start_expr = f"TRY_CAST({self.value_to_sql(start_raw)} AS DATE)"
+                return f"DATEDIFF('DAY', {start_expr}, {end_expr})"
+
+            # Check if this is another datetime operation
             if self.datetime_handler.is_datetime_operation(expr):
                 return self.datetime_handler.convert_datetime_operation_to_sql(
                     expr, source_table
@@ -338,6 +367,51 @@ class SQLExpressionTranslator:
                     # For other unary operations, treat as function
                     return f"{expr.operation.upper()}({left})"
 
+            # FIRST: Check types BEFORE computing left/right SQL (need values for type checking)
+            # Check if right operand is numeric BEFORE converting to SQL
+            right_is_numeric_for_check = False
+            if isinstance(expr.value, (int, float)):
+                right_is_numeric_for_check = True
+                import logging
+                logging.debug(f"[NUMERIC_DEBUG] Right operand is numeric (raw): {expr.value}")
+            elif isinstance(expr.value, MockLiteral):
+                if isinstance(expr.value.value, (int, float)):
+                    right_is_numeric_for_check = True
+                    import logging
+                    logging.debug(f"[NUMERIC_DEBUG] Right operand is numeric (MockLiteral): {expr.value.value}")
+            
+            # Check if left is numeric - we can check the column type early if table is available
+            left_is_numeric_early = False
+            left_is_string_early = False
+            import logging
+            col_obj = None
+            if source_table is not None and hasattr(expr.column, "name") and right_is_numeric_for_check:
+                logging.debug(f"[NUMERIC_DEBUG] Checking left column type: col={expr.column.name}, source_table={source_table}, right_is_numeric={right_is_numeric_for_check}")
+                try:
+                    if hasattr(self.table_manager, "get_table"):
+                        table_obj = self.table_manager.get_table(source_table)
+                        if table_obj and hasattr(table_obj, "c"):
+                            col_name = expr.column.name
+                            try:
+                                col_obj = table_obj.c[col_name]
+                            except (KeyError, AttributeError):
+                                try:
+                                    col_obj = getattr(table_obj.c, col_name, None)
+                                except (AttributeError, TypeError):
+                                    pass
+                            
+                            if col_obj is not None:
+                                from sqlalchemy import Integer, Float, BigInteger, String
+                                if isinstance(col_obj.type, (Integer, Float, BigInteger)):
+                                    left_is_numeric_early = True
+                                elif isinstance(col_obj.type, String):
+                                    left_is_string_early = True
+                except (AttributeError, KeyError, TypeError):
+                    # Table lookup failed - if right is numeric and left is simple column, default to numeric
+                    if right_is_numeric_for_check and hasattr(expr.column, "name") and not hasattr(expr.column, "operation"):
+                        left_is_numeric_early = True
+            
+            # NOW compute left and right SQL
             # Handle arithmetic operations like MockColumnOperation
             # For column references in expressions, don't quote them
             # Check if the left side is a MockColumnOperation to avoid recursion
@@ -349,8 +423,8 @@ class SQLExpressionTranslator:
             else:
                 left = self.column_to_sql(expr.column, source_table)
 
-            # Check if the right side is also a MockColumnOperation (e.g., cast of literal)
-            if isinstance(expr.value, MockColumnOperation):
+            # Check if the right side is also a MockColumnOperation (e.g., cast of literal, boolean operation, comparison)
+            if isinstance(expr.value, MockColumnOperation) or (hasattr(expr.value, "operation") and hasattr(expr.value, "column")):
                 right = self.expression_to_sql(expr.value, source_table)
             else:
                 right = self.value_to_sql(expr.value)
@@ -436,11 +510,23 @@ class SQLExpressionTranslator:
                 # DuckDB: to_timestamp function - use STRPTIME for parsing
                 if hasattr(expr, "value") and expr.value is not None:
                     format_str = expr.value
+                    # Check for optional fractional seconds pattern like [.SSSSSS]
+                    fractional_info = self.format_converter.extract_optional_fractional_seconds(format_str)
+                    
                     # Convert Java format to DuckDB format
                     duckdb_format = self.format_converter.convert_java_to_duckdb_format(
                         format_str
                     )
-                    return f"STRPTIME({left}, '{duckdb_format}')"
+                    
+                    if fractional_info:
+                        # Handle optional fractional seconds by normalizing input
+                        # Strip microseconds from input if present before parsing
+                        # This allows both "2025-10-29T10:30:45.123456" and "2025-10-29T10:30:45" to work
+                        # DuckDB uses standard string literals for regex, not Python r'' syntax
+                        normalized_left = f"regexp_replace({left}, '\\.\\d+', '')"
+                        return f"STRPTIME({normalized_left}, '{duckdb_format}')"
+                    else:
+                        return f"STRPTIME({left}, '{duckdb_format}')"
                 else:
                     return f"TRY_CAST({left} AS TIMESTAMP)"
             elif expr.operation == "to_date":
@@ -467,16 +553,245 @@ class SQLExpressionTranslator:
                     return f"strftime(TRY_CAST({left} AS TIMESTAMP), '%Y-%m-%d')"
             # Handle arithmetic operations
             elif expr.operation == "*":
-                return f"({left} * {right})"
+                # Use DECIMAL for precise multiplication, then cast to DOUBLE for consistency
+                return f"(CAST((CAST({left} AS DECIMAL(38,10)) * CAST({right} AS DECIMAL(38,10))) AS DOUBLE))"
             elif expr.operation == "+":
-                return f"({left} + {right})"
+                # Check if this is string concatenation
+                # Strategy: Check for numeric types FIRST (most restrictive), then fall back to string detection
+                is_string_operation = None  # None = unknown, True = string, False = numeric
+                
+                # Import StringType for type checking (MockLiteral already imported at module level)
+                from ...spark_types import StringType
+                
+                # Use pre-computed type checks from above if available
+                right_is_numeric = right_is_numeric_for_check
+                left_is_numeric = left_is_numeric_early
+                left_is_string = left_is_string_early
+                
+                import logging
+                logging.debug(f"[NUMERIC_DEBUG] After early checks: left_is_numeric={left_is_numeric}, left_is_string={left_is_string}, right_is_numeric={right_is_numeric}")
+                
+                # If we didn't compute early checks, do them now
+                if not (left_is_numeric or left_is_string):
+                    logging.debug(f"[NUMERIC_DEBUG] Early checks didn't determine type, doing fallback check")
+                    # Check if left is numeric type from source table
+                    if source_table is not None and hasattr(expr.column, "name") and right_is_numeric:
+                        # Only check table if right is numeric (optimization)
+                        try:
+                            if hasattr(self.table_manager, "get_table"):
+                                table_obj = self.table_manager.get_table(source_table)
+                                if table_obj and hasattr(table_obj, "c"):
+                                    col_name = expr.column.name
+                                    # Try both dictionary and attribute access
+                                    col_obj = None
+                                    try:
+                                        col_obj = table_obj.c[col_name]
+                                    except (KeyError, AttributeError):
+                                        try:
+                                            col_obj = getattr(table_obj.c, col_name, None)
+                                        except (AttributeError, TypeError):
+                                            pass
+                                    
+                            if col_obj is not None:
+                                from sqlalchemy import Integer, Float, BigInteger, String
+                                col_type_name = type(col_obj.type).__name__
+                                logging.debug(f"[NUMERIC_DEBUG] Found column in table: {expr.column.name}, type={col_type_name}")
+                                if isinstance(col_obj.type, (Integer, Float, BigInteger)):
+                                    left_is_numeric = True
+                                    logging.debug(f"[NUMERIC_DEBUG] Left column is NUMERIC type: {col_type_name}")
+                                elif isinstance(col_obj.type, String):
+                                    left_is_string = True
+                                    is_string_operation = True  # Explicitly string
+                                    logging.debug(f"[NUMERIC_DEBUG] Left column is STRING type: {col_type_name}")
+                        except (AttributeError, KeyError, TypeError) as e:
+                            # Table lookup failed (might be CTE or table not found)
+                            logging.debug(f"[NUMERIC_DEBUG] Table lookup failed: {type(e).__name__}: {e}")
+                            # If right is numeric and left is a simple column (not an expression), default to numeric
+                            # This handles CTE cases where we can't look up the table
+                            # Check if column is simple (no operation, or operation is None)
+                            has_operation = hasattr(expr.column, "operation") and expr.column.operation is not None
+                            if right_is_numeric and hasattr(expr.column, "name") and not has_operation:
+                                # Simple column reference with numeric right operand - default to numeric
+                                # This is the key fix: if we can't look up the table (CTE case), but right is numeric
+                                # and left is a simple column, assume it's numeric (common case)
+                                left_is_numeric = True
+                                logging.debug(f"[NUMERIC_DEBUG] Defaulting to NUMERIC (CTE fallback): col={expr.column.name}, right_is_numeric={right_is_numeric}")
+                            else:
+                                logging.debug(f"[NUMERIC_DEBUG] Cannot default to numeric: right_is_numeric={right_is_numeric}, has_name={hasattr(expr.column, 'name')}, has_operation={has_operation}, operation_value={getattr(expr.column, 'operation', None) if hasattr(expr.column, 'name') else None}")
+                
+                # Hard guard: if either operand is an explicit string literal, do string concatenation
+                try:
+                    if (isinstance(expr.column, MockLiteral) and isinstance(expr.column.value, str)) or (
+                        isinstance(expr.value, MockLiteral) and isinstance(expr.value.value, str)
+                    ):
+                        is_string_operation = True
+                except Exception:
+                    pass
+
+                # If both are numeric, it's definitely numeric addition - skip all string checks
+                if left_is_numeric and right_is_numeric:
+                    is_string_operation = False
+                    logging.debug(f"[NUMERIC_DEBUG] BOTH NUMERIC detected - using numeric addition (+)")
+                    # Skip all further string checks - go directly to numeric addition
+                    # Don't check any more conditions
+                # Do not immediately force string when left is VARCHAR; allow numeric fallback below
+                elif left_is_string and not right_is_numeric:
+                    is_string_operation = True
+                    logging.debug(f"[NUMERIC_DEBUG] Left is STRING and right not numeric - using string concatenation (||)")
+                # If we haven't determined yet, check for string indicators
+                elif is_string_operation is None:
+                    is_string_operation = False
+                    logging.debug(f"[NUMERIC_DEBUG] Type unknown - defaulting to False (will check string indicators)")
+                    
+                    # Check if left side already uses || (string concatenation)
+                    if "||" in left or (left.startswith("'") and left.endswith("'")):
+                        is_string_operation = True
+                        logging.debug(f"[NUMERIC_DEBUG] Left SQL contains || or string literal: left={left}")
+                    
+                    # Check left operand - check for column type in source table if available
+                    if not is_string_operation and hasattr(expr, "column"):
+                        if isinstance(expr.column, MockLiteral):
+                            if isinstance(expr.column.value, str) or (hasattr(expr.column, "data_type") and expr.column.data_type.__class__.__name__ == "StringType"):
+                                is_string_operation = True
+                        # Check if it's a string type column (MockColumn with StringType)
+                        elif hasattr(expr.column, "column_type") and expr.column.column_type.__class__.__name__ == "StringType":
+                            is_string_operation = True
+                    # Check right operand (expr.value) - before SQL conversion
+                    if isinstance(expr.value, str):
+                        is_string_operation = True
+                    elif isinstance(expr.value, MockLiteral):
+                        if isinstance(expr.value.value, str) or (hasattr(expr.value, "data_type") and expr.value.data_type.__class__.__name__ == "StringType"):
+                            is_string_operation = True
+                    elif hasattr(expr.value, "name") and (not hasattr(expr.value, "operation") or expr.value.operation is None):
+                        # Right is a column but we may lack table metadata (CTE case)
+                        # Heuristic: if left is a simple column and not explicitly string, default to NUMERIC for column+column
+                        if not left_is_string and hasattr(expr.column, "name") and (not hasattr(expr.column, "operation") or expr.column.operation is None):
+                            is_string_operation = False
+                    
+                    # Also check if right SQL is a quoted string (backup check)
+                    if not is_string_operation and right.startswith("'") and right.endswith("'"):
+                        is_string_operation = True
+                
+                import logging
+                logging.debug(f"[NUMERIC_DEBUG] FINAL DECISION: is_string_operation={is_string_operation}, left={left[:50] if len(left) > 50 else left}, right={right}")
+                
+                # Final safeguard: if right is numeric and no side is an explicit quoted string, prefer numeric
+                try:
+                    if is_string_operation and right_is_numeric:
+                        left_is_quoted = left.startswith("'") or left.startswith('"')
+                        right_is_quoted = right.startswith("'") or right.startswith('"')
+                        if not left_is_quoted and not right_is_quoted:
+                            is_string_operation = False
+                            logging.debug("[NUMERIC_DEBUG] Overriding to NUMERIC: right is numeric and no quoted strings detected")
+                except Exception:
+                    pass
+
+                if is_string_operation:
+                    # Use DuckDB's || operator for string concatenation
+                    # Enhanced type coercion: cast non-string operands to VARCHAR
+                    logging.debug(f"[NUMERIC_DEBUG] Generating string concatenation SQL with ||")
+                    left_for_concat = left
+                    right_for_concat = right
+                    
+                    # Check if left needs casting (non-string column or literal)
+                    from ...spark_types import StringType
+                    if hasattr(expr, "column"):
+                        # Check if left operand is a non-string type that needs coercion
+                        needs_left_cast = False
+                        if isinstance(expr.column, MockLiteral):
+                            if not isinstance(expr.column.value, str) and (not hasattr(expr.column, "data_type") or expr.column.data_type.__class__.__name__ != "StringType"):
+                                needs_left_cast = True
+                        elif hasattr(expr.column, "column_type") and expr.column.column_type.__class__.__name__ != "StringType":
+                            needs_left_cast = True
+                        
+                        if needs_left_cast:
+                            left_for_concat = f"CAST({left} AS VARCHAR)"
+                    
+                    # Check if right needs casting (non-string literal or column)
+                    # BUT only if we haven't already determined this is numeric
+                    needs_right_cast = False
+                    if not (left_is_numeric and right_is_numeric):
+                        # Only cast to VARCHAR if this is actually a string operation
+                        if isinstance(expr.value, MockLiteral):
+                            if not isinstance(expr.value.value, str) and (not hasattr(expr.value, "data_type") or expr.value.data_type.__class__.__name__ != "StringType"):
+                                needs_right_cast = True
+                        elif hasattr(expr.value, "column_type") and expr.value.column_type.__class__.__name__ != "StringType":
+                            needs_right_cast = True
+                        # Check if right SQL is numeric (not quoted) and not already an SQL expression
+                        elif not right.startswith("'") and not right.startswith('"') and not any(
+                            keyword in right.upper() for keyword in ["CAST(", "TRY_CAST(", "STRPTIME(", "EXTRACT(", "CONCAT"]
+                        ):
+                            # Likely a numeric literal - cast it for string concatenation
+                            try:
+                                # Try to parse as number to confirm
+                                float(right.strip().rstrip(')').lstrip('('))
+                                needs_right_cast = True
+                            except (ValueError, AttributeError):
+                                # Not a simple numeric literal, leave as is
+                                pass
+                        
+                        if needs_right_cast:
+                            right_for_concat = f"CAST({right} AS VARCHAR)"
+                    
+                    result = f"({left_for_concat} || {right_for_concat})"
+                    logging.debug(f"[NUMERIC_DEBUG] Generated STRING SQL: {result}")
+                    return result
+                else:
+                    # Numeric addition
+                    # If we detected numeric types but left might be VARCHAR in DB, add explicit cast
+                    if left_is_numeric and right_is_numeric:
+                        # Explicitly cast to INTEGER to ensure numeric operation
+                        # This handles cases where column is stored as VARCHAR but contains numbers
+                        result = f"(CAST({left} AS INTEGER) + {right})"
+                        logging.debug(f"[NUMERIC_DEBUG] Generated NUMERIC SQL (with CAST): {result}")
+                        return result
+                    else:
+                        # Regular numeric addition (force FLOAT cast to avoid accidental concatenation)
+                        result = f"(CAST({left} AS DOUBLE) + CAST({right} AS DOUBLE))"
+                        logging.debug(f"[NUMERIC_DEBUG] Generated NUMERIC SQL (no CAST): {result}")
+                        return result
             elif expr.operation == "-":
                 return f"({left} - {right})"
             elif expr.operation == "/":
                 return f"({left} / {right})"
             elif expr.operation == "cast":
                 # Handle cast operation with proper SQL syntax using TRY_CAST for safety
-                return f"TRY_CAST({left} AS {right})"
+                # Map PySpark type names to DuckDB type names
+                type_map = {
+                    "string": "VARCHAR",
+                    "int": "INTEGER",
+                    "integer": "INTEGER",
+                    "long": "BIGINT",
+                    "bigint": "BIGINT",
+                    "double": "DOUBLE",
+                    "float": "FLOAT",
+                    "boolean": "BOOLEAN",
+                    "bool": "BOOLEAN",
+                    "date": "DATE",
+                    "timestamp": "TIMESTAMP",
+                    "decimal": "DECIMAL",
+                }
+                # Remove quotes if present and map to DuckDB type
+                target_type = right.strip("'\"")
+                target_type = type_map.get(target_type.lower(), target_type.upper())
+                return f"TRY_CAST({left} AS {target_type})"
+            # Handle boolean/logical operations
+            elif expr.operation == "&":
+                # Logical AND operation - convert to SQL AND
+                # Use already converted left and right values
+                if right is None:
+                    raise ValueError("AND operation requires two operands")
+                return f"({left} AND {right})"
+            elif expr.operation == "|":
+                # Logical OR operation - convert to SQL OR
+                # Use already converted left and right values
+                if right is None:
+                    raise ValueError("OR operation requires two operands")
+                return f"({left} OR {right})"
+            elif expr.operation == "!":
+                # Logical NOT using CASE to avoid dialect/operator translation issues
+                left_expr = self.column_to_sql(expr.column, source_table)
+                return f"(CASE WHEN {left_expr} THEN FALSE ELSE TRUE END)"
             # Handle math functions
             elif expr.operation == "log":
                 # DuckDB uses log10 for base-10 logarithm, but PySpark uses natural log
@@ -580,12 +895,11 @@ class SQLExpressionTranslator:
                     )
                     return f"({left_expr} OR {right_expr})"
                 elif condition.operation == "!":
-                    # Logical NOT operation
+                    # Logical NOT operation using CASE to avoid operator translation
                     expr = self.condition_to_sql(condition.column, source_table_obj)
                     if expr is not None:
-                        return f"(NOT {expr})"
+                        return f"(CASE WHEN {expr} THEN FALSE ELSE TRUE END)"
                     else:
-                        # Handle case where the inner expression is not supported
                         return None
                 elif condition.operation == "isnull":
                     # IS NULL operation
@@ -764,7 +1078,21 @@ class SQLExpressionTranslator:
             elif expr.operation == "|":
                 return or_(left, right)
             elif expr.operation == "!":
-                return ~left
+                # Use explicit SQL NOT to avoid dialect-specific '!' rendering
+                from sqlalchemy import literal_column
+                # Render inner expression via SQLAlchemy then wrap with NOT
+                inner_sql = None
+                try:
+                    inner_sql = str(left)
+                except Exception:
+                    inner_sql = None
+                if not inner_sql:
+                    # Fallback to column name if available
+                    try:
+                        inner_sql = str(table_obj.c[getattr(expr.column, "name", str(expr.column))])
+                    except Exception:
+                        inner_sql = "FALSE"
+                return literal_column(f"(NOT {inner_sql})")
             else:
                 # Fallback
                 return table_obj.c[str(expr)]
@@ -822,13 +1150,16 @@ class SQLExpressionTranslator:
                     )
                     return or_(left_expr, right_expr)
                 elif condition.operation == "!":
-                    # Logical NOT operation
-                    expr = self.condition_to_sqlalchemy(table_obj, condition.column)
-                    if expr is not None:
-                        return ~expr
-                    else:
-                        # Handle case where the inner expression is not supported
-                        return None
+                    # Logical NOT operation - render as explicit NOT
+                    from sqlalchemy import literal_column
+                    inner = self.condition_to_sql(table_obj=table_obj, condition=condition.column) if hasattr(self, 'condition_to_sql') else None
+                    if inner is None:
+                        # Fallback to column name
+                        try:
+                            inner = str(self.column_to_sqlalchemy(table_obj, condition.column))
+                        except Exception:
+                            inner = "FALSE"
+                    return literal_column(f"(NOT {inner})")
                 elif condition.operation == "isnull":
                     # IS NULL operation
                     left = self.column_to_sqlalchemy(table_obj, condition.column)
@@ -903,6 +1234,52 @@ class SQLExpressionTranslator:
             return "NULL"
         else:
             return str(value)
+
+    def _needs_string_coercion(self, expr_or_value: Any, sql_str: str) -> bool:
+        """Check if an expression or value needs coercion to VARCHAR for string operations.
+        
+        Args:
+            expr_or_value: The expression or value to check
+            sql_str: The SQL string representation (for fallback checking)
+            
+        Returns:
+            True if coercion to VARCHAR is needed, False otherwise
+        """
+        from ...spark_types import StringType
+        
+        # Check MockLiteral
+        if isinstance(expr_or_value, MockLiteral):
+            if isinstance(expr_or_value.value, str):
+                return False
+            if hasattr(expr_or_value, "data_type") and expr_or_value.data_type.__class__.__name__ == "StringType":
+                return False
+            # Non-string literal needs coercion
+            return True
+        
+        # Check MockColumn or column with type
+        if hasattr(expr_or_value, "column_type"):
+            if expr_or_value.column_type.__class__.__name__ == "StringType":
+                return False
+            # Non-string column needs coercion
+            return True
+        
+        # Check if SQL string is already quoted (string literal)
+        if sql_str.startswith("'") or sql_str.startswith('"'):
+            return False
+        
+        # Check if it's already an SQL expression with casting/formatting
+        if any(keyword in sql_str.upper() for keyword in [
+            "CAST(", "TRY_CAST(", "STRPTIME(", "EXTRACT(", "CONCAT", "STRFTIME("
+        ]):
+            return False
+        
+        # Try to parse as numeric - if successful, needs coercion
+        try:
+            float(sql_str.strip().rstrip(')').lstrip('('))
+            return True
+        except (ValueError, AttributeError):
+            # Not a simple numeric, leave as is
+            return False
 
     def build_case_when_sql(self, case_when_obj: Any, source_table_obj: Any) -> str:
         """Build CASE WHEN SQL expression.

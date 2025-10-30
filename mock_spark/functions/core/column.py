@@ -393,7 +393,9 @@ class MockColumnOperation(ColumnOperatorMixin):
         elif self.operation == "|":
             return f"({self.column.name} | {value_str})"
         elif self.operation == "!":
-            return f"!{self.column.name}"
+            return f"(CASE WHEN {self.column.name} THEN FALSE ELSE TRUE END)"
+        elif self.operation == "!":
+            return f"(CASE WHEN {self.column.name} THEN FALSE ELSE TRUE END)"
         elif self.operation == "isnull":
             return f"{self.column.name} IS NULL"
         elif self.operation == "isnotnull":

@@ -283,81 +283,95 @@ class MockGroupedData:
         alias_name = expr.name if has_alias else None
 
         if func_name == "sum":
-            # Validate column exists (only for simple column names, not expressions)
+            # If the aggregate targets an expression (e.g., cast or arithmetic), evaluate per-row
+            if hasattr(expr, "column") and hasattr(expr.column, "operation"):
+                values = []
+                for row_data in group_rows:
+                    try:
+                        expr_result = self.df._evaluate_column_expression(row_data, expr.column)
+                        if expr_result is not None:
+                            # Coerce booleans to ints to mirror Spark when user casts
+                            if isinstance(expr_result, bool):
+                                expr_result = 1 if expr_result else 0
+                            # Convert numeric-looking strings
+                            if isinstance(expr_result, str):
+                                try:
+                                    expr_result = float(expr_result) if "." in expr_result else int(expr_result)
+                                except ValueError:
+                                    continue
+                            values.append(expr_result)
+                    except (ValueError, TypeError, AttributeError):
+                        pass
+                result_key = alias_name if alias_name else f"sum({col_name})"
+                return result_key, sum(values) if values else 0
+            # Simple column: validate and sum
             if (
                 col_name
-                and not any(
-                    op in col_name
-                    for op in [
-                        "+",
-                        "-",
-                        "*",
-                        "/",
-                        "(",
-                        ")",
-                        "extract",
-                        "TRY_CAST",
-                        "AS",
-                    ]
-                )
+                and not any(op in col_name for op in ["+", "-", "*", "/", "(", ")", "extract", "TRY_CAST", "AS"])
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]
                 from ...core.exceptions.operation import MockSparkColumnNotFoundError
 
                 raise MockSparkColumnNotFoundError(col_name, available_columns)
-            # Extract and convert values to numeric type
             values = []
             for row in group_rows:
                 val = row.get(col_name)
                 if val is not None:
-                    # Convert to numeric type if it's a string representation
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
                     if isinstance(val, str):
                         try:
                             val = float(val) if "." in val else int(val)
                         except ValueError:
-                            continue  # Skip non-numeric strings
+                            continue
                     values.append(val)
             result_key = alias_name if alias_name else f"sum({col_name})"
             return result_key, sum(values) if values else 0
         elif func_name == "avg":
-            # Validate column exists (only for simple column names, not expressions)
+            # Expression-aware avg
+            if hasattr(expr, "column") and hasattr(expr.column, "operation"):
+                values = []
+                for row_data in group_rows:
+                    try:
+                        expr_result = self.df._evaluate_column_expression(row_data, expr.column)
+                        if expr_result is not None:
+                            if isinstance(expr_result, bool):
+                                expr_result = 1 if expr_result else 0
+                            if isinstance(expr_result, str):
+                                try:
+                                    expr_result = float(expr_result) if "." in expr_result else int(expr_result)
+                                except ValueError:
+                                    continue
+                            values.append(expr_result)
+                    except (ValueError, TypeError, AttributeError):
+                        pass
+                result_key = alias_name if alias_name else f"avg({col_name})"
+                return result_key, (sum(values) / len(values)) if values else None
+            # Simple column: validate and average
             if (
                 col_name
-                and not any(
-                    op in col_name
-                    for op in [
-                        "+",
-                        "-",
-                        "*",
-                        "/",
-                        "(",
-                        ")",
-                        "extract",
-                        "TRY_CAST",
-                        "AS",
-                    ]
-                )
+                and not any(op in col_name for op in ["+", "-", "*", "/", "(", ")", "extract", "TRY_CAST", "AS"])
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]
                 from ...core.exceptions.operation import MockSparkColumnNotFoundError
 
                 raise MockSparkColumnNotFoundError(col_name, available_columns)
-            # Extract and convert values to numeric type
             values = []
             for row in group_rows:
                 val = row.get(col_name)
                 if val is not None:
-                    # Convert to numeric type if it's a string representation
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
                     if isinstance(val, str):
                         try:
                             val = float(val) if "." in val else int(val)
                         except ValueError:
-                            continue  # Skip non-numeric strings
+                            continue
                     values.append(val)
             result_key = alias_name if alias_name else f"avg({col_name})"
-            return result_key, sum(values) / len(values) if values else None
+            return result_key, (sum(values) / len(values)) if values else None
         elif func_name == "count":
             if col_name == "*" or col_name == "":
                 # For count(*), use alias if available, otherwise use the function's generated name

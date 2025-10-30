@@ -114,10 +114,22 @@ class DatetimeOperationsHandler:
         """Handle to_date and to_timestamp conversions."""
         if hasattr(expr, "value") and expr.value is not None:
             format_str = expr.value
+            # Check for optional fractional seconds pattern like [.SSSSSS]
+            fractional_info = self.format_converter.extract_optional_fractional_seconds(format_str)
+            
             duckdb_format = self.format_converter.convert_java_to_duckdb_format(
                 format_str
             )
-            return f"STRPTIME({column_name}, '{duckdb_format}')"
+            
+            if fractional_info and expr.operation == "to_timestamp":
+                # Handle optional fractional seconds by normalizing input
+                # Strip microseconds from input if present before parsing
+                # This allows both "2025-10-29T10:30:45.123456" and "2025-10-29T10:30:45" to work
+                # Strategy: Use regexp_replace to remove fractional seconds, then parse
+                normalized_column = f"regexp_replace({column_name}, '\\.\\d+', '')"
+                return f"STRPTIME({normalized_column}, '{duckdb_format}')"
+            else:
+                return f"STRPTIME({column_name}, '{duckdb_format}')"
         else:
             target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
             return f"TRY_CAST({column_name} AS {target_type})"
@@ -146,6 +158,11 @@ class DatetimeOperationsHandler:
 
     def _handle_other_datetime_operations(self, expr: Any, column_name: str) -> str:
         """Handle other datetime operations."""
+        # datediff(end, start) -> date_diff('day', start, end)
+        if getattr(expr, "operation", None) == "datediff" and hasattr(expr, "value"):
+            start_sql = self._format_value(expr.value)
+            end_sql = column_name
+            return f"date_diff('day', TRY_CAST({start_sql} AS DATE), TRY_CAST({end_sql} AS DATE))"
         # Handle arithmetic operations on datetime columns
         if hasattr(expr, "value") and expr.value is not None:
             right = self._format_value(expr.value)
@@ -272,10 +289,22 @@ class DatetimeOperationsHandler:
                 return f"CAST(extract({part} from TRY_CAST({column_name} AS DATE)) AS INTEGER)"
         elif operation in ["to_date", "to_timestamp"]:
             if value is not None:
+                format_str = value
+                # Check for optional fractional seconds pattern like [.SSSSSS]
+                fractional_info = self.format_converter.extract_optional_fractional_seconds(format_str)
+                
                 duckdb_format = self.format_converter.convert_java_to_duckdb_format(
-                    value
+                    format_str
                 )
-                return f"STRPTIME({column_name}, '{duckdb_format}')"
+                
+                if fractional_info and operation == "to_timestamp":
+                    # Handle optional fractional seconds by normalizing input
+                    # Strip microseconds from input if present before parsing
+                    # DuckDB uses standard string literals for regex, not Python r'' syntax
+                    normalized_column = f"regexp_replace({column_name}, '\\.\\d+', '')"
+                    return f"STRPTIME({normalized_column}, '{duckdb_format}')"
+                else:
+                    return f"STRPTIME({column_name}, '{duckdb_format}')"
             else:
                 target_type = "DATE" if operation == "to_date" else "TIMESTAMP"
                 return f"TRY_CAST({column_name} AS {target_type})"

@@ -69,6 +69,15 @@ class SQLAlchemyMaterializer:
         self.error_translator = DuckDBErrorTranslator()
         self.format_converter = DateFormatConverter()
 
+    def _get_column_from_table(self, table_obj: Any, col_name: str) -> Any:
+        try:
+            return table_obj.c[col_name]
+        except (KeyError, AttributeError):
+            try:
+                return getattr(table_obj.c, col_name, None)
+            except (AttributeError, TypeError):
+                return None
+
     def _convert_java_to_duckdb_format(self, java_format: str) -> str:
         """Convert Java SimpleDateFormat to DuckDB strptime format.
 
@@ -116,9 +125,27 @@ class SQLAlchemyMaterializer:
             except Exception as e:
                 # Fallback to old table-per-operation approach if CTE fails
                 import warnings
+                import traceback
 
+                # Get the operation that failed by checking the exception context
+                failed_op = "unknown operation"
+                error_msg = str(e)
+                if hasattr(e, "__cause__") and e.__cause__:
+                    error_msg = str(e.__cause__)
+                
+                # Try to identify which operation failed based on error message
+                # Check for common CTE failure patterns
+                if "STRPTIME" in error_msg or "syntax error" in error_msg.lower() or "T" in error_msg:
+                    failed_op = "datetime parsing in CTE"
+                elif "column" in error_msg.lower() and "not found" in error_msg.lower():
+                    failed_op = "column reference in CTE"
+                elif "Binder Error" in error_msg:
+                    failed_op = "type mismatch or function binding in CTE"
+                
                 warnings.warn(
-                    f"CTE optimization failed, falling back to table-per-operation: {e}"
+                    f"CTE optimization failed ({failed_op}), falling back to table-per-operation: {error_msg}",
+                    UserWarning,
+                    stacklevel=2
                 )
 
         # For joins or if CTE fails, use table-per-operation which handles duplicates correctly
@@ -332,20 +359,21 @@ class SQLAlchemyMaterializer:
         )
 
         # Check if we have arithmetic operations with complex expressions (like casts)
+        # Handle both MockColumnOperation (has `operation`) and functions (has `function_name`)
         has_complex_arithmetic = any(
             (
-                hasattr(col, "function_name")
-                and col.function_name in ["+", "-", "*", "/", "%"]
-                and (
-                    # Either the column is a MockColumnOperation (cast operation)
-                    (hasattr(col, "column") and hasattr(col.column, "operation"))
-                    or
-                    # Or the operation itself is complex (contains casts)
-                    (
-                        hasattr(col, "operation")
-                        and col.operation in ["+", "-", "*", "/", "%"]
-                    )
-                )
+                # Check for MockColumnOperation with arithmetic operation
+                (hasattr(col, "operation") and col.operation in ["+", "-", "*", "/", "%"])
+                or
+                # Check for function with arithmetic operation
+                (hasattr(col, "function_name") and col.function_name in ["+", "-", "*", "/", "%"])
+            )
+            and (
+                # Either the column is a MockColumnOperation with nested operations
+                (hasattr(col, "column") and hasattr(col.column, "operation"))
+                or
+                # Or we have a nested expression structure
+                (hasattr(col, "column") and hasattr(col, "value"))
             )
             for col in columns
         )
@@ -877,6 +905,18 @@ class SQLAlchemyMaterializer:
                             new_columns.append(
                                 Column(col.name, Integer, primary_key=False)
                             )
+                            continue
+                        elif col.function_name == "datediff":
+                            # Route datediff through translator to ensure robust TRY_CAST handling
+                            datetime_sql = self.expression_translator.expression_to_sql(
+                                col, source_table=source_table
+                            )
+                            try:
+                                print(f"[SELECT_DATEDIFF_DEBUG] source_table={source_table} sql={datetime_sql}")
+                            except Exception:
+                                pass
+                            select_columns.append(text(f'({datetime_sql}) AS "{col.name}"'))
+                            new_columns.append(Column(col.name, Integer, primary_key=False))
                             continue
                         elif col.function_name in [
                             "to_date",
@@ -1746,18 +1786,33 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     # PySpark 3.0 String Functions
                                     elif col.function_name == "concat_ws":
-                                        # concat_ws(sep, col1, col2, ...) -> CONCAT_WS(sep, col1, col2, ...)
+                                        # concat_ws(sep, col1, col2, ...) 
+                                        # DuckDB: Use array_to_string or manual concatenation
+                                        # CONCAT_WS doesn't exist in DuckDB, use ARRAY_TO_STRING with LIST
                                         sep, cols = col.value
-                                        col_exprs = [
-                                            f'"{c.name}"'
-                                            if hasattr(c, "name")
-                                            else str(c)
-                                            for c in cols
-                                        ]
-                                        all_cols = [column_expr] + col_exprs
-                                        special_sql = (
-                                            f"CONCAT_WS('{sep}', {', '.join(all_cols)})"
-                                        )
+                                        # Build list of all columns (first column from col.column, rest from cols)
+                                        # Convert col.column to SQL expression with proper table qualification
+                                        first_col_sql = self.expression_translator.column_to_sql(col.column, source_table)
+                                        col_exprs = [first_col_sql]
+                                        
+                                        # Convert all additional columns to SQL
+                                        for c in cols:
+                                            if hasattr(c, "name") and (not hasattr(c, "operation") or c.operation is None):
+                                                # Simple column reference
+                                                col_sql = self.expression_translator.column_to_sql(c, source_table)
+                                                col_exprs.append(col_sql)
+                                            elif hasattr(c, "operation"):
+                                                # Operation like cast - convert to SQL
+                                                col_sql = self.expression_translator.expression_to_sql(c, source_table)
+                                                col_exprs.append(col_sql)
+                                            else:
+                                                # Fallback - use column_to_sql
+                                                col_sql = self.expression_translator.column_to_sql(c, source_table)
+                                                col_exprs.append(col_sql)
+                                        
+                                        # Use ARRAY_TO_STRING with LIST constructor
+                                        all_cols_str = ', '.join(col_exprs)
+                                        special_sql = f"ARRAY_TO_STRING([{all_cols_str}], '{sep}')"
                                         func_expr = text(special_sql)
                                     elif col.function_name == "regexp_extract":
                                         # regexp_extract(str, pattern, idx) -> REGEXP_EXTRACT(str, pattern, idx)
@@ -1851,33 +1906,49 @@ class SQLAlchemyMaterializer:
                                         func_expr = text(special_sql)
                                     elif col.function_name == "datediff":
                                         # datediff(end, start) -> DATEDIFF('DAY', start, end)
+                                        # Auto-convert string dates to DATE type (PySpark compatibility)
                                         start_col = col.value
+                                        
+                                        # Convert start column to SQL with proper table qualification
                                         if hasattr(start_col, "name"):
-                                            # Check if this is a date literal
+                                            # MockColumn - use column_to_sql for proper table qualification
+                                            start_sql = self.expression_translator.column_to_sql(start_col, source_table)
+                                            # Check if it's a date literal pattern (col.name is the literal value)
                                             import re
-
-                                            if re.match(
-                                                r"^\d{4}-\d{2}-\d{2}$", start_col.name
-                                            ):
+                                            if re.match(r"^\d{4}-\d{2}-\d{2}$", start_col.name):
                                                 start_expr = f"DATE '{start_col.name}'"
                                             else:
-                                                start_expr = (
-                                                    f'CAST("{start_col.name}" AS DATE)'
-                                                )
-                                        else:
-                                            # Check if this is a date literal
+                                                # Use TRY_CAST to handle both DATE and STRING types
+                                                start_expr = f"TRY_CAST({start_sql} AS DATE)"
+                                        elif isinstance(start_col, str):
+                                            # String literal - check if date pattern
                                             import re
-
-                                            if re.match(
-                                                r"^\d{4}-\d{2}-\d{2}$", str(start_col)
-                                            ):
+                                            if re.match(r"^\d{4}-\d{2}-\d{2}$", start_col):
                                                 start_expr = f"DATE '{start_col}'"
                                             else:
-                                                start_expr = (
-                                                    f"CAST('{start_col}' AS DATE)"
-                                                )
-                                        special_sql = f"DATEDIFF('DAY', {start_expr}, CAST({column_expr} AS DATE))"
-                                        func_expr = text(special_sql)
+                                                start_expr = f"TRY_CAST('{start_col}' AS DATE)"
+                                        else:
+                                            # MockLiteral or other - convert to SQL first
+                                            start_sql = self.expression_translator.value_to_sql(start_col)
+                                            import re
+                                            if isinstance(start_sql, str) and re.match(r"^'\d{4}-\d{2}-\d{2}'$", start_sql):
+                                                # Date literal string
+                                                date_val = start_sql.strip("'")
+                                                start_expr = f"DATE '{date_val}'"
+                                            else:
+                                                start_expr = f"TRY_CAST({start_sql} AS DATE)"
+                                        
+                                        # Convert end column to SQL with proper table qualification
+                                        end_col_sql = self.expression_translator.column_to_sql(col.column, source_table)
+                                        # Always use TRY_CAST - it handles both DATE columns and STRING columns gracefully
+                                        end_expr = f"CAST({end_col_sql} AS DATE)"
+                                        
+                                        special_sql = f"DATEDIFF('DAY', {start_expr}, {end_expr})"
+                                        # Append with alias immediately to avoid losing the label when using raw SQL
+                                        select_columns.append(text(f'({special_sql}) AS "{col.name}"'))
+                                        from sqlalchemy import Integer as _SQLInteger
+                                        new_columns.append(Column(col.name, _SQLInteger, primary_key=False))
+                                        continue
                                     elif col.function_name == "unix_timestamp":
                                         # unix_timestamp(timestamp, format) -> EPOCH(timestamp)
                                         # DuckDB: EPOCH(timestamp) returns seconds since 1970-01-01
@@ -3465,36 +3536,111 @@ class SQLAlchemyMaterializer:
         # Add new computed column - determine type based on operation
         if hasattr(col, "function_name") and hasattr(col, "window_spec"):
             new_columns.append(Column(col_name, Integer, primary_key=False))
+        elif hasattr(col, "function_name") and col.function_name == "concat_ws":
+            # concat_ws returns string type
+            from sqlalchemy import String
+            new_columns.append(Column(col_name, String, primary_key=False))
         elif (
             hasattr(col, "operation")
             and hasattr(col, "column")
             and hasattr(col, "value")
         ):
             # Handle arithmetic operations - preserve source column type
-            if hasattr(col, "function_name") and col.function_name in [
-                "+",
-                "-",
-                "*",
-                "/",
-                "%",
-            ]:
-                if col.function_name == "/":
+            if col.operation in ["+", "-", "*", "/", "%"]:
+                if col.operation == "/":
                     # Division always returns floating-point type
                     new_columns.append(Column(col_name, Float, primary_key=False))
                 elif hasattr(col.column, "name") and (
                     not hasattr(col.column, "operation") or col.column.operation is None
                 ):
-                    # Simple column reference - preserve its type
-                    source_column = source_table_obj.c[col.column.name]
-                    new_columns.append(
-                        Column(col_name, source_column.type, primary_key=False)
-                    )
+                    # Simple column reference - check if right operand is numeric to determine type
+                    try:
+                        source_column = source_table_obj.c[col.column.name]
+                        # Check if right operand is numeric
+                        right_is_numeric = False
+                        right_is_column = False
+                        if hasattr(col.value, "value"):
+                            # MockLiteral
+                            right_val = col.value.value
+                            right_is_numeric = isinstance(right_val, (int, float))
+                        elif hasattr(col.value, "name"):
+                            # MockColumn - check if column exists and is numeric
+                            try:
+                                right_col_obj = source_table_obj.c[col.value.name]
+                                from sqlalchemy import Integer, Float, BigInteger, String
+                                if isinstance(right_col_obj.type, (Integer, Float, BigInteger)):
+                                    right_is_numeric = True
+                                    right_is_column = True
+                            except (KeyError, AttributeError):
+                                pass
+                        else:
+                            right_is_numeric = isinstance(col.value, (int, float))
+                        
+                        # If both are numeric, result is numeric (preserve or promote type)
+                        if right_is_numeric:
+                            from sqlalchemy import String, Integer, Float, BigInteger  # noqa: F401
+                            if isinstance(source_column.type, String):
+                                # String + numeric = string (for concatenation)
+                                new_columns.append(Column(col_name, String, primary_key=False))
+                            elif isinstance(source_column.type, (Integer, BigInteger)):
+                                # Integer + numeric = Integer (or Float if right is float)
+                                if isinstance(col.value, float) or (hasattr(col.value, "value") and isinstance(col.value.value, float)):
+                                    new_columns.append(Column(col_name, Float, primary_key=False))
+                                else:
+                                    new_columns.append(Column(col_name, Integer, primary_key=False))
+                            elif isinstance(source_column.type, Float):
+                                # Float + numeric = Float
+                                new_columns.append(Column(col_name, Float, primary_key=False))
+                            else:
+                                # Unknown type, default to Integer for numeric operations
+                                new_columns.append(Column(col_name, Integer, primary_key=False))
+                        elif right_is_column:
+                            # Right is a column (not a literal) - check its type
+                            try:
+                                right_col_obj = source_table_obj.c[col.value.name]
+                                from sqlalchemy import String, Integer, Float, BigInteger
+                                if isinstance(source_column.type, String) or isinstance(right_col_obj.type, String):
+                                    # At least one is string - result is String
+                                    new_columns.append(Column(col_name, String, primary_key=False))
+                                elif isinstance(source_column.type, (Integer, BigInteger)) and isinstance(right_col_obj.type, (Integer, BigInteger)):
+                                    # Both Integer - result is Integer (unless operation is /)
+                                    if col.operation == "/":
+                                        new_columns.append(Column(col_name, Float, primary_key=False))
+                                    else:
+                                        new_columns.append(Column(col_name, Integer, primary_key=False))
+                                else:
+                                    # At least one is Float or unknown - result is Float
+                                    new_columns.append(Column(col_name, Float, primary_key=False))
+                            except (KeyError, AttributeError):
+                                # Right column not found - default to Float for numeric operations
+                                new_columns.append(Column(col_name, Float, primary_key=False))
+                        else:
+                            # Right is not numeric - preserve source type or default to String
+                            new_columns.append(
+                                Column(col_name, source_column.type, primary_key=False)
+                            )
+                    except (KeyError, AttributeError):
+                        # Column not found - default based on operation
+                        if col.operation in ["+", "-", "*", "/", "%"]:
+                            # Arithmetic operations default to Float
+                            from sqlalchemy import Float
+                            new_columns.append(Column(col_name, Float, primary_key=False))
+                        else:
+                            new_columns.append(Column(col_name, String, primary_key=False))
                 else:
-                    # Complex expression or nested operation - use Float for safety
-                    new_columns.append(Column(col_name, Float, primary_key=False))
+                    # Complex expression or nested operation - check if numeric operation
+                    if col.operation in ["+", "-", "*", "/", "%"]:
+                        # Arithmetic operations default to Float
+                        from sqlalchemy import Float
+                        new_columns.append(Column(col_name, Float, primary_key=False))
+                    else:
+                        from sqlalchemy import String
+                        new_columns.append(Column(col_name, String, primary_key=False))
             else:
+                from sqlalchemy import String
                 new_columns.append(Column(col_name, String, primary_key=False))
         else:
+            from sqlalchemy import String
             new_columns.append(Column(col_name, String, primary_key=False))
 
         # Handle window functions
@@ -3599,16 +3745,40 @@ class SQLAlchemyMaterializer:
         existing_columns = [col.name for col in source_table_obj.columns]
 
         # Build the select statement using SQLAlchemy expressions
+        # If new column replaces an existing one, don't select the old one
         select_columns = []
+        columns_seen = set()  # Track column names to avoid duplicates
         for col_name_existing in existing_columns:
-            select_columns.append(source_table_obj.c[col_name_existing])
-
+            # Skip if this column is being replaced by the new column
+            if col_name_existing == col_name:
+                continue
+            # Avoid duplicates
+            if col_name_existing not in columns_seen:
+                select_columns.append(source_table_obj.c[col_name_existing])
+                columns_seen.add(col_name_existing)
+        
         # Handle the new column expression using SQLAlchemy
-        if (
-            hasattr(col, "operation")
-            and hasattr(col, "column")
-            and hasattr(col, "value")
-        ):
+        # DON'T mark col_name as seen yet - we need to add it to select_columns first!
+        # Check for functions FIRST (before operations) since functions can have both function_name and operation set
+        has_function_name = hasattr(col, "function_name")
+        has_operation = hasattr(col, "operation")
+        has_column_attr = hasattr(col, "column")
+        has_value_attr = hasattr(col, "value")
+        value_is_none = has_value_attr and col.value is None
+        operation_name = getattr(col, "operation", None)
+        function_name = getattr(col, "function_name", None)
+        
+        # Functions like concat_ws should be handled via _get_function_sql_expr
+        # Check if this is a function (not arithmetic) - functions take priority
+        is_function = has_function_name and function_name not in ["+", "-", "*", "/", "%"]
+        is_arithmetic = (
+            has_operation
+            and has_column_attr
+            and (has_value_attr or (operation_name in ["!", "to_date", "to_timestamp"]))
+            and not is_function  # Don't treat as arithmetic if it's a function
+        )
+        
+        if is_arithmetic:
             # Handle arithmetic operations like MockColumnOperation
             # Check if left operand is a simple column or nested expression
             if hasattr(col.column, "name") and (
@@ -3627,22 +3797,48 @@ class SQLAlchemyMaterializer:
                 left_col = source_table_obj.c[str(col.column)]
 
             # Convert right operand - handle MockColumn, MockLiteral, and raw values
+            right_val = None
+            right_val_for_type_check = None  # For type checking
+            right_col_is_numeric = False  # Track if right column is numeric type
             if hasattr(col.value, "name") and (
                 not hasattr(col.value, "operation") or col.value.operation is None
             ):
                 # MockColumn - convert to SQLAlchemy column reference
-                right_val = source_table_obj.c[col.value.name]
+                try:
+                    right_val = source_table_obj.c[col.value.name]
+                    right_val_for_type_check = right_val
+                    # Check if right column is numeric type
+                    from sqlalchemy import Integer, Float, BigInteger, String as SQLString
+                    if isinstance(right_val.type, (Integer, Float, BigInteger)):
+                        right_col_is_numeric = True
+                    elif isinstance(right_val.type, SQLString):
+                        right_col_is_numeric = False
+                except (KeyError, AttributeError):
+                    # Column not found in table - might be computed column from previous step
+                    # Use a literal_column reference to ensure we can still build a numeric expression
+                    from sqlalchemy import literal_column
+                    right_val = literal_column(f'"{col.value.name}"')
+                    right_val_for_type_check = None
+                    # Optimistically assume numeric unless later checks prove it's string
+                    right_col_is_numeric = True
             elif hasattr(col.value, "value"):
                 # MockLiteral - extract the value
-                right_val = col.value.value
+                right_val_raw = col.value.value
+                right_val = right_val_raw  # Use the actual value for SQLAlchemy operations
+                right_val_for_type_check = right_val_raw
             else:
-                # Raw value (int, float, str)
+                # Raw value (int, float, str) - use directly for SQLAlchemy
                 right_val = col.value
+                right_val_for_type_check = col.value
 
             if col.operation == "*":
                 new_expr = left_col * right_val
             elif col.operation == "+":
-                new_expr = left_col + right_val
+                # Always defer to the SQL translator for '+' to ensure Spark-consistent
+                # numeric vs string behavior across CTE and non-CTE paths.
+                from sqlalchemy import literal_column
+                full_expr_sql = self.expression_translator.expression_to_sql(col, source_table)
+                new_expr = literal_column(full_expr_sql)
             elif col.operation == "-":
                 new_expr = left_col - right_val
             elif col.operation == "/":
@@ -3687,6 +3883,16 @@ class SQLAlchemyMaterializer:
                 left_expr = self._expression_to_sqlalchemy(col.column, source_table_obj)
                 right_expr = self._expression_to_sqlalchemy(col.value, source_table_obj)
                 new_expr = or_(left_expr, right_expr)
+            elif col.operation == "!":
+                # Logical NOT - use CASE to avoid dialect/operator rewriting
+                from sqlalchemy import literal_column
+                left_sql = self.expression_translator.expression_to_sql(col.column, source_table)
+                new_expr = literal_column(f"(CASE WHEN {left_sql} THEN FALSE ELSE TRUE END)")
+            elif col.operation == "!":
+                # Logical NOT - use CASE to avoid dialect/operator rewriting
+                from sqlalchemy import literal_column
+                left_sql = self.expression_translator.expression_to_sql(col.column, source_table)
+                new_expr = literal_column(f"(CASE WHEN {left_sql} THEN FALSE ELSE TRUE END)")
             # Handle datetime functions (unary - value is None)
             elif col.value is None and col.operation in [
                 "to_date",
@@ -3713,51 +3919,192 @@ class SQLAlchemyMaterializer:
                 new_expr = literal_column(datetime_sql)
             else:
                 # Fallback to raw SQL for other operations
-                new_expr = text(f"({left_col.name} {col.operation} {right_val})")
+                from sqlalchemy import text as sql_text
+                new_expr = sql_text(f"({left_col.name} {col.operation} {right_val})")
 
             # Safe label application - use .label() if available, otherwise use literal_column
-            try:
-                select_columns.append(new_expr.label(col_name))
-            except (NotImplementedError, AttributeError):
-                # For expressions that don't support .label(), use literal_column
-                from sqlalchemy import literal_column
+            # Ensure we don't add duplicates - check if col_name already in columns_seen
+            if col_name not in columns_seen:
+                import logging
+                logging.debug(f"[EXPR_DEBUG] Adding expression for {col_name}, type: {type(new_expr).__name__}, expr: {new_expr}")
+                try:
+                    labeled_expr = new_expr.label(col_name)
+                    logging.debug(f"[EXPR_DEBUG] Successfully labeled expression for {col_name}")
+                    select_columns.append(labeled_expr)
+                    columns_seen.add(col_name)
+                except (NotImplementedError, AttributeError) as e:
+                    # For expressions that don't support .label(), use literal_column
+                    logging.debug(f"[EXPR_DEBUG] Label failed for {col_name}, using literal_column: {e}")
+                    from sqlalchemy import literal_column
 
-                select_columns.append(literal_column(str(new_expr)).label(col_name))
-        else:
-            # Fallback to raw SQL for other expressions
-            from sqlalchemy import literal_column
-
-            new_col_sql = self.expression_translator.expression_to_sql(col)
-            # For literals, use literal() instead of text()
-            if hasattr(col, "value") and isinstance(col.value, str):
-                select_columns.append(literal(col.value).label(col_name))
+                    labeled_expr = literal_column(str(new_expr)).label(col_name)
+                    select_columns.append(labeled_expr)
+                    columns_seen.add(col_name)
+        elif hasattr(col, "function_name"):
+            # Handle functions like concat_ws, etc.
+            # Handle concat_ws directly (same logic as in _apply_select)
+            from sqlalchemy import literal_column, text
+            if col.function_name == "concat_ws":
+                if col_name not in columns_seen:
+                    sep, cols = col.value
+                    first_col_sql = self.expression_translator.column_to_sql(col.column, source_table)
+                    col_exprs = [first_col_sql]
+                    for c in cols:
+                        if hasattr(c, "operation"):
+                            col_sql = self.expression_translator.expression_to_sql(c, source_table)
+                        else:
+                            col_sql = self.expression_translator.column_to_sql(c, source_table)
+                        col_exprs.append(col_sql)
+                    all_cols_str = ', '.join(col_exprs)
+                    func_sql = f"ARRAY_TO_STRING([{all_cols_str}], '{sep}')"
+                    select_columns.append(literal_column(func_sql).label(col_name))
+                    columns_seen.add(col_name)
             else:
-                select_columns.append(literal_column(new_col_sql).label(col_name))
+                # For other functions, use expression_to_sql as fallback
+                from sqlalchemy import literal_column
+                if col_name not in columns_seen:
+                    new_col_sql = self.expression_translator.expression_to_sql(col, source_table=source_table)
+                    select_columns.append(literal_column(new_col_sql).label(col_name))
+                    columns_seen.add(col_name)
+                # Also need to update column type inference for functions - set to String for concat_ws
+                # This is handled in _apply_with_column's type inference
+        else:
+            # Fallback to raw SQL for other expressions (literals, etc.)
+            import logging
+            logging.warning(
+                f"[COL_EXPR_CHECK] Expression check failed for {col_name}: "
+                f"has_operation={has_operation}, has_column={has_column_attr}, "
+                f"has_value={has_value_attr}, operation={operation_name}"
+            )
+            # Ensure we don't add duplicates
+            if col_name not in columns_seen:
+                from sqlalchemy import literal_column, text
+                import logging
+                
+                # Try to generate SQL for the expression
+                try:
+                    new_col_sql = self.expression_translator.expression_to_sql(col, source_table=source_table)
+                    logging.debug(f"[EXPR_DEBUG] Fallback: Generated SQL for {col_name}: {new_col_sql}")
+                    
+                    # For literals, use literal() instead of literal_column
+                    if hasattr(col, "value") and isinstance(col.value, str):
+                        select_columns.append(literal(col.value).label(col_name))
+                    else:
+                        # Use literal_column with the generated SQL string
+                        select_columns.append(literal_column(new_col_sql).label(col_name))
+                    columns_seen.add(col_name)
+                except Exception as e:
+                    logging.debug(f"[EXPR_DEBUG] Failed to generate SQL for {col_name}: {e}")
+                    # Ultimate fallback: use text() with a placeholder
+                    from sqlalchemy import text as sql_text
+                    select_columns.append(sql_text(f"'FALLBACK_{col_name}'").label(col_name))
+                    columns_seen.add(col_name)
 
         # Create the select statement
+        # Verify we have the expected number of columns
+        expected_cols = len(existing_columns) - (1 if col_name in existing_columns else 0) + 1  # existing - replaced + new
+        if len(select_columns) != expected_cols:
+            import logging
+            logging.warning(
+                f"[SELECT_BUILD] Unexpected column count: expected {expected_cols} "
+                f"(existing={len(existing_columns)}, replaced={col_name in existing_columns}), "
+                f"got {len(select_columns)}"
+            )
+        
         select_stmt = select(*select_columns).select_from(source_table_obj)
-
+        
+        # Debug: print compiled SELECT SQL to diagnose NULL results in functions like datediff
+        try:
+            compiled = select_stmt.compile(
+                dialect=self.engine.dialect, compile_kwargs={"literal_binds": False}
+            )
+            select_sql_dbg = str(compiled)
+            print(f"[SELECT_DEBUG] {select_sql_dbg}")
+        except Exception:
+            pass
+        
         # Create the target table with the new column
+        # Build columns in the EXACT order they appear in SELECT (to match INSERT order)
         new_columns: List[Any] = []
-        for col_name_existing in existing_columns:
-            col_type = source_table_obj.c[col_name_existing].type
-            new_columns.append(Column(col_name_existing, col_type, primary_key=False))
+        # Build column definitions for all columns in SELECT order
+        column_defs_ordered = []  # Store (name, Column) tuples in SELECT order
+        
+        for i, sel_col in enumerate(select_columns):
+            # Get the column name from the select column
+            sel_col_name = None
+            if hasattr(sel_col, 'label'):
+                try:
+                    # Try to call label() if it's a method
+                    if callable(sel_col.label):
+                        sel_col_name = sel_col.label()
+                    else:
+                        sel_col_name = sel_col.label
+                except:
+                    pass
+            if sel_col_name is None and hasattr(sel_col, 'name'):
+                sel_col_name = sel_col.name
+            
+            if sel_col_name:
+                # Determine column type based on whether it's an existing column or new
+                if sel_col_name == col_name:
+                    # This is the new column - we'll handle it below after determining its type
+                    # Store the position for later insertion
+                    column_defs_ordered.append((sel_col_name, None))  # Placeholder
+                elif sel_col_name in existing_columns:
+                    # Existing column (not being replaced) - use its type from source table
+                    col_type = source_table_obj.c[sel_col_name].type
+                    col_def = Column(sel_col_name, col_type, primary_key=False, nullable=True)
+                    column_defs_ordered.append((sel_col_name, col_def))
+                else:
+                    # Column not in existing_columns - might be from a previous computed column
+                    # Try to get its type from source table anyway (might be a computed column)
+                    try:
+                        col_type = source_table_obj.c[sel_col_name].type
+                        col_def = Column(sel_col_name, col_type, primary_key=False, nullable=True)
+                        column_defs_ordered.append((sel_col_name, col_def))
+                    except (KeyError, AttributeError):
+                        # Column doesn't exist - must be a new computed column
+                        # We'll handle it when processing col_name
+                        column_defs_ordered.append((sel_col_name, None))  # Placeholder
 
-        # Add the new column with appropriate type
-        if hasattr(col, "operation") and hasattr(col, "column"):
+        # Now determine the new column's type and add it at the correct position
+        new_col_def = None
+        new_col_position = None
+        # Find where the new column appears in select_columns
+        for i, sel_col in enumerate(select_columns):
+            sel_col_name = None
+            if hasattr(sel_col, 'label'):
+                try:
+                    if callable(sel_col.label):
+                        sel_col_name = sel_col.label()
+                    else:
+                        sel_col_name = sel_col.label
+                except:
+                    pass
+            if sel_col_name is None and hasattr(sel_col, 'name'):
+                sel_col_name = sel_col.name
+            if sel_col_name == col_name:
+                new_col_position = i
+                break
+        
+        # Determine type for new column
+        # Check function_name first (functions like concat_ws have both function_name and operation)
+        if hasattr(col, "function_name") and col.function_name == "concat_ws":
+            # concat_ws returns String
+            from sqlalchemy import String
+            new_col_def = Column(col_name, String, primary_key=False, nullable=True)
+        elif hasattr(col, "operation") and hasattr(col, "column"):
             # Determine type based on operation
             if col.operation == "cast":
                 # For cast operations, use VARCHAR to handle overflow gracefully
                 # TRY_CAST will return NULL for overflow values
-                new_columns.append(Column(col_name, String, primary_key=False))
+                new_col_def = Column(col_name, String, primary_key=False, nullable=True)
             elif col.operation in ["to_date"]:
                 from sqlalchemy import Date
-
-                new_columns.append(Column(col_name, Date, primary_key=False))
+                new_col_def = Column(col_name, Date, primary_key=False, nullable=True)
             elif col.operation in ["to_timestamp", "current_timestamp"]:
                 from sqlalchemy import DateTime
-
-                new_columns.append(Column(col_name, DateTime, primary_key=False))
+                new_col_def = Column(col_name, DateTime, primary_key=False, nullable=True)
             elif col.operation in [
                 "hour",
                 "minute",
@@ -3772,30 +4119,262 @@ class SQLAlchemyMaterializer:
                 "quarter",
             ]:
                 # All datetime component extractions return integers
-                new_columns.append(Column(col_name, Integer, primary_key=False))
+                new_col_def = Column(col_name, Integer, primary_key=False, nullable=True)
+            elif col.operation in ["!", "&", "|"]:
+                # Boolean logical operations return boolean
+                new_col_def = Column(col_name, Boolean, primary_key=False, nullable=True)
             elif hasattr(col, "value") and col.value is not None:
-                # For arithmetic operations with a value, use Float type
-                new_columns.append(Column(col_name, Float, primary_key=False))
+                    # For arithmetic operations with a value, infer type
+                    from sqlalchemy import Float, Integer, String as SQLString
+                    # Check if both operands are integer types
+                    if col.operation == "+" and hasattr(col.column, "name"):
+                        try:
+                            source_col = source_table_obj.c[col.column.name]
+                            from sqlalchemy import Integer as SQLInteger
+                            # Check if right operand is numeric
+                            right_is_numeric = False
+                            right_is_float = False
+                            if hasattr(col.value, "value"):
+                                right_val = col.value.value
+                                right_is_numeric = isinstance(right_val, (int, float))
+                                right_is_float = isinstance(right_val, float)
+                            else:
+                                right_is_numeric = isinstance(col.value, (int, float))
+                                right_is_float = isinstance(col.value, float)
+                            
+                            # Determine result type: String + numeric = String (concatenation)
+                            # Numeric + numeric = Numeric
+                            if isinstance(source_col.type, SQLString):
+                                # String + numeric = String (concatenation)
+                                new_col_def = Column(col_name, SQLString, primary_key=False, nullable=True)
+                            elif isinstance(source_col.type, SQLInteger):
+                                # Integer + numeric = Integer (or Float if right is float)
+                                if right_is_float:
+                                    new_col_def = Column(col_name, Float, primary_key=False, nullable=True)
+                                elif right_is_numeric:
+                                    new_col_def = Column(col_name, Integer, primary_key=False, nullable=True)
+                                else:
+                                    # Right is not numeric - default to String
+                                    new_col_def = Column(col_name, SQLString, primary_key=False, nullable=True)
+                            else:
+                                # Other numeric types or unknown - default to Float for numeric ops
+                                if right_is_numeric:
+                                    new_col_def = Column(col_name, Float, primary_key=False, nullable=True)
+                                else:
+                                    new_col_def = Column(col_name, SQLString, primary_key=False, nullable=True)
+                        except (KeyError, AttributeError):
+                            # Column not found - check if right is numeric
+                            right_is_numeric = False
+                            if hasattr(col.value, "value"):
+                                right_is_numeric = isinstance(col.value.value, (int, float))
+                            else:
+                                right_is_numeric = isinstance(col.value, (int, float))
+                            
+                            if right_is_numeric:
+                                new_col_def = Column(col_name, Float, primary_key=False, nullable=True)
+                            else:
+                                new_col_def = Column(col_name, String, primary_key=False, nullable=True)
+                    else:
+                        new_col_def = Column(col_name, Float, primary_key=False, nullable=True)
             else:
                 # Default to String for unknown operations
-                new_columns.append(Column(col_name, String, primary_key=False))
+                new_col_def = Column(col_name, String, primary_key=False, nullable=True)
         else:
-            new_columns.append(Column(col_name, String, primary_key=False))
+            new_col_def = Column(col_name, String, primary_key=False, nullable=True)
+        
+        # Replace placeholder entries with actual column definitions
+        for i, (name, col_def) in enumerate(column_defs_ordered):
+            if col_def is None and name == col_name and new_col_def is not None:
+                column_defs_ordered[i] = (col_name, new_col_def)
+            elif col_def is None and name != col_name:
+                # This is a computed column from previous step - try to infer type
+                # Default to String if we can't determine
+                column_defs_ordered[i] = (name, Column(name, String, primary_key=False, nullable=True))
+        
+        # Build final new_columns list in the exact SELECT order
+        new_columns = [col_def for _, col_def in column_defs_ordered if col_def is not None]
 
+        # Create or update target table - always use extend_existing=True to handle table redefinition
         target_table_obj = Table(
             target_table, self.metadata, *new_columns, extend_existing=True
         )
         target_table_obj.create(self.engine, checkfirst=True)
         self._created_tables[target_table] = target_table_obj
 
-        # Execute the insert
-        with self.engine.connect() as conn:
-            conn.execute(
-                insert(target_table_obj).from_select(
-                    [c.name for c in new_columns], select_stmt
-                )
+        # Execute the insert using raw SQL to avoid SQLAlchemy's default handling issues
+        # Build column list for INSERT - ensure it matches SELECT columns
+        col_names = [c.name for c in new_columns]
+        col_names_str = ", ".join([f'"{cn}"' for cn in col_names])
+        
+        # Compile the SELECT statement to SQL
+        # Don't use literal_binds=True as it doesn't work well with SQLAlchemy Column expressions
+        # Instead, let SQLAlchemy handle parameter binding naturally
+        from sqlalchemy import text
+        compiled = select_stmt.compile(dialect=self.engine.dialect)
+        select_sql = str(compiled)
+        
+        # Replace parameter placeholders with actual values for DuckDB
+        # SQLAlchemy uses :param_1 format, but DuckDB needs actual values
+        params = compiled.params
+        if params:
+            for key, value in params.items():
+                if isinstance(value, str):
+                    select_sql = select_sql.replace(f":{key}", f"'{value}'")
+                else:
+                    select_sql = select_sql.replace(f":{key}", str(value))
+        # Debug: log the final SELECT SQL for diagnosis
+        try:
+            import logging
+            logging.debug(f"[WITH_COLUMN_SQL] {target_table} INSERT SELECT: {select_sql}")
+        except Exception:
+            pass
+        
+        # Debug: Log the generated SQL to help diagnose issues
+        import logging
+        logging.debug(f"[SQL_DEBUG] Generated SELECT SQL: {select_sql}")
+        try:
+            print(f"[WITH_COLUMN_SELECT_DEBUG] {select_sql}")
+        except Exception:
+            pass
+        
+        # Debug: Check for duplicate column names in SELECT
+        select_column_names = []
+        for c in select_columns:
+            if hasattr(c, 'name'):
+                select_column_names.append(c.name)
+            elif hasattr(c, 'label'):
+                try:
+                    select_column_names.append(c.label)
+                except:
+                    select_column_names.append(str(c))
+            else:
+                select_column_names.append(str(c))
+        
+        # Verify column counts match
+        if len(select_columns) != len(new_columns):
+            raise ValueError(
+                f"Column count mismatch: SELECT has {len(select_columns)} columns "
+                f"but INSERT expects {len(new_columns)} columns. "
+                f"SELECT columns: {select_column_names}, "
+                f"INSERT columns: {col_names}, "
+                f"Existing columns in source: {existing_columns}, "
+                f"New column name: {col_name}"
             )
-            conn.commit()
+        
+        # Execute the INSERT using SQLAlchemy's insert().from_select()
+        # This ensures proper handling of SQLAlchemy Column expressions
+        from sqlalchemy import insert as sql_insert
+        with self.engine.connect() as conn:
+            import logging
+            # Test the SELECT first to verify it returns correct values
+            try:
+                # Compile and log the SELECT SQL
+                compiled_select = select_stmt.compile(
+                    dialect=self.engine.dialect,
+                    compile_kwargs={"literal_binds": False}
+                )
+                select_sql_debug = str(compiled_select)
+                logging.info(f"[SQL_DEBUG] SELECT SQL: {select_sql_debug}")
+                
+                test_result = conn.execute(select_stmt)
+                test_rows = list(test_result.fetchall())
+                logging.info(f"[SQL_DEBUG] SELECT test returned {len(test_rows)} rows")
+                if test_rows:
+                    logging.info(f"[SQL_DEBUG] First row values: {test_rows[0]}")
+                    logging.info(f"[SQL_DEBUG] Column keys: {list(test_result.keys())}")
+                    
+                    # Check each column value
+                    for idx, key in enumerate(test_result.keys()):
+                        if idx < len(test_rows[0]):
+                            val = test_rows[0][idx]
+                            logging.info(f"[SQL_DEBUG] Column '{key}' (idx={idx}) = {val} (type: {type(val).__name__})")
+            except Exception as e:
+                logging.warning(f"[SQL_DEBUG] SELECT test failed: {e}")
+                import traceback
+                logging.warning(f"[SQL_DEBUG] Traceback: {traceback.format_exc()}")
+            
+            # Use SQLAlchemy's insert().from_select() - maps columns by position
+            # CRITICAL: col_names must match SELECT column order exactly!
+            # Verify the mapping is correct
+            select_col_names_from_select = []
+            for sel_col in select_columns:
+                col_name = None
+                # Try multiple ways to get the column name
+                # 1. Try .label() method (for labeled expressions)
+                if hasattr(sel_col, 'label'):
+                    try:
+                        if callable(sel_col.label):
+                            col_name = sel_col.label()
+                        else:
+                            col_name = sel_col.label
+                    except:
+                        pass
+                
+                # 2. Try .name attribute (for Column objects from tables)
+                if col_name is None and hasattr(sel_col, 'name'):
+                    col_name = sel_col.name
+                
+                # 3. Try to extract from the column's key (SQLAlchemy internal)
+                if col_name is None and hasattr(sel_col, 'key'):
+                    col_name = sel_col.key
+                
+                # 4. Try string representation as last resort
+                if col_name is None:
+                    str_repr = str(sel_col)
+                    # Extract column name from string like "source.age" or "age"
+                    if '.' in str_repr:
+                        col_name = str_repr.split('.')[-1].strip('"')
+                    else:
+                        col_name = str_repr.strip('"')
+                
+                select_col_names_from_select.append(col_name if col_name else 'unknown')
+            
+            logging.debug(f"[SQL_DEBUG] SELECT columns (order): {select_col_names_from_select}")
+            logging.debug(f"[SQL_DEBUG] INSERT columns (order): {col_names}")
+            
+            if select_col_names_from_select != col_names:
+                raise ValueError(
+                    f"Column order mismatch! SELECT has {select_col_names_from_select} "
+                    f"but INSERT expects {col_names}"
+                )
+            
+            # Execute INSERT
+            try:
+                stmt = sql_insert(target_table_obj).from_select(col_names, select_stmt)
+                logging.debug(f"[SQL_DEBUG] Using SQLAlchemy insert().from_select()")
+                conn.execute(stmt)
+                conn.commit()
+            except Exception as e:
+                # Fallback: if the dialect emitted unsupported '!' NOT operator, rewrite to explicit NOT/CASE
+                err_msg = str(e)
+                try:
+                    compiled_select = select_stmt.compile(
+                        dialect=self.engine.dialect,
+                        compile_kwargs={"literal_binds": False},
+                    )
+                    select_sql_debug = str(compiled_select)
+                except Exception:
+                    select_sql_debug = None
+
+                if select_sql_debug and "!(" in select_sql_debug:
+                    fixed_select_sql = select_sql_debug.replace("!(", "(NOT ")
+                    insert_cols_sql = ", ".join(col_names)
+                    raw_sql = f"INSERT INTO {target_table} ({insert_cols_sql}) {fixed_select_sql}"
+                    logging.warning(
+                        "[SQL_DEBUG] Falling back to raw INSERT with rewritten NOT operator"
+                    )
+                    from sqlalchemy import text as sql_text
+                    conn.execute(sql_text(raw_sql))
+                    conn.commit()
+                else:
+                    raise
+            
+            # Verify the insert worked
+            verify_result = conn.execute(select(*target_table_obj.columns))
+            verify_rows = list(verify_result.fetchall())
+            logging.debug(f"[SQL_DEBUG] After INSERT, target table has {len(verify_rows)} rows")
+            if verify_rows:
+                logging.debug(f"[SQL_DEBUG] First row: {verify_rows[0]}")
 
     def _apply_order_by(
         self, source_table: str, target_table: str, columns: Tuple[Any, ...]
@@ -3966,13 +4545,18 @@ class SQLAlchemyMaterializer:
                     )
                     return or_(left_expr, right_expr)
                 elif condition.operation == "!":
-                    # Logical NOT operation
-                    expr = self._condition_to_sqlalchemy(table_obj, condition.column)
-                    if expr is not None:
-                        return ~expr
-                    else:
-                        # Handle case where the inner expression is not supported
-                        return None
+                    # Logical NOT operation - render explicit SQL using literal_column
+                    from sqlalchemy import literal_column
+                    inner_sql = None
+                    try:
+                        # Try to build inner SQL via translator for accuracy
+                        inner_sql = self.expression_translator.condition_to_sql(condition.column, table_obj)
+                    except Exception:
+                        pass
+                    if inner_sql is None:
+                        # Fallback to column name
+                        inner_sql = str(self._column_to_sqlalchemy(table_obj, condition.column))
+                    return literal_column(f"(NOT {inner_sql})")
                 elif condition.operation == "isnull":
                     # IS NULL operation
                     left = self._column_to_sqlalchemy(table_obj, condition.column)
@@ -4080,7 +4664,12 @@ class SQLAlchemyMaterializer:
             elif expr.operation == "|":
                 return or_(left, right)
             elif expr.operation == "!":
-                return ~left
+                from sqlalchemy import literal_column
+                try:
+                    left_sql = str(left)
+                except Exception:
+                    left_sql = ""
+                return literal_column(f"(CASE WHEN {left_sql} THEN FALSE ELSE TRUE END)")
             else:
                 # Fallback
                 return table_obj.c[str(expr)]

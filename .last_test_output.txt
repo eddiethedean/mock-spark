@@ -1,0 +1,1359 @@
+Running Mock Spark Test Suite (Overhauled)
+==========================================
+⚠️  pytest-xdist not available - running serially
+   Install with: pip install pytest-xdist
+Running unit tests...
+============================= test session starts ==============================
+platform darwin -- Python 3.9.23, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.9.23/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /Users/odosmatthews/Documents/coding/mock-spark
+configfile: pyproject.toml
+plugins: hypothesis-6.141.1, xdist-3.8.0, cov-7.0.0
+collecting ... collected 316 items
+
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_syntax_error PASSED [  0%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_column_not_found_error PASSED [  0%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_type_mismatch_error PASSED [  0%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_function_not_found_error PASSED [  1%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_generic_error PASSED [  1%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_parser_error PASSED [  1%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_catalog_error PASSED [  2%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_with_minimal_context PASSED [  2%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_binder_error PASSED [  2%]
+tests/unit/backend/test_error_translator.py::TestDuckDBErrorTranslator::test_translate_with_error_message_patterns PASSED [  3%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_duckdb_default PASSED [  3%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_duckdb_with_path PASSED [  3%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_duckdb_with_memory PASSED [  4%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_memory PASSED [  4%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_file PASSED [  4%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_unsupported PASSED [  5%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_materializer_duckdb_default PASSED [  5%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_materializer_duckdb_with_memory PASSED [  5%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_materializer_sqlalchemy PASSED [  6%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_materializer_unsupported PASSED [  6%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_storage_backend_file_custom_path PASSED [  6%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_export_backend_duckdb PASSED [  6%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_export_backend_unsupported PASSED [  7%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_export_backend_memory PASSED [  7%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_create_export_backend_file PASSED [  7%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_storage_backend_kwargs PASSED [  8%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_materializer_kwargs PASSED [  8%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_list_available_backends PASSED [  8%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_validate_backend_type_valid PASSED [  9%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_validate_backend_type_invalid PASSED [  9%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_get_backend_type_duckdb PASSED [  9%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_get_backend_type_memory PASSED [ 10%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_get_backend_type_file PASSED [ 10%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_storage_backend_with_disk_spillover PASSED [ 10%]
+tests/unit/backend/test_factory.py::TestBackendFactory::test_materializer_with_disk_spillover PASSED [ 11%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_from_empty_data PASSED [ 11%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_from_sparse_data PASSED [ 11%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_raises_value_error_all_null PASSED [ 12%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_raises_type_error_conflict PASSED [ 12%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_bool PASSED [ 12%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_int PASSED [ 12%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_float PASSED [ 13%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_string PASSED [ 13%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_list PASSED [ 13%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_list_with_strings PASSED [ 14%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_dict PASSED [ 14%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_bytes PASSED [ 14%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_date_string PASSED [ 15%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_timestamp_string PASSED [ 15%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_datetime_object PASSED [ 15%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_normalize_data_fills_missing_keys PASSED [ 16%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_all_fields_nullable PASSED [ 16%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_fields_sorted_alphabetically PASSED [ 16%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_raises_error_for_non_dict_in_data PASSED [ 17%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_is_date_string_valid_formats PASSED [ 17%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_is_date_string_invalid PASSED [ 17%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_is_timestamp_string_valid_formats PASSED [ 18%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_is_timestamp_string_invalid PASSED [ 18%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_empty_list_elements PASSED [ 18%]
+tests/unit/core/test_schema_inference.py::TestSchemaInferenceEngine::test_infer_type_fallback_to_string PASSED [ 18%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_eq_with_same_type PASSED [ 19%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_eq_only_checks_class PASSED [ 19%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_eq_with_different_types PASSED [ 19%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_eq_with_non_type PASSED [ 20%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_hash_makes_type_hashable PASSED [ 20%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_hash_includes_nullable PASSED [ 20%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_repr PASSED  [ 21%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_type_name PASSED [ 21%]
+tests/unit/core/test_spark_types.py::TestMockDataType::test_type_name_complex_types PASSED [ 21%]
+tests/unit/core/test_spark_types.py::TestCharType::test_char_type_default_length PASSED [ 22%]
+tests/unit/core/test_spark_types.py::TestCharType::test_char_type_custom_length PASSED [ 22%]
+tests/unit/core/test_spark_types.py::TestCharType::test_char_type_repr PASSED [ 22%]
+tests/unit/core/test_spark_types.py::TestVarcharType::test_varchar_type_default_length PASSED [ 23%]
+tests/unit/core/test_spark_types.py::TestVarcharType::test_varchar_type_custom_length PASSED [ 23%]
+tests/unit/core/test_spark_types.py::TestVarcharType::test_varchar_type_repr PASSED [ 23%]
+tests/unit/core/test_spark_types.py::TestIntervalType::test_interval_type_default PASSED [ 24%]
+tests/unit/core/test_spark_types.py::TestIntervalType::test_interval_type_custom PASSED [ 24%]
+tests/unit/core/test_spark_types.py::TestIntervalType::test_interval_type_repr PASSED [ 24%]
+tests/unit/core/test_spark_types.py::TestArrayType::test_array_type_with_element_type PASSED [ 25%]
+tests/unit/core/test_spark_types.py::TestArrayType::test_array_type_repr PASSED [ 25%]
+tests/unit/core/test_spark_types.py::TestArrayType::test_array_type_nullable PASSED [ 25%]
+tests/unit/core/test_spark_types.py::TestMapType::test_map_type_with_key_and_value_types PASSED [ 25%]
+tests/unit/core/test_spark_types.py::TestMapType::test_map_type_repr PASSED [ 26%]
+tests/unit/core/test_spark_types.py::TestMapType::test_map_type_nullable PASSED [ 26%]
+tests/unit/core/test_spark_types.py::TestDecimalType::test_decimal_type_default PASSED [ 26%]
+tests/unit/core/test_spark_types.py::TestDecimalType::test_decimal_type_custom PASSED [ 27%]
+tests/unit/core/test_spark_types.py::TestDecimalType::test_decimal_type_repr PASSED [ 27%]
+tests/unit/core/test_spark_types.py::TestMockStructType::test_struct_type_creation PASSED [ 27%]
+tests/unit/core/test_spark_types.py::TestMockStructType::test_struct_type_with_fields PASSED [ 28%]
+tests/unit/core/test_spark_types.py::TestMockStructType::test_struct_type_field_names PASSED [ 28%]
+tests/unit/core/test_spark_types.py::TestMockStructType::test_struct_type_field_names_empty PASSED [ 28%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_creation PASSED [ 29%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_with_all_none PASSED [ 29%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_len PASSED    [ 29%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_getitem_by_index PASSED [ 30%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_getitem_by_key PASSED [ 30%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_getitem_key_error PASSED [ 30%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_getattr PASSED [ 31%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_getattr_missing PASSED [ 31%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_repr PASSED   [ 31%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_values PASSED [ 31%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_keys PASSED   [ 32%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_items PASSED  [ 32%]
+tests/unit/core/test_spark_types.py::TestMockRow::test_row_as_dict PASSED [ 32%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_collect PASSED [ 33%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_take PASSED [ 33%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_take_with_zero PASSED [ 33%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_take_with_negative PASSED [ 34%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_take_with_overflow PASSED [ 34%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_head_with_default_n PASSED [ 34%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_head_with_n_1 PASSED [ 35%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_head_with_n_greater_than_1 PASSED [ 35%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_head_with_empty_data PASSED [ 35%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_tail_with_default_n PASSED [ 36%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_tail_with_n_1 PASSED [ 36%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_tail_with_n_greater_than_1 PASSED [ 36%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_tail_with_empty_data PASSED [ 37%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_to_local_iterator PASSED [ 37%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_to_local_iterator_with_prefetch PASSED [ 37%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_collect_with_empty_data PASSED [ 37%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_collect_with_single_row PASSED [ 38%]
+tests/unit/dataframe/test_collection_handler.py::TestCollectionHandler::test_take_returns_correct_rows PASSED [ 38%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_by_column PASSED [ 38%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_with_boolean_column PASSED [ 39%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_with_multiple_conditions PASSED [ 39%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_with_or_condition PASSED [ 39%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_with_functions PASSED [ 40%]
+tests/unit/dataframe/test_filter_operations.py::TestFilterOperations::test_filter_with_string_operations PASSED [ 40%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_collect PASSED       [ 40%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_count PASSED         [ 41%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_take PASSED          [ 41%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_first PASSED         [ 41%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_first_with_empty_rdd PASSED [ 42%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_foreach PASSED       [ 42%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_map PASSED           [ 42%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_filter PASSED        [ 43%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_reduce PASSED        [ 43%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_reduce_with_empty_rdd PASSED [ 43%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_groupBy PASSED       [ 43%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_groupBy_creates_correct_groups PASSED [ 44%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_cache PASSED         [ 44%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_persist_without_storage_level PASSED [ 44%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_persist_with_storage_level PASSED [ 45%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_unpersist PASSED     [ 45%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_iter PASSED          [ 45%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_len PASSED           [ 46%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_repr PASSED          [ 46%]
+tests/unit/dataframe/test_rdd.py::TestMockRDD::test_toDF PASSED          [ 46%]
+tests/unit/dataframe/test_rdd.py::TestMockGroupedRDD::test_mapValues PASSED [ 47%]
+tests/unit/dataframe/test_rdd.py::TestMockGroupedRDD::test_reduceByKey PASSED [ 47%]
+tests/unit/dataframe/test_rdd.py::TestMockGroupedRDD::test_countByKey PASSED [ 47%]
+tests/unit/dataframe/test_rdd.py::TestMockGroupedRDD::test_collect PASSED [ 48%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_single_column PASSED [ 48%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_multiple_columns PASSED [ 48%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_with_alias PASSED [ 49%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_all_columns PASSED [ 49%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_with_expressions PASSED [ 49%]
+tests/unit/dataframe/test_select_operations.py::TestSelectOperations::test_select_with_functions PASSED [ 50%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_distinct_with_column PASSED [ 50%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_distinct_with_string PASSED [ 50%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_intersect_with_columns PASSED [ 50%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_intersect_with_strings PASSED [ 51%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_union PASSED [ 51%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_except PASSED [ 51%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_position_with_value PASSED [ 52%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_remove_with_value PASSED [ 52%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_compact PASSED [ 52%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_slice PASSED [ 53%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_element_at PASSED [ 53%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_append PASSED [ 53%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_prepend PASSED [ 54%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_insert PASSED [ 54%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_size PASSED [ 54%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_sort PASSED [ 55%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_contains PASSED [ 55%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_max PASSED [ 55%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_min PASSED [ 56%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_explode PASSED [ 56%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_size PASSED [ 56%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_flatten PASSED [ 56%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_reverse PASSED [ 57%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_arrays_overlap PASSED [ 57%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_posexplode PASSED [ 57%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_posexplode_outer PASSED [ 58%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_arrays_zip_with_single_column PASSED [ 58%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_arrays_zip_with_multiple_columns PASSED [ 58%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_sequence_with_literals PASSED [ 59%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_sequence_with_column PASSED [ 59%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_shuffle PASSED [ 59%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_function_with_single_column PASSED [ 60%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_function_with_multiple_columns PASSED [ 60%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_function_raises_with_empty PASSED [ 60%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_repeat PASSED [ 61%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_sort_array_ascending PASSED [ 61%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_sort_array_descending PASSED [ 61%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_array_agg PASSED [ 62%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_cardinality PASSED [ 62%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_transform_with_lambda PASSED [ 62%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_filter_with_lambda PASSED [ 62%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_exists_with_lambda PASSED [ 63%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_forall_with_lambda PASSED [ 63%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_aggregate_with_lambda PASSED [ 63%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_aggregate_with_finish PASSED [ 64%]
+tests/unit/functions/test_array_functions.py::TestArrayFunctions::test_zip_with_with_lambda PASSED [ 64%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_count_with_column PASSED [ 64%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_count_with_none PASSED [ 65%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_sum PASSED [ 65%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_sum_with_none_column PASSED [ 65%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_sum_with_all_nulls PASSED [ 66%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_avg PASSED [ 66%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_avg_with_none_column PASSED [ 66%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_avg_with_non_numeric_values PASSED [ 67%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_max PASSED [ 67%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_max_with_none_column PASSED [ 67%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_max_with_strings PASSED [ 68%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_min PASSED [ 68%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_min_with_none_column PASSED [ 68%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_min_with_strings PASSED [ 68%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_evaluate_with_unsupported_function PASSED [ 69%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_configure_data_type_with_nullable PASSED [ 69%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_configure_data_type_with_nullable_avg PASSED [ 69%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_column_name_property_with_str PASSED [ 70%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_column_name_property_with_column PASSED [ 70%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_column_name_property_with_star PASSED [ 70%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_column_name_property_with_none PASSED [ 71%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_generate_name_for_count_star PASSED [ 71%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_generate_name_for_count_none PASSED [ 71%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_generate_name_for_count_distinct PASSED [ 72%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_generate_name_for_sum PASSED [ 72%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_alias_method PASSED [ 72%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_over_method PASSED [ 73%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_init_with_custom_data_type PASSED [ 73%]
+tests/unit/functions/test_base_functions.py::TestMockAggregateFunction::test_init_with_custom_data_type_nullable PASSED [ 73%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_count_with_column PASSED [ 74%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_count_with_string PASSED [ 74%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_get_with_position PASSED [ 74%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_get_with_negative_position PASSED [ 75%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bitwise_not_with_column PASSED [ 75%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bitwise_not_with_string PASSED [ 75%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_and_with_column PASSED [ 75%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_and_with_string PASSED [ 76%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_or_with_column PASSED [ 76%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_or_with_string PASSED [ 76%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_xor_with_column PASSED [ 77%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bit_xor_with_string PASSED [ 77%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bitwise_not_deprecated_alias PASSED [ 77%]
+tests/unit/functions/test_bitwise_functions.py::TestBitwiseFunctions::test_bitwise_not_deprecated_returns_same_as_new PASSED [ 78%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_from_json_exists PASSED [ 78%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_to_json_exists PASSED [ 78%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_schema_of_json_exists PASSED [ 79%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_schema_of_csv_exists PASSED [ 79%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_from_json_column PASSED [ 79%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_to_json_column PASSED [ 80%]
+tests/unit/functions/test_json_csv.py::TestJSONFunctions::test_json_functions_in_f_namespace PASSED [ 80%]
+tests/unit/functions/test_json_csv.py::TestCSVFunctions::test_from_csv_exists PASSED [ 80%]
+tests/unit/functions/test_json_csv.py::TestCSVFunctions::test_to_csv_exists PASSED [ 81%]
+tests/unit/functions/test_json_csv.py::TestCSVFunctions::test_csv_functions_in_f_namespace PASSED [ 81%]
+tests/unit/functions/test_json_csv.py::TestCSVFunctions::test_json_csv_module_importable PASSED [ 81%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_abs_with_column PASSED [ 81%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_abs_with_string PASSED [ 82%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_round_default_scale PASSED [ 82%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_round_with_scale PASSED [ 82%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_ceil PASSED [ 83%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_floor PASSED [ 83%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_sqrt PASSED [ 83%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_exp PASSED [ 84%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_log_natural PASSED [ 84%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_log_with_base PASSED [ 84%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_log10 PASSED [ 85%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_log2 PASSED [ 85%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_pow_with_int PASSED [ 85%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_pow_with_float PASSED [ 86%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_pow_with_column PASSED [ 86%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_sin PASSED [ 86%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_cos PASSED [ 87%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_tan PASSED [ 87%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_asin PASSED [ 87%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_acos PASSED [ 87%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_atan PASSED [ 88%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_atan2 PASSED [ 88%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_sinh PASSED [ 88%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_cosh PASSED [ 89%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_tanh PASSED [ 89%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_toDegrees PASSED [ 89%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_toRadians PASSED [ 90%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_signum PASSED [ 90%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_rint PASSED [ 90%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_cbrt PASSED [ 91%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_hypot PASSED [ 91%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_log1p PASSED [ 91%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_expm1 PASSED [ 92%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_signum_with_string_column PASSED [ 92%]
+tests/unit/functions/test_math_functions.py::TestMathFunctions::test_all_basic_functions_with_string PASSED [ 92%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_upper_function PASSED [ 93%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_lower_function PASSED [ 93%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_length_function PASSED [ 93%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_substring_function PASSED [ 93%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_concat_function PASSED [ 94%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_split_function PASSED [ 94%]
+tests/unit/functions/test_string_functions.py::TestStringFunctions::test_regexp_extract_function PASSED [ 94%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_from_xml_with_schema PASSED [ 95%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_from_xml_with_string_column PASSED [ 95%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_to_xml_with_column PASSED [ 95%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_to_xml_with_column_operation PASSED [ 96%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_schema_of_xml PASSED [ 96%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_schema_of_xml_with_string PASSED [ 96%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath PASSED [ 97%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_with_string PASSED [ 97%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_boolean PASSED [ 97%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_double PASSED [ 98%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_float PASSED [ 98%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_int PASSED [ 98%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_long PASSED [ 99%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_short PASSED [ 99%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_string PASSED [ 99%]
+tests/unit/functions/test_xml_functions.py::TestXMLFunctions::test_xpath_functions_with_complex_paths PASSED [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.23-final-0 _______________
+
+Name                                                        Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------
+mock_spark/__init__.py                                         27      0   100%
+mock_spark/_version_compat.py                                  51     29    43%   39-56, 66, 78-91, 117-135, 146, 169-170
+mock_spark/backend/__init__.py                                  3      0   100%
+mock_spark/backend/duckdb/__init__.py                           5      0   100%
+mock_spark/backend/duckdb/cte_query_builder.py                256    185    28%   38, 60-84, 94, 123, 125-133, 186, 201, 209-212, 218-229, 234-255, 259, 277-398, 415-458, 473-486, 498, 513-589, 605-613
+mock_spark/backend/duckdb/dataframe_operation_applier.py      154    154     0%   8-345
+mock_spark/backend/duckdb/date_format_converter.py             33     26    21%   28-101, 114-117
+mock_spark/backend/duckdb/datetime_operations_handler.py      161    141    12%   33-86, 90-98, 102-111, 115-135, 139-146, 150-157, 162-184, 188-201, 206, 264-344
+mock_spark/backend/duckdb/error_translator.py                  23      0   100%
+mock_spark/backend/duckdb/export.py                            53     47    11%   37-87, 102-133, 144-165
+mock_spark/backend/duckdb/materializer.py                      32      6    81%   42-43, 56-57, 66-67
+mock_spark/backend/duckdb/operation_executor.py               175    157    10%   64-113, 125-397, 411
+mock_spark/backend/duckdb/query_executor.py                  2541   2258    11%   73-79, 86, 95, 109, 140-143, 167, 174-178, 197, 200, 203-222, 232-258, 273-338, 389-392, 401-420, 425-453, 473-498, 502-536, 546-607, 610-647, 659-669, 678-751, 757-772, 787-808, 816, 818, 820, 822, 825-828, 830, 832, 834, 837-840, 843-846, 848, 850, 852, 854, 858-883, 898-908, 911-916, 924-934, 1116-1121, 1126, 1133-1134, 1137, 1142-1143, 1148-1149, 1154-1155, 1161-1162, 1169-1170, 1175-1176, 1184-1191, 1198-1209, 1214-1215, 1220-1223, 1229-1230, 1235-1236, 1241-1244, 1249-1250, 1255-1256, 1263-1268, 1275-1279, 1284-1285, 1290-1291, 1296-1297, 1302-1303, 1308-1309, 1314-1315, 1322-1323, 1328-1329, 1334-1335, 1339-1340, 1344-1345, 1350-1353, 1357-1358, 1362-1363, 1378-1381, 1386-1387, 1392-1393, 1398-1401, 1406-1407, 1413-1416, 1421-1422, 1428-1429, 1435-2844, 2851, 2867, 2872-2877, 2882, 2893-2935, 2960, 2973, 3004, 3008, 3013, 3039-3063, 3070-3086, 3091-3107, 3126, 3135, 3140, 3145-3159, 3169, 3174-3176, 3181, 3204, 3209, 3214, 3223, 3228, 3233, 3238, 3243, 3248, 3253-3255, 3260, 3265, 3270, 3282, 3287, 3292, 3309, 3314-3324, 3332-3381, 3388-3389, 3403, 3410, 3452-3522, 3528-3662, 3673-3738, 3745-4364, 4370-4432, 4438-4457, 4461-4495, 4499-4589, 4593-4615, 4619-4669, 4673-4678, 4682-4686, 4690-4695, 4699-4733, 4739-4844, 4850-5043, 5047-5307, 5311-5359, 5367-5368, 5374-5375
+mock_spark/backend/duckdb/sql_expression_translator.py        822    640    22%   46-75, 78, 88-90, 107-119, 123-136, 139, 150-172, 176, 198-368, 378-381, 394-408, 412, 419, 422, 428, 436-444, 447, 449, 451, 468, 474, 481, 484-488, 492-494, 497-499, 505, 507, 511-531, 534-542, 545-553, 557, 584-605, 620, 627-629, 638-673, 681-687, 692-738, 750-752, 754, 756, 760-777, 782-784, 788-790, 793-794, 799, 802, 805, 808, 811-833, 838-845, 868, 870, 876, 878, 899-903, 906-912, 915-921, 924-930, 940-996, 1000, 1012-1034, 1046-1105, 1117-1201, 1212-1217, 1230, 1234, 1248-1282, 1294-1310, 1327-1436, 1440-1445, 1449-1452, 1456-1522
+mock_spark/backend/duckdb/sql_query_builder.py                 48     48     0%   8-220
+mock_spark/backend/duckdb/storage.py                          400    284    29%   40-67, 72-81, 85-105, 109-195, 199-207, 211-215, 221-270, 274, 278, 284, 289, 294, 298, 302, 306-307, 312-317, 321-324, 328, 349, 357-367, 372-381, 386-401, 405-406, 464-465, 479-480, 484-485, 491, 495-496, 500, 504-506, 515-518, 522-523, 529-533, 539-544, 550-552, 556-562, 566, 570-581, 585-587, 591-600, 604-608, 614-619, 623-631, 642-655, 664-667, 672-673, 684-685, 691-692, 696, 700, 704-712, 716-723, 727-741, 745-747, 751-763, 769-776, 780-782, 786
+mock_spark/backend/duckdb/table_manager.py                    209    133    36%   56-60, 74, 77-92, 95-97, 107-143, 161-168, 172-183, 191-205, 211-237, 249-259, 299-311, 319-326, 329, 333-334, 336-339, 341-352, 355, 381-389
+mock_spark/backend/duckdb/window_function_handler.py          228    228     0%   8-383
+mock_spark/backend/duckdb/window_processor.py                  38     31    18%   34-94
+mock_spark/backend/factory.py                                  69     12    83%   101-103, 109-111, 172-180
+mock_spark/backend/protocols.py                                14      0   100%
+mock_spark/core/__init__.py                                     8      0   100%
+mock_spark/core/condition_evaluator.py                        657    626     5%   26-33, 46-53, 68-215, 230-403, 420-440, 455-468, 483-626, 640-1059, 1074-1085, 1101-1117, 1130-1137, 1150, 1163-1167, 1181-1217
+mock_spark/core/data_validation.py                             80     43    46%   56-85, 91-113, 129, 135-136, 160, 176-186, 204-205, 221-222
+mock_spark/core/ddl_adapter.py                                 31     31     0%   8-133
+mock_spark/core/exceptions/__init__.py                          6      0   100%
+mock_spark/core/exceptions/analysis.py                         85     67    21%   35-37, 55, 73, 101-126, 134-166, 194-209, 233-236, 266-287
+mock_spark/core/exceptions/base.py                             22      4    82%   31, 61, 76, 91
+mock_spark/core/exceptions/execution.py                        29     13    55%   27, 45, 63, 87-90, 114-117, 135, 153
+mock_spark/core/exceptions/operation.py                        85     26    69%   49-58, 72-82, 187-196
+mock_spark/core/exceptions/runtime.py                          41     25    39%   27, 53-57, 75, 101-107, 131-134, 158-161, 187-193
+mock_spark/core/exceptions/validation.py                       44     26    41%   27, 45, 63, 81, 107-111, 141-147, 171-174, 202-207
+mock_spark/core/interfaces/__init__.py                          5      0   100%
+mock_spark/core/interfaces/dataframe.py                       180     56    69%   20, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 98, 103, 110, 115, 120, 125, 130, 136, 142, 151, 156, 161, 166, 171, 176, 181, 190, 195, 200, 205, 212, 217, 222, 227, 232, 241, 246, 251, 256, 261, 266, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320
+mock_spark/core/interfaces/functions.py                       183     56    69%   19, 24, 29, 38, 43, 52, 57, 66, 71, 80, 85, 90, 95, 104, 109, 114, 119, 126, 131, 140, 145, 150, 155, 160, 169, 174, 181, 188, 193, 198, 203, 208, 217, 222, 227, 232, 237, 246, 251, 259, 269, 274, 279, 284, 289, 294, 299, 304, 309, 314, 319, 324, 329, 334, 339, 344
+mock_spark/core/interfaces/session.py                         115     33    71%   20, 26, 32, 38, 44, 50, 56, 65, 70, 75, 82, 87, 92, 102, 107, 112, 121, 126, 131, 142, 147, 152, 157, 162, 167, 172, 181, 186, 191, 196, 205, 210, 215
+mock_spark/core/interfaces/storage.py                         126     38    70%   29, 34, 39, 44, 54, 59, 64, 69, 76, 83, 90, 97, 102, 106, 110, 114, 120, 126, 136, 142, 148, 153, 158, 163, 168, 173, 186, 192, 198, 204, 210, 215, 220, 229, 234, 239, 248, 253
+mock_spark/core/protocols.py                                   42      0   100%
+mock_spark/core/schema_inference.py                            87     12    86%   214-215, 231-244
+mock_spark/core/types/__init__.py                               4      0   100%
+mock_spark/core/types/data_types.py                           139     38    73%   22, 27, 32, 37, 42, 47, 52, 57, 66, 76, 81, 91, 97, 102, 111, 121, 127, 132, 141, 146, 155, 160, 170, 175, 180, 190, 196, 201, 206, 211, 221, 226, 231, 240, 249, 254, 259, 264
+mock_spark/core/types/metadata.py                             166     47    72%   18, 23, 28, 33, 38, 43, 48, 53, 58, 63, 73, 79, 85, 91, 97, 103, 108, 113, 118, 128, 134, 140, 145, 150, 160, 166, 172, 177, 182, 187, 197, 203, 209, 215, 220, 225, 230, 239, 244, 249, 254, 259, 268, 273, 278, 283, 288
+mock_spark/core/types/schema.py                               122     36    70%   21, 27, 33, 39, 44, 49, 54, 59, 69, 74, 79, 84, 89, 94, 99, 104, 109, 114, 124, 129, 134, 139, 144, 149, 154, 159, 164, 169, 184, 189, 194, 199, 208, 213, 220, 225
+mock_spark/data_generation/__init__.py                          4      4     0%   8-12
+mock_spark/data_generation/builder.py                          28     28     0%   8-85
+mock_spark/data_generation/convenience.py                       9      9     0%   8-64
+mock_spark/data_generation/generator.py                       174    174     0%   8-339
+mock_spark/dataframe/__init__.py                                6      0   100%
+mock_spark/dataframe/assertions.py                             25     25     0%   8-85
+mock_spark/dataframe/casting/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/casting/type_converter.py                 63     63     0%   3-103
+mock_spark/dataframe/collection_handler.py                     24      0   100%
+mock_spark/dataframe/condition_handler.py                      49     49     0%   8-169
+mock_spark/dataframe/dataframe.py                            1270   1019    20%   138-142, 146-150, 162-166, 183, 186, 219-220, 240-241, 251, 257, 280-281, 292-296, 314-361, 377-422, 426-431, 435-437, 449-451, 459-461, 471-473, 497-500, 509-511, 515-517, 521-523, 527-529, 563, 565, 569-596, 602, 606, 622, 632, 637-882, 908, 919-923, 930-935, 949, 967-975, 979, 983, 998-1011, 1025-1038, 1052-1065, 1083-1084, 1088-1093, 1098, 1102, 1117-1180, 1192-1214, 1226-1266, 1278-1315, 1324-1327, 1331-1344, 1348-1358, 1362-1370, 1374-1392, 1401-1417, 1421-1434, 1438-1440, 1445, 1451-1456, 1460, 1466, 1475, 1481, 1489, 1497, 1505, 1520, 1528, 1541, 1549, 1561, 1567, 1573, 1580, 1585-1591, 1606-1617, 1634-1654, 1682-1717, 1727-1843, 1847-1852, 1856-1861, 1865-1871, 1876, 1880, 1884, 1888, 1903-1939, 1953-1992, 2003-2081, 2092-2165, 2190-2221, 2244-2305, 2323-2328, 2357-2416, 2425, 2439-2446, 2457-2458, 2472, 2484, 2498-2520, 2532, 2543, 2557-2562, 2575-2592, 2604-2606, 2620-2623, 2642-2657, 2669-2684, 2696-2724, 2738-2759, 2774, 2785-2805, 2813, 2828-2840, 2851-2854, 2862-2863, 2872, 2889-2893, 2908, 2919-2924, 2937-2940, 2948, 2962-2964, 2988-3017, 3031-3048, 3066-3078, 3095-3104, 3109, 3113-3156
+mock_spark/dataframe/display/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/display/formatter.py                      37     37     0%   3-57
+mock_spark/dataframe/evaluation/__init__.py                     2      0   100%
+mock_spark/dataframe/evaluation/expression_evaluator.py       540    476    12%   38-51, 57-59, 64-78, 82-95, 99-123, 129-158, 164-190, 194-280, 286-322, 328-373, 379-467, 472-488, 495-507, 511-526, 530-545, 549-564, 568-583, 587-598, 602, 606, 615-636, 679, 683, 687, 691, 695-698, 702-704, 708-713, 717-720, 724-736, 743, 748, 752-753, 757, 761, 765, 771-811, 816, 820, 824, 828, 832, 836, 840, 844-849, 853-859, 863-868, 872-877, 882-893, 898-909, 913-920, 924-935
+mock_spark/dataframe/export.py                                 31     31     0%   11-117
+mock_spark/dataframe/grouped/__init__.py                        5      0   100%
+mock_spark/dataframe/grouped/base.py                          572    546     5%   39-40, 53-197, 211-262, 276-729, 745-777, 788-795, 806-813, 824-834, 845-852, 863-870, 881-890, 901-910, 921-930, 941-950, 961-970, 981-990, 1001-1015, 1026-1040, 1054-1071, 1093-1163, 1185-1243
+mock_spark/dataframe/grouped/cube.py                           82     75     9%   28-29, 44-204
+mock_spark/dataframe/grouped/pivot.py                         121    113     7%   34-37, 53-123, 129-160, 166-212, 220-252
+mock_spark/dataframe/grouped/rollup.py                         83     77     7%   27-28, 45-207
+mock_spark/dataframe/lazy.py                                  593    509    14%   43-45, 61-72, 90-104, 110-146, 152-161, 174-176, 180, 205, 218-220, 228, 240, 245, 249, 252, 267, 278, 281, 290, 296, 321, 328-341, 346-349, 353-356, 361-362, 378-844, 857-1106, 1119-1137, 1152-1288, 1304-1316
+mock_spark/dataframe/operations/__init__.py                     4      4     0%   3-7
+mock_spark/dataframe/operations/aggregation_operations.py     128    128     0%   3-313
+mock_spark/dataframe/operations/join_operations.py            157    157     0%   3-335
+mock_spark/dataframe/operations/set_operations.py              76     76     0%   3-117
+mock_spark/dataframe/protocols.py                              27     27     0%   8-179
+mock_spark/dataframe/rdd.py                                    70      0   100%
+mock_spark/dataframe/reader.py                                 79     61    23%   53-55, 69-70, 85-86, 100-101, 116-117, 137-141, 157-206, 222-226, 242-246, 262-266, 282-286, 302-306, 323-327
+mock_spark/dataframe/schema/__init__.py                         2      2     0%   3-5
+mock_spark/dataframe/schema/schema_manager.py                 173    173     0%   3-325
+mock_spark/dataframe/sqlalchemy_query_builder.py              153    153     0%   8-298
+mock_spark/dataframe/validation/__init__.py                     2      0   100%
+mock_spark/dataframe/validation/column_validator.py            87     33    62%   28, 33, 35, 42, 71, 75, 91-94, 113, 133-159, 169, 190, 195, 203, 207, 233-236, 250, 258-280
+mock_spark/dataframe/validation_handler.py                     11      2    82%   39, 54
+mock_spark/dataframe/window_handler.py                        223    223     0%   8-492
+mock_spark/dataframe/writer.py                                137    119    13%   58-62, 76-77, 94-103, 112, 127-128, 142-143, 157-158, 174-347, 374-392, 404, 416, 428, 440, 452
+mock_spark/delta.py                                            64     39    39%   39-40, 52-67, 72-73, 77-79, 83, 88, 92, 96, 100, 112, 123-170, 184-227, 234, 237, 240, 243, 246, 249, 253
+mock_spark/error_simulation.py                                 89     89     0%   29-336
+mock_spark/errors.py                                           28     10    64%   57, 62, 67, 72, 79, 86, 91, 96, 101, 106
+mock_spark/functions/__init__.py                               33     10    70%   411-431
+mock_spark/functions/aggregate.py                             133     55    59%   60, 72, 84, 96, 108, 120, 132, 144, 156, 168, 180, 192, 204, 216, 233, 248, 263, 275, 287, 299, 311, 326-331, 346-351, 363, 375, 387, 399, 411, 423, 435, 447, 462-466, 479, 491, 506-508, 523-530, 544-552
+mock_spark/functions/array.py                                 231     40    83%   103, 105, 131, 133, 159, 183, 212, 244, 276, 308, 345, 384, 386, 417, 441, 466, 489, 516, 543, 566, 586, 609, 632, 652, 672, 690, 708, 726, 747, 749, 771-773, 789, 806, 825, 853, 877, 901, 937, 960
+mock_spark/functions/base.py                                   99      8    92%   112, 126, 128, 130, 132, 134, 188, 202
+mock_spark/functions/bitwise.py                                38      1    97%   53
+mock_spark/functions/conditional.py                           263    226    14%   30-112, 130-139, 144, 149, 161-162, 173-185, 196-197, 209-214, 218-276, 290-292, 304-320, 334-363, 380-404, 416-422, 434-441, 453-458, 471-473, 490, 511, 524-545, 570-585
+mock_spark/functions/core/__init__.py                           6      0   100%
+mock_spark/functions/core/column.py                           237     91    62%   34, 38, 46, 54, 62, 66, 70, 74, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 134, 138, 142, 146, 185, 189-191, 195, 210-212, 216-218, 222-224, 232, 297, 302, 308, 310-311, 313-327, 329-333, 343-348, 355, 362, 367, 370, 372, 376, 380, 384, 386, 388, 390, 396, 398, 400, 402, 404, 406, 408, 410, 412, 414, 417-436, 439-442, 445-449, 451, 453, 455, 457, 469-471
+mock_spark/functions/core/expressions.py                       82     50    39%   31, 45, 60-62, 76-83, 95-97, 109-111, 123-125, 137-139, 151, 163-170, 182-189, 201-208, 220-227, 243-246
+mock_spark/functions/core/lambda_parser.py                    134     79    41%   59-60, 74, 94, 96-100, 112, 116-117, 150-158, 172-230, 243-257, 268-281, 292-297, 310-315, 352, 360, 364-368
+mock_spark/functions/core/literals.py                         109     61    44%   36, 48, 70-72, 79-81, 85-87, 91-93, 97-99, 103-105, 109-111, 115-117, 121-123, 127-129, 133-135, 139-141, 145-147, 151-153, 157-159, 163-165, 169-171, 175, 179, 183-185, 189-191, 195-197, 201-203, 207-209, 213-215, 219-221, 225-227, 231-233, 237-239, 243-245
+mock_spark/functions/core/operations.py                        97     59    39%   27-29, 33-35, 39-41, 45-47, 51-53, 57-59, 63-65, 69, 73, 77-79, 83-85, 89-91, 95-97, 101-103, 107-109, 117, 121, 125, 129, 133, 137, 141, 149-151, 164, 168, 176, 184-186, 190-192, 200-202
+mock_spark/functions/datetime.py                              236    154    35%   50-53, 63-64, 79-88, 103-109, 121-125, 137-141, 153-159, 171-175, 187-191, 203-209, 221-227, 239-245, 257-263, 275-279, 291-295, 310-319, 334-345, 358-364, 377-383, 396-405, 420-429, 449-464, 484-495, 504-507, 518-521, 530-533, 543-546, 569-572, 592-595, 617-624, 647-650, 673-678, 699-706, 726-729, 745-748, 769-772, 789-796, 815-816, 833-834
+mock_spark/functions/functions.py                            1015    398    61%   81, 86, 91, 96, 101, 108, 132, 139, 144, 149, 154, 159, 164, 169, 174, 179, 186, 195, 200, 205, 219, 224, 229, 236, 241, 246, 253, 258, 263, 268, 273, 278, 283, 288, 295, 300, 305, 311, 316, 321, 326, 331, 336, 343, 348, 353, 358, 363, 370, 375, 380, 385, 390, 395, 400, 405, 410, 415, 422, 427, 432, 437, 442, 447, 452, 457, 462, 467, 472, 477, 482, 489, 496, 501, 506, 511, 516, 521, 526, 531, 536, 541, 547, 552, 557, 562, 567, 572, 577, 582, 587, 592, 597, 602, 607, 612, 619, 626, 633, 638, 643, 648, 653, 658, 663, 670, 675, 680, 687, 692, 697, 702, 707, 714, 721, 726, 731, 737, 742, 751-754, 761, 768, 773, 778, 783, 788, 793, 799, 804, 809, 814, 819-821, 826, 831, 836, 841, 846, 853-858, 863, 868, 875, 882, 887, 892, 897, 906, 913, 920, 928, 933, 938, 943, 948, 953, 958, 970-975, 986, 993, 1000, 1006-1008, 1016-1023, 1032-1040, 1046-1052, 1058-1064, 1071-1077, 1084-1090, 1095-1101, 1106-1112, 1117-1123, 1128-1134, 1139-1146, 1152, 1157, 1164, 1169, 1174, 1179, 1186, 1193, 1200, 1207, 1212, 1220, 1227, 1234, 1241, 1251, 1260, 1266, 1273, 1278, 1285, 1292, 1299, 1304, 1309, 1316, 1323, 1328, 1333, 1338, 1343, 1348, 1353, 1358, 1363, 1368, 1373, 1382, 1387, 1393, 1398, 1403, 1408, 1415, 1421, 1428, 1433, 1440, 1447, 1454, 1463, 1470, 1491-1499, 1510, 1515, 1520, 1525, 1530, 1535, 1543, 1548, 1553, 1558, 1564, 1569, 1574, 1584, 1590, 1595, 1602, 1609, 1616, 1622, 1627, 1632, 1637, 1642, 1647, 1652, 1657, 1662, 1667, 1672, 1698-1700, 1705-1707, 1712-1714, 1723-1725, 1730-1732, 1737-1739, 1745-1747, 1752-1754, 1759-1761, 1766-1768, 1773-1775, 1781-1783, 1788-1790, 1795-1797, 1802-1804, 1809-1811, 1816-1818, 1823-1825, 1848-1870, 1899-1924, 1948-1955, 1972-1978, 1984, 1989, 1994, 1999, 2004
+mock_spark/functions/json_csv.py                               41     17    59%   52, 69-72, 90-93, 107-109, 129-132, 146-149, 161-163
+mock_spark/functions/map.py                                    74     47    36%   48-51, 66-69, 86-89, 106-116, 139-144, 166-176, 199-202, 222-225, 248-254, 280-286, 312-318, 347-356
+mock_spark/functions/math.py                                  239     59    75%   68, 177, 195, 215, 235, 253, 277, 293, 309, 324-329, 341-356, 368-380, 395-396, 408-409, 424-425, 487, 489-491, 583-584, 598-600, 617-619, 650-651, 691-694, 725-726, 738-739, 751-752, 761-764, 773-776, 788-789
+mock_spark/functions/metadata.py                               33     33     0%   8-111
+mock_spark/functions/ordering.py                               28     28     0%   7-93
+mock_spark/functions/pandas_types.py                            6      0   100%
+mock_spark/functions/string.py                                288    160    44%   97-103, 115-121, 133-137, 149-153, 165-169, 185-194, 252, 281-296, 312-321, 333-337, 349-353, 365-371, 390-399, 421-432, 448-454, 469-475, 490-496, 514-517, 537-540, 555-558, 574-581, 632-635, 656-659, 677-680, 701-704, 726-729, 748-751, 771-776, 804-807, 821-824, 836-839, 851-854, 866-873, 890-897, 915-918, 933-936, 954-957, 977-980, 995-998, 1014-1020, 1037-1040, 1055-1058
+mock_spark/functions/udf.py                                    30     23    23%   41-46, 57-58, 70-92
+mock_spark/functions/window_execution.py                      182    152    16%   30, 33-42, 61-62, 73-100, 104, 108-158, 163, 167-174, 178-186, 191-193, 197-201, 205-208, 212-215, 219-234, 238-253, 257-277, 281-307
+mock_spark/functions/xml.py                                    59      8    86%   49, 119, 143, 167, 191, 215, 239, 263
+mock_spark/optimizer/__init__.py                                3      0   100%
+mock_spark/optimizer/optimization_rules.py                    172    142    17%   16-61, 65-66, 71, 83-110, 114-115, 119-142, 150-170, 174-175, 181-184, 192-224, 228, 233, 241-266, 270, 275-278, 286-322, 326, 331, 339-359, 363-364, 369-374
+mock_spark/optimizer/query_optimizer.py                       184    125    32%   44-55, 64, 69, 77-122, 126-127, 132, 144-171, 175-176, 180-203, 211-231, 235-236, 242-245, 253-285, 289, 294, 302-327, 331, 336-339, 357-364, 368, 372, 378
+mock_spark/performance_simulation.py                           91     91     0%   29-329
+mock_spark/session/__init__.py                                  4      0   100%
+mock_spark/session/catalog.py                                 170    138    19%   39, 43, 47, 60-61, 65, 69, 104, 115-119, 127, 140-154, 175-197, 214-238, 255-272, 294, 306-334, 350-370, 382-407, 418-439, 448, 457, 466, 471
+mock_spark/session/config/__init__.py                           2      0   100%
+mock_spark/session/config/configuration.py                     49     22    55%   67, 76, 84-85, 93, 101, 109, 117-118, 129, 133, 137, 175, 186-187, 198-199, 211-212, 223-224, 232
+mock_spark/session/context.py                                  33      9    73%   46, 50, 54, 91, 100, 109, 118, 122, 126
+mock_spark/session/core/__init__.py                             4      0   100%
+mock_spark/session/core/builder.py                             26     16    38%   30-31, 42, 56-60, 69-86
+mock_spark/session/core/session.py                            191     96    50%   94, 138, 143, 148, 153, 158, 193-197, 207-212, 216-220, 225-226, 235, 239, 249, 255, 268-270, 293, 311-314, 330, 342, 346-347, 353, 368-436, 455-456, 461, 465, 470, 478, 486, 493, 500, 510, 517, 522-532, 537-541, 547, 552-553, 558
+mock_spark/session/performance_tracker.py                      39     21    46%   57, 61-62, 87-109, 117
+mock_spark/session/services/__init__.py                         6      0   100%
+mock_spark/session/services/dataframe_factory.py               58     32    45%   48, 54-56, 61-79, 85, 90, 99-102, 119, 139-145, 163-179
+mock_spark/session/services/lifecycle_manager.py               19     15    21%   27-38, 47-51
+mock_spark/session/services/mocking_coordinator.py             31     22    29%   39-56, 68-71, 81-83, 98-102, 106
+mock_spark/session/services/protocols.py                       20      0   100%
+mock_spark/session/services/sql_parameter_binder.py            29     25    14%   28-51, 62-74
+mock_spark/session/session.py                                   2      2     0%   31-34
+mock_spark/session/sql/__init__.py                              5      0   100%
+mock_spark/session/sql/executor.py                            246    225     9%   71-102, 113-193, 204-226, 237-259, 271-277, 289-295, 307-309, 321-347, 359-426, 437-571
+mock_spark/session/sql/optimizer.py                            65     48    26%   41-43, 47, 51, 68, 85-100, 111-114, 127, 142, 155, 168, 181, 192-234, 247-260
+mock_spark/session/sql/parser.py                              154    134    13%   38-40, 44, 50, 262-272, 283-310, 322-351, 363-366, 378-416, 427-448, 463-483, 498, 510, 522, 533-611
+mock_spark/session/sql/validation.py                           87     74    15%   42, 105-126, 137-166, 177-188, 199-218, 229-237, 248-267, 278-281, 294, 308-313, 324-325
+mock_spark/spark_types.py                                     330    134    59%   65, 268-270, 273, 282-284, 287, 307, 315-320, 335, 347, 350, 353, 356, 359-360, 372-380, 391-393, 401-403, 407, 411-412, 416, 420, 432, 445, 451-460, 465-480, 485-486, 541-551, 562-565, 571, 574-583, 587-591, 597-601, 607-612, 618-623, 631-657, 671-692, 697-698, 709-711, 723-724, 730-731
+mock_spark/storage/__init__.py                                 10      0   100%
+mock_spark/storage/backends/__init__.py                         0      0   100%
+mock_spark/storage/backends/file.py                           202    133    34%   26-34, 39, 44, 49, 53-56, 64-69, 77-78, 87-102, 113-120, 128, 136-139, 143, 147, 151, 155-156, 160-162, 189-195, 206-207, 215-220, 228-236, 242, 246, 250, 254, 258, 262, 266-268, 272, 276, 280, 303-304, 315, 324-331, 339, 351-353, 368-371, 380-381, 393-397, 412-417, 432-434, 446-452, 464, 474-485, 496-505, 509-513, 519-524, 531
+mock_spark/storage/backends/memory.py                         133     84    37%   22-25, 34, 39, 44, 53-62, 73-78, 86, 94, 98, 102, 106, 110-111, 115-116, 140-145, 156, 164-165, 173, 191-192, 203, 212-213, 221, 233-235, 250-253, 262-263, 275-279, 294-299, 314-316, 328-334, 346, 356-367, 378-387, 399-403, 415-420, 427
+mock_spark/storage/manager.py                                 115     69    40%   39-44, 57, 69, 81, 93-94, 102, 113, 122, 130, 142, 157, 166, 179, 194, 208, 220, 229, 240, 254, 266, 274, 283, 296, 307, 315-320, 324-329, 337-349, 353, 361-371, 382-403
+mock_spark/storage/models.py                                   79     10    87%   77, 120-133, 138-140, 149-153
+mock_spark/storage/serialization/__init__.py                    0      0   100%
+mock_spark/storage/serialization/csv.py                        46     32    30%   23-30, 42-47, 57-62, 76-92, 104-120
+mock_spark/storage/serialization/json.py                       39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+mock_spark/storage/spark_function_mapper.py                    29     29     0%   7-270
+mock_spark/storage/sql_translator.py                          418    418     0%   8-734
+mock_spark/storage/sqlalchemy_helpers.py                       78     61    22%   37-82, 95-127, 145-153, 168-185, 203-214, 227-228, 242-243, 257-258, 273, 290, 296, 304, 310
+mock_spark/window.py                                           61     40    34%   58-61, 75-86, 100-111, 126-130, 145-149, 153-168, 191, 196, 201, 206
+-----------------------------------------------------------------------------------------
+TOTAL                                                       19754  14122    29%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+======================= 316 passed, 4 warnings in 10.15s =======================
+Running compatibility tests...
+  - DataFrame operations compatibility
+  - Function operations compatibility
+  - Join operations compatibility
+  - Aggregation operations compatibility
+  - Window functions compatibility
+  - Array functions compatibility
+  - Datetime functions compatibility
+  - Null handling compatibility
+  - Set operations compatibility
+  - Complex scenarios compatibility
+============================= test session starts ==============================
+platform darwin -- Python 3.9.23, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.9.23/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /Users/odosmatthews/Documents/coding/mock-spark
+configfile: pyproject.toml
+plugins: hypothesis-6.141.1, xdist-3.8.0, cov-7.0.0
+collecting ... collected 331 items
+
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_approx_count_distinct PASSED [  0%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_collect_list PASSED [  0%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_collect_set SKIPPED [  0%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_corr SKIPPED [  1%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_covar_pop SKIPPED [  1%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_covar_samp SKIPPED [  1%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_countDistinct SKIPPED [  2%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_kurtosis SKIPPED [  2%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_mean SKIPPED [  2%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_skewness PASSED [  3%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_stddev SKIPPED [  3%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_stddev_pop PASSED [  3%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_stddev_samp PASSED [  3%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_var_pop PASSED [  4%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_var_samp PASSED [  4%]
+tests/compatibility/test_aggregation_functions_extended_compatibility.py::TestAggregationFunctionsExtendedCompatibility::test_variance SKIPPED [  4%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_sum_aggregation PASSED [  5%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_avg_aggregation PASSED [  5%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_count_aggregation PASSED [  5%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_max_aggregation PASSED [  6%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_min_aggregation PASSED [  6%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_multiple_aggregations PASSED [  6%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_groupby_multiple_columns PASSED [  6%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_global_aggregation PASSED [  7%]
+tests/compatibility/test_aggregations_compatibility.py::TestAggregationsCompatibility::test_aggregation_with_nulls PASSED [  7%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_select_operations_parity PASSED [  7%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_filter_operations_parity PASSED [  8%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_with_column_operations_parity PASSED [  8%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_column_access_patterns_parity PASSED [  8%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_alias_operations_parity PASSED [  9%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_drop_operations_parity PASSED [  9%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_distinct_operations_parity PASSED [  9%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_order_by_operations_parity PASSED [  9%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_group_by_operations_parity PASSED [ 10%]
+tests/compatibility/test_api_parity_compatibility.py::TestAPIParityCompatibility::test_aggregation_operations_parity PASSED [ 10%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_array_contains PASSED [ 10%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_array_position PASSED [ 11%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_size_function PASSED [ 11%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_element_at PASSED [ 11%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_array_append PASSED [ 12%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_array_remove PASSED [ 12%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_array_distinct SKIPPED insertion order) [ 12%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_explode PASSED [ 12%]
+tests/compatibility/test_array_functions_compatibility.py::TestArrayFunctionsCompatibility::test_explode_outer SKIPPEDnd) [ 13%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array PASSED [ 13%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_except PASSED [ 13%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_intersect PASSED [ 14%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_join SKIPPED [ 14%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_max PASSED [ 14%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_min PASSED [ 15%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_repeat PASSED [ 15%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_sort SKIPPED [ 15%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_array_union SKIPPED [ 16%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_arrays_overlap PASSED [ 16%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_arrays_zip SKIPPED [ 16%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_flatten SKIPPED [ 16%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_reverse_array PASSED [ 17%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_sequence SKIPPED [ 17%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_shuffle SKIPPED [ 17%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_slice PASSED [ 18%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_sort_array SKIPPED [ 18%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_exists SKIPPED [ 18%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_forall SKIPPED [ 19%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_transform SKIPPED [ 19%]
+tests/compatibility/test_array_functions_extended_compatibility.py::TestArrayFunctionsExtendedCompatibility::test_zip_with SKIPPED [ 19%]
+tests/compatibility/test_bitwise_functions_compatibility.py::TestBitwiseFunctionsCompatibility::test_bitwise_not SKIPPED [ 19%]
+tests/compatibility/test_boolean_expressions.py::TestBooleanExpressionsCompatibility::test_boolean_or_operation PASSED [ 20%]
+tests/compatibility/test_boolean_expressions.py::TestBooleanExpressionsCompatibility::test_boolean_and_operation PASSED [ 20%]
+tests/compatibility/test_boolean_expressions.py::TestBooleanExpressionsCompatibility::test_boolean_not_operation PASSED [ 20%]
+tests/compatibility/test_boolean_expressions.py::TestBooleanExpressionsCompatibility::test_complex_boolean_expression PASSED [ 21%]
+tests/compatibility/test_boolean_expressions.py::TestBooleanExpressionsCompatibility::test_boolean_in_filter PASSED [ 21%]
+tests/compatibility/test_column_lifecycle.py::TestColumnLifecycleCompatibility::test_column_created_in_withcolumn_available_later PASSED [ 21%]
+tests/compatibility/test_column_lifecycle.py::TestColumnLifecycleCompatibility::test_column_persistence_through_multiple_transforms PASSED [ 22%]
+tests/compatibility/test_column_lifecycle.py::TestColumnLifecycleCompatibility::test_column_available_after_select PASSED [ 22%]
+tests/compatibility/test_column_lifecycle.py::TestColumnLifecycleCompatibility::test_nested_column_references PASSED [ 22%]
+tests/compatibility/test_column_lifecycle.py::TestColumnLifecycleCompatibility::test_column_in_complex_expression PASSED [ 22%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_asc SKIPPED [ 23%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_desc SKIPPED [ 23%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_col PASSED [ 23%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_column PASSED [ 24%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_lit PASSED [ 24%]
+tests/compatibility/test_column_ordering_functions_compatibility.py::TestColumnOrderingFunctionsCompatibility::test_expr SKIPPED [ 24%]
+tests/compatibility/test_complex_scenarios_compatibility.py::TestComplexScenariosCompatibility::test_filter_select_groupby_agg_chain PASSED [ 25%]
+tests/compatibility/test_complex_scenarios_compatibility.py::TestComplexScenariosCompatibility::test_withcolumn_filter_orderby_chain SKIPPED [ 25%]
+tests/compatibility/test_complex_scenarios_compatibility.py::TestComplexScenariosCompatibility::test_select_expr_groupby_agg_orderby_chain PASSED [ 25%]
+tests/compatibility/test_complex_scenarios_compatibility.py::TestComplexScenariosCompatibility::test_complex_string_operations_chain SKIPPED [ 25%]
+tests/compatibility/test_conditional_functions_extended_compatibility.py::TestConditionalFunctionsExtendedCompatibility::test_ifnull PASSED [ 26%]
+tests/compatibility/test_conditional_functions_extended_compatibility.py::TestConditionalFunctionsExtendedCompatibility::test_nanvl SKIPPED [ 26%]
+tests/compatibility/test_cte_optimization.py::TestCTEOptimizationCompatibility::test_complex_cte_chain_with_datetime PASSED [ 26%]
+tests/compatibility/test_cte_optimization.py::TestCTEOptimizationCompatibility::test_multiple_withcolumn_operations_in_cte PASSED [ 27%]
+tests/compatibility/test_cte_optimization.py::TestCTEOptimizationCompatibility::test_cte_with_string_operations PASSED [ 27%]
+tests/compatibility/test_cte_optimization.py::TestCTEOptimizationCompatibility::test_cte_with_boolean_expressions PASSED [ 27%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_basic_select_operations PASSED [ 28%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_select_with_alias PASSED [ 28%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_filter_operations PASSED [ 28%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_filter_with_boolean PASSED [ 29%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_with_column PASSED [ 29%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_drop_column PASSED [ 29%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_distinct PASSED [ 29%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_order_by PASSED [ 30%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_order_by_desc PASSED [ 30%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_limit PASSED [ 30%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_group_by_operations PASSED [ 31%]
+tests/compatibility/test_dataframe_compatibility.py::TestDataFrameCompatibility::test_aggregation_operations PASSED [ 31%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_basic_select PASSED [ 31%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_select_with_alias SKIPPED [ 32%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_filter_operations PASSED [ 32%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_filter_with_boolean SKIPPED [ 32%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_with_column PASSED [ 32%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_drop_column SKIPPED [ 33%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_distinct PASSED [ 33%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_limit PASSED [ 33%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_order_by PASSED [ 34%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_order_by_desc PASSED [ 34%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_group_by PASSED [ 34%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_aggregation SKIPPED [ 35%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_column_access SKIPPED [ 35%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_inner_join PASSED [ 35%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_left_join SKIPPED [ 35%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_right_join SKIPPED [ 36%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_outer_join SKIPPED [ 36%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_cross_join PASSED [ 36%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_semi_join PASSED [ 37%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_anti_join PASSED [ 37%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_union PASSED [ 37%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_union_all PASSED [ 38%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_intersect PASSED [ 38%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_subtract PASSED [ 38%]
+tests/compatibility/test_dataframe_methods_extended_compatibility.py::TestDataFrameMethodsExtendedCompatibility::test_except PASSED [ 38%]
+tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_string_dates PASSED [ 39%]
+tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_mixed_types FAILED [ 39%]
+tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_date_literals PASSED [ 39%]
+tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_explicit_to_date_still_works FAILED [ 40%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_year_function PASSED [ 40%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_month_function PASSED [ 40%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_day_function SKIPPED [ 41%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_dayofweek_function PASSED [ 41%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_dayofyear_function PASSED [ 41%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_weekofyear_function PASSED [ 41%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_quarter_function PASSED [ 42%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_date_add_function PASSED [ 42%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_date_sub_function PASSED [ 42%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_months_between_function SKIPPED [ 43%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_date_format_function PASSED [ 43%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_to_date_function PASSED [ 43%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_current_date_function PASSED [ 44%]
+tests/compatibility/test_datetime_functions_compatibility.py::TestDatetimeFunctionsCompatibility::test_current_timestamp_function PASSED [ 44%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_add_months PASSED [ 44%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_datediff PASSED [ 45%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_dayofmonth_extended PASSED [ 45%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_from_unixtime SKIPPED [ 45%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_from_utc_timestamp SKIPPED [ 45%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_hour PASSED [ 46%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_minute PASSED [ 46%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_second PASSED [ 46%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_last_day PASSED [ 47%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_months_between_extended SKIPPED [ 47%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_timestamp_seconds SKIPPED [ 47%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_to_timestamp_extended SKIPPED [ 48%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_to_utc_timestamp SKIPPED [ 48%]
+tests/compatibility/test_datetime_functions_extended_compatibility.py::TestDatetimeFunctionsExtendedCompatibility::test_unix_timestamp_extended SKIPPED [ 48%]
+tests/compatibility/test_datetime_parsing.py::TestDatetimeParsingCompatibility::test_to_timestamp_with_microseconds PASSED [ 48%]
+tests/compatibility/test_datetime_parsing.py::TestDatetimeParsingCompatibility::test_to_timestamp_without_microseconds PASSED [ 49%]
+tests/compatibility/test_datetime_parsing.py::TestDatetimeParsingCompatibility::test_to_timestamp_mixed_precision PASSED [ 49%]
+tests/compatibility/test_datetime_parsing.py::TestDatetimeParsingCompatibility::test_to_timestamp_with_milliseconds PASSED [ 49%]
+tests/compatibility/test_datetime_parsing.py::TestDatetimeParsingCompatibility::test_to_timestamp_iso_format PASSED [ 50%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_upper PASSED [ 50%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_lower PASSED [ 50%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_length PASSED [ 51%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_substring PASSED [ 51%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_concat PASSED [ 51%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_split PASSED [ 51%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_regexp_extract PASSED [ 52%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_abs PASSED [ 52%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_round PASSED [ 52%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_sqrt PASSED [ 53%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_pow PASSED [ 53%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_log PASSED [ 53%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_exp PASSED [ 54%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_agg_sum PASSED [ 54%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_agg_avg PASSED [ 54%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_agg_count PASSED [ 54%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_agg_max PASSED [ 55%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_agg_min PASSED [ 55%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_trim PASSED [ 55%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_ltrim PASSED [ 56%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_rtrim PASSED [ 56%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_lpad PASSED [ 56%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_rpad PASSED [ 57%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_like PASSED [ 57%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_string_rlike SKIPPED [ 57%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_sin PASSED [ 58%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_cos PASSED [ 58%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_tan PASSED [ 58%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_ceil PASSED [ 58%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_floor PASSED [ 59%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_greatest PASSED [ 59%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_math_least PASSED [ 59%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_conditional_when_otherwise PASSED [ 60%]
+tests/compatibility/test_functions_compatibility.py::TestFunctionsCompatibility::test_conditional_coalesce PASSED [ 60%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_inner_join PASSED [ 60%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_left_join SKIPPEDon) [ 61%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_right_join SKIPPEDion) [ 61%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_outer_join SKIPPEDion) [ 61%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_cross_join PASSED [ 61%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_semi_join PASSED [ 62%]
+tests/compatibility/test_joins_compatibility.py::TestJoinsCompatibility::test_anti_join PASSED [ 62%]
+tests/compatibility/test_json_csv_functions_compatibility.py::TestJsonCsvFunctionsCompatibility::test_from_json SKIPPED [ 62%]
+tests/compatibility/test_json_csv_functions_compatibility.py::TestJsonCsvFunctionsCompatibility::test_to_json SKIPPED [ 63%]
+tests/compatibility/test_json_csv_functions_compatibility.py::TestJsonCsvFunctionsCompatibility::test_to_csv SKIPPED [ 63%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_create_map SKIPPED [ 63%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_concat PASSED [ 64%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_entries PASSED [ 64%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_filter SKIPPED [ 64%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_from_arrays SKIPPED [ 64%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_from_entries SKIPPED [ 65%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_keys PASSED [ 65%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_values PASSED [ 65%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_map_zip_with SKIPPED [ 66%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_transform_keys SKIPPED [ 66%]
+tests/compatibility/test_map_functions_extended_compatibility.py::TestMapFunctionsExtendedCompatibility::test_transform_values SKIPPED [ 66%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_acos SKIPPED [ 67%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_asin SKIPPED [ 67%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_atan SKIPPED [ 67%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_atan2 SKIPPED [ 67%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_acosh SKIPPED [ 68%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_asinh SKIPPED [ 68%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_atanh SKIPPED [ 68%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_cosh SKIPPED [ 69%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_sinh SKIPPED [ 69%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_tanh SKIPPED [ 69%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_cbrt SKIPPED [ 70%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_degrees SKIPPED [ 70%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_radians SKIPPED [ 70%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_expm1 SKIPPED [ 70%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_log1p SKIPPED [ 71%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_log2 SKIPPED [ 71%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_log10 SKIPPED [ 71%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_rint SKIPPED [ 72%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_bround PASSED [ 72%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_factorial PASSED [ 72%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_hypot SKIPPED [ 73%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_signum SKIPPED [ 73%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_e SKIPPED [ 73%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_pi SKIPPED [ 74%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_rand SKIPPED [ 74%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_randn SKIPPED [ 74%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_conv PASSED [ 74%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_bin PASSED [ 75%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_hex PASSED [ 75%]
+tests/compatibility/test_math_functions_extended_compatibility.py::TestMathFunctionsExtendedCompatibility::test_bitwise_not SKIPPED [ 75%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_isnull_function PASSED [ 76%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_isnotnull_function PASSED [ 76%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_coalesce_function PASSED [ 76%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_when_otherwise_function PASSED [ 77%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_nvl_function PASSED [ 77%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_nvl2_function PASSED [ 77%]
+tests/compatibility/test_null_handling_compatibility.py::TestNullHandlingCompatibility::test_nullif_function PASSED [ 77%]
+tests/compatibility/test_set_operations_compatibility.py::TestSetOperationsCompatibility::test_union_operation PASSED [ 78%]
+tests/compatibility/test_set_operations_compatibility.py::TestSetOperationsCompatibility::test_union_all_operation PASSED [ 78%]
+tests/compatibility/test_set_operations_compatibility.py::TestSetOperationsCompatibility::test_intersect_operation PASSED [ 78%]
+tests/compatibility/test_set_operations_compatibility.py::TestSetOperationsCompatibility::test_except_operation PASSED [ 79%]
+tests/compatibility/test_set_operations_compatibility.py::TestSetOperationsCompatibility::test_subtract_operation PASSED [ 79%]
+tests/compatibility/test_special_functions_compatibility.py::TestSpecialFunctionsCompatibility::test_hash SKIPPED [ 79%]
+tests/compatibility/test_special_functions_compatibility.py::TestSpecialFunctionsCompatibility::test_input_file_name SKIPPED [ 80%]
+tests/compatibility/test_special_functions_compatibility.py::TestSpecialFunctionsCompatibility::test_isnan PASSED [ 80%]
+tests/compatibility/test_special_functions_compatibility.py::TestSpecialFunctionsCompatibility::test_monotonically_increasing_id PASSED [ 80%]
+tests/compatibility/test_special_functions_compatibility.py::TestSpecialFunctionsCompatibility::test_overlay SKIPPED [ 80%]
+tests/compatibility/test_string_concatenation.py::TestStringConcatenationCompatibility::test_concat_ws_basic PASSED [ 81%]
+tests/compatibility/test_string_concatenation.py::TestStringConcatenationCompatibility::test_concat_ws_multiple_columns PASSED [ 81%]
+tests/compatibility/test_string_concatenation.py::TestStringConcatenationCompatibility::test_string_plus_operator PASSED [ 81%]
+tests/compatibility/test_string_concatenation.py::TestStringConcatenationCompatibility::test_string_plus_operator_with_literal_first PASSED [ 82%]
+tests/compatibility/test_string_concatenation.py::TestStringConcatenationCompatibility::test_string_plus_with_varchar_column PASSED [ 82%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_concat_ws SKIPPED [ 82%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_ascii PASSED [ 83%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_char_length SKIPPED [ 83%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_character_length SKIPPED [ 83%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_encode SKIPPED [ 83%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_decode SKIPPED [ 84%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_hex PASSED [ 84%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_unhex SKIPPED [ 84%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_base64 PASSED [ 85%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_unbase64 SKIPPED [ 85%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_initcap SKIPPED [ 85%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_repeat PASSED [ 86%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_reverse PASSED [ 86%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_soundex SKIPPED [ 86%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_translate SKIPPED [ 87%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_levenshtein SKIPPED [ 87%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_crc32 SKIPPED [ 87%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_md5 PASSED [ 87%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_sha1 PASSED [ 88%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_sha2 PASSED [ 88%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_xxhash64 SKIPPED [ 88%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_url_encode SKIPPED [ 89%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_url_decode SKIPPED [ 89%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_regexp_replace SKIPPED [ 89%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_regexp_extract_all SKIPPED [ 90%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_get_json_object SKIPPED [ 90%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_json_tuple SKIPPED [ 90%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_instr PASSED [ 90%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_locate PASSED [ 91%]
+tests/compatibility/test_string_functions_extended_compatibility.py::TestStringFunctionsExtendedCompatibility::test_substring_index SKIPPED [ 91%]
+tests/compatibility/test_struct_functions_compatibility.py::TestStructFunctionsCompatibility::test_struct SKIPPED [ 91%]
+tests/compatibility/test_type_class_functions_compatibility.py::TestTypeClassFunctionsCompatibility::test_string_type SKIPPED [ 92%]
+tests/compatibility/test_type_class_functions_compatibility.py::TestTypeClassFunctionsCompatibility::test_array_type SKIPPED [ 92%]
+tests/compatibility/test_type_class_functions_compatibility.py::TestTypeClassFunctionsCompatibility::test_struct_type SKIPPED [ 92%]
+tests/compatibility/test_type_coercion.py::TestTypeCoercionCompatibility::test_string_numeric_coercion_in_concat PASSED [ 93%]
+tests/compatibility/test_type_coercion.py::TestTypeCoercionCompatibility::test_boolean_coercion_in_aggregation PASSED [ 93%]
+tests/compatibility/test_type_coercion.py::TestTypeCoercionCompatibility::test_numeric_type_promotion PASSED [ 93%]
+tests/compatibility/test_type_coercion.py::TestTypeCoercionCompatibility::test_string_coercion_with_literals PASSED [ 93%]
+tests/compatibility/test_type_coercion.py::TestTypeCoercionCompatibility::test_mixed_type_comparison PASSED [ 94%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_row_number_window SKIPPED [ 94%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_rank_window SKIPPED [ 94%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_dense_rank_window SKIPPED [ 95%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_lag_window SKIPPED [ 95%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_lead_window SKIPPED [ 95%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_sum_over_window SKIPPED [ 96%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_avg_over_window SKIPPED [ 96%]
+tests/compatibility/test_window_functions_compatibility.py::TestWindowFunctionsCompatibility::test_count_over_window SKIPPED [ 96%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_cume_dist SKIPPED [ 96%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_dense_rank SKIPPED [ 97%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_first_value SKIPPED [ 97%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_lag SKIPPED [ 97%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_last_value SKIPPED [ 98%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_lead SKIPPED [ 98%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_nth_value SKIPPED [ 98%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_ntile SKIPPED [ 99%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_percent_rank SKIPPED [ 99%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_rank SKIPPED [ 99%]
+tests/compatibility/test_window_functions_extended_compatibility.py::TestWindowFunctionsExtendedCompatibility::test_row_number SKIPPED [100%]
+
+=================================== FAILURES ===================================
+________ TestDateArithmeticCompatibility.test_datediff_with_mixed_types ________
+tests/compatibility/test_date_arithmetic.py:57: in test_datediff_with_mixed_types
+    assert rows[0].days_diff == 14
+E   assert None == 14
+E    +  where None = Row(days_diff=None).days_diff
+_ TestDateArithmeticCompatibility.test_datediff_with_explicit_to_date_still_works _
+tests/compatibility/test_date_arithmetic.py:93: in test_datediff_with_explicit_to_date_still_works
+    assert rows[0].days_diff == 14
+E   assert None == 14
+E    +  where None = Row(days_diff=None).days_diff
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.23-final-0 _______________
+
+Name                                                        Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------
+mock_spark/__init__.py                                         27      0   100%
+mock_spark/_version_compat.py                                  51     29    43%   39-56, 66, 78-91, 117-135, 146, 169-170
+mock_spark/backend/__init__.py                                  3      0   100%
+mock_spark/backend/duckdb/__init__.py                           5      0   100%
+mock_spark/backend/duckdb/cte_query_builder.py                256    135    47%   38, 75, 84, 94, 116, 123, 125-133, 186, 204, 212, 218-229, 243, 259, 277-398, 421-435, 444-447, 455, 480-483, 513-589, 606
+mock_spark/backend/duckdb/dataframe_operation_applier.py      154    154     0%   8-345
+mock_spark/backend/duckdb/date_format_converter.py             33      1    97%   117
+mock_spark/backend/duckdb/datetime_operations_handler.py      161     85    47%   34, 47, 83, 93-96, 102-111, 132, 146, 150-157, 163-165, 170, 172, 174, 176, 180-181, 189, 191, 193, 196-201, 206, 264-344
+mock_spark/backend/duckdb/error_translator.py                  23     17    26%   33-69
+mock_spark/backend/duckdb/export.py                            53     47    11%   37-87, 102-133, 144-165
+mock_spark/backend/duckdb/materializer.py                      32     16    50%   32-38, 42-43, 49-57, 66-67
+mock_spark/backend/duckdb/operation_executor.py               175    157    10%   64-113, 125-397, 411
+mock_spark/backend/duckdb/query_executor.py                  2541   1801    29%   73-79, 86, 95, 109, 140-143, 167, 174-178, 197, 200, 209, 211, 220-222, 232-258, 273-338, 389-392, 403-405, 416-420, 425-453, 473-498, 502-536, 546-607, 610-647, 678-751, 757-772, 787-808, 816, 818, 820, 822, 825-828, 830, 832, 834, 837-840, 843-846, 848, 850, 852, 854, 858-883, 898-908, 911-916, 924-934, 1116-1121, 1133-1134, 1137, 1142-1143, 1148-1149, 1154-1155, 1161-1162, 1169-1170, 1175-1176, 1186, 1206, 1214-1215, 1220-1223, 1229-1230, 1235-1236, 1241-1244, 1249-1250, 1255-1256, 1263-1268, 1284-1285, 1290-1291, 1296-1297, 1302-1303, 1308-1309, 1314-1315, 1322-1323, 1328-1329, 1334-1335, 1339-1340, 1350-1353, 1378-1381, 1386-1387, 1392-1393, 1398-1401, 1406-1407, 1413-1416, 1421-1422, 1428-1429, 1437, 1440-1472, 1476, 1481-1484, 1494-1497, 1500-1551, 1555-1584, 1588-1610, 1614-1630, 1633-1642, 1657-1658, 1666, 1671-1678, 1687, 1695, 1704, 1711-1727, 1730-1743, 1748, 1755-1756, 1759-1760, 1763-1764, 1767-1770, 1773-1774, 1777-1778, 1781-1782, 1788-1812, 1815-1817, 1820-1827, 1830-1832, 1847, 1865-1873, 1877-1881, 1885-1889, 1900-1902, 1906-1952, 1956-1965, 1971-1972, 1975-1977, 1981-1987, 1990-1996, 1999-2016, 2020-2021, 2025-2026, 2037-2051, 2054-2057, 2060-2070, 2075-2084, 2090-2099, 2106-2116, 2122-2165, 2170-2246, 2252-2253, 2256-2257, 2272, 2289, 2297-2303, 2306-2321, 2326-2327, 2330-2331, 2339, 2345-2394, 2399-2405, 2414-2516, 2522-2600, 2605-2617, 2620-2642, 2648-2650, 2654-2661, 2664-2666, 2669-2671, 2674-2686, 2689-2693, 2698-2704, 2708-2715, 2718-2727, 2734-2741, 2747-2754, 2757-2771, 2774-2782, 2786-2825, 2829, 2834-2837, 2851, 2867, 2872-2877, 2893, 2899, 2907, 2916-2923, 2930-2933, 2960, 3008, 3013, 3043, 3070-3086, 3107, 3135, 3145-3159, 3169, 3181, 3209, 3214, 3223, 3228, 3233, 3238, 3243, 3248, 3253-3255, 3260, 3270, 3282, 3287, 3292, 3309, 3314-3324, 3337-3381, 3403, 3410, 3452-3522, 3539, 3542-3543, 3551-3639, 3644-3645, 3654, 3673-3738, 3755, 3785-3943, 3949-3962, 3974-4002, 4008-4009, 4032, 4052-4059, 4072, 4085-4086, 4092, 4094-4095, 4097-4098, 4113, 4117-4174, 4183, 4211-4215, 4220-4221, 4232-4238, 4242, 4267-4277, 4296, 4306, 4310-4315, 4323, 4333, 4343-4344, 4357, 4370-4432, 4438-4457, 4461-4495, 4499-4589, 4593-4615, 4619-4669, 4673-4678, 4682-4686, 4690-4695, 4699-4733, 4739-4844, 4878, 4882, 4900, 4998-5009, 5027-5041, 5047-5307, 5311-5359, 5367-5368, 5372-5375
+mock_spark/backend/duckdb/sql_expression_translator.py        822    524    36%   46-75, 88-90, 116, 123-136, 139, 150-172, 199, 201, 205, 211, 213, 217-232, 235, 238, 241-251, 257, 261-262, 271-285, 292-302, 305-315, 318-328, 341-345, 347, 349, 354-359, 394-408, 412, 436-444, 447, 449, 451, 470, 474, 481, 484-488, 493, 497-499, 511-531, 534-542, 545-553, 584-593, 596-605, 620, 628-629, 639-640, 654-655, 661, 663-664, 673, 686-687, 703, 705, 708, 717, 719, 728, 734, 754, 756, 783, 789, 793-794, 799, 802, 808, 819, 829-833, 838-845, 870, 874, 878, 881-887, 897-1000, 1012-1034, 1046-1105, 1117-1201, 1212-1217, 1234, 1248-1282, 1294-1310, 1327-1436, 1440-1445, 1449-1452, 1456-1522
+mock_spark/backend/duckdb/sql_query_builder.py                 48     48     0%   8-220
+mock_spark/backend/duckdb/storage.py                          400    296    26%   40-67, 72-81, 85-105, 109-195, 199-207, 211-215, 221-270, 274, 278, 284, 289, 294, 298, 302, 306-307, 312-317, 321-324, 328, 349, 357-367, 372-381, 386-401, 405-406, 437-438, 454-460, 464-465, 479-480, 484-485, 491, 495-496, 500, 504-506, 515-518, 522-523, 529-533, 539-544, 550-552, 556-562, 566, 570-581, 585-587, 591-600, 604-608, 614-619, 623-631, 642-655, 664-667, 672-673, 677-685, 691-692, 696, 700, 704-712, 716-723, 727-741, 745-747, 751-763, 769-776, 780-782, 786
+mock_spark/backend/duckdb/table_manager.py                    209     76    64%   56-60, 74, 84-92, 113-126, 130, 132, 168, 177, 183, 200, 211-237, 249-259, 301-311, 324-326, 329, 333-334, 338-339, 355, 381-389
+mock_spark/backend/duckdb/window_function_handler.py          228    228     0%   8-383
+mock_spark/backend/duckdb/window_processor.py                  38     31    18%   34-94
+mock_spark/backend/factory.py                                  69     39    43%   54-64, 95-98, 107-116, 131-146, 168-180, 189, 201-203
+mock_spark/backend/protocols.py                                14      0   100%
+mock_spark/core/__init__.py                                     8      0   100%
+mock_spark/core/condition_evaluator.py                        657    474    28%   28-33, 47, 53, 76, 81-94, 102, 107-112, 114, 116, 119-124, 208, 212, 235, 237, 239, 241, 243, 245, 247-249, 251-253, 255-257, 263-265, 267-269, 271-273, 275-277, 279-281, 283-285, 287-289, 291-293, 295-297, 299-301, 303-305, 307-309, 311, 319-321, 323-325, 327-332, 347, 351, 356, 360, 364-365, 368-400, 420-440, 455-468, 488, 499-626, 641, 645-647, 649-651, 653-655, 659, 661, 663, 665, 669, 671, 673-675, 681-683, 689-691, 697-699, 701-703, 705-707, 713-715, 717-719, 721-723, 725-727, 729-731, 737-739, 745-747, 749-751, 753-755, 757-759, 761-763, 765-767, 769-777, 783, 786, 789, 794, 796, 798, 800-805, 808, 811, 816, 819, 823-825, 827-829, 832-839, 842-849, 851-862, 864-875, 877-888, 890-901, 903-914, 916-927, 929-940, 942-953, 955-966, 968-979, 982, 989, 991-1059, 1077, 1102, 1105, 1107, 1110-1117, 1130-1137, 1150, 1163-1167, 1181-1217
+mock_spark/core/data_validation.py                             80     41    49%   56-85, 91-113, 129, 135-136, 176-184, 204-205, 221-222
+mock_spark/core/ddl_adapter.py                                 31     31     0%   8-133
+mock_spark/core/exceptions/__init__.py                          6      0   100%
+mock_spark/core/exceptions/analysis.py                         85     67    21%   35-37, 55, 73, 101-126, 134-166, 194-209, 233-236, 266-287
+mock_spark/core/exceptions/base.py                             22      5    77%   28, 31, 61, 76, 91
+mock_spark/core/exceptions/execution.py                        29     13    55%   27, 45, 63, 87-90, 114-117, 135, 153
+mock_spark/core/exceptions/operation.py                        85     63    26%   24-34, 49-58, 72-82, 96-106, 120-129, 163-173, 187-196
+mock_spark/core/exceptions/runtime.py                          41     25    39%   27, 53-57, 75, 101-107, 131-134, 158-161, 187-193
+mock_spark/core/exceptions/validation.py                       44     26    41%   27, 45, 63, 81, 107-111, 141-147, 171-174, 202-207
+mock_spark/core/interfaces/__init__.py                          5      0   100%
+mock_spark/core/interfaces/dataframe.py                       180     56    69%   20, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 98, 103, 110, 115, 120, 125, 130, 136, 142, 151, 156, 161, 166, 171, 176, 181, 190, 195, 200, 205, 212, 217, 222, 227, 232, 241, 246, 251, 256, 261, 266, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320
+mock_spark/core/interfaces/functions.py                       183     56    69%   19, 24, 29, 38, 43, 52, 57, 66, 71, 80, 85, 90, 95, 104, 109, 114, 119, 126, 131, 140, 145, 150, 155, 160, 169, 174, 181, 188, 193, 198, 203, 208, 217, 222, 227, 232, 237, 246, 251, 259, 269, 274, 279, 284, 289, 294, 299, 304, 309, 314, 319, 324, 329, 334, 339, 344
+mock_spark/core/interfaces/session.py                         115     33    71%   20, 26, 32, 38, 44, 50, 56, 65, 70, 75, 82, 87, 92, 102, 107, 112, 121, 126, 131, 142, 147, 152, 157, 162, 167, 172, 181, 186, 191, 196, 205, 210, 215
+mock_spark/core/interfaces/storage.py                         126     38    70%   29, 34, 39, 44, 54, 59, 64, 69, 76, 83, 90, 97, 102, 106, 110, 114, 120, 126, 136, 142, 148, 153, 158, 163, 168, 173, 186, 192, 198, 204, 210, 215, 220, 229, 234, 239, 248, 253
+mock_spark/core/protocols.py                                   42      0   100%
+mock_spark/core/schema_inference.py                            87     18    79%   66, 88, 98, 117, 148, 171, 214-215, 231-244
+mock_spark/core/types/__init__.py                               4      0   100%
+mock_spark/core/types/data_types.py                           139     38    73%   22, 27, 32, 37, 42, 47, 52, 57, 66, 76, 81, 91, 97, 102, 111, 121, 127, 132, 141, 146, 155, 160, 170, 175, 180, 190, 196, 201, 206, 211, 221, 226, 231, 240, 249, 254, 259, 264
+mock_spark/core/types/metadata.py                             166     47    72%   18, 23, 28, 33, 38, 43, 48, 53, 58, 63, 73, 79, 85, 91, 97, 103, 108, 113, 118, 128, 134, 140, 145, 150, 160, 166, 172, 177, 182, 187, 197, 203, 209, 215, 220, 225, 230, 239, 244, 249, 254, 259, 268, 273, 278, 283, 288
+mock_spark/core/types/schema.py                               122     36    70%   21, 27, 33, 39, 44, 49, 54, 59, 69, 74, 79, 84, 89, 94, 99, 104, 109, 114, 124, 129, 134, 139, 144, 149, 154, 159, 164, 169, 184, 189, 194, 199, 208, 213, 220, 225
+mock_spark/data_generation/__init__.py                          4      4     0%   8-12
+mock_spark/data_generation/builder.py                          28     28     0%   8-85
+mock_spark/data_generation/convenience.py                       9      9     0%   8-64
+mock_spark/data_generation/generator.py                       174    174     0%   8-339
+mock_spark/dataframe/__init__.py                                6      0   100%
+mock_spark/dataframe/assertions.py                             25     25     0%   8-85
+mock_spark/dataframe/casting/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/casting/type_converter.py                 63     63     0%   3-103
+mock_spark/dataframe/collection_handler.py                     24     15    38%   29-31, 37-43, 49-55, 64
+mock_spark/dataframe/condition_handler.py                      49     34    31%   47-53, 69, 98-111, 125-169
+mock_spark/dataframe/dataframe.py                            1270    817    36%   138-142, 183, 186, 219-220, 240-241, 251, 257, 292-296, 314-361, 377-422, 435-437, 449-451, 459-461, 466-473, 497-500, 509-511, 515-517, 521-523, 527-529, 556, 563, 580, 582, 584, 586, 591, 606, 643-737, 773, 775, 779-798, 804, 806, 820, 823-863, 908, 919-923, 930-935, 949, 969, 1001, 1008-1009, 1025-1038, 1052-1065, 1088-1093, 1098, 1117-1180, 1348-1358, 1374-1392, 1401-1417, 1421-1434, 1438-1440, 1445, 1451-1456, 1460, 1466, 1475, 1489, 1497, 1505, 1520, 1528, 1541, 1549, 1561, 1567, 1573, 1580, 1585-1591, 1606-1617, 1634-1654, 1682-1717, 1765, 1774, 1777, 1786-1787, 1810-1815, 1819-1822, 1831-1832, 1839-1841, 1847-1852, 1856-1861, 1865-1871, 1876, 1880, 1884, 1888, 1903-1939, 1953-1992, 2003-2081, 2092-2165, 2190-2221, 2244-2305, 2323-2328, 2357-2416, 2425, 2439-2446, 2457-2458, 2472, 2484, 2498-2520, 2532, 2543, 2604-2606, 2620-2623, 2642-2657, 2669-2684, 2696-2724, 2738-2759, 2774, 2785-2805, 2813, 2828-2840, 2851-2854, 2862-2863, 2872, 2889-2893, 2908, 2919-2924, 2937-2940, 2948, 2962-2964, 2988-3017, 3031-3048, 3066-3078, 3095-3104, 3109, 3113-3156
+mock_spark/dataframe/display/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/display/formatter.py                      37     37     0%   3-57
+mock_spark/dataframe/evaluation/__init__.py                     2      0   100%
+mock_spark/dataframe/evaluation/expression_evaluator.py       540    435    19%   39, 44-51, 57-59, 64-78, 86-88, 92, 103, 107, 114-123, 129-158, 164-190, 195, 202, 207, 222-245, 249, 253, 257, 261, 265, 267, 270, 276-280, 286-322, 328-373, 379-467, 472-488, 495-507, 511-526, 530-545, 549-564, 568-583, 587-598, 602, 679, 683, 687, 691, 695-698, 702-704, 708-713, 717-720, 724-736, 743, 748, 752-753, 757, 761, 765, 772, 777-780, 786-811, 816, 820, 824, 828, 832, 836, 840, 844-849, 853-859, 863-868, 872-877, 882-893, 898-909, 913-920, 924-935
+mock_spark/dataframe/export.py                                 31     31     0%   11-117
+mock_spark/dataframe/grouped/__init__.py                        5      0   100%
+mock_spark/dataframe/grouped/base.py                          572    364    36%   78-84, 97-108, 132-133, 174-175, 179-180, 197, 211-262, 295, 298-301, 303-304, 313-316, 322, 324-327, 340, 342-345, 347-348, 357-360, 366, 368-371, 395-396, 420-421, 440-444, 446-450, 452-456, 458-468, 470-482, 500-502, 504-524, 526-530, 532-536, 539-552, 555-568, 572-623, 626-630, 633-637, 650-655, 684-729, 745-777, 788-795, 806-813, 830-834, 845-852, 863-870, 881-890, 901-910, 921-930, 941-950, 961-970, 981-990, 1001-1015, 1026-1040, 1054-1071, 1093-1163, 1185-1243
+mock_spark/dataframe/grouped/cube.py                           82     75     9%   28-29, 44-204
+mock_spark/dataframe/grouped/pivot.py                         121    113     7%   34-37, 53-123, 129-160, 166-212, 220-252
+mock_spark/dataframe/grouped/rollup.py                         83     77     7%   27-28, 45-207
+mock_spark/dataframe/lazy.py                                  593    453    24%   43-45, 61-72, 90-104, 110-146, 152-161, 174-176, 218-220, 228, 240, 252, 281, 328-341, 346-349, 353-356, 361-362, 385-391, 410-413, 421-445, 459-512, 525-526, 531-546, 549-640, 653-655, 664-691, 695-843, 857-1106, 1119-1137, 1152-1288, 1304-1316
+mock_spark/dataframe/operations/__init__.py                     4      4     0%   3-7
+mock_spark/dataframe/operations/aggregation_operations.py     128    128     0%   3-313
+mock_spark/dataframe/operations/join_operations.py            157    157     0%   3-335
+mock_spark/dataframe/operations/set_operations.py              76     76     0%   3-117
+mock_spark/dataframe/protocols.py                              27     27     0%   8-179
+mock_spark/dataframe/rdd.py                                    70     45    36%   24, 32, 40, 51, 59, 67-68, 79, 90, 101-107, 118-125, 137-139, 147, 158, 166, 174, 182, 190, 202, 213-216, 227-234, 242, 250
+mock_spark/dataframe/reader.py                                 79     61    23%   53-55, 69-70, 85-86, 100-101, 116-117, 137-141, 157-206, 222-226, 242-246, 262-266, 282-286, 302-306, 323-327
+mock_spark/dataframe/schema/__init__.py                         2      2     0%   3-5
+mock_spark/dataframe/schema/schema_manager.py                 173    173     0%   3-325
+mock_spark/dataframe/sqlalchemy_query_builder.py              153    153     0%   8-298
+mock_spark/dataframe/validation/__init__.py                     2      0   100%
+mock_spark/dataframe/validation/column_validator.py            87     24    72%   28, 42, 71, 75, 91-94, 113, 131-169, 203, 207, 250, 258-259, 269-272
+mock_spark/dataframe/validation_handler.py                     11      2    82%   39, 54
+mock_spark/dataframe/window_handler.py                        223    223     0%   8-492
+mock_spark/dataframe/writer.py                                137    119    13%   58-62, 76-77, 94-103, 112, 127-128, 142-143, 157-158, 174-347, 374-392, 404, 416, 428, 440, 452
+mock_spark/delta.py                                            64     39    39%   39-40, 52-67, 72-73, 77-79, 83, 88, 92, 96, 100, 112, 123-170, 184-227, 234, 237, 240, 243, 246, 249, 253
+mock_spark/error_simulation.py                                 89     89     0%   29-336
+mock_spark/errors.py                                           28     10    64%   57, 62, 67, 72, 79, 86, 91, 96, 101, 106
+mock_spark/functions/__init__.py                               33     10    70%   411-431
+mock_spark/functions/aggregate.py                             133     43    68%   120, 132, 156, 168, 180, 204, 216, 233, 248, 263, 275, 287, 299, 311, 326-331, 346-351, 363, 375, 387, 462-466, 479, 491, 506-508, 523-530, 544-552
+mock_spark/functions/array.py                                 231    107    54%   51-54, 75, 77, 102-107, 131, 133, 159, 183, 211-217, 243-249, 275-281, 307-313, 344-354, 383-394, 416-419, 441, 466, 489, 515-518, 542-545, 565-568, 585-588, 609, 632, 652, 672, 690, 707-710, 726, 747, 749, 771-773, 788-791, 805-808, 822-829, 852-859, 876-879, 895, 901, 910, 937, 959-963, 981-984, 999-1000
+mock_spark/functions/base.py                                   99     53    46%   65, 101, 105, 107, 112, 125-136, 140-146, 150-159, 163-174, 178-188, 192-202, 206-208
+mock_spark/functions/bitwise.py                                38     21    45%   31-34, 52-55, 72-75, 93-96, 111-114, 129-132, 147-154
+mock_spark/functions/conditional.py                           263    135    49%   30-112, 144, 149, 161-162, 235-250, 254, 258, 261-276, 308, 318, 336-339, 342, 349, 352, 354, 357-363, 383, 398, 417, 435, 454, 473, 490, 511, 534-539, 570-585
+mock_spark/functions/core/__init__.py                           6      0   100%
+mock_spark/functions/core/column.py                           237     56    76%   34, 62, 70, 74, 90, 98, 106, 110, 114, 122, 126, 130, 134, 138, 185, 195, 210-212, 216-218, 222-224, 232, 308, 310-311, 313-327, 329-333, 367, 384, 388, 390, 398, 404, 406, 410, 412, 435, 439-442, 445-449, 451, 453, 469-471
+mock_spark/functions/core/expressions.py                       82     50    39%   31, 45, 60-62, 76-83, 95-97, 109-111, 123-125, 137-139, 151, 163-170, 182-189, 201-208, 220-227, 243-246
+mock_spark/functions/core/lambda_parser.py                    134    115    14%   54-120, 128-134, 150-158, 172-230, 243-257, 268-281, 292-297, 310-315, 342-344, 352, 360, 364-368
+mock_spark/functions/core/literals.py                         109     58    47%   48, 70-72, 79-81, 85-87, 91-93, 97-99, 103-105, 115-117, 121-123, 127-129, 133-135, 139-141, 145-147, 151-153, 157-159, 163-165, 169-171, 175, 179, 183-185, 189-191, 195-197, 201-203, 207-209, 213-215, 219-221, 225-227, 231-233, 237-239, 243-245
+mock_spark/functions/core/operations.py                        97     59    39%   27-29, 33-35, 39-41, 45-47, 51-53, 57-59, 63-65, 69, 73, 77-79, 83-85, 89-91, 95-97, 101-103, 107-109, 117, 121, 125, 129, 133, 137, 141, 149-151, 164, 168, 176, 184-186, 190-192, 200-202
+mock_spark/functions/datetime.py                              236     95    60%   80, 104, 122, 137-141, 154, 172, 188, 204, 222, 240, 258, 276, 292, 311, 334-345, 359, 378, 397, 420-429, 449-464, 484-495, 504-507, 518-521, 530-533, 543-546, 569-572, 592-595, 617-624, 647-650, 674, 676, 699-706, 727, 745-748, 769-772, 789-796, 815-816, 833-834
+mock_spark/functions/functions.py                            1015    301    70%   81, 86, 108, 132, 139, 154, 174, 179, 186, 195, 219, 224, 253, 268, 273, 278, 283, 288, 300, 305, 348, 353, 358, 363, 390, 395, 400, 405, 410, 415, 422, 427, 432, 437, 442, 447, 452, 462, 467, 472, 482, 489, 496, 501, 506, 511, 516, 521, 526, 531, 572, 577, 587, 592, 597, 607, 612, 619, 626, 633, 638, 670, 675, 680, 687, 692, 697, 702, 707, 714, 721, 726, 731, 751-754, 778, 821, 826, 882, 906, 913, 928, 938, 943, 948, 953, 958, 970-975, 986, 993, 1000, 1032-1040, 1046-1052, 1058-1064, 1071-1077, 1084-1090, 1095-1101, 1106-1112, 1117-1123, 1128-1134, 1139-1146, 1164, 1169, 1174, 1179, 1193, 1220, 1227, 1234, 1241, 1251, 1260, 1266, 1292, 1299, 1304, 1309, 1348, 1358, 1363, 1368, 1373, 1382, 1387, 1415, 1421, 1428, 1433, 1440, 1447, 1454, 1463, 1469-1477, 1491-1499, 1510, 1515, 1520, 1525, 1530, 1535, 1543, 1548, 1553, 1558, 1564, 1569, 1574, 1584, 1590, 1595, 1602, 1609, 1622, 1627, 1632, 1637, 1642, 1647, 1652, 1657, 1662, 1667, 1672, 1682-1684, 1689-1691, 1698-1700, 1705-1707, 1712-1714, 1723-1725, 1730-1732, 1737-1739, 1745-1747, 1752-1754, 1759-1761, 1766-1768, 1773-1775, 1781-1783, 1795-1797, 1802-1804, 1809-1811, 1816-1818, 1823-1825, 1848-1870, 1899-1924, 1948-1955, 1972-1978, 1984, 1989, 1994, 1999, 2004
+mock_spark/functions/json_csv.py                               41     41     0%   8-163
+mock_spark/functions/map.py                                    74     37    50%   49, 67, 87, 107, 139-144, 166-176, 199-202, 222-225, 248-254, 280-286, 312-318, 347-356
+mock_spark/functions/math.py                                  239     93    61%   51, 68, 86, 102, 118, 134, 154, 176-179, 194-197, 214-217, 234-237, 253, 277, 293, 309, 324-329, 342, 369, 395-396, 408-409, 424-425, 437-438, 450-451, 463-464, 486-493, 505-506, 518-519, 531-532, 544-545, 557-558, 570-571, 598-600, 617-619, 636-637, 668-671, 691-694, 711-712, 725-726, 738-739, 751-752, 761-764, 773-776, 788-789, 804-809, 823-828
+mock_spark/functions/metadata.py                               33     13    61%   23, 47, 61, 73, 89-92, 104-111
+mock_spark/functions/ordering.py                               28     28     0%   7-93
+mock_spark/functions/pandas_types.py                            6      0   100%
+mock_spark/functions/string.py                                288    122    58%   50, 66, 82, 97-103, 115-121, 134, 150, 166, 185-194, 208, 230, 252, 281-296, 312-321, 334, 350, 365-371, 390-399, 421-432, 449, 469-475, 490-496, 514-517, 537-540, 555-558, 577, 606, 632-635, 656-659, 678, 702, 727, 749, 771-776, 804-807, 822, 837, 851-854, 866-873, 890-897, 915-918, 933-936, 955, 978, 996, 1015, 1018, 1037-1040, 1055-1058
+mock_spark/functions/udf.py                                    30     23    23%   41-46, 57-58, 70-92
+mock_spark/functions/window_execution.py                      182    162    11%   25-46, 50, 61-62, 73-100, 104, 108-158, 163, 167-174, 178-186, 191-193, 197-201, 205-208, 212-215, 219-234, 238-253, 257-277, 281-307
+mock_spark/functions/xml.py                                    59     33    44%   25-28, 48-51, 71-74, 94-97, 118-121, 142-145, 166-169, 190-193, 214-217, 238-241, 262-265
+mock_spark/optimizer/__init__.py                                3      0   100%
+mock_spark/optimizer/optimization_rules.py                    172    142    17%   16-61, 65-66, 71, 83-110, 114-115, 119-142, 150-170, 174-175, 181-184, 192-224, 228, 233, 241-266, 270, 275-278, 286-322, 326, 331, 339-359, 363-364, 369-374
+mock_spark/optimizer/query_optimizer.py                       184    125    32%   44-55, 64, 69, 77-122, 126-127, 132, 144-171, 175-176, 180-203, 211-231, 235-236, 242-245, 253-285, 289, 294, 302-327, 331, 336-339, 357-364, 368, 372, 378
+mock_spark/performance_simulation.py                           91     91     0%   29-329
+mock_spark/session/__init__.py                                  4      0   100%
+mock_spark/session/catalog.py                                 170    138    19%   39, 43, 47, 60-61, 65, 69, 104, 115-119, 127, 140-154, 175-197, 214-238, 255-272, 294, 306-334, 350-370, 382-407, 418-439, 448, 457, 466, 471
+mock_spark/session/config/__init__.py                           2      0   100%
+mock_spark/session/config/configuration.py                     49     22    55%   67, 76, 84-85, 93, 101, 109, 117-118, 129, 133, 137, 175, 186-187, 198-199, 211-212, 223-224, 232
+mock_spark/session/context.py                                  33      9    73%   46, 50, 54, 91, 100, 109, 118, 122, 126
+mock_spark/session/core/__init__.py                             4      0   100%
+mock_spark/session/core/builder.py                             26     16    38%   30-31, 42, 56-60, 69-86
+mock_spark/session/core/session.py                            191     95    50%   94, 138, 143, 148, 153, 158, 193-197, 207-212, 216-220, 225-226, 235, 239, 249, 255, 268-270, 293, 311-314, 330, 342, 346-347, 353, 368-436, 455-456, 465, 470, 478, 486, 493, 500, 510, 517, 522-532, 537-541, 547, 552-553, 558
+mock_spark/session/performance_tracker.py                      39     19    51%   57, 87-109, 117
+mock_spark/session/services/__init__.py                         6      0   100%
+mock_spark/session/services/dataframe_factory.py               58     32    45%   48, 54-56, 61-79, 85, 90, 99-102, 119, 139-145, 163-179
+mock_spark/session/services/lifecycle_manager.py               19      9    53%   30-31, 37-38, 47-51
+mock_spark/session/services/mocking_coordinator.py             31     22    29%   39-56, 68-71, 81-83, 98-102, 106
+mock_spark/session/services/protocols.py                       20      0   100%
+mock_spark/session/services/sql_parameter_binder.py            29     25    14%   28-51, 62-74
+mock_spark/session/session.py                                   2      2     0%   31-34
+mock_spark/session/sql/__init__.py                              5      0   100%
+mock_spark/session/sql/executor.py                            246    225     9%   71-102, 113-193, 204-226, 237-259, 271-277, 289-295, 307-309, 321-347, 359-426, 437-571
+mock_spark/session/sql/optimizer.py                            65     48    26%   41-43, 47, 51, 68, 85-100, 111-114, 127, 142, 155, 168, 181, 192-234, 247-260
+mock_spark/session/sql/parser.py                              154    134    13%   38-40, 44, 50, 262-272, 283-310, 322-351, 363-366, 378-416, 427-448, 463-483, 498, 510, 522, 533-611
+mock_spark/session/sql/validation.py                           87     74    15%   42, 105-126, 137-166, 177-188, 199-218, 229-237, 248-267, 278-281, 294, 308-313, 324-325
+mock_spark/spark_types.py                                     330    174    47%   63-65, 69, 72, 76-100, 152-154, 158, 171, 187, 224-225, 228, 235-236, 239, 254-256, 259, 268-270, 273, 282-284, 287, 307, 315-320, 335, 347, 350, 353, 356, 359-360, 372-380, 391-393, 397, 401-403, 407, 411-412, 416, 420, 432, 445, 451-460, 465-480, 485-486, 541-551, 555-583, 587-591, 595-601, 605-612, 616-623, 627, 631-657, 671-692, 697-698, 703, 709-711, 723-724, 730-731
+mock_spark/storage/__init__.py                                 10      0   100%
+mock_spark/storage/backends/__init__.py                         0      0   100%
+mock_spark/storage/backends/file.py                           202    140    31%   26-34, 39, 44, 49, 53-56, 64-69, 77-78, 87-102, 113-120, 128, 136-139, 143, 147, 151, 155-156, 160-162, 175-178, 189-195, 206-207, 215-220, 228-236, 242, 246, 250, 254, 258, 262, 266-268, 272, 276, 280, 292-295, 303-304, 315, 324-331, 339, 351-353, 368-371, 380-381, 393-397, 412-417, 432-434, 446-452, 464, 474-485, 496-505, 509-513, 519-524, 531
+mock_spark/storage/backends/memory.py                         133     84    37%   22-25, 34, 39, 44, 53-62, 73-78, 86, 94, 98, 102, 106, 110-111, 115-116, 140-145, 156, 164-165, 173, 191-192, 203, 212-213, 221, 233-235, 250-253, 262-263, 275-279, 294-299, 314-316, 328-334, 346, 356-367, 378-387, 399-403, 415-420, 427
+mock_spark/storage/manager.py                                 115     69    40%   39-44, 57, 69, 81, 93-94, 102, 113, 122, 130, 142, 157, 166, 179, 194, 208, 220, 229, 240, 254, 266, 274, 283, 296, 307, 315-320, 324-329, 337-349, 353, 361-371, 382-403
+mock_spark/storage/models.py                                   79     10    87%   77, 120-133, 138-140, 149-153
+mock_spark/storage/serialization/__init__.py                    0      0   100%
+mock_spark/storage/serialization/csv.py                        46     32    30%   23-30, 42-47, 57-62, 76-92, 104-120
+mock_spark/storage/serialization/json.py                       39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+mock_spark/storage/spark_function_mapper.py                    29     29     0%   7-270
+mock_spark/storage/sql_translator.py                          418    418     0%   8-734
+mock_spark/storage/sqlalchemy_helpers.py                       78     61    22%   37-82, 95-127, 145-153, 168-185, 203-214, 227-228, 242-243, 257-258, 273, 290, 296, 304, 310
+mock_spark/window.py                                           61     40    34%   58-61, 75-86, 100-111, 126-130, 145-149, 153-168, 191, 196, 201, 206
+-----------------------------------------------------------------------------------------
+TOTAL                                                       19754  12806    35%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+=========================== short test summary info ============================
+FAILED tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_mixed_types - assert None == 14
+ +  where None = Row(days_diff=None).days_diff
+FAILED tests/compatibility/test_date_arithmetic.py::TestDateArithmeticCompatibility::test_datediff_with_explicit_to_date_still_works - assert None == 14
+ +  where None = Row(days_diff=None).days_diff
+=========== 2 failed, 197 passed, 132 skipped, 39 warnings in 15.86s ===========
+Running Performance tests (serial)...
+============================= test session starts ==============================
+platform darwin -- Python 3.9.23, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.9.23/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /Users/odosmatthews/Documents/coding/mock-spark
+configfile: pyproject.toml
+plugins: hypothesis-6.141.1, xdist-3.8.0, cov-7.0.0
+collecting ... collected 316 items / 316 deselected / 0 selected
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.23-final-0 _______________
+
+Name                                                        Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------
+mock_spark/__init__.py                                         27      0   100%
+mock_spark/_version_compat.py                                  51     31    39%   39-56, 66, 78-91, 113-135, 146, 169-170
+mock_spark/backend/__init__.py                                  3      0   100%
+mock_spark/backend/duckdb/__init__.py                           5      0   100%
+mock_spark/backend/duckdb/cte_query_builder.py                256    256     0%   7-613
+mock_spark/backend/duckdb/dataframe_operation_applier.py      154    154     0%   8-345
+mock_spark/backend/duckdb/date_format_converter.py             33     33     0%   8-117
+mock_spark/backend/duckdb/datetime_operations_handler.py      161    161     0%   8-344
+mock_spark/backend/duckdb/error_translator.py                  23     17    26%   33-69
+mock_spark/backend/duckdb/export.py                            53     47    11%   37-87, 102-133, 144-165
+mock_spark/backend/duckdb/materializer.py                      32     27    16%   21-43, 48-60, 64-67
+mock_spark/backend/duckdb/operation_executor.py               175    175     0%   7-411
+mock_spark/backend/duckdb/query_executor.py                  2541   2504     1%   46-70, 73-79, 86, 95, 107-152, 159-181, 187-227, 232-258, 267, 273-338, 344-3446, 3452-3522, 3528-3662, 3673-3738, 3745-4364, 4370-4432, 4438-4457, 4461-4495, 4499-4589, 4593-4615, 4619-4669, 4673-4678, 4682-4686, 4690-4695, 4699-4733, 4739-4844, 4850-5043, 5047-5307, 5311-5359, 5363-5368, 5372-5375
+mock_spark/backend/duckdb/sql_expression_translator.py        822    822     0%   7-1522
+mock_spark/backend/duckdb/sql_query_builder.py                 48     48     0%   8-220
+mock_spark/backend/duckdb/storage.py                          400    328    18%   40-67, 72-81, 85-105, 109-195, 199-207, 211-215, 221-270, 274, 278, 284, 289, 294, 298, 302, 306-307, 312-317, 321-324, 328, 342-351, 357-367, 372-381, 386-401, 405-406, 428-480, 484-485, 491, 495-496, 500, 504-506, 515-518, 522-523, 529-533, 539-544, 550-552, 556-562, 566, 570-581, 585-587, 591-600, 604-608, 614-619, 623-631, 642-655, 659-685, 689-692, 696, 700, 704-712, 716-723, 727-741, 745-747, 751-763, 769-776, 780-782, 786
+mock_spark/backend/duckdb/table_manager.py                    209    209     0%   7-389
+mock_spark/backend/duckdb/window_function_handler.py          228    228     0%   8-383
+mock_spark/backend/duckdb/window_processor.py                  38     38     0%   7-94
+mock_spark/backend/factory.py                                  69     54    22%   46-64, 87-116, 131-146, 162-180, 189, 201-203
+mock_spark/backend/protocols.py                                14      0   100%
+mock_spark/core/__init__.py                                     8      0   100%
+mock_spark/core/condition_evaluator.py                        657    626     5%   26-33, 46-53, 68-215, 230-403, 420-440, 455-468, 483-626, 640-1059, 1074-1085, 1101-1117, 1130-1137, 1150, 1163-1167, 1181-1217
+mock_spark/core/data_validation.py                             80     69    14%   39-42, 56-85, 91-113, 128-146, 159-186, 204-205, 221-222
+mock_spark/core/ddl_adapter.py                                 31     31     0%   8-133
+mock_spark/core/exceptions/__init__.py                          6      0   100%
+mock_spark/core/exceptions/analysis.py                         85     67    21%   35-37, 55, 73, 101-126, 134-166, 194-209, 233-236, 266-287
+mock_spark/core/exceptions/base.py                             22      9    59%   23-25, 28, 31, 46, 61, 76, 91
+mock_spark/core/exceptions/execution.py                        29     13    55%   27, 45, 63, 87-90, 114-117, 135, 153
+mock_spark/core/exceptions/operation.py                        85     67    21%   24-34, 49-58, 72-82, 96-106, 120-129, 142-146, 163-173, 187-196
+mock_spark/core/exceptions/runtime.py                          41     25    39%   27, 53-57, 75, 101-107, 131-134, 158-161, 187-193
+mock_spark/core/exceptions/validation.py                       44     26    41%   27, 45, 63, 81, 107-111, 141-147, 171-174, 202-207
+mock_spark/core/interfaces/__init__.py                          5      0   100%
+mock_spark/core/interfaces/dataframe.py                       180     56    69%   20, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 98, 103, 110, 115, 120, 125, 130, 136, 142, 151, 156, 161, 166, 171, 176, 181, 190, 195, 200, 205, 212, 217, 222, 227, 232, 241, 246, 251, 256, 261, 266, 275, 280, 285, 290, 295, 300, 305, 310, 315, 320
+mock_spark/core/interfaces/functions.py                       183     56    69%   19, 24, 29, 38, 43, 52, 57, 66, 71, 80, 85, 90, 95, 104, 109, 114, 119, 126, 131, 140, 145, 150, 155, 160, 169, 174, 181, 188, 193, 198, 203, 208, 217, 222, 227, 232, 237, 246, 251, 259, 269, 274, 279, 284, 289, 294, 299, 304, 309, 314, 319, 324, 329, 334, 339, 344
+mock_spark/core/interfaces/session.py                         115     33    71%   20, 26, 32, 38, 44, 50, 56, 65, 70, 75, 82, 87, 92, 102, 107, 112, 121, 126, 131, 142, 147, 152, 157, 162, 167, 172, 181, 186, 191, 196, 205, 210, 215
+mock_spark/core/interfaces/storage.py                         126     38    70%   29, 34, 39, 44, 54, 59, 64, 69, 76, 83, 90, 97, 102, 106, 110, 114, 120, 126, 136, 142, 148, 153, 158, 163, 168, 173, 186, 192, 198, 204, 210, 215, 220, 229, 234, 239, 248, 253
+mock_spark/core/protocols.py                                   42      0   100%
+mock_spark/core/schema_inference.py                            87     74    15%   65-119, 141-172, 177-186, 191-200, 214-215, 231-244
+mock_spark/core/types/__init__.py                               4      0   100%
+mock_spark/core/types/data_types.py                           139     38    73%   22, 27, 32, 37, 42, 47, 52, 57, 66, 76, 81, 91, 97, 102, 111, 121, 127, 132, 141, 146, 155, 160, 170, 175, 180, 190, 196, 201, 206, 211, 221, 226, 231, 240, 249, 254, 259, 264
+mock_spark/core/types/metadata.py                             166     47    72%   18, 23, 28, 33, 38, 43, 48, 53, 58, 63, 73, 79, 85, 91, 97, 103, 108, 113, 118, 128, 134, 140, 145, 150, 160, 166, 172, 177, 182, 187, 197, 203, 209, 215, 220, 225, 230, 239, 244, 249, 254, 259, 268, 273, 278, 283, 288
+mock_spark/core/types/schema.py                               122     36    70%   21, 27, 33, 39, 44, 49, 54, 59, 69, 74, 79, 84, 89, 94, 99, 104, 109, 114, 124, 129, 134, 139, 144, 149, 154, 159, 164, 169, 184, 189, 194, 199, 208, 213, 220, 225
+mock_spark/data_generation/__init__.py                          4      4     0%   8-12
+mock_spark/data_generation/builder.py                          28     28     0%   8-85
+mock_spark/data_generation/convenience.py                       9      9     0%   8-64
+mock_spark/data_generation/generator.py                       174    174     0%   8-339
+mock_spark/dataframe/__init__.py                                6      0   100%
+mock_spark/dataframe/assertions.py                             25     25     0%   8-85
+mock_spark/dataframe/casting/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/casting/type_converter.py                 63     63     0%   3-103
+mock_spark/dataframe/collection_handler.py                     24     17    29%   21-23, 29-31, 37-43, 49-55, 64
+mock_spark/dataframe/condition_handler.py                      49     49     0%   8-169
+mock_spark/dataframe/dataframe.py                            1270   1123    12%   110-126, 130-134, 138-142, 146-150, 154-158, 162-166, 170-171, 180-183, 186, 207-228, 233-247, 251, 257, 264-265, 272-286, 292-296, 314-361, 377-422, 426-431, 435-437, 449-451, 459-461, 466-473, 478, 486-488, 493, 497-500, 509-511, 515-517, 521-523, 527-529, 533-884, 907-949, 956-958, 967-975, 979, 983, 998-1011, 1025-1038, 1052-1065, 1083-1084, 1088-1093, 1098, 1102, 1117-1180, 1192-1214, 1226-1266, 1278-1315, 1324-1327, 1331-1344, 1348-1358, 1362-1370, 1374-1392, 1401-1417, 1421-1434, 1438-1440, 1445, 1451-1456, 1460, 1466, 1475, 1481, 1489, 1497, 1505, 1520, 1528, 1541, 1549, 1561, 1567, 1573, 1580, 1585-1591, 1606-1617, 1634-1654, 1682-1717, 1727-1843, 1847-1852, 1856-1861, 1865-1871, 1876, 1880, 1884, 1888, 1903-1939, 1953-1992, 2003-2081, 2092-2165, 2190-2221, 2244-2305, 2323-2328, 2357-2416, 2425, 2439-2446, 2457-2458, 2472, 2484, 2498-2520, 2532, 2543, 2557-2562, 2575-2592, 2604-2606, 2620-2623, 2642-2657, 2669-2684, 2696-2724, 2738-2759, 2774, 2785-2805, 2813, 2828-2840, 2851-2854, 2862-2863, 2872, 2889-2893, 2908, 2919-2924, 2937-2940, 2948, 2962-2964, 2988-3017, 3031-3048, 3066-3078, 3095-3104, 3109, 3113-3156
+mock_spark/dataframe/display/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/display/formatter.py                      37     37     0%   3-57
+mock_spark/dataframe/evaluation/__init__.py                     2      0   100%
+mock_spark/dataframe/evaluation/expression_evaluator.py       540    478    11%   33, 38-51, 57-59, 64-78, 82-95, 99-123, 129-158, 164-190, 194-280, 286-322, 328-373, 379-467, 472-488, 495-507, 511-526, 530-545, 549-564, 568-583, 587-598, 602, 606, 615-636, 640, 679, 683, 687, 691, 695-698, 702-704, 708-713, 717-720, 724-736, 743, 748, 752-753, 757, 761, 765, 771-811, 816, 820, 824, 828, 832, 836, 840, 844-849, 853-859, 863-868, 872-877, 882-893, 898-909, 913-920, 924-935
+mock_spark/dataframe/export.py                                 31     31     0%   11-117
+mock_spark/dataframe/grouped/__init__.py                        5      0   100%
+mock_spark/dataframe/grouped/base.py                          572    546     5%   39-40, 53-197, 211-262, 276-729, 745-777, 788-795, 806-813, 824-834, 845-852, 863-870, 881-890, 901-910, 921-930, 941-950, 961-970, 981-990, 1001-1015, 1026-1040, 1054-1071, 1093-1163, 1185-1243
+mock_spark/dataframe/grouped/cube.py                           82     75     9%   28-29, 44-204
+mock_spark/dataframe/grouped/pivot.py                         121    113     7%   34-37, 53-123, 129-160, 166-212, 220-252
+mock_spark/dataframe/grouped/rollup.py                         83     77     7%   27-28, 45-207
+mock_spark/dataframe/lazy.py                                  593    593     0%   8-1316
+mock_spark/dataframe/operations/__init__.py                     4      4     0%   3-7
+mock_spark/dataframe/operations/aggregation_operations.py     128    128     0%   3-313
+mock_spark/dataframe/operations/join_operations.py            157    157     0%   3-335
+mock_spark/dataframe/operations/set_operations.py              76     76     0%   3-117
+mock_spark/dataframe/protocols.py                              27     27     0%   8-179
+mock_spark/dataframe/rdd.py                                    70     45    36%   24, 32, 40, 51, 59, 67-68, 79, 90, 101-107, 118-125, 137-139, 147, 158, 166, 174, 182, 190, 202, 213-216, 227-234, 242, 250
+mock_spark/dataframe/reader.py                                 79     61    23%   53-55, 69-70, 85-86, 100-101, 116-117, 137-141, 157-206, 222-226, 242-246, 262-266, 282-286, 302-306, 323-327
+mock_spark/dataframe/schema/__init__.py                         2      2     0%   3-5
+mock_spark/dataframe/schema/schema_manager.py                 173    173     0%   3-325
+mock_spark/dataframe/sqlalchemy_query_builder.py              153    153     0%   8-298
+mock_spark/dataframe/validation/__init__.py                     2      2     0%   7-9
+mock_spark/dataframe/validation/column_validator.py            87     87     0%   9-280
+mock_spark/dataframe/validation_handler.py                     11     11     0%   9-90
+mock_spark/dataframe/window_handler.py                        223    223     0%   8-492
+mock_spark/dataframe/writer.py                                137    119    13%   58-62, 76-77, 94-103, 112, 127-128, 142-143, 157-158, 174-347, 374-392, 404, 416, 428, 440, 452
+mock_spark/delta.py                                            64     39    39%   39-40, 52-67, 72-73, 77-79, 83, 88, 92, 96, 100, 112, 123-170, 184-227, 234, 237, 240, 243, 246, 249, 253
+mock_spark/error_simulation.py                                 89     89     0%   29-336
+mock_spark/errors.py                                           28     10    64%   57, 62, 67, 72, 79, 86, 91, 96, 101, 106
+mock_spark/functions/__init__.py                               33     10    70%   411-431
+mock_spark/functions/aggregate.py                             133     55    59%   60, 72, 84, 96, 108, 120, 132, 144, 156, 168, 180, 192, 204, 216, 233, 248, 263, 275, 287, 299, 311, 326-331, 346-351, 363, 375, 387, 399, 411, 423, 435, 447, 462-466, 479, 491, 506-508, 523-530, 544-552
+mock_spark/functions/array.py                                 231    150    35%   51-54, 74-79, 102-107, 130-135, 158-161, 182-185, 211-217, 243-249, 275-281, 307-313, 344-354, 383-394, 416-419, 440-443, 465-468, 488-492, 515-518, 542-545, 565-568, 585-588, 608-611, 631-634, 651-654, 671-674, 689-692, 707-710, 725-728, 746-751, 771-773, 788-791, 805-808, 822-829, 852-859, 876-879, 894-915, 936-939, 959-963, 981-984, 999-1000
+mock_spark/functions/base.py                                   99     79    20%   55-60, 64-82, 87-92, 96-114, 125-136, 140-146, 150-159, 163-174, 178-188, 192-202, 206-208, 219-220
+mock_spark/functions/bitwise.py                                38     21    45%   31-34, 52-55, 72-75, 93-96, 111-114, 129-132, 147-154
+mock_spark/functions/conditional.py                           263    226    14%   30-112, 130-139, 144, 149, 161-162, 173-185, 196-197, 209-214, 218-276, 290-292, 304-320, 334-363, 380-404, 416-422, 434-441, 453-458, 471-473, 490, 511, 524-545, 570-585
+mock_spark/functions/core/__init__.py                           6      0   100%
+mock_spark/functions/core/column.py                           237    180    24%   30, 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 130, 134, 138, 142, 146, 164-173, 178-180, 185, 189-191, 195, 199, 203-206, 210-212, 216-218, 222-224, 232, 257-263, 269-297, 302, 307-348, 353-459, 463-465, 469-471
+mock_spark/functions/core/expressions.py                       82     50    39%   31, 45, 60-62, 76-83, 95-97, 109-111, 123-125, 137-139, 151, 163-170, 182-189, 201-208, 220-227, 243-246
+mock_spark/functions/core/lambda_parser.py                    134    115    14%   54-120, 128-134, 150-158, 172-230, 243-257, 268-281, 292-297, 310-315, 342-344, 352, 360, 364-368
+mock_spark/functions/core/literals.py                         109     69    37%   30-38, 43, 48, 61-63, 70-72, 79-81, 85-87, 91-93, 97-99, 103-105, 109-111, 115-117, 121-123, 127-129, 133-135, 139-141, 145-147, 151-153, 157-159, 163-165, 169-171, 175, 179, 183-185, 189-191, 195-197, 201-203, 207-209, 213-215, 219-221, 225-227, 231-233, 237-239, 243-245
+mock_spark/functions/core/operations.py                        97     59    39%   27-29, 33-35, 39-41, 45-47, 51-53, 57-59, 63-65, 69, 73, 77-79, 83-85, 89-91, 95-97, 101-103, 107-109, 117, 121, 125, 129, 133, 137, 141, 149-151, 164, 168, 176, 184-186, 190-192, 200-202
+mock_spark/functions/datetime.py                              236    154    35%   50-53, 63-64, 79-88, 103-109, 121-125, 137-141, 153-159, 171-175, 187-191, 203-209, 221-227, 239-245, 257-263, 275-279, 291-295, 310-319, 334-345, 358-364, 377-383, 396-405, 420-429, 449-464, 484-495, 504-507, 518-521, 530-533, 543-546, 569-572, 592-595, 617-624, 647-650, 673-678, 699-706, 726-729, 745-748, 769-772, 789-796, 815-816, 833-834
+mock_spark/functions/functions.py                            1015    414    59%   55, 60, 66, 71, 76, 81, 86, 91, 96, 101, 108, 113, 120, 125, 132, 139, 144, 149, 154, 159, 164, 169, 174, 179, 186, 195, 200, 205, 212, 219, 224, 229, 236, 241, 246, 253, 258, 263, 268, 273, 278, 283, 288, 295, 300, 305, 311, 316, 321, 326, 331, 336, 343, 348, 353, 358, 363, 370, 375, 380, 385, 390, 395, 400, 405, 410, 415, 422, 427, 432, 437, 442, 447, 452, 457, 462, 467, 472, 477, 482, 489, 496, 501, 506, 511, 516, 521, 526, 531, 536, 541, 547, 552, 557, 562, 567, 572, 577, 582, 587, 592, 597, 602, 607, 612, 619, 626, 633, 638, 643, 648, 653, 658, 663, 670, 675, 680, 687, 692, 697, 702, 707, 714, 721, 726, 731, 737, 742, 751-754, 761, 768, 773, 778, 783, 788, 793, 799, 804, 809, 814, 819-821, 826, 831, 836, 841, 846, 853-858, 863, 868, 875, 882, 887, 892, 897, 906, 913, 920, 928, 933, 938, 943, 948, 953, 958, 970-975, 986, 993, 1000, 1006-1008, 1016-1023, 1032-1040, 1046-1052, 1058-1064, 1071-1077, 1084-1090, 1095-1101, 1106-1112, 1117-1123, 1128-1134, 1139-1146, 1152, 1157, 1164, 1169, 1174, 1179, 1186, 1193, 1200, 1207, 1212, 1220, 1227, 1234, 1241, 1251, 1260, 1266, 1273, 1278, 1285, 1292, 1299, 1304, 1309, 1316, 1323, 1328, 1333, 1338, 1343, 1348, 1353, 1358, 1363, 1368, 1373, 1382, 1387, 1393, 1398, 1403, 1408, 1415, 1421, 1428, 1433, 1440, 1447, 1454, 1463, 1469-1477, 1491-1499, 1510, 1515, 1520, 1525, 1530, 1535, 1543, 1548, 1553, 1558, 1564, 1569, 1574, 1584, 1590, 1595, 1602, 1609, 1616, 1622, 1627, 1632, 1637, 1642, 1647, 1652, 1657, 1662, 1667, 1672, 1682-1684, 1689-1691, 1698-1700, 1705-1707, 1712-1714, 1723-1725, 1730-1732, 1737-1739, 1745-1747, 1752-1754, 1759-1761, 1766-1768, 1773-1775, 1781-1783, 1788-1790, 1795-1797, 1802-1804, 1809-1811, 1816-1818, 1823-1825, 1848-1870, 1899-1924, 1948-1955, 1972-1978, 1984, 1989, 1994, 1999, 2004
+mock_spark/functions/json_csv.py                               41     41     0%   8-163
+mock_spark/functions/map.py                                    74     47    36%   48-51, 66-69, 86-89, 106-116, 139-144, 166-176, 199-202, 222-225, 248-254, 280-286, 312-318, 347-356
+mock_spark/functions/math.py                                  239    142    41%   50-54, 67-73, 85-89, 101-105, 117-121, 133-138, 153-161, 176-179, 194-197, 214-217, 234-237, 252-264, 276-280, 292-296, 308-312, 324-329, 341-356, 368-380, 395-396, 408-409, 424-425, 437-438, 450-451, 463-464, 486-493, 505-506, 518-519, 531-532, 544-545, 557-558, 570-571, 583-584, 598-600, 617-619, 636-637, 650-651, 668-671, 691-694, 711-712, 725-726, 738-739, 751-752, 761-764, 773-776, 788-789, 804-809, 823-828
+mock_spark/functions/metadata.py                               33     33     0%   8-111
+mock_spark/functions/ordering.py                               28     28     0%   7-93
+mock_spark/functions/pandas_types.py                            6      0   100%
+mock_spark/functions/string.py                                288    189    34%   49-53, 65-69, 81-85, 97-103, 115-121, 133-137, 149-153, 165-169, 185-194, 207-213, 229-238, 251-266, 281-296, 312-321, 333-337, 349-353, 365-371, 390-399, 421-432, 448-454, 469-475, 490-496, 514-517, 537-540, 555-558, 574-581, 605-608, 632-635, 656-659, 677-680, 701-704, 726-729, 748-751, 771-776, 804-807, 821-824, 836-839, 851-854, 866-873, 890-897, 915-918, 933-936, 954-957, 977-980, 995-998, 1014-1020, 1037-1040, 1055-1058
+mock_spark/functions/udf.py                                    30     23    23%   41-46, 57-58, 70-92
+mock_spark/functions/window_execution.py                      182    162    11%   25-46, 50, 61-62, 73-100, 104, 108-158, 163, 167-174, 178-186, 191-193, 197-201, 205-208, 212-215, 219-234, 238-253, 257-277, 281-307
+mock_spark/functions/xml.py                                    59     33    44%   25-28, 48-51, 71-74, 94-97, 118-121, 142-145, 166-169, 190-193, 214-217, 238-241, 262-265
+mock_spark/optimizer/__init__.py                                3      3     0%   8-17
+mock_spark/optimizer/optimization_rules.py                    172    172     0%   7-374
+mock_spark/optimizer/query_optimizer.py                       184    184     0%   8-378
+mock_spark/performance_simulation.py                           91     91     0%   29-329
+mock_spark/session/__init__.py                                  4      0   100%
+mock_spark/session/catalog.py                                 170    140    18%   39, 43, 47, 60-61, 65, 69, 95-96, 104, 115-119, 127, 140-154, 175-197, 214-238, 255-272, 294, 306-334, 350-370, 382-407, 418-439, 448, 457, 466, 471
+mock_spark/session/config/__init__.py                           2      0   100%
+mock_spark/session/config/configuration.py                     49     23    53%   46, 67, 76, 84-85, 93, 101, 109, 117-118, 129, 133, 137, 175, 186-187, 198-199, 211-212, 223-224, 232
+mock_spark/session/context.py                                  33     14    58%   32, 40-41, 46, 50, 54, 81-82, 91, 100, 109, 118, 122, 126
+mock_spark/session/core/__init__.py                             4      0   100%
+mock_spark/session/core/builder.py                             26     16    38%   30-31, 42, 56-60, 69-86
+mock_spark/session/core/session.py                            191    129    32%   84-133, 138, 143, 148, 153, 158, 167, 192-227, 231, 235, 239, 249, 255, 268-270, 293, 311-314, 330, 342, 346-347, 353, 368-436, 455-456, 461, 465, 470, 478, 486, 493, 500, 510, 517, 522-532, 537-541, 547, 552-553, 558
+mock_spark/session/performance_tracker.py                      39     39     0%   8-117
+mock_spark/session/services/__init__.py                         6      0   100%
+mock_spark/session/services/dataframe_factory.py               58     49    16%   47-125, 139-145, 163-179
+mock_spark/session/services/lifecycle_manager.py               19     15    21%   27-38, 47-51
+mock_spark/session/services/mocking_coordinator.py             31     23    26%   21, 39-56, 68-71, 81-83, 98-102, 106
+mock_spark/session/services/protocols.py                       20      0   100%
+mock_spark/session/services/sql_parameter_binder.py            29     25    14%   28-51, 62-74
+mock_spark/session/session.py                                   2      2     0%   31-34
+mock_spark/session/sql/__init__.py                              5      0   100%
+mock_spark/session/sql/executor.py                            246    228     7%   54-57, 71-102, 113-193, 204-226, 237-259, 271-277, 289-295, 307-309, 321-347, 359-426, 437-571
+mock_spark/session/sql/optimizer.py                            65     48    26%   41-43, 47, 51, 68, 85-100, 111-114, 127, 142, 155, 168, 181, 192-234, 247-260
+mock_spark/session/sql/parser.py                              154    135    12%   38-40, 44, 50, 70, 262-272, 283-310, 322-351, 363-366, 378-416, 427-448, 463-483, 498, 510, 522, 533-611
+mock_spark/session/sql/validation.py                           87     74    15%   42, 105-126, 137-166, 177-188, 199-218, 229-237, 248-267, 278-281, 294, 308-313, 324-325
+mock_spark/spark_types.py                                     330    213    35%   58, 63-65, 69, 72, 76-100, 152-154, 158, 166-167, 171, 181-183, 187, 224-225, 228, 235-236, 239, 254-256, 259, 268-270, 273, 282-284, 287, 301-304, 307, 315-320, 330-331, 335, 342-344, 347, 350, 353, 356, 359-360, 372-380, 391-393, 397, 401-403, 407, 411-412, 416, 420, 432, 445, 451-460, 465-480, 485-486, 515-551, 555-583, 587-591, 595-601, 605-612, 616-623, 627, 631-657, 662-692, 696-703, 709-711, 715-719, 723-724, 727-731
+mock_spark/storage/__init__.py                                 10      0   100%
+mock_spark/storage/backends/__init__.py                         0      0   100%
+mock_spark/storage/backends/file.py                           202    140    31%   26-34, 39, 44, 49, 53-56, 64-69, 77-78, 87-102, 113-120, 128, 136-139, 143, 147, 151, 155-156, 160-162, 175-178, 189-195, 206-207, 215-220, 228-236, 242, 246, 250, 254, 258, 262, 266-268, 272, 276, 280, 292-295, 303-304, 315, 324-331, 339, 351-353, 368-371, 380-381, 393-397, 412-417, 432-434, 446-452, 464, 474-485, 496-505, 509-513, 519-524, 531
+mock_spark/storage/backends/memory.py                         133     88    34%   22-25, 34, 39, 44, 53-62, 73-78, 86, 94, 98, 102, 106, 110-111, 115-116, 128-129, 140-145, 156, 164-165, 173, 181-183, 191-192, 203, 212-213, 221, 233-235, 250-253, 262-263, 275-279, 294-299, 314-316, 328-334, 346, 356-367, 378-387, 399-403, 415-420, 427
+mock_spark/storage/manager.py                                 115     69    40%   39-44, 57, 69, 81, 93-94, 102, 113, 122, 130, 142, 157, 166, 179, 194, 208, 220, 229, 240, 254, 266, 274, 283, 296, 307, 315-320, 324-329, 337-349, 353, 361-371, 382-403
+mock_spark/storage/models.py                                   79     10    87%   77, 120-133, 138-140, 149-153
+mock_spark/storage/serialization/__init__.py                    0      0   100%
+mock_spark/storage/serialization/csv.py                        46     32    30%   23-30, 42-47, 57-62, 76-92, 104-120
+mock_spark/storage/serialization/json.py                       39     25    36%   23-24, 36-41, 51-63, 75-90, 102-118
+mock_spark/storage/spark_function_mapper.py                    29     29     0%   7-270
+mock_spark/storage/sql_translator.py                          418    418     0%   8-734
+mock_spark/storage/sqlalchemy_helpers.py                       78     61    22%   37-82, 95-127, 145-153, 168-185, 203-214, 227-228, 242-243, 257-258, 273, 290, 296, 304, 310
+mock_spark/window.py                                           61     40    34%   58-61, 75-86, 100-111, 126-130, 145-149, 153-168, 191, 196, 201, 206
+-----------------------------------------------------------------------------------------
+TOTAL                                                       19754  16110    18%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+=========================== 316 deselected in 5.17s ============================
+No performance tests found, skipping...
+Running documentation tests...
+============================= test session starts ==============================
+platform darwin -- Python 3.9.23, pytest-8.4.2, pluggy-1.6.0 -- /Users/odosmatthews/.pyenv/versions/3.9.23/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /Users/odosmatthews/Documents/coding/mock-spark
+configfile: pyproject.toml
+plugins: hypothesis-6.141.1, xdist-3.8.0, cov-7.0.0
+collecting ... collected 4 items
+
+tests/documentation/test_examples.py::TestExampleScripts::test_basic_usage_runs PASSED [ 25%]
+tests/documentation/test_examples.py::TestExampleScripts::test_comprehensive_usage_runs PASSED [ 50%]
+tests/documentation/test_examples.py::TestExampleScripts::test_examples_show_v2_features PASSED [ 75%]
+tests/documentation/test_examples.py::TestExampleScripts::test_example_outputs_captured PASSED [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.23-final-0 _______________
+
+Name                                                        Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------
+mock_spark/__init__.py                                         27     27     0%   45-210
+mock_spark/_version_compat.py                                  51     51     0%   12-175
+mock_spark/backend/__init__.py                                  3      3     0%   19-27
+mock_spark/backend/duckdb/__init__.py                           5      5     0%   18-23
+mock_spark/backend/duckdb/cte_query_builder.py                256    256     0%   7-613
+mock_spark/backend/duckdb/dataframe_operation_applier.py      154    154     0%   8-345
+mock_spark/backend/duckdb/date_format_converter.py             33     33     0%   8-117
+mock_spark/backend/duckdb/datetime_operations_handler.py      161    161     0%   8-344
+mock_spark/backend/duckdb/error_translator.py                  23     23     0%   7-69
+mock_spark/backend/duckdb/export.py                            53     53     0%   8-165
+mock_spark/backend/duckdb/materializer.py                      32     32     0%   7-67
+mock_spark/backend/duckdb/operation_executor.py               175    175     0%   7-411
+mock_spark/backend/duckdb/query_executor.py                  2541   2541     0%   10-5375
+mock_spark/backend/duckdb/sql_expression_translator.py        822    822     0%   7-1522
+mock_spark/backend/duckdb/sql_query_builder.py                 48     48     0%   8-220
+mock_spark/backend/duckdb/storage.py                          400    400     0%   8-786
+mock_spark/backend/duckdb/table_manager.py                    209    209     0%   7-389
+mock_spark/backend/duckdb/window_function_handler.py          228    228     0%   8-383
+mock_spark/backend/duckdb/window_processor.py                  38     38     0%   7-94
+mock_spark/backend/factory.py                                  69     69     0%   8-203
+mock_spark/backend/protocols.py                                14     14     0%   9-107
+mock_spark/core/__init__.py                                     8      8     0%   9-27
+mock_spark/core/condition_evaluator.py                        657    657     0%   8-1217
+mock_spark/core/data_validation.py                             80     80     0%   9-222
+mock_spark/core/ddl_adapter.py                                 31     31     0%   8-133
+mock_spark/core/exceptions/__init__.py                          6      6     0%   27-33
+mock_spark/core/exceptions/analysis.py                         85     85     0%   8-287
+mock_spark/core/exceptions/base.py                             22     22     0%   8-91
+mock_spark/core/exceptions/execution.py                        29     29     0%   8-153
+mock_spark/core/exceptions/operation.py                        85     85     0%   8-196
+mock_spark/core/exceptions/runtime.py                          41     41     0%   8-193
+mock_spark/core/exceptions/validation.py                       44     44     0%   8-207
+mock_spark/core/interfaces/__init__.py                          5      5     0%   25-30
+mock_spark/core/interfaces/dataframe.py                       180    180     0%   8-320
+mock_spark/core/interfaces/functions.py                       183    183     0%   8-344
+mock_spark/core/interfaces/session.py                         115    115     0%   8-215
+mock_spark/core/interfaces/storage.py                         126    126     0%   8-253
+mock_spark/core/protocols.py                                   42     42     0%   8-112
+mock_spark/core/schema_inference.py                            87     87     0%   17-244
+mock_spark/core/types/__init__.py                               4      4     0%   20-24
+mock_spark/core/types/data_types.py                           139    139     0%   8-264
+mock_spark/core/types/metadata.py                             166    166     0%   8-288
+mock_spark/core/types/schema.py                               122    122     0%   8-225
+mock_spark/data_generation/__init__.py                          4      4     0%   8-12
+mock_spark/data_generation/builder.py                          28     28     0%   8-85
+mock_spark/data_generation/convenience.py                       9      9     0%   8-64
+mock_spark/data_generation/generator.py                       174    174     0%   8-339
+mock_spark/dataframe/__init__.py                                6      6     0%   7-18
+mock_spark/dataframe/assertions.py                             25     25     0%   8-85
+mock_spark/dataframe/casting/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/casting/type_converter.py                 63     63     0%   3-103
+mock_spark/dataframe/collection_handler.py                     24     24     0%   8-64
+mock_spark/dataframe/condition_handler.py                      49     49     0%   8-169
+mock_spark/dataframe/dataframe.py                            1270   1270     0%   32-3156
+mock_spark/dataframe/display/__init__.py                        2      2     0%   3-5
+mock_spark/dataframe/display/formatter.py                      37     37     0%   3-57
+mock_spark/dataframe/evaluation/__init__.py                     2      2     0%   3-5
+mock_spark/dataframe/evaluation/expression_evaluator.py       540    540     0%   9-935
+mock_spark/dataframe/export.py                                 31     31     0%   11-117
+mock_spark/dataframe/grouped/__init__.py                        5      5     0%   8-13
+mock_spark/dataframe/grouped/base.py                          572    572     0%   8-1243
+mock_spark/dataframe/grouped/cube.py                           82     82     0%   8-204
+mock_spark/dataframe/grouped/pivot.py                         121    121     0%   8-252
+mock_spark/dataframe/grouped/rollup.py                         83     83     0%   8-207
+mock_spark/dataframe/lazy.py                                  593    593     0%   8-1316
+mock_spark/dataframe/operations/__init__.py                     4      4     0%   3-7
+mock_spark/dataframe/operations/aggregation_operations.py     128    128     0%   3-313
+mock_spark/dataframe/operations/join_operations.py            157    157     0%   3-335
+mock_spark/dataframe/operations/set_operations.py              76     76     0%   3-117
+mock_spark/dataframe/protocols.py                              27     27     0%   8-179
+mock_spark/dataframe/rdd.py                                    70     70     0%   8-250
+mock_spark/dataframe/reader.py                                 79     79     0%   25-327
+mock_spark/dataframe/schema/__init__.py                         2      2     0%   3-5
+mock_spark/dataframe/schema/schema_manager.py                 173    173     0%   3-325
+mock_spark/dataframe/sqlalchemy_query_builder.py              153    153     0%   8-298
+mock_spark/dataframe/validation/__init__.py                     2      2     0%   7-9
+mock_spark/dataframe/validation/column_validator.py            87     87     0%   9-280
+mock_spark/dataframe/validation_handler.py                     11     11     0%   9-90
+mock_spark/dataframe/window_handler.py                        223    223     0%   8-492
+mock_spark/dataframe/writer.py                                137    137     0%   27-452
+mock_spark/delta.py                                            64     64     0%   22-253
+mock_spark/error_simulation.py                                 89     89     0%   29-336
+mock_spark/errors.py                                           28     28     0%   16-110
+mock_spark/functions/__init__.py                               33     33     0%   36-463
+mock_spark/functions/aggregate.py                             133    133     0%   36-552
+mock_spark/functions/array.py                                 231    231     0%   23-1000
+mock_spark/functions/base.py                                   99     99     0%   8-220
+mock_spark/functions/bitwise.py                                38     38     0%   7-154
+mock_spark/functions/conditional.py                           263    263     0%   7-585
+mock_spark/functions/core/__init__.py                           6      6     0%   8-21
+mock_spark/functions/core/column.py                           237    237     0%   8-471
+mock_spark/functions/core/expressions.py                       82     82     0%   8-246
+mock_spark/functions/core/lambda_parser.py                    134    134     0%   21-368
+mock_spark/functions/core/literals.py                         109    109     0%   8-245
+mock_spark/functions/core/operations.py                        97     97     0%   8-202
+mock_spark/functions/datetime.py                              236    236     0%   34-834
+mock_spark/functions/functions.py                            1015   1015     0%   29-2011
+mock_spark/functions/json_csv.py                               41     41     0%   8-163
+mock_spark/functions/map.py                                    74     74     0%   24-356
+mock_spark/functions/math.py                                  239    239     0%   33-828
+mock_spark/functions/metadata.py                               33     33     0%   8-111
+mock_spark/functions/ordering.py                               28     28     0%   7-93
+mock_spark/functions/pandas_types.py                            6      6     0%   9-30
+mock_spark/functions/string.py                                288    288     0%   32-1058
+mock_spark/functions/udf.py                                    30     30     0%   8-92
+mock_spark/functions/window_execution.py                      182    182     0%   7-307
+mock_spark/functions/xml.py                                    59     59     0%   3-265
+mock_spark/optimizer/__init__.py                                3      3     0%   8-17
+mock_spark/optimizer/optimization_rules.py                    172    172     0%   7-374
+mock_spark/optimizer/query_optimizer.py                       184    184     0%   8-378
+mock_spark/performance_simulation.py                           91     91     0%   29-329
+mock_spark/session/__init__.py                                  4      4     0%   16-25
+mock_spark/session/catalog.py                                 170    170     0%   24-471
+mock_spark/session/config/__init__.py                           2      2     0%   14-16
+mock_spark/session/config/configuration.py                     49     49     0%   23-232
+mock_spark/session/context.py                                  33     33     0%   24-126
+mock_spark/session/core/__init__.py                             4      4     0%   8-12
+mock_spark/session/core/builder.py                             26     26     0%   9-86
+mock_spark/session/core/session.py                            191    191     0%   8-564
+mock_spark/session/performance_tracker.py                      39     39     0%   8-117
+mock_spark/session/services/__init__.py                         6      6     0%   8-20
+mock_spark/session/services/dataframe_factory.py               58     58     0%   8-179
+mock_spark/session/services/lifecycle_manager.py               19     19     0%   8-51
+mock_spark/session/services/mocking_coordinator.py             31     31     0%   8-106
+mock_spark/session/services/protocols.py                       20     20     0%   8-95
+mock_spark/session/services/sql_parameter_binder.py            29     29     0%   8-74
+mock_spark/session/session.py                                   2      2     0%   31-34
+mock_spark/session/sql/__init__.py                              5      5     0%   15-20
+mock_spark/session/sql/executor.py                            246    246     0%   23-571
+mock_spark/session/sql/optimizer.py                            65     65     0%   21-260
+mock_spark/session/sql/parser.py                              154    154     0%   23-611
+mock_spark/session/sql/validation.py                           87     87     0%   23-325
+mock_spark/spark_types.py                                     330    330     0%   26-731
+mock_spark/storage/__init__.py                                 10     10     0%   33-58
+mock_spark/storage/backends/__init__.py                         0      0   100%
+mock_spark/storage/backends/file.py                           202    202     0%   7-531
+mock_spark/storage/backends/memory.py                         133    133     0%   7-427
+mock_spark/storage/manager.py                                 115    115     0%   7-403
+mock_spark/storage/models.py                                   79     79     0%   8-153
+mock_spark/storage/serialization/__init__.py                    0      0   100%
+mock_spark/storage/serialization/csv.py                        46     46     0%   7-120
+mock_spark/storage/serialization/json.py                       39     39     0%   7-118
+mock_spark/storage/spark_function_mapper.py                    29     29     0%   7-270
+mock_spark/storage/sql_translator.py                          418    418     0%   8-734
+mock_spark/storage/sqlalchemy_helpers.py                       78     78     0%   8-310
+mock_spark/window.py                                           61     61     0%   32-206
+-----------------------------------------------------------------------------------------
+TOTAL                                                       19754  19754     0%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+============================== 4 passed in 5.90s ===============================
+
+Test Summary
+============
+Unit tests: ✅ PASSED
+Compatibility tests: ❌ FAILED
+Performance tests: ✅ PASSED
+Documentation tests: ✅ PASSED
+Total tests: collected
+
+❌ Test suite FAILED
