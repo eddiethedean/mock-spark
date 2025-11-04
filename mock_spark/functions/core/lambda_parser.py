@@ -120,7 +120,9 @@ class LambdaParser:
                     )
 
                 # Construct an equivalent Lambda node from the function signature and return value
-                self.ast_node = ast.Lambda(args=func_node.args, body=func_node.body[0].value)  # type: ignore[arg-type]
+                self.ast_node = ast.Lambda(
+                    args=func_node.args, body=func_node.body[0].value
+                )  # type: ignore[arg-type]
 
         except SyntaxError as e:
             raise LambdaTranslationError(f"Cannot parse lambda: {e}")

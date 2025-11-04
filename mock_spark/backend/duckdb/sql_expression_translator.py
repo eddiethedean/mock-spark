@@ -68,9 +68,23 @@ class SQLExpressionTranslator:
 
             if is_sql_expression:
                 # This is already an SQL expression, return as is
+                # But if source_table is provided and the expression contains table-qualified columns,
+                # replace them with the source_table
+                if source_table:
+                    # Replace any table-qualified column references with source_table
+                    expr = re.sub(r'"[a-z0-9_]+"\.(".*?")', rf"{source_table}.\1", expr)
+                    expr = re.sub(r'[a-z0-9_]+\.(".*?")', rf"{source_table}.\1", expr)
                 return expr
             elif source_table:
-                return f'{source_table}."{expr}"'
+                # If source_table is provided, always use it, even if expr already has a table qualifier
+                # Extract just the column name if it's already qualified
+                column_name = expr
+                if "." in expr:
+                    # Extract column name from qualified reference (e.g., "table.column" -> "column")
+                    parts = expr.split(".", 1)
+                    if len(parts) == 2:
+                        column_name = parts[1].strip('"')
+                return f'{source_table}."{column_name}"'
             else:
                 return f'"{expr}"'
         elif isinstance(expr, MockLiteral):
@@ -82,10 +96,18 @@ class SQLExpressionTranslator:
             return self.expression_to_sql(expr, source_table)
         elif hasattr(expr, "name"):
             # Check if this is referencing an aliased expression
+            # If source_table is provided, always use it (for CTE queries)
+            # Extract just the column name if it's already qualified
+            column_name = expr.name
+            if "." in column_name:
+                # Extract column name from qualified reference
+                parts = column_name.split(".", 1)
+                if len(parts) == 2:
+                    column_name = parts[1].strip('"')
             if source_table:
-                return f'{source_table}."{expr.name}"'
+                return f'{source_table}."{column_name}"'
             else:
-                return f'"{expr.name}"'
+                return f'"{column_name}"'
         else:
             return str(expr)
 
@@ -319,6 +341,8 @@ class SQLExpressionTranslator:
                                 format_str
                             )
                         )
+                        # Ensure format string has no single quotes that could break SQL
+                        duckdb_format = duckdb_format.replace("'", "")
                         return f"STRPTIME({left}, '{duckdb_format}')"
                     else:
                         return f"TRY_CAST({left} AS TIMESTAMP)"
@@ -332,6 +356,8 @@ class SQLExpressionTranslator:
                                 format_str
                             )
                         )
+                        # Ensure format string has no single quotes that could break SQL
+                        duckdb_format = duckdb_format.replace("'", "")
                         return f"STRPTIME({left}, '{duckdb_format}')::DATE"
                     else:
                         return f"TRY_CAST({left} AS DATE)"
@@ -923,10 +949,29 @@ class SQLExpressionTranslator:
                     "date": "DATE",
                     "timestamp": "TIMESTAMP",
                     "decimal": "DECIMAL",
+                    "varchar": "VARCHAR",
+                    "numeric": "DECIMAL",
                 }
-                # Remove quotes if present and map to DuckDB type
-                target_type = right.strip("'\"")
+                # Get the raw type value before any SQL conversion
+                # Handle both string values and already-converted SQL strings
+                if isinstance(expr.value, str):
+                    # Direct string value (e.g., "int", "date", "string")
+                    target_type = expr.value
+                else:
+                    # Already converted to SQL (might have quotes), extract the value
+                    # right is the result of value_to_sql(expr.value), which might quote strings
+                    if isinstance(right, str):
+                        # Remove any surrounding quotes from the SQL string
+                        target_type = right.strip().strip("'\"")
+                    else:
+                        # Fallback: try to get string representation
+                        target_type = str(right).strip().strip("'\"")
+
+                # Normalize: remove any remaining quotes, convert to lowercase for lookup
+                target_type = target_type.strip().strip("'\"")
+                # Map to DuckDB type (uppercase, no quotes)
                 target_type = type_map.get(target_type.lower(), target_type.upper())
+                # Ensure we never output quoted types - always use uppercase DuckDB types
                 return f"TRY_CAST({left} AS {target_type})"
             # Handle boolean/logical operations
             elif expr.operation == "&":
@@ -1053,7 +1098,8 @@ class SQLExpressionTranslator:
                     if expr is not None:
                         return f"(CASE WHEN {expr} THEN FALSE ELSE TRUE END)"
                     else:
-                        return None
+                        # Fallback: return empty string if expression cannot be converted
+                        return "FALSE"
                 elif condition.operation == "isnull":
                     # IS NULL operation
                     left = self.column_to_sql(

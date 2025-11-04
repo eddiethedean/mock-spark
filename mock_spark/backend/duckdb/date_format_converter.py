@@ -40,7 +40,10 @@ class DateFormatConverter:
             """Replace quoted literals like 'T' with just the literal character."""
             # Match single-quoted characters: 'X' where X can be any character(s)
             # Use regex to find and replace '...' with just the content
+            # Handle nested quotes by matching from outside in
             result = re.sub(r"'([^']*)'", r"\1", text)
+            # Remove any remaining single quotes that might have been missed
+            result = result.replace("'", "")
             return result
 
         # Remove quoted literals (they'll be preserved as literal characters)

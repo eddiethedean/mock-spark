@@ -135,6 +135,15 @@ class MockRDD:
         """
         # Import here to avoid circular imports
         from ..dataframe import MockDataFrame
+        from ..spark_types import MockStructType
+        from ..core.schema_inference import SchemaInferenceEngine
+
+        # If schema is None, infer it from data
+        if schema is None:
+            if not self.data:
+                schema = MockStructType([])
+            else:
+                schema, _ = SchemaInferenceEngine.infer_from_data(self.data)
 
         return MockDataFrame(self.data, schema)
 

@@ -151,3 +151,63 @@ class TestCTEOptimizationCompatibility:
                 if "CTE optimization failed" in str(e):
                     pytest.fail(f"CTE optimization should succeed but fell back: {e}")
                 raise
+
+    def test_cte_filter_with_column_references(self, spark):
+        """Test CTE filter operations use CTE aliases, not original table names."""
+        test_data = [
+            {"id": 1, "name": "Alice", "value": 100},
+            {"id": 2, "name": "Bob", "value": None},
+            {"id": 3, "name": "Charlie", "value": 200},
+        ]
+
+        df = spark.createDataFrame(test_data)
+
+        # Filter using isNotNull - this should use CTE alias, not temp_table_0
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
+                result = (
+                    df.filter(F.col("value").isNotNull())
+                    .filter(F.col("id") > 1)
+                    .select("id", "name", "value")
+                )
+
+                rows = result.collect()
+                assert len(rows) == 1  # Only id=3 should pass both filters
+                assert rows[0].id == 3
+                assert rows[0].value == 200
+            except UserWarning as e:
+                if "CTE optimization failed" in str(e):
+                    pytest.fail(f"CTE optimization should succeed but fell back: {e}")
+                raise
+
+    def test_cte_filter_with_complex_conditions(self, spark):
+        """Test CTE filter with complex conditions referencing columns."""
+        test_data = [
+            {"x": 10, "y": 20, "z": 30},
+            {"x": 5, "y": 15, "z": 25},
+            {"x": 15, "y": 25, "z": 35},
+        ]
+
+        df = spark.createDataFrame(test_data)
+
+        # Complex filter with multiple column references
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            try:
+                result = (
+                    df.filter((F.col("x") + F.col("y")) > F.col("z"))
+                    .filter(F.col("x") < 20)
+                    .select("x", "y", "z")
+                )
+
+                rows = result.collect()
+                assert len(rows) == 1  # Only first row: 10+20=30 > 30 is False, wait...
+                # Actually: 10+20=30 is not > 30, so that row fails
+                # 5+15=20 is not > 25, so that row fails
+                # 15+25=40 > 35 and 15 < 20, so that row passes
+                assert rows[0].x == 15
+            except UserWarning as e:
+                if "CTE optimization failed" in str(e):
+                    pytest.fail(f"CTE optimization should succeed but fell back: {e}")
+                raise

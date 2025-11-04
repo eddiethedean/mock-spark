@@ -298,6 +298,26 @@ class MockDataFrameWriter:
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data)
 
+        # Ensure table is properly registered in storage after creation
+        # This synchronizes catalog and storage
+        if not self.storage.table_exists(schema, table):
+            # If table_exists returns False but we just created it, there's a sync issue
+            # Re-check by attempting to query the table
+            try:
+                # Try to get table schema as a verification
+                table_schema = self.storage.get_table_schema(schema, table)
+                if table_schema is None:
+                    # Table exists in storage but not properly registered - force registration
+                    # This shouldn't happen, but handle it gracefully
+                    pass
+            except Exception:
+                # Table doesn't exist - this is an error
+                from ..errors import AnalysisException
+
+                raise AnalysisException(
+                    f"Table '{schema}.{table}' was not properly created in storage"
+                )
+
         # Set Delta-specific metadata
         if is_delta:
             # Determine version to set

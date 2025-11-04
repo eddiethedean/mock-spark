@@ -640,15 +640,34 @@ class SQLToSQLAlchemyTranslator:
         # CAST
         elif isinstance(expr, exp.Cast):
             col = self._translate_expression(expr.this, table)
-            target_type = self._get_cast_type(expr.to)
+            # Get type string from expression, not SQLAlchemy type
+            type_str = str(expr.to).upper().strip("'\"")
+            # Map to DuckDB types
+            type_map = {
+                "INT": "INTEGER",
+                "INTEGER": "INTEGER",
+                "BIGINT": "BIGINT",
+                "LONG": "BIGINT",
+                "STRING": "VARCHAR",
+                "VARCHAR": "VARCHAR",
+                "FLOAT": "FLOAT",
+                "DOUBLE": "DOUBLE",
+                "BOOLEAN": "BOOLEAN",
+                "BOOL": "BOOLEAN",
+                "DATE": "DATE",
+                "TIMESTAMP": "TIMESTAMP",
+                "DECIMAL": "DECIMAL",
+                "NUMERIC": "DECIMAL",
+            }
+            duckdb_type = type_map.get(type_str, type_str)
             # Use TRY_CAST for overflow handling (DuckDB specific)
             from sqlalchemy import text
 
             # For integer casts, use BIGINT to handle overflow gracefully
-            if "INT" in str(target_type).upper():
+            if "INT" in duckdb_type:
                 return text(f"TRY_CAST({col} AS BIGINT)")  # type: ignore[return-value]
             else:
-                return text(f"TRY_CAST({col} AS {target_type})")  # type: ignore[return-value]
+                return text(f"TRY_CAST({col} AS {duckdb_type})")  # type: ignore[return-value]
 
         else:
             # Generic function - try to map using function mapper

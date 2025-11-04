@@ -215,6 +215,20 @@ class MockCatalog:
             parts = tableName.split(".", 1)
             if len(parts) == 2:
                 dbName, tableName = parts
+        elif dbName is not None and "." not in tableName:
+            # If both tableName and dbName are provided and tableName is not qualified,
+            # then dbName is the schema and tableName is the table name
+            # This handles the case: tableExists("test_table", "test_schema")
+            # But also check if tableName might actually be a schema name
+            # (some PySpark code might call it as tableExists("schema", "table"))
+            # Check if reversing makes more sense (if "tableName" exists as a schema)
+            if self.storage.schema_exists(tableName) and not self.storage.schema_exists(
+                dbName
+            ):
+                # If tableName is actually a schema and dbName is not, swap them
+                # This handles: tableExists("test_schema", "test_table")
+                # which should check table "test_table" in schema "test_schema"
+                dbName, tableName = tableName, dbName
 
         if dbName is None:
             dbName = self.storage.get_current_schema()
@@ -231,7 +245,37 @@ class MockCatalog:
             raise IllegalArgumentException("Table name cannot be empty")
 
         try:
-            return self.storage.table_exists(dbName, tableName)
+            # First check storage directly
+            exists = self.storage.table_exists(dbName, tableName)
+            if exists:
+                return True
+
+            # If storage says it doesn't exist, try to verify by attempting to get schema
+            # This handles cases where table exists but isn't properly registered
+            # But only if schema exists (otherwise table definitely doesn't exist)
+            if self.storage.schema_exists(dbName):
+                try:
+                    table_schema = self.storage.get_table_schema(dbName, tableName)
+                    # Empty schema means table doesn't exist - check if it has fields
+                    if table_schema is not None and len(table_schema.fields) > 0:
+                        # Table exists in storage but wasn't detected by table_exists()
+                        # This is a synchronization issue - return True since we can access it
+                        return True
+                except Exception:
+                    # Table doesn't exist or can't be accessed
+                    pass
+
+            # Final check: try to list tables in the database and check if our table is there
+            # This is a more comprehensive check that catches any synchronization issues
+            try:
+                table_list = self.storage.list_tables(dbName)
+                if tableName in table_list:
+                    return True
+            except Exception:
+                # Can't list tables or database doesn't exist
+                pass
+
+            return False
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise

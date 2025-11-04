@@ -123,14 +123,28 @@ class DatetimeOperationsHandler:
                 format_str
             )
 
+            # Ensure format string has no single quotes that could break SQL
+            # The conversion should have removed all quotes, but double-check and remove any
+            # that might have been missed or introduced during conversion
+            duckdb_format = duckdb_format.replace("'", "")
+
+            # Ensure the format string is safe for SQL - no embedded quotes
+            # Escape any single quotes that might appear in the format string
+            # (though this should not happen after proper conversion)
+            if "'" in duckdb_format:
+                # Replace any remaining single quotes (shouldn't happen, but safety check)
+                duckdb_format = duckdb_format.replace("'", "")
+
             if fractional_info and expr.operation == "to_timestamp":
                 # Handle optional fractional seconds by normalizing input
                 # Strip microseconds from input if present before parsing
                 # This allows both "2025-10-29T10:30:45.123456" and "2025-10-29T10:30:45" to work
                 # Strategy: Use regexp_replace to remove fractional seconds, then parse
                 normalized_column = f"regexp_replace({column_name}, '\\.\\d+', '')"
+                # Format string should be clean (no quotes) - safe to use in SQL
                 return f"STRPTIME({normalized_column}, '{duckdb_format}')"
             else:
+                # Format string should be clean (no quotes) - safe to use in SQL
                 return f"STRPTIME({column_name}, '{duckdb_format}')"
         else:
             target_type = "DATE" if expr.operation == "to_date" else "TIMESTAMP"
@@ -303,13 +317,18 @@ class DatetimeOperationsHandler:
                     format_str
                 )
 
+                # Ensure format string has no single quotes that could break SQL
+                duckdb_format = duckdb_format.replace("'", "")
+
                 if fractional_info and operation == "to_timestamp":
                     # Handle optional fractional seconds by normalizing input
                     # Strip microseconds from input if present before parsing
                     # DuckDB uses standard string literals for regex, not Python r'' syntax
                     normalized_column = f"regexp_replace({column_name}, '\\.\\d+', '')"
+                    # Format string should be clean (no quotes) - safe to use in SQL
                     return f"STRPTIME({normalized_column}, '{duckdb_format}')"
                 else:
+                    # Format string should be clean (no quotes) - safe to use in SQL
                     return f"STRPTIME({column_name}, '{duckdb_format}')"
             else:
                 target_type = "DATE" if operation == "to_date" else "TIMESTAMP"

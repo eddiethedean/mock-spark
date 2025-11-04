@@ -122,6 +122,11 @@ class DataFrameFactory:
             if engine_config.enable_type_coercion:
                 data = validator.coerce(data)
 
+        # Ensure schema is always MockStructType at this point
+        if not isinstance(schema, MockStructType):
+            # This should never happen, but provide a fallback
+            schema = MockStructType([])
+
         return MockDataFrame(data, schema, storage)
 
     def _handle_schema_inference(

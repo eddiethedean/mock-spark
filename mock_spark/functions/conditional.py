@@ -215,7 +215,13 @@ class MockCaseWhen:
 
     def get_result_type(self) -> "MockDataType":
         """Infer the result type from condition values."""
-        from ..spark_types import BooleanType, IntegerType, StringType, DoubleType
+        from ..spark_types import (
+            BooleanType,
+            IntegerType,
+            StringType,
+            DoubleType,
+            LongType,
+        )
         from .core.literals import MockLiteral
 
         # Check all condition values and default value
@@ -260,8 +266,6 @@ class MockCaseWhen:
                     return StringType(nullable=False)  # Literals are never nullable
                 elif hasattr(val, "operation") and hasattr(val, "column"):
                     # Handle MockColumnOperation - check the operation type
-                    from ..spark_types import LongType
-
                     if val.operation in ["+", "-", "*", "/", "%", "abs"]:
                         # Arithmetic operations return LongType
                         return LongType(nullable=False)

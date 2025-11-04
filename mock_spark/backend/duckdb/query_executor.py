@@ -27,7 +27,6 @@ from sqlalchemy import (
     Double,
     Boolean,
     DateTime,
-    Date,
     literal,
     text,
 )
@@ -3609,7 +3608,6 @@ class SQLAlchemyMaterializer:
             new_columns.append(Column(col_name, Integer, primary_key=False))
         elif hasattr(col, "function_name") and col.function_name == "concat_ws":
             # concat_ws returns string type
-            
 
             new_columns.append(Column(col_name, SA_String, primary_key=False))
         elif (
@@ -3698,9 +3696,9 @@ class SQLAlchemyMaterializer:
                                     BigInteger,
                                 )
 
-                                if isinstance(source_column.type, SA_String) or isinstance(
-                                    right_col_obj.type, SA_String
-                                ):
+                                if isinstance(
+                                    source_column.type, SA_String
+                                ) or isinstance(right_col_obj.type, SA_String):
                                     # At least one is string - result is String
                                     new_columns.append(
                                         Column(col_name, String, primary_key=False)
@@ -3755,16 +3753,12 @@ class SQLAlchemyMaterializer:
 
                         new_columns.append(Column(col_name, Float, primary_key=False))
                     else:
-                        
-
-                        new_columns.append(Column(col_name, SA_String, primary_key=False))
+                        new_columns.append(
+                            Column(col_name, SA_String, primary_key=False)
+                        )
             else:
-                
-
                 new_columns.append(Column(col_name, SA_String, primary_key=False))
         else:
-            
-
             new_columns.append(Column(col_name, SA_String, primary_key=False))
 
         # Handle window functions
@@ -4210,7 +4204,9 @@ class SQLAlchemyMaterializer:
         # Build columns in the EXACT order they appear in SELECT (to match INSERT order)
         new_columns: List[Any] = []
         # Build column definitions for all columns in SELECT order
-        column_defs_ordered: List[Tuple[str, Optional[Any]]] = []  # Store (name, Column|None)
+        column_defs_ordered: List[
+            Tuple[str, Optional[Any]]
+        ] = []  # Store (name, Column|None)
 
         for i, sel_col in enumerate(select_columns):
             # Get the column name from the select column
@@ -4280,7 +4276,6 @@ class SQLAlchemyMaterializer:
         # Check function_name first (functions like concat_ws have both function_name and operation)
         if hasattr(col, "function_name") and col.function_name == "concat_ws":
             # concat_ws returns String
-            
 
             new_col_def = Column(col_name, String, primary_key=False, nullable=True)
         elif hasattr(col, "operation") and hasattr(col, "column"):
@@ -4564,7 +4559,9 @@ class SQLAlchemyMaterializer:
                     else:
                         tmp_col_name = str_repr.strip('"')
 
-                select_col_names_from_select.append(tmp_col_name if tmp_col_name else "unknown")
+                select_col_names_from_select.append(
+                    tmp_col_name if tmp_col_name else "unknown"
+                )
 
             logging.debug(
                 f"[SQL_DEBUG] SELECT columns (order): {select_col_names_from_select}"

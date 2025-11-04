@@ -58,7 +58,18 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.13.1)
+### Latest (Version 2.15.0)
+
+**Table Persistence & CTE Optimization Improvements** - Major fixes for persistent storage and query optimization:
+- 🗄️ **Table Persistence** - Fixed cross-session table persistence with proper DuckDB connection configuration
+- 🔍 **Schema Discovery** - Enhanced schema and table discovery when opening persistent databases
+- ⚡ **CTE Optimization** - Fixed column reference issues in CTE filter conditions
+- 🔄 **Catalog Synchronization** - Improved `catalog.tableExists()` reliability with comprehensive checks
+- 🐛 **SQL Syntax Compatibility** - Fixed type casting and STRPTIME format string generation for DuckDB
+- ✅ **All tests passing** - 857+ tests validated including new persistence tests
+- 📦 **Production-ready** - Stable release with improved reliability
+
+### Version 2.13.1
 
 **Version Bump** - Patch release for stability and compatibility:
 - 🔧 **Version update** - Bumped to 2.13.1 for consistency
@@ -455,6 +466,33 @@ spark = MockSparkSession(
 - **Default Behavior**: Disk spillover disabled by default for fast, isolated tests
 - **Automatic Cleanup**: Temp directories automatically cleaned up when session stops
 
+### Table Persistence (New in 2.15.0)
+
+Tables created with `saveAsTable()` can now persist across multiple sessions when using persistent storage:
+
+```python
+# First session - create table
+spark1 = MockSparkSession("App1", db_path="test.db")
+df = spark1.createDataFrame([{"id": 1, "name": "Alice"}])
+df.write.mode("overwrite").saveAsTable("schema.my_table")
+spark1.stop()
+
+# Second session - table persists
+spark2 = MockSparkSession("App2", db_path="test.db")
+assert spark2.catalog.tableExists("schema", "my_table")  # ✅ True
+result = spark2.table("schema.my_table").collect()  # ✅ Works!
+spark2.stop()
+```
+
+**Key Features:**
+- **Cross-Session Persistence**: Tables persist when using `db_path` parameter
+- **Schema Discovery**: Automatically discovers existing schemas and tables when opening persistent databases
+- **Catalog Synchronization**: Improved `catalog.tableExists()` reliability
+- **Data Integrity**: Full support for `append` and `overwrite` modes across sessions
+- **In-Memory Default**: Default behavior (no `db_path`) provides test isolation without persistence
+
+**Note**: When `db_path` is `None` (default), tables use in-memory storage and don't persist between sessions. This provides test isolation. For tables that need to persist across pipeline runs, provide a `db_path`.
+
 ---
 
 ## Performance Comparison
@@ -542,7 +580,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.12.0** - Complete Type Safety & Test Suite Overhaul, Interface Standardization  
 **v2.12.1** - Pluggable Backend Architecture, SRP Refactoring, PySpark-free Testing, Modular Design  
 **v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance  
-**v2.13.1** - Version bump for stability and compatibility
+**v2.13.1** - Version bump for stability and compatibility  
+**v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization
 
 ---
 

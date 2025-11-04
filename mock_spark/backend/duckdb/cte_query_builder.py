@@ -159,6 +159,35 @@ class CTEQueryBuilder:
         filter_sql = self.expression_translator.condition_to_sql(
             condition, _Alias(source_name)
         )
+
+        # Ensure all column references use the CTE alias, not original table names
+        # Replace any table-qualified column references with the CTE alias
+        # This handles cases where column references were generated with original table names
+        import re
+
+        if filter_sql:
+            # Pattern to match table-qualified columns in various formats:
+            # - "temp_table_0"."column" -> source_name."column"
+            # - temp_table_0."column" -> source_name."column"
+            # - temp_table_0.column -> source_name."column" (if column is quoted elsewhere)
+            # Replace with source_name (CTE alias)
+            # Match quoted table names
+            filter_sql = re.sub(
+                r'"[a-z0-9_]+"\.(".*?")', rf"{source_name}.\1", filter_sql
+            )
+            # Match unquoted table names followed by quoted column names
+            filter_sql = re.sub(
+                r'[a-z0-9_]+\.(".*?")', rf"{source_name}.\1", filter_sql
+            )
+            # Also handle unquoted column names that might have table qualifiers
+            # This is a more aggressive pattern that catches any table.column pattern
+            filter_sql = re.sub(
+                r'\b[a-z0-9_]+\s*\.\s*"([^"]+)"',
+                rf'{source_name}."\1"',
+                filter_sql,
+                flags=re.IGNORECASE,
+            )
+
         return f"SELECT * FROM {source_name} WHERE {filter_sql}"
 
     def build_select_cte(
