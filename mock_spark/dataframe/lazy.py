@@ -377,6 +377,8 @@ class LazyEvaluationEngine:
         """
         from ..dataframe import MockDataFrame
 
+        # Preserve schema from original DataFrame - this ensures empty DataFrames
+        # with explicit schemas maintain their column information
         current = MockDataFrame(df.data, df.schema, df.storage)
         for op_name, op_val in df._operations_queue:
             try:

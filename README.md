@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-857+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-884+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-106%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -58,7 +58,17 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.15.0)
+### Latest (Version 2.16.0)
+
+**Critical Regression Fixes** - Fixed three critical regressions from version 2.15.0:
+- 🔧 **Schema Conversion Failure** - Fixed empty table schemas when creating tables with `StructType` - now properly validates schema before table creation
+- 📊 **Empty DataFrame Column Detection** - Fixed empty DataFrames with explicit schemas losing column information - schemas are now preserved even when data is empty
+- 🔄 **Schema Preservation** - Fixed schema loss during transformations (select, filter, withColumn, groupBy) on empty DataFrames - schemas are now correctly preserved through all operations
+- ✅ **Comprehensive Test Coverage** - Added 27 regression tests to prevent future issues
+- ✅ **All tests passing** - 857+ tests validated including new regression tests
+- 📦 **Production-ready** - Stable release with all critical issues resolved
+
+### Version 2.15.0
 
 **Table Persistence & CTE Optimization Improvements** - Major fixes for persistent storage and query optimization:
 - 🗄️ **Table Persistence** - Fixed cross-session table persistence with proper DuckDB connection configuration
@@ -581,7 +591,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.12.1** - Pluggable Backend Architecture, SRP Refactoring, PySpark-free Testing, Modular Design  
 **v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance  
 **v2.13.1** - Version bump for stability and compatibility  
-**v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization
+**v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization  
+**v2.16.0** - Critical Regression Fixes - Fixed schema conversion failures, empty DataFrame column detection, and schema preservation during transformations
 
 ---
 

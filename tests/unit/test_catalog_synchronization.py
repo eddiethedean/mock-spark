@@ -71,8 +71,13 @@ class TestCatalogSynchronization:
 
     def test_table_exists_returns_false_for_nonexistent_table(self, spark):
         """Test that catalog.tableExists() returns False for non-existent tables."""
-        assert spark.catalog.tableExists("nonexistent_schema", "nonexistent_table") is False
-        assert spark.catalog.tableExists("nonexistent_schema.nonexistent_table") is False
+        assert (
+            spark.catalog.tableExists("nonexistent_schema", "nonexistent_table")
+            is False
+        )
+        assert (
+            spark.catalog.tableExists("nonexistent_schema.nonexistent_table") is False
+        )
 
     def test_table_list_includes_saved_tables(self, spark):
         """Test that listTables() includes tables created with saveAsTable()."""
@@ -85,4 +90,3 @@ class TestCatalogSynchronization:
         tables = spark.catalog.listTables("list_test_schema")
         table_names = [t.name for t in tables]
         assert "list_test_table" in table_names
-

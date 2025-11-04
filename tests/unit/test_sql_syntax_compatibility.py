@@ -72,9 +72,7 @@ class TestSQLSyntaxCompatibility:
         # Format with optional fractional seconds should work
         result = df.withColumn(
             "parsed_timestamp",
-            F.to_timestamp(
-                F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"
-            ),
+            F.to_timestamp(F.col("timestamp_str"), "yyyy-MM-dd'T'HH:mm:ss[.SSSSSS]"),
         ).select("timestamp_str", "parsed_timestamp")
 
         rows = result.collect()
@@ -114,4 +112,3 @@ class TestSQLSyntaxCompatibility:
         assert len(rows) == 1
         assert rows[0].as_int == 100
         assert rows[0].as_string == "100"
-

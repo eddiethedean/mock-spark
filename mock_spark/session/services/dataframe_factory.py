@@ -105,6 +105,8 @@ class DataFrameFactory:
                     )
 
         # Apply validation and optional type coercion per mode
+        # Note: When an explicit schema is provided with empty data, we still need to preserve
+        # the schema even though validation is skipped (since there's no data to validate)
         if isinstance(schema, MockStructType) and data:
             from mock_spark.core.data_validation import DataValidator
 
@@ -123,9 +125,20 @@ class DataFrameFactory:
                 data = validator.coerce(data)
 
         # Ensure schema is always MockStructType at this point
+        # IMPORTANT: When explicit schema is provided with empty data, preserve it!
         if not isinstance(schema, MockStructType):
             # This should never happen, but provide a fallback
             schema = MockStructType([])
+
+        # Validate that schema is properly initialized with fields attribute
+        # This ensures empty DataFrames with explicit schemas preserve column information
+        if isinstance(schema, MockStructType):
+            # Ensure fields attribute exists (should always exist for MockStructType)
+            if not hasattr(schema, "fields"):
+                # This shouldn't happen, but handle edge case
+                schema = MockStructType([])
+            # fields can be empty list, but that's valid for empty schemas
+            # If schema was provided explicitly, trust it even if fields is empty
 
         return MockDataFrame(data, schema, storage)
 

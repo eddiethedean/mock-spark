@@ -121,16 +121,17 @@ class MockGroupedData:
             MockDataType,
         )
 
+        # Track which expressions are literals for proper nullable inference
+        # (used in both branches)
+        literal_keys: Set[str] = set()
+        for expr in exprs:
+            if isinstance(expr, MockLiteral):
+                lit_key = getattr(expr, "name", str(expr.value))
+                literal_keys.add(lit_key)
+
         # Create schema based on the first result row and expression types
         if result_data:
             fields = []
-
-            # Track which expressions are literals for proper nullable inference
-            literal_keys: Set[str] = set()
-            for expr in exprs:
-                if isinstance(expr, MockLiteral):
-                    lit_key = getattr(expr, "name", str(expr.value))
-                    literal_keys.add(lit_key)
 
             for key, value in result_data[0].items():
                 if key in self.group_columns:
@@ -193,8 +194,165 @@ class MockGroupedData:
             schema = MockStructType(fields)
             return MockDataFrame(result_data, schema)
         else:
-            # Empty result
-            return MockDataFrame(result_data, MockStructType([]))
+            # Empty result - but we still need to preserve schema
+            # Build schema from group columns and aggregation expressions
+            fields = []
+
+            # Add group columns from original DataFrame schema
+            for group_col in self.group_columns:
+                for field in self.df.schema.fields:
+                    if field.name == group_col:
+                        fields.append(field)
+                        break
+
+            # Infer schema from aggregation expressions
+            # (literal_keys already defined above)
+            for expr in exprs:
+                if isinstance(expr, str):
+                    # Handle string expressions like "sum(age)"
+                    result_key = expr  # Use expression as key
+                    # Check if this is a count function
+                    is_count_function = (
+                        result_key.startswith("count(")
+                        or result_key.startswith("count(1)")
+                        or result_key.startswith("count(DISTINCT")
+                    )
+                    is_boolean_function = any(
+                        result_key.startswith(func)
+                        for func in ["coalesced_", "is_null_", "is_nan_"]
+                    )
+                    is_literal = result_key in literal_keys
+                    nullable = not (
+                        is_literal or is_count_function or is_boolean_function
+                    )
+
+                    # Infer type from expression name
+                    if (
+                        "sum(" in result_key
+                        or "avg(" in result_key
+                        or "mean(" in result_key
+                    ):
+                        fields.append(
+                            MockStructField(
+                                result_key,
+                                DoubleType(nullable=nullable),
+                                nullable=nullable,
+                            )
+                        )
+                    elif "count(" in result_key:
+                        fields.append(
+                            MockStructField(
+                                result_key, LongType(nullable=False), nullable=False
+                            )
+                        )
+                    elif "min(" in result_key or "max(" in result_key:
+                        # For min/max, we'd need to check the column type, default to StringType
+                        fields.append(
+                            MockStructField(
+                                result_key,
+                                StringType(nullable=nullable),
+                                nullable=nullable,
+                            )
+                        )
+                    else:
+                        # Default to StringType for unknown expressions
+                        fields.append(
+                            MockStructField(
+                                result_key,
+                                StringType(nullable=nullable),
+                                nullable=nullable,
+                            )
+                        )
+                elif isinstance(expr, MockLiteral):
+                    # Handle literals
+                    lit_key = getattr(expr, "name", str(expr.value))
+                    lit_value = expr.value
+                    if isinstance(lit_value, bool):
+                        fields.append(
+                            MockStructField(
+                                lit_key, BooleanType(nullable=False), nullable=False
+                            )
+                        )
+                    elif isinstance(lit_value, (int, float)):
+                        fields.append(
+                            MockStructField(
+                                lit_key, DoubleType(nullable=False), nullable=False
+                            )
+                        )
+                    else:
+                        fields.append(
+                            MockStructField(
+                                lit_key, StringType(nullable=False), nullable=False
+                            )
+                        )
+                elif hasattr(expr, "name"):
+                    # Handle MockColumn or MockColumnOperation with aggregation
+                    result_key = expr.name
+                    is_count_function = result_key in non_nullable_keys or any(
+                        result_key.startswith(func)
+                        for func in ["count(", "count(1)", "count(DISTINCT", "count_if"]
+                    )
+                    is_literal = result_key in literal_keys
+                    nullable = not (is_literal or is_count_function)
+
+                    # For column operations, try to infer type from the operation
+                    if hasattr(expr, "operation") and expr.operation:
+                        if expr.operation in ["sum", "avg", "mean"]:
+                            fields.append(
+                                MockStructField(
+                                    result_key,
+                                    DoubleType(nullable=nullable),
+                                    nullable=nullable,
+                                )
+                            )
+                        elif expr.operation == "count":
+                            fields.append(
+                                MockStructField(
+                                    result_key, LongType(nullable=False), nullable=False
+                                )
+                            )
+                        else:
+                            # Default to StringType
+                            fields.append(
+                                MockStructField(
+                                    result_key,
+                                    StringType(nullable=nullable),
+                                    nullable=nullable,
+                                )
+                            )
+                    else:
+                        # Default to StringType for unknown expressions
+                        fields.append(
+                            MockStructField(
+                                result_key,
+                                StringType(nullable=nullable),
+                                nullable=nullable,
+                            )
+                        )
+                elif hasattr(expr, "function_name"):
+                    # Handle MockAggregateFunction
+                    result_key = getattr(expr, "name", expr.function_name)
+                    if expr.function_name == "count":
+                        fields.append(
+                            MockStructField(
+                                result_key, LongType(nullable=False), nullable=False
+                            )
+                        )
+                    elif expr.function_name in ["sum", "avg", "mean"]:
+                        fields.append(
+                            MockStructField(
+                                result_key, DoubleType(nullable=True), nullable=True
+                            )
+                        )
+                    else:
+                        fields.append(
+                            MockStructField(
+                                result_key, StringType(nullable=True), nullable=True
+                            )
+                        )
+
+            schema = MockStructType(fields)
+            return MockDataFrame(result_data, schema)
 
     def _evaluate_string_expression(
         self, expr: str, group_rows: List[Dict[str, Any]]

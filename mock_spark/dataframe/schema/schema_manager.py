@@ -38,8 +38,16 @@ class SchemaManager:
 
         Iterates through operations queue and projects resulting schema
         without materializing data.
+
+        Preserves base schema fields even when data is empty.
         """
-        fields_map = {f.name: f for f in base_schema.fields}
+        # Ensure base_schema has fields attribute
+        if not hasattr(base_schema, "fields"):
+            # Fallback to empty schema if fields attribute missing
+            fields_map: Dict[str, MockStructField] = {}
+        else:
+            # Preserve base schema fields - this works even for empty DataFrames with schemas
+            fields_map = {f.name: f for f in base_schema.fields}
 
         for op_name, op_val in operations_queue:
             if op_name == "filter":

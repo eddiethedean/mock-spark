@@ -475,7 +475,16 @@ class MockDataFrame:
     @property
     def columns(self) -> List[str]:
         """Get column names."""
-        return [field.name for field in self.schema.fields]
+        # Get schema (handles lazy evaluation)
+        current_schema = self.schema
+
+        # Ensure schema has fields attribute
+        if not hasattr(current_schema, "fields"):
+            return []
+
+        # Return column names from schema fields
+        # This works even for empty DataFrames with explicit schemas
+        return [field.name for field in current_schema.fields]
 
     @property
     def schema(self) -> MockStructType:
@@ -529,7 +538,10 @@ class MockDataFrame:
         return DataFrameAssertions.assert_data_equals(self, expected_data)
 
     def _project_schema_with_operations(self) -> MockStructType:
-        """Compute schema after applying queued lazy operations."""
+        """Compute schema after applying queued lazy operations.
+
+        Preserves base schema fields even when data is empty.
+        """
         from ..spark_types import (
             MockStructType,
             MockStructField,
@@ -540,7 +552,14 @@ class MockDataFrame:
             IntegerType,
         )
 
-        fields_map = {f.name: f for f in self._schema.fields}
+        # Ensure schema has fields attribute before iterating
+        # This preserves schema for empty DataFrames with explicit schemas
+        if not hasattr(self._schema, "fields"):
+            # Fallback to empty fields map if schema doesn't have fields
+            fields_map: Dict[str, MockStructField] = {}
+        else:
+            # Preserve base schema fields - works even for empty DataFrames
+            fields_map = {f.name: f for f in self._schema.fields}
         for op_name, op_val in self._operations_queue:
             if op_name == "filter":
                 # no schema change
