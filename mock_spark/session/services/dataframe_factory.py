@@ -49,6 +49,16 @@ class DataFrameFactory:
                 "Data must be a list of dictionaries or tuples"
             )
 
+        # Handle PySpark StructType - convert to MockStructType
+        # Check if it's a PySpark StructType (has 'fields' attribute but not MockStructType)
+        if (
+            schema is not None
+            and not isinstance(schema, (MockStructType, str, list))
+            and hasattr(schema, "fields")
+        ):
+            # This is likely a PySpark StructType - convert it
+            schema = self._convert_pyspark_struct_type(schema)
+
         # Handle DDL schema strings
         if isinstance(schema, str):
             from mock_spark.core.ddl_adapter import parse_ddl_schema
@@ -195,3 +205,85 @@ class DataFrameFactory:
             data = validator.coerce(data)
 
         return data
+
+    def _convert_pyspark_struct_type(self, pyspark_schema: Any) -> MockStructType:
+        """Convert PySpark StructType to MockStructType.
+
+        Args:
+            pyspark_schema: PySpark StructType object with 'fields' attribute.
+
+        Returns:
+            MockStructType equivalent.
+        """
+        from mock_spark.spark_types import (
+            MockDataType,
+            StringType,
+            IntegerType,
+            LongType,
+            FloatType,
+            DoubleType,
+            BooleanType,
+            TimestampType,
+            DateType,
+            DecimalType,
+            ArrayType,
+            MapType,
+            MockStructType,
+        )
+
+        def convert_pyspark_field(field: Any) -> MockStructField:
+            """Convert PySpark StructField to MockStructField."""
+            field_name = field.name
+            field_nullable = getattr(field, "nullable", True)
+
+            # Convert PySpark data type to MockSpark data type
+            pyspark_type = field.dataType
+            mock_type = convert_pyspark_data_type(pyspark_type)
+
+            return MockStructField(
+                name=field_name, dataType=mock_type, nullable=field_nullable
+            )
+
+        def convert_pyspark_data_type(pyspark_type: Any) -> MockDataType:
+            """Convert PySpark DataType to MockDataType."""
+            # Get the type name as string for comparison
+            type_name = type(pyspark_type).__name__
+
+            if type_name == "StringType":
+                return StringType()
+            elif type_name == "IntegerType":
+                return IntegerType()
+            elif type_name == "LongType":
+                return LongType()
+            elif type_name == "FloatType":
+                return FloatType()
+            elif type_name == "DoubleType":
+                return DoubleType()
+            elif type_name == "BooleanType":
+                return BooleanType()
+            elif type_name == "TimestampType":
+                return TimestampType()
+            elif type_name == "DateType":
+                return DateType()
+            elif type_name == "DecimalType":
+                precision = getattr(pyspark_type, "precision", 10)
+                scale = getattr(pyspark_type, "scale", 0)
+                return DecimalType(precision=precision, scale=scale)
+            elif type_name == "ArrayType":
+                element_type = convert_pyspark_data_type(pyspark_type.elementType)
+                return ArrayType(element_type)
+            elif type_name == "MapType":
+                key_type = convert_pyspark_data_type(pyspark_type.keyType)
+                value_type = convert_pyspark_data_type(pyspark_type.valueType)
+                return MapType(key_type, value_type)
+            elif type_name == "StructType":
+                # Recursive conversion for nested structs
+                fields = [convert_pyspark_field(f) for f in pyspark_type.fields]
+                return MockStructType(fields)
+            else:
+                # Default to StringType for unknown types
+                return StringType()
+
+        # Convert all fields
+        fields = [convert_pyspark_field(field) for field in pyspark_schema.fields]
+        return MockStructType(fields)

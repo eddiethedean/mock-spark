@@ -58,7 +58,15 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.16.0)
+### Latest (Version 2.16.1)
+
+**Version Bump** - Maintains all fixes from version 2.16.0:
+- ✅ **All Critical Regression Fixes** - Includes schema conversion, empty DataFrame handling, and schema preservation fixes
+- ✅ **Comprehensive Test Coverage** - 27 regression tests ensure stability
+- ✅ **All tests passing** - 857+ tests validated
+- 📦 **Production-ready** - Stable release
+
+### Version 2.16.0
 
 **Critical Regression Fixes** - Fixed three critical regressions from version 2.15.0:
 - 🔧 **Schema Conversion Failure** - Fixed empty table schemas when creating tables with `StructType` - now properly validates schema before table creation
@@ -592,7 +600,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.13.0** - Complete Mypy Type Safety - Fixed all 30 typing errors from SRP refactoring, 100% type compliance  
 **v2.13.1** - Version bump for stability and compatibility  
 **v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization  
-**v2.16.0** - Critical Regression Fixes - Fixed schema conversion failures, empty DataFrame column detection, and schema preservation during transformations
+**v2.16.0** - Critical Regression Fixes - Fixed schema conversion failures, empty DataFrame column detection, and schema preservation during transformations  
+**v2.16.1** - Version bump
 
 ---
 
