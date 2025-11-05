@@ -114,25 +114,32 @@ class PolarsMaterializer:
                     columns = payload if isinstance(payload, (tuple, list)) else (payload,)
                     ascending = True
                 
-                # Build sort expressions
+                # Build sort expressions with descending flags
+                # Polars doesn't have .desc() on Expr, use sort() with descending parameter
                 sort_by = []
+                descending_flags = []
                 for col in columns:
+                    is_desc = False
+                    col_expr = None
                     if isinstance(col, str):
-                        if ascending:
-                            sort_by.append(pl.col(col))
-                        else:
-                            sort_by.append(pl.col(col).desc())
+                        col_expr = pl.col(col)
+                        is_desc = not ascending
                     elif hasattr(col, "operation") and col.operation == "desc":
                         col_name = col.column.name if hasattr(col, "column") else col.name
-                        sort_by.append(pl.col(col_name).desc())
+                        col_expr = pl.col(col_name)
+                        is_desc = True
                     else:
                         col_name = col.name if hasattr(col, "name") else str(col)
-                        if ascending:
-                            sort_by.append(pl.col(col_name))
-                        else:
-                            sort_by.append(pl.col(col_name).desc())
+                        col_expr = pl.col(col_name)
+                        is_desc = not ascending
+                    
+                    if col_expr is not None:
+                        sort_by.append(col_expr)
+                        descending_flags.append(is_desc)
+                
                 if sort_by:
-                    lazy_df = lazy_df.sort(sort_by)
+                    # Polars sort() accepts by (list of expressions) and descending (list of bools)
+                    lazy_df = lazy_df.sort(sort_by, descending=descending_flags)
             elif op_name == "limit":
                 # Limit operation
                 n = payload

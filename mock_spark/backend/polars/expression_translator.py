@@ -61,6 +61,12 @@ class PolarsExpressionTranslator:
         Returns:
             Polars column expression
         """
+        # If column has an alias, use the original column name for translation
+        # The alias will be applied when the expression is used in select
+        if hasattr(col, "_original_column") and col._original_column is not None:
+            # Use the original column's name for the actual column reference
+            return pl.col(col._original_column.name)
+        # Use the column's name directly
         return pl.col(col.name)
 
     def _translate_literal(self, lit: MockLiteral) -> pl.Expr:
@@ -468,10 +474,24 @@ class PolarsExpressionTranslator:
                     # Without format - try to parse common formats
                     return col_expr.str.strptime(pl.Datetime, strict=False)
             elif operation == "date_format":
-                # date_format(col, format)
+                # date_format(col, format) - format a date/timestamp column
                 if isinstance(op.value, str):
                     format_str = op.value
-                    return col_expr.dt.strftime(format_str)
+                    # Convert Java SimpleDateFormat to Polars strftime format
+                    # Common conversions: yyyy -> %Y, MM -> %m, dd -> %d, HH -> %H, mm -> %M, ss -> %S
+                    import re
+                    format_map = {
+                        "yyyy": "%Y", "MM": "%m", "dd": "%d", 
+                        "HH": "%H", "mm": "%M", "ss": "%S",
+                        "EEE": "%a", "EEEE": "%A", "MMM": "%b", "MMMM": "%B"
+                    }
+                    polars_format = format_str
+                    for java_pattern, polars_pattern in sorted(format_map.items(), key=lambda x: len(x[0]), reverse=True):
+                        polars_format = polars_format.replace(java_pattern, polars_pattern)
+                    # If column is string, parse it first; if already date, use directly
+                    # For now, assume we need to parse string dates
+                    parsed = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                    return parsed.dt.strftime(polars_format)
                 else:
                     raise ValueError(f"date_format requires format string")
             elif operation == "date_add":
@@ -486,10 +506,11 @@ class PolarsExpressionTranslator:
                 # datediff(end, start) - note: in PySpark, end comes first
                 # In MockColumnOperation: column is end, value is start
                 start_date = self.translate(op.value)
-                # Try to parse both as dates - use strptime with strict=False to handle both strings and dates
-                # For strings, try parsing; for dates, use directly
-                end_parsed = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
-                start_parsed = start_date.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
+                # Handle both string dates and date columns
+                # Polars str.strptime() only works on string columns, so it fails on date columns
+                # Use cast to Date which works for both: strings are parsed, dates are unchanged
+                end_parsed = col_expr.cast(pl.Date)
+                start_parsed = start_date.cast(pl.Date)
                 return (end_parsed - start_parsed).dt.total_days()
             elif operation == "lpad":
                 # lpad(col, len, pad)
