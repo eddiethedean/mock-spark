@@ -804,19 +804,22 @@ class LazyEvaluationEngine:
                                     break
 
                     # Create new schema combining both schemas
-                    new_fields = list(current.schema.fields)
-                    for field in other_df.schema.fields:
-                        # Avoid duplicate field names
-                        if not any(f.name == field.name for f in new_fields):
-                            new_fields.append(field)
-                        else:
-                            # Handle field name conflicts by prefixing
-                            new_field = MockStructField(
-                                f"right_{field.name}", field.dataType, field.nullable
-                            )
-                            new_fields.append(new_field)
-
-                    new_schema = MockStructType(new_fields)
+                    # For semi/anti joins, only use left DataFrame schema
+                    if how.lower() in ["semi", "anti"]:
+                        new_schema = current.schema
+                    else:
+                        new_fields = list(current.schema.fields)
+                        for field in other_df.schema.fields:
+                            # Avoid duplicate field names
+                            if not any(f.name == field.name for f in new_fields):
+                                new_fields.append(field)
+                            else:
+                                # Handle field name conflicts by prefixing
+                                new_field = MockStructField(
+                                    f"right_{field.name}", field.dataType, field.nullable
+                                )
+                                new_fields.append(new_field)
+                        new_schema = MockStructType(new_fields)
                     current = MockDataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
                     other_df = op_val

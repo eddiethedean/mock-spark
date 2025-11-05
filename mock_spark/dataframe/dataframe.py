@@ -883,7 +883,7 @@ class MockDataFrame:
             elif op_name == "join":
                 other_df, on, how = op_val
                 # For semi/anti joins, only return left DataFrame columns
-                if how in ("left_semi", "left_anti"):
+                if how and how.lower() in ("semi", "anti", "left_semi", "left_anti"):
                     # Semi/anti joins only return left columns
                     return MockStructType(list(fields_map.values()))
 

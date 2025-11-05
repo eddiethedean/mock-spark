@@ -62,7 +62,7 @@ class SchemaManager:
                 )
             elif op_name == "join":
                 other_df, on, how = op_val
-                fields_map = SchemaManager._handle_join_operation(fields_map, other_df)
+                fields_map = SchemaManager._handle_join_operation(fields_map, other_df, how)
 
         return MockStructType(list(fields_map.values()))
 
@@ -168,9 +168,14 @@ class SchemaManager:
 
     @staticmethod
     def _handle_join_operation(
-        fields_map: Dict[str, MockStructField], other_df: Any
+        fields_map: Dict[str, MockStructField], other_df: Any, how: str = "inner"
     ) -> Dict[str, MockStructField]:
         """Handle join operation schema changes."""
+        # For semi/anti joins, only return left DataFrame columns
+        if how and how.lower() in ["semi", "anti", "left_semi", "left_anti"]:
+            # Don't add right DataFrame fields for semi/anti joins
+            return fields_map
+        
         # Add fields from the other DataFrame to the schema
         for field in other_df.schema.fields:
             # Avoid duplicate field names

@@ -218,14 +218,14 @@ class PolarsOperationExecutor:
             on = [on]
 
         # Handle semi and anti joins (Polars doesn't support natively)
-        if how.lower() == "semi":
+        if how.lower() in ("semi", "left_semi"):
             # Semi join: return rows from left where match exists in right
             # Do inner join, then select only left columns and distinct
             joined = df1.join(df2, on=on, how="inner")
             # Select only columns from df1 (preserve original column order)
             left_cols = [col for col in df1.columns if col in joined.columns]
             return joined.select(left_cols).unique()
-        elif how.lower() == "anti":
+        elif how.lower() in ("anti", "left_anti"):
             # Anti join: return rows from left where no match exists in right
             # Do left join, then filter where right columns are null
             joined = df1.join(df2, on=on, how="left")
