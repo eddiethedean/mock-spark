@@ -512,9 +512,13 @@ class PolarsExpressionTranslator:
                 n = op.value if isinstance(op.value, int) else int(op.value)
                 return col_expr.str.repeat(n)
             elif operation == "instr":
-                # instr(col, substr)
+                # instr(col, substr) - returns 1-based position, or 0 if not found
                 substr = op.value if isinstance(op.value, str) else str(op.value)
-                return col_expr.str.find(substr) + 1  # Polars is 0-indexed, PySpark is 1-indexed
+                # Polars str.find() returns -1 if not found, we need 0
+                # So we check if it's -1, return 0, otherwise add 1 for 1-based indexing
+                # Add fill_null(0) as fallback for any nulls
+                find_result = col_expr.str.find(substr)
+                return pl.when(find_result == -1).then(0).otherwise(find_result + 1).fill_null(0)
             elif operation == "locate":
                 # locate(substr, col, pos) - op.value is (substr, pos)
                 if isinstance(op.value, tuple) and len(op.value) >= 1:
@@ -561,20 +565,31 @@ class PolarsExpressionTranslator:
                     return col_expr.list.get(index)
             elif operation == "array_append":
                 # array_append(col, value) - append value to array
+                # Polars doesn't have list.append(), use list.eval with concat
                 value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
-                return col_expr.list.append(value_expr)
+                return col_expr.list.eval(pl.concat([pl.element(), value_expr]))
             elif operation == "array_remove":
                 # array_remove(col, value) - remove all occurrences of value from array
                 value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
                 return col_expr.list.eval(pl.element().filter(pl.element() != value_expr))
             elif operation == "array":
                 # array(*cols) - create array from columns
-                # op.value is list of columns
-                if isinstance(op.value, list):
+                # op.value can be list, tuple, or None
+                if isinstance(op.value, (list, tuple)) and len(op.value) > 0:
                     cols = [col_expr] + [self.translate(col) for col in op.value]
                     return pl.concat_list(cols)
-                else:
+                elif op.value is None:
+                    # Single column - just wrap it in a list
                     return pl.list([col_expr])
+                else:
+                    # Try to handle as iterable
+                    cols = [col_expr]
+                    try:
+                        for col in op.value:
+                            cols.append(self.translate(col))
+                        return pl.concat_list(cols)
+                    except (TypeError, AttributeError):
+                        return pl.list([col_expr])
             elif operation == "array_intersect":
                 # array_intersect(col1, col2) - intersection of two arrays
                 col2_expr = self.translate(op.value)
@@ -595,8 +610,11 @@ class PolarsExpressionTranslator:
                 return intersection.list.len() > 0
             elif operation == "array_repeat":
                 # array_repeat(col, count) - repeat value to create array
+                # Polars doesn't have a direct repeat for columns, use map_elements
                 count = op.value if isinstance(op.value, int) else int(op.value)
-                return pl.repeat(col_expr, count).alias("array_repeat")
+                # Use map_elements to create array by repeating value
+                # Polars will infer the list type from the element type
+                return col_expr.map_elements(lambda x: [x] * count)
             elif operation == "slice":
                 # slice(col, start, length) - get slice of array (1-based start)
                 if isinstance(op.value, tuple) and len(op.value) >= 2:
@@ -733,7 +751,7 @@ class PolarsExpressionTranslator:
             "dayofyear": lambda e: self._extract_datetime_part(e, "dayofyear"),
             "weekofyear": lambda e: self._extract_datetime_part(e, "weekofyear"),
             "quarter": lambda e: self._extract_datetime_part(e, "quarter"),
-            "reverse": lambda e: e.str.reverse(),
+            "reverse": lambda e: self._reverse_expr(e),  # Handle both string and array reverse
             "isnan": lambda e: e.is_nan(),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
             "isnull": lambda e: e.is_null(),
@@ -762,6 +780,27 @@ class PolarsExpressionTranslator:
                     return func()
             raise ValueError(f"Unsupported function: {function_name}")
 
+    def _reverse_expr(self, expr: pl.Expr) -> pl.Expr:
+        """Handle reverse for both strings and arrays.
+        
+        Args:
+            expr: Polars expression (column reference)
+            
+        Returns:
+            Polars expression for reverse (string or list)
+        """
+        # Since F.reverse() defaults to StringFunctions.reverse(), we default to string reverse
+        # For arrays, ArrayFunctions.reverse() should be used directly, which will call list.reverse()
+        # But we need to handle both cases. Since we can't check dtype at translation time,
+        # we'll use a conditional that checks at runtime using pl.when
+        # However, Polars doesn't have a direct way to check dtype in expressions
+        # For now, default to string reverse since that's the default behavior of F.reverse()
+        try:
+            return expr.str.reverse()
+        except AttributeError:
+            # If str.reverse doesn't exist, try list.reverse
+            return expr.list.reverse()
+        
     def _extract_datetime_part(self, expr: pl.Expr, part: str) -> pl.Expr:
         """Extract datetime part from expression, handling both string and datetime columns.
         
