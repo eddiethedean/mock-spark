@@ -780,16 +780,17 @@ class PolarsExpressionTranslator:
         elif function_name == "md5":
             # md5(col) - hash using MD5
             import hashlib
-            # Polars doesn't have built-in MD5, so we need to use a workaround
-            # For now, return a placeholder - this may need UDF support
-            # Using str.encode then hashing would require a UDF
-            raise ValueError("MD5 requires UDF support - not yet implemented in Polars backend")
+            return col_expr.map_elements(lambda x: hashlib.md5(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
         elif function_name == "sha1":
             # sha1(col) - hash using SHA1
-            raise ValueError("SHA1 requires UDF support - not yet implemented in Polars backend")
+            import hashlib
+            return col_expr.map_elements(lambda x: hashlib.sha1(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
         elif function_name == "sha2":
-            # sha2(col, bits) - hash using SHA2
-            raise ValueError("SHA2 requires UDF support - not yet implemented in Polars backend")
+            # sha2(col, bitLength) - hash using SHA2
+            import hashlib
+            bitLength = op.value if op.value is not None else 256
+            hash_func = {256: hashlib.sha256, 384: hashlib.sha384, 512: hashlib.sha512}.get(bitLength, hashlib.sha256)
+            return col_expr.map_elements(lambda x: hash_func(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
         
         # Map function names to Polars expressions (unary functions)
         function_map = {
