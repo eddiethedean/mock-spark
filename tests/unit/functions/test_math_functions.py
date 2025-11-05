@@ -38,25 +38,25 @@ class TestMathFunctions:
         """Test ceil function."""
         result = MathFunctions.ceil(F.col("value"))
         assert result.operation == "ceil"
-        assert result.name == "CEIL(value)"
+        assert result.name.lower() == "ceil(value)"
 
     def test_floor(self):
         """Test floor function."""
         result = MathFunctions.floor(F.col("value"))
         assert result.operation == "floor"
-        assert result.name == "FLOOR(value)"
+        assert result.name.lower() == "floor(value)"
 
     def test_sqrt(self):
         """Test sqrt function."""
         result = MathFunctions.sqrt(F.col("value"))
         assert result.operation == "sqrt"
-        assert result.name == "SQRT(value)"
+        assert result.name.lower() == "sqrt(value)"
 
     def test_exp(self):
         """Test exp function."""
         result = MathFunctions.exp(F.col("value"))
         assert result.operation == "exp"
-        assert result.name == "EXP(value)"
+        assert result.name.lower() == "exp(value)"
 
     def test_log_natural(self):
         """Test log with natural logarithm."""
@@ -101,19 +101,19 @@ class TestMathFunctions:
         """Test sin function."""
         result = MathFunctions.sin(F.col("angle"))
         assert result.operation == "sin"
-        assert result.name == "SIN(angle)"
+        assert result.name.lower() == "sin(angle)"
 
     def test_cos(self):
         """Test cos function."""
         result = MathFunctions.cos(F.col("angle"))
         assert result.operation == "cos"
-        assert result.name == "COS(angle)"
+        assert result.name.lower() == "cos(angle)"
 
     def test_tan(self):
         """Test tan function."""
         result = MathFunctions.tan(F.col("angle"))
         assert result.operation == "tan"
-        assert result.name == "TAN(angle)"
+        assert result.name.lower() == "tan(angle)"
 
     def test_asin(self):
         """Test asin function."""

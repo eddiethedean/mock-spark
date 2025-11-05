@@ -7,9 +7,12 @@ with SQLAlchemy for enhanced type safety and maintainability.
 
 import duckdb
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime
+from typing import List, Dict, Any, Optional, Union, Callable
+from datetime import datetime, timezone
 import time
+import threading
+import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from sqlalchemy import create_engine, MetaData, Table, insert, inspect
 from sqlalchemy.engine import Engine
 
@@ -23,6 +26,74 @@ from mock_spark.spark_types import MockStructType, MockStructField
 from mock_spark.storage.sqlalchemy_helpers import (
     create_table_from_mock_schema,
 )
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+class TimeoutError(Exception):
+    """Custom timeout error for database operations."""
+
+    pass
+
+
+def with_timeout(func: Callable, timeout_seconds: float = 5) -> Any:
+    """Execute function with timeout using ThreadPoolExecutor.
+
+    This works cross-platform (unlike signal.SIGALRM which only works on Unix).
+
+    Args:
+        func: Function to execute
+        timeout_seconds: Timeout in seconds
+
+    Returns:
+        Result of function execution
+
+    Raises:
+        TimeoutError: If function doesn't complete within timeout
+    """
+    print(
+        f"[TIMEOUT] Executing function with {timeout_seconds}s timeout...", flush=True
+    )
+    start_time = time.time()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func)
+        try:
+            result = future.result(timeout=timeout_seconds)
+            duration = time.time() - start_time
+            print(f"[TIMEOUT] Function completed in {duration:.3f}s", flush=True)
+            if duration > 1.0:
+                print(
+                    f"[TIMEOUT] WARNING: Function took {duration:.3f}s (>1s)",
+                    flush=True,
+                )
+            return result
+        except FutureTimeoutError:
+            print(f"[TIMEOUT] Function TIMED OUT after {timeout_seconds}s", flush=True)
+            raise TimeoutError(f"Operation timed out after {timeout_seconds} seconds")
+        except Exception as e:
+            print(f"[TIMEOUT] Function raised exception: {e}", flush=True)
+            raise
+
+
+# Thread-local schema cache for tracking schemas created in each thread
+_thread_schema_cache = threading.local()
+_thread_connection_cache = threading.local()
+
+# Lock for protecting DuckDB connection access (connections are not thread-safe)
+_connection_lock = threading.Lock()
+
+
+def _get_thread_schema_cache():
+    """Get thread-local set of schemas created in this thread."""
+    if not hasattr(_thread_schema_cache, "schemas"):
+        _thread_schema_cache.schemas = set()
+    return _thread_schema_cache.schemas
+
+
+# Removed _get_thread_connection - using main connection for simplicity
+# Thread-local connections were causing hangs, so we use the shared connection
 
 
 class DuckDBTable(ITable):
@@ -57,7 +128,7 @@ class DuckDBTable(ITable):
         self._metadata = {
             "table_name": name,
             "schema_name": self._schema_name,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": None,
             "row_count": 0,
             "schema_version": "1.0",
@@ -80,6 +151,9 @@ class DuckDBTable(ITable):
             )
 
         # Create the table in the database
+        # Schemas should already exist before table creation (handled by storage manager)
+        # Use checkfirst=True to avoid errors if table already exists
+        # For multi-threaded scenarios, schemas are ensured to exist before this is called
         self.sqlalchemy_table.create(self.engine, checkfirst=True)
 
     def _get_duckdb_type(self, data_type: Any) -> str:
@@ -214,7 +288,7 @@ class DuckDBTable(ITable):
         self._metadata["row_count"] = (
             int(current_count) + new_rows if current_count else new_rows
         )
-        self._metadata["updated_at"] = datetime.utcnow().isoformat()
+        self._metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     def _query_data_internal(
         self, filter_expr: Optional[str] = None
@@ -316,7 +390,7 @@ class DuckDBTable(ITable):
                 conn.execute(self.sqlalchemy_table.delete())
                 conn.commit()
         self._metadata["row_count"] = 0
-        self._metadata["updated_at"] = datetime.utcnow().isoformat()
+        self._metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     def drop(self) -> None:
         """Drop table."""
@@ -345,6 +419,8 @@ class DuckDBSchema:
         self.connection = connection
         self.sqlalchemy_session = sqlalchemy_session
         self.tables: Dict[str, DuckDBTable] = {}
+        # Lock for protecting tables dictionary access in multi-threaded scenarios
+        self._tables_lock = threading.Lock()
 
         # Create or use provided SQLAlchemy engine
         if engine is None:
@@ -357,11 +433,13 @@ class DuckDBSchema:
     ) -> Optional[DuckDBTable]:
         """Create a new table with type safety."""
         if isinstance(columns, list):
-            schema = MockStructType(columns)
+            # Type narrowing: when columns is a list, it's List[MockStructField]
+            schema = MockStructType(columns)  # type: ignore[arg-type]
         else:
             schema = columns
 
         # Create table using SQLAlchemy with schema name
+        # Schema existence is ensured in DuckDBTable._create_table_from_schema()
         duckdb_table = DuckDBTable(
             table,
             schema,
@@ -370,65 +448,62 @@ class DuckDBSchema:
             self.engine,
             schema_name=self.name,
         )
-        self.tables[table] = duckdb_table
+
+        # Atomically add table to registry with lock to ensure thread-safety
+        # This ensures the table is immediately visible to other threads
+        with self._tables_lock:
+            self.tables[table] = duckdb_table
+
         return duckdb_table
 
     def table_exists(self, table: str) -> bool:
         """Check if table exists using table registry."""
-        # Check if table exists in our registry first
+        # Always check registry first - this is the source of truth for tables
+        # created through our API, especially in multi-threaded scenarios.
+        # Dictionary reads are thread-safe in Python (GIL ensures atomicity),
+        # so we don't need a lock here. The lock is only needed for writes.
         if table in self.tables:
             return True
 
-        # Fallback to SQLAlchemy inspector for tables created outside our system
-        try:
-            inspector = inspect(self.engine)
-            # Try with schema first (DuckDB supports schema-qualified tables)
+        # For in-memory databases, skip database checks to avoid hangs and
+        # connection isolation issues. For persistent databases, check the database.
+        engine_url = str(self.engine.url)
+        is_in_memory = ":memory:" in engine_url or engine_url.endswith(
+            "duckdb:///:memory:"
+        )
+
+        if not is_in_memory:
+            # For persistent databases, check the database
             try:
+                inspector = inspect(self.engine)
                 if inspector.has_table(table, schema=self.name):
                     return True
             except Exception:
                 pass
 
-            # Also try querying DuckDB directly for the table
-            try:
-                # Use DuckDB's information_schema to check if table exists
-                result = self.connection.execute(
-                    f"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '{self.name}' AND table_name = '{table}'"
-                ).fetchone()
-                if result and result[0] > 0:
-                    return True
-            except Exception:
-                pass
-
-            # Fallback: try without schema
-            try:
-                return inspector.has_table(table)
-            except Exception:
-                pass
-        except Exception:
-            pass
-
         return False
 
     def drop_table(self, table: str) -> None:
         """Drop a table using SQLAlchemy."""
-        # Drop using SQLAlchemy if we have the table object
-        if table in self.tables and self.tables[table].sqlalchemy_table is not None:
-            table_obj = self.tables[table].sqlalchemy_table
-            assert table_obj is not None  # Type narrowing for mypy
-            table_obj.drop(self.engine, checkfirst=True)
-        else:
-            # Try to reflect and drop
-            try:
-                metadata = MetaData()
-                table_obj = Table(table, metadata, autoload_with=self.engine)
+        # Use lock to protect tables dictionary access
+        with self._tables_lock:
+            # Drop using SQLAlchemy if we have the table object
+            if table in self.tables and self.tables[table].sqlalchemy_table is not None:
+                table_obj = self.tables[table].sqlalchemy_table
+                assert table_obj is not None  # Type narrowing for mypy
                 table_obj.drop(self.engine, checkfirst=True)
-            except:  # noqa: E722
-                pass  # Table doesn't exist
+            else:
+                # Try to reflect and drop
+                try:
+                    metadata = MetaData()
+                    table_obj = Table(table, metadata, autoload_with=self.engine)
+                    table_obj.drop(self.engine, checkfirst=True)
+                except:  # noqa: E722
+                    pass  # Table doesn't exist
 
-        # Remove from metadata
-        if table in self.tables:
-            del self.tables[table]
+            # Remove from metadata
+            if table in self.tables:
+                del self.tables[table]
 
     def list_tables(self) -> List[str]:
         """List all tables in schema using SQLAlchemy Inspector."""
@@ -437,7 +512,22 @@ class DuckDBSchema:
 
 
 class DuckDBStorageManager(IStorageManager):
-    """Type-safe DuckDB storage manager with in-memory storage by default."""
+    """Type-safe DuckDB storage manager with in-memory storage by default.
+
+    Thread Safety:
+        DuckDB connections are thread-local, meaning each thread gets its own
+        connection from the SQLAlchemy connection pool. Schemas created in one
+        thread's connection are not visible to other threads (especially for
+        in-memory databases). This class implements thread-safe schema creation
+        by:
+        1. Tracking schemas per thread using thread-local storage
+        2. Ensuring schemas are created in each thread's connection
+        3. Using retry logic to handle race conditions
+
+        When using this storage manager in parallel execution contexts (e.g.,
+        ThreadPoolExecutor or pytest-xdist), schemas are automatically created
+        in each thread's connection as needed.
+    """
 
     def __init__(
         self,
@@ -554,44 +644,403 @@ class DuckDBStorageManager(IStorageManager):
         except:  # noqa: E722
             pass  # Extensions might not be available
 
-    def create_schema(self, schema: str) -> None:
-        """Create a new schema."""
-        if schema not in self.schemas:
-            # Create schema in DuckDB using SQL (if not default)
-            if schema != "default":
-                try:
-                    self.connection.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
-                except Exception:
-                    # Schema might already exist, continue
-                    pass
+    def _ensure_schema_in_connection(
+        self, schema: str, connection: duckdb.DuckDBPyConnection
+    ) -> bool:
+        """Ensure schema exists in a specific DuckDB connection with retry logic.
 
-            self.schemas[schema] = DuckDBSchema(
-                schema, self.connection, None, self.engine
+        Args:
+            schema: Schema name to ensure exists
+            connection: DuckDB connection to check/create schema in
+
+        Returns:
+            True if schema exists or was successfully created, False otherwise
+        """
+        thread_id = threading.current_thread().ident
+        start_time = time.time()
+        logger.debug(
+            f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') START"
+        )
+        print(
+            f"[{thread_id}] _ensure_schema_in_connection('{schema}') START", flush=True
+        )
+
+        try:
+            # Default schema always exists
+            if schema == "default":
+                logger.debug(
+                    f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') END (default schema, {time.time() - start_time:.3f}s)"
+                )
+                print(
+                    f"[{thread_id}] _ensure_schema_in_connection('{schema}') END (default, {time.time() - start_time:.3f}s)",
+                    flush=True,
+                )
+                return True
+
+            # Check if schema already exists in this connection
+            # Use lock to protect DuckDB connection access (not thread-safe)
+            print(f"[{thread_id}] Checking if schema '{schema}' exists...", flush=True)
+            try:
+                check_start = time.time()
+                with _connection_lock:
+                    print(
+                        f"[{thread_id}] Acquired connection lock for schema check",
+                        flush=True,
+                    )
+                    result = connection.execute(
+                        f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{schema}'"
+                    ).fetchone()
+                    print(
+                        f"[{thread_id}] Released connection lock after schema check",
+                        flush=True,
+                    )
+                check_duration = time.time() - check_start
+                print(
+                    f"[{thread_id}] Schema check completed in {check_duration:.3f}s",
+                    flush=True,
+                )
+                if check_duration > 1.0:
+                    print(
+                        f"[{thread_id}] WARNING: Schema check took {check_duration:.3f}s (>1s)",
+                        flush=True,
+                    )
+                if check_duration > 5.0:
+                    print(
+                        f"[{thread_id}] ERROR: Schema check took {check_duration:.3f}s (>5s) - possible hang!",
+                        flush=True,
+                    )
+                if result:
+                    logger.debug(
+                        f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') END (exists, {time.time() - start_time:.3f}s)"
+                    )
+                    print(
+                        f"[{thread_id}] _ensure_schema_in_connection('{schema}') END (exists, {time.time() - start_time:.3f}s)",
+                        flush=True,
+                    )
+                    return True
+            except Exception as e:
+                print(f"[{thread_id}] Schema check exception: {e}", flush=True)
+                logger.debug(f"[Thread {thread_id}] Schema check exception: {e}")
+
+            # Try to create schema with retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    print(
+                        f"[{thread_id}] Attempt {attempt + 1}/{max_retries}: Creating schema '{schema}'...",
+                        flush=True,
+                    )
+                    create_start = time.time()
+                    # Use lock to protect DuckDB connection access (not thread-safe)
+                    with _connection_lock:
+                        print(
+                            f"[{thread_id}] Acquired connection lock for CREATE SCHEMA",
+                            flush=True,
+                        )
+                        connection.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+                        print(
+                            f"[{thread_id}] Released connection lock after CREATE SCHEMA",
+                            flush=True,
+                        )
+                    create_duration = time.time() - create_start
+                    print(
+                        f"[{thread_id}] CREATE SCHEMA completed in {create_duration:.3f}s",
+                        flush=True,
+                    )
+                    if create_duration > 1.0:
+                        print(
+                            f"[{thread_id}] WARNING: CREATE SCHEMA took {create_duration:.3f}s (>1s)",
+                            flush=True,
+                        )
+                    if create_duration > 5.0:
+                        print(
+                            f"[{thread_id}] ERROR: CREATE SCHEMA took {create_duration:.3f}s (>5s) - possible hang!",
+                            flush=True,
+                        )
+
+                    # Verify creation
+                    print(f"[{thread_id}] Verifying schema creation...", flush=True)
+                    verify_start = time.time()
+                    with _connection_lock:
+                        print(
+                            f"[{thread_id}] Acquired connection lock for verification",
+                            flush=True,
+                        )
+                        result = connection.execute(
+                            f"SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{schema}'"
+                        ).fetchone()
+                        print(
+                            f"[{thread_id}] Released connection lock after verification",
+                            flush=True,
+                        )
+                    verify_duration = time.time() - verify_start
+                    print(
+                        f"[{thread_id}] Verification completed in {verify_duration:.3f}s",
+                        flush=True,
+                    )
+                    if verify_duration > 1.0:
+                        print(
+                            f"[{thread_id}] WARNING: Verification took {verify_duration:.3f}s (>1s)",
+                            flush=True,
+                        )
+                    if verify_duration > 5.0:
+                        print(
+                            f"[{thread_id}] ERROR: Verification took {verify_duration:.3f}s (>5s) - possible hang!",
+                            flush=True,
+                        )
+
+                    if result:
+                        logger.debug(
+                            f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') END (created, {time.time() - start_time:.3f}s)"
+                        )
+                        print(
+                            f"[{thread_id}] _ensure_schema_in_connection('{schema}') END (created, {time.time() - start_time:.3f}s)",
+                            flush=True,
+                        )
+                        return True
+                except Exception as e:
+                    print(
+                        f"[{thread_id}] Attempt {attempt + 1} exception: {e}",
+                        flush=True,
+                    )
+                    logger.debug(
+                        f"[Thread {thread_id}] Attempt {attempt + 1} exception: {e}"
+                    )
+                    if attempt == max_retries - 1:
+                        # Last attempt failed, return False
+                        logger.debug(
+                            f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') END (failed, {time.time() - start_time:.3f}s)"
+                        )
+                        print(
+                            f"[{thread_id}] _ensure_schema_in_connection('{schema}') END (failed, {time.time() - start_time:.3f}s)",
+                            flush=True,
+                        )
+                        return False
+                    # Exponential backoff
+                    sleep_time = 0.01 * (attempt + 1)
+                    print(
+                        f"[{thread_id}] Sleeping {sleep_time}s before retry...",
+                        flush=True,
+                    )
+                    time.sleep(sleep_time)
+
+            logger.debug(
+                f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') END (failed all retries, {time.time() - start_time:.3f}s)"
             )
+            print(
+                f"[{thread_id}] _ensure_schema_in_connection('{schema}') END (failed all retries, {time.time() - start_time:.3f}s)",
+                flush=True,
+            )
+            return False
+        except Exception as e:
+            logger.error(
+                f"[Thread {thread_id}] _ensure_schema_in_connection('{schema}') ERROR: {e}"
+            )
+            print(
+                f"[{thread_id}] _ensure_schema_in_connection('{schema}') ERROR: {e}",
+                flush=True,
+            )
+            raise
+
+    def create_schema(self, schema: str) -> None:
+        """Create a new schema with thread-safe retry logic.
+
+        This method ensures that schemas are created in the current thread's
+        DuckDB connection, which is necessary because DuckDB connections are
+        thread-local and schemas created in one connection are not visible to
+        other connections (especially for in-memory databases).
+
+        Args:
+            schema: Schema name to create
+
+        Raises:
+            RuntimeError: If schema creation fails after retries
+        """
+        thread_id = threading.current_thread().ident
+        start_time = time.time()
+        logger.debug(f"[Thread {thread_id}] create_schema('{schema}') START")
+        print(f"[{thread_id}] create_schema('{schema}') START", flush=True)
+
+        try:
+            # Check if schema already exists in both caches and database
+            print(f"[{thread_id}] Checking if schema already exists...", flush=True)
+            thread_cache = _get_thread_schema_cache()
+
+            # Only return early if schema exists in BOTH thread cache AND self.schemas dict
+            # This ensures the schema object is actually created
+            if schema in thread_cache and schema in self.schemas:
+                logger.debug(
+                    f"[Thread {thread_id}] create_schema('{schema}') END (already exists, {time.time() - start_time:.3f}s)"
+                )
+                print(
+                    f"[{thread_id}] create_schema('{schema}') END (already exists, {time.time() - start_time:.3f}s)",
+                    flush=True,
+                )
+                return
+
+            # If in process cache but not thread cache, update thread cache
+            if schema in self.schemas:
+                thread_cache.add(schema)
+                logger.debug(
+                    f"[Thread {thread_id}] create_schema('{schema}') END (in process cache, {time.time() - start_time:.3f}s)"
+                )
+                print(
+                    f"[{thread_id}] create_schema('{schema}') END (in process cache, {time.time() - start_time:.3f}s)",
+                    flush=True,
+                )
+                return
+
+            # Create schema using main connection
+            # For in-memory databases, all operations use the same connection
+            # Thread-local operations are handled by ensuring schemas exist before parallel execution
+            print(f"[{thread_id}] Calling _ensure_schema_in_connection...", flush=True)
+            ensure_start = time.time()
+            success = self._ensure_schema_in_connection(schema, self.connection)
+            ensure_duration = time.time() - ensure_start
+            print(
+                f"[{thread_id}] _ensure_schema_in_connection completed in {ensure_duration:.3f}s",
+                flush=True,
+            )
+            if ensure_duration > 1.0:
+                print(
+                    f"[{thread_id}] WARNING: _ensure_schema_in_connection took {ensure_duration:.3f}s (>1s)",
+                    flush=True,
+                )
+
+            if not success:
+                raise RuntimeError(f"Failed to create schema '{schema}' after retries.")
+
+            # Update both caches on success
+            print(f"[{thread_id}] Updating caches...", flush=True)
+            if schema not in self.schemas:
+                self.schemas[schema] = DuckDBSchema(
+                    schema, self.connection, None, self.engine
+                )
+            thread_cache.add(schema)
+
+            logger.debug(
+                f"[Thread {thread_id}] create_schema('{schema}') END (success, {time.time() - start_time:.3f}s)"
+            )
+            print(
+                f"[{thread_id}] create_schema('{schema}') END (success, {time.time() - start_time:.3f}s)",
+                flush=True,
+            )
+        except Exception as e:
+            logger.error(f"[Thread {thread_id}] create_schema('{schema}') ERROR: {e}")
+            print(f"[{thread_id}] create_schema('{schema}') ERROR: {e}", flush=True)
+            raise
 
     def schema_exists(self, schema: str) -> bool:
-        """Check if schema exists."""
-        # Check in-memory first (fast path)
-        if schema in self.schemas:
-            return True
+        """Check if schema exists, with thread-local awareness.
 
-        # For persistent databases, also check the database
-        if not self.is_in_memory and self.db_path:
+        This method checks multiple levels to determine if a schema exists:
+        1. Thread-local cache (fastest path)
+        2. Process-level cache (self.schemas dict)
+        3. Database via thread-local connection (for persistent databases)
+
+        Args:
+            schema: Schema name to check
+
+        Returns:
+            True if schema exists in current thread's context, False otherwise
+        """
+        thread_id = threading.current_thread().ident
+        start_time = time.time()
+        logger.debug(f"[Thread {thread_id}] schema_exists('{schema}') START")
+        print(f"[{thread_id}] schema_exists('{schema}') START", flush=True)
+
+        try:
+            # Fast path: check if schema exists in process-level cache
+            # Thread cache alone is not sufficient - we need the actual schema object
+            print(f"[{thread_id}] Checking process-level cache...", flush=True)
+            thread_cache = _get_thread_schema_cache()
+            if schema in self.schemas:
+                thread_cache.add(schema)  # Update thread cache
+                logger.debug(
+                    f"[Thread {thread_id}] schema_exists('{schema}') END (in process cache, {time.time() - start_time:.3f}s)"
+                )
+                print(
+                    f"[{thread_id}] schema_exists('{schema}') END (in process cache, {time.time() - start_time:.3f}s)",
+                    flush=True,
+                )
+                return True
+
+            # Check thread-local cache (but only if process cache also has it)
+            print(f"[{thread_id}] Checking thread-local cache...", flush=True)
+            if schema in thread_cache and schema in self.schemas:
+                logger.debug(
+                    f"[Thread {thread_id}] schema_exists('{schema}') END (in thread cache, {time.time() - start_time:.3f}s)"
+                )
+                print(
+                    f"[{thread_id}] schema_exists('{schema}') END (in thread cache, {time.time() - start_time:.3f}s)",
+                    flush=True,
+                )
+                return True
+
+            # Check database - use main connection for simplicity
+            # For in-memory databases, all threads share the same connection context
+            print(f"[{thread_id}] Checking database...", flush=True)
             try:
-                result = self.connection.execute(
-                    f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = '{schema}'"
-                ).fetchone()
+                db_check_start = time.time()
+                # Use lock to protect DuckDB connection access (not thread-safe)
+                with _connection_lock:
+                    print(
+                        f"[{thread_id}] Acquired connection lock for database check",
+                        flush=True,
+                    )
+                    result = self.connection.execute(
+                        f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = '{schema}'"
+                    ).fetchone()
+                    print(
+                        f"[{thread_id}] Released connection lock after database check",
+                        flush=True,
+                    )
+                db_check_duration = time.time() - db_check_start
+                print(
+                    f"[{thread_id}] Database check completed in {db_check_duration:.3f}s",
+                    flush=True,
+                )
+                if db_check_duration > 1.0:
+                    print(
+                        f"[{thread_id}] WARNING: Database check took {db_check_duration:.3f}s (>1s)",
+                        flush=True,
+                    )
+                if db_check_duration > 5.0:
+                    print(
+                        f"[{thread_id}] ERROR: Database check took {db_check_duration:.3f}s (>5s) - possible hang!",
+                        flush=True,
+                    )
                 if result and result[0] > 0:
-                    # Schema exists in database but not in our cache - add it
+                    # Schema exists in database but not in our caches - update both
                     if schema not in self.schemas:
                         self.schemas[schema] = DuckDBSchema(
                             schema, self.connection, None, self.engine
                         )
+                    thread_cache.add(schema)
+                    logger.debug(
+                        f"[Thread {thread_id}] schema_exists('{schema}') END (found in DB, {time.time() - start_time:.3f}s)"
+                    )
+                    print(
+                        f"[{thread_id}] schema_exists('{schema}') END (found in DB, {time.time() - start_time:.3f}s)",
+                        flush=True,
+                    )
                     return True
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[{thread_id}] Database check exception: {e}", flush=True)
+                logger.debug(f"[Thread {thread_id}] Database check exception: {e}")
 
-        return False
+            logger.debug(
+                f"[Thread {thread_id}] schema_exists('{schema}') END (not found, {time.time() - start_time:.3f}s)"
+            )
+            print(
+                f"[{thread_id}] schema_exists('{schema}') END (not found, {time.time() - start_time:.3f}s)",
+                flush=True,
+            )
+            return False
+        except Exception as e:
+            logger.error(f"[Thread {thread_id}] schema_exists('{schema}') ERROR: {e}")
+            print(f"[{thread_id}] schema_exists('{schema}') ERROR: {e}", flush=True)
+            raise
 
     def drop_schema(self, schema_name: str, cascade: bool = False) -> None:
         """Drop a schema."""
@@ -604,9 +1053,15 @@ class DuckDBStorageManager(IStorageManager):
 
     def table_exists(self, schema: str, table: str) -> bool:
         """Check if table exists."""
-        if schema not in self.schemas:
+        # Get schema object atomically to avoid race conditions
+        # where schema might be created/removed between check and access
+        schema_obj = self.schemas.get(schema)
+        if schema_obj is None:
             return False
-        return self.schemas[schema].table_exists(table)
+
+        # Use the schema object to check for table existence
+        # This ensures we're using the same schema object that was used for table creation
+        return schema_obj.table_exists(table)
 
     def create_table(
         self,
@@ -618,6 +1073,8 @@ class DuckDBStorageManager(IStorageManager):
         if schema_name not in self.schemas:
             self.create_schema(schema_name)
 
+        # Create the table - it will be automatically registered in the schema's
+        # table registry with proper locking in create_table()
         return self.schemas[schema_name].create_table(table_name, fields)
 
     def drop_table(self, schema_name: str, table_name: str) -> None:

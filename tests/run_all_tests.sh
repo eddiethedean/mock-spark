@@ -1,6 +1,16 @@
 #!/bin/bash
 # Test runner for overhauled test suite
 
+# Activate virtual environment if it exists
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$PROJECT_ROOT/venv/bin/activate" ]; then
+    source "$PROJECT_ROOT/venv/bin/activate"
+fi
+
+# Set PYTHONPATH to use installed package
+export PYTHONPATH="/Users/odosmatthews/.pyenv/versions/3.9.23/lib/python3.9/site-packages:$PYTHONPATH"
+
 echo "Running Mock Spark Test Suite (Overhauled)"
 echo "=========================================="
 
@@ -16,8 +26,12 @@ fi
 
 # Step 1: Unit tests - run in parallel if available
 echo "Running unit tests..."
-python3 -m pytest tests/unit/ -v $PARALLEL_FLAGS --tb=short -m "not performance"
+# Use timeout wrapper to prevent hangs (30 minutes max per test phase)
+"$SCRIPT_DIR/run_with_timeout.sh" 1800 python3 -m pytest tests/unit/ -v $PARALLEL_FLAGS --tb=short -m "not performance"
 unit_exit=$?
+if [ $unit_exit -eq 124 ]; then
+    echo "❌ Unit tests timed out after 30 minutes"
+fi
 
 # Step 2: Compatibility tests - validate against expected outputs (no PySpark required)
 echo "Running compatibility tests..."
@@ -31,13 +45,19 @@ echo "  - Datetime functions compatibility"
 echo "  - Null handling compatibility"
 echo "  - Set operations compatibility"
 echo "  - Complex scenarios compatibility"
-python3 -m pytest tests/compatibility/ -v $PARALLEL_FLAGS --tb=short
+"$SCRIPT_DIR/run_with_timeout.sh" 1800 python3 -m pytest tests/compatibility/ -v $PARALLEL_FLAGS --tb=short
 compatibility_exit=$?
+if [ $compatibility_exit -eq 124 ]; then
+    echo "❌ Compatibility tests timed out after 30 minutes"
+fi
 
 # Step 3: Performance tests - run serially for stable timing
 echo "Running Performance tests (serial)..."
-python3 -m pytest tests/unit/ -v -m performance --tb=short
+"$SCRIPT_DIR/run_with_timeout.sh" 600 python3 -m pytest tests/unit/ -v -m performance --tb=short
 performance_exit=$?
+if [ $performance_exit -eq 124 ]; then
+    echo "❌ Performance tests timed out after 10 minutes"
+fi
 
 # Check if performance tests exist (exit code 5 means no tests found)
 if [ $performance_exit -eq 5 ]; then
@@ -47,8 +67,11 @@ fi
 
 # Step 4: Documentation tests
 echo "Running documentation tests..."
-python3 -m pytest tests/documentation/ -v --tb=short
+"$SCRIPT_DIR/run_with_timeout.sh" 300 python3 -m pytest tests/documentation/ -v --tb=short
 doc_exit=$?
+if [ $doc_exit -eq 124 ]; then
+    echo "❌ Documentation tests timed out after 5 minutes"
+fi
 
 # Generate test summary
 echo ""

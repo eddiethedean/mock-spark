@@ -58,13 +58,15 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.16.1)
+### Latest (Version 2.17.0)
 
-**Version Bump** - Maintains all fixes from version 2.16.0:
-- ✅ **All Critical Regression Fixes** - Includes schema conversion, empty DataFrame handling, and schema preservation fixes
-- ✅ **Comprehensive Test Coverage** - 27 regression tests ensure stability
-- ✅ **All tests passing** - 857+ tests validated
-- 📦 **Production-ready** - Stable release
+**Thread Safety & Code Quality Improvements**:
+- 🔒 **Thread-Safe DuckDB Backend** - Added thread-safe locking for schema and table operations to prevent race conditions and segmentation faults
+- 🛡️ **Connection Isolation Handling** - Improved handling of DuckDB's in-memory connection isolation in multi-threaded scenarios
+- 🐛 **Fixed Deprecated APIs** - Replaced deprecated `datetime.utcnow()` with `datetime.now(timezone.utc)` for future Python compatibility
+- ✨ **Code Quality** - Ruff formatting and type checking improvements
+- ✅ **All tests passing** - 884+ tests validated
+- 📦 **Production-ready** - Stable release with improved thread safety
 
 ### Version 2.16.0
 
@@ -601,7 +603,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.13.1** - Version bump for stability and compatibility  
 **v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization  
 **v2.16.0** - Critical Regression Fixes - Fixed schema conversion failures, empty DataFrame column detection, and schema preservation during transformations  
-**v2.16.1** - Version bump
+**v2.16.1** - Version bump  
+**v2.17.0** - Thread Safety & Code Quality - Added thread-safe DuckDB backend improvements, fixed deprecated datetime APIs, and improved code quality with ruff formatting
 
 ---
 

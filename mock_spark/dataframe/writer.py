@@ -182,9 +182,19 @@ class MockDataFrameWriter:
             else (self.storage.get_current_schema(), table_name)
         )
 
-        # Ensure schema exists
+        # Ensure schema exists (thread-safe with retry logic)
+        # This handles cases where schemas created in other threads aren't visible
+        # to the current thread's DuckDB connection
         if not self.storage.schema_exists(schema):
             self.storage.create_schema(schema)
+            # Double-check after creation to ensure it's visible in this thread
+            if not self.storage.schema_exists(schema):
+                from ..errors import AnalysisException
+
+                raise AnalysisException(
+                    f"Failed to create or verify schema '{schema}' in thread-local "
+                    f"connection. This may indicate a threading issue with DuckDB."
+                )
 
         # Check if this is a Delta table write
         is_delta = self.format_name == "delta"
