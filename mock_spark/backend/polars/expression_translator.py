@@ -495,13 +495,46 @@ class PolarsExpressionTranslator:
                 else:
                     raise ValueError(f"date_format requires format string")
             elif operation == "date_add":
-                # date_add(col, days)
-                days = self.translate(op.value) if not isinstance(op.value, int) else pl.lit(op.value)
-                return col_expr.dt.offset_by(days)
+                # date_add(col, days) - add days to a date column
+                # Handle both string dates and date columns
+                if isinstance(op.value, int):
+                    days = op.value
+                    days_expr = pl.duration(days=days)
+                else:
+                    days_expr = self.translate(op.value)
+                    # If it's a literal, extract the value for duration
+                    if isinstance(days_expr, pl.Expr):
+                        # It's an expression - try to use it directly with duration
+                        # For literals, we can extract the value
+                        # For now, assume it's a literal integer
+                        # Actually, we need to handle this differently - use the expression value if available
+                        # For expressions, we'll need to convert to duration
+                        # Simplest: assume days is an integer literal
+                        days = op.value if isinstance(op.value, int) else int(op.value)
+                        days_expr = pl.duration(days=days)
+                    else:
+                        days = int(days_expr) if not isinstance(days_expr, int) else days_expr
+                        days_expr = pl.duration(days=days)
+                # Parse string dates first, then add duration
+                # Always try parsing as string first (most common case)
+                date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                return date_col + days_expr
             elif operation == "date_sub":
-                # date_sub(col, days)
-                days = self.translate(op.value) if not isinstance(op.value, int) else pl.lit(op.value)
-                return col_expr.dt.offset_by(-days)
+                # date_sub(col, days) - subtract days from a date column
+                if isinstance(op.value, int):
+                    days = op.value
+                    days_expr = pl.duration(days=days)
+                else:
+                    days_expr = self.translate(op.value)
+                    if isinstance(days_expr, pl.Expr):
+                        days = op.value if isinstance(op.value, int) else int(op.value)
+                        days_expr = pl.duration(days=days)
+                    else:
+                        days = int(days_expr) if not isinstance(days_expr, int) else days_expr
+                        days_expr = pl.duration(days=days)
+                # Parse string dates first, then subtract duration
+                date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                return date_col - days_expr
             elif operation == "datediff":
                 # datediff(end, start) - note: in PySpark, end comes first
                 # In MockColumnOperation: column is end, value is start
