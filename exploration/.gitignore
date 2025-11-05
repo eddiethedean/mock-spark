@@ -1,9 +1,0 @@
-# Ignore exploration output files
-outputs/
-*.txt
-*.log
-
-# Track the exploration scripts themselves
-!*.py
-!README.md
-

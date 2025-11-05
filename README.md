@@ -58,7 +58,16 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.16.1)
+### Latest (Version 2.16.2)
+
+**Coalesce Null Handling & Code Quality Improvements** - Fixed critical null handling bug and improved codebase quality:
+- 🔧 **Coalesce Null Handling** - Fixed `coalesce()` and `nvl()` returning `None` instead of `0.0` when source value is `NULL` - now correctly returns numeric default values
+- ✅ **Type Safety** - Fixed 68 type checking errors (TC001, TC004, TC005, TC006) for complete type compliance
+- 🧹 **Code Quality** - Resolved 28 unused import errors and reformatted codebase for consistency
+- ✅ **All tests passing** - 857+ tests validated including null handling compatibility tests
+- 📦 **Production-ready** - Stable release with improved null handling and code quality
+
+### Version 2.16.1
 
 **Version Bump** - Maintains all fixes from version 2.16.0:
 - ✅ **All Critical Regression Fixes** - Includes schema conversion, empty DataFrame handling, and schema preservation fixes
@@ -601,7 +610,8 @@ df.groupBy(F.window("timestamp", "10 minutes")).count()
 **v2.13.1** - Version bump for stability and compatibility  
 **v2.15.0** - Table Persistence & CTE Optimization - Fixed cross-session persistence, schema discovery, column references, and catalog synchronization  
 **v2.16.0** - Critical Regression Fixes - Fixed schema conversion failures, empty DataFrame column detection, and schema preservation during transformations  
-**v2.16.1** - Version bump
+**v2.16.1** - Version bump  
+**v2.16.2** - Coalesce Null Handling & Code Quality - Fixed coalesce/nvl returning None instead of default values, complete type safety, and code quality improvements
 
 ---
 
