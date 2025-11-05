@@ -766,27 +766,17 @@ class PolarsExpressionTranslator:
                 return col_expr
         elif function_name == "ascii":
             # ascii(col) - return ASCII code of first character
-            # Get first character's byte value
-            # Using str to bytes conversion then taking first byte
+            # Get first character and convert to its ASCII/UTF-8 code point
             first_char = col_expr.str.slice(0, 1)
-            # Convert string to bytes then get first byte as integer
-            # This is a simplified approach - may need refinement
-            return first_char.str.encode("utf-8").list.first().cast(pl.UInt8).fill_null(0)
+            return first_char.map_elements(lambda x: ord(x) if x else 0, return_dtype=pl.Int32).fill_null(0)
         elif function_name == "hex":
-            # hex(col) - convert to hexadecimal string
-            # For string columns, encode to bytes then convert to hex
-            # Note: This implementation may need adjustment based on Polars version
-            try:
-                # Try using binary encoding approach
-                return col_expr.str.encode("utf-8").list.join("").str.encode("hex")
-            except Exception:
-                # Fallback: return as string (may need UDF support)
-                return col_expr
+            # hex(col) - convert to hexadecimal string (uppercase)
+            # Encode string to bytes, then convert to hex string (uppercase like PySpark)
+            return col_expr.map_elements(lambda x: x.encode('utf-8').hex().upper() if isinstance(x, str) else str(x).encode('utf-8').hex().upper() if x is not None else '', return_dtype=pl.Utf8)
         elif function_name == "base64":
             # base64(col) - encode to base64
-            # Note: Requires UDF support or proper Polars API
-            # For now, return as string (will need proper implementation)
-            return col_expr
+            import base64
+            return col_expr.map_elements(lambda x: base64.b64encode(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).decode('utf-8') if x is not None else '', return_dtype=pl.Utf8)
         elif function_name == "md5":
             # md5(col) - hash using MD5
             import hashlib
