@@ -6,6 +6,7 @@ in column expressions and transformations.
 """
 
 from typing import Any, List, Optional, TYPE_CHECKING, cast
+import math
 from ...spark_types import MockDataType
 from ...core.interfaces.functions import IColumn
 
@@ -34,6 +35,9 @@ class MockLiteral(IColumn):
         # Handle boolean values to match PySpark's lowercase representation
         if isinstance(value, bool):
             self._name = str(value).lower()
+        elif isinstance(value, float) and math.isnan(value):
+            # PySpark uses 'NaN' (capital) for NaN literals
+            self._name = "NaN"
         else:
             self._name = str(value)
 

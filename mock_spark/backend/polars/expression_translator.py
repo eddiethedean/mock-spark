@@ -833,7 +833,7 @@ class PolarsExpressionTranslator:
             "weekofyear": lambda e: self._extract_datetime_part(e, "weekofyear"),
             "quarter": lambda e: self._extract_datetime_part(e, "quarter"),
             "reverse": lambda e: self._reverse_expr(e, op),  # Handle both string and array reverse
-            "isnan": lambda e: e.is_nan(),
+            "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
             "isnull": lambda e: e.is_null(),
             "isNull": lambda e: e.is_null(),
