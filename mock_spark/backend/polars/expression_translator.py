@@ -601,9 +601,18 @@ class PolarsExpressionTranslator:
                 return col_expr.dt.offset_by(f"{months}mo")
             elif operation == "last_day":
                 # last_day(col) - get last day of month
-                # Get first day of next month, then subtract 1 day
-                first_of_month = col_expr.dt.replace(day=1)
+                # Parse string dates first, or use directly if already a date
+                # Try parsing as string first (most common case)
+                try:
+                    date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                except AttributeError:
+                    # Already a date column, use directly
+                    date_col = col_expr.cast(pl.Date)
+                # Get first day of current month
+                first_of_month = date_col.dt.replace(day=1)
+                # Add 1 month to get first of next month (using string offset)
                 first_of_next_month = first_of_month.dt.offset_by("1mo")
+                # Subtract 1 day to get last day of current month
                 return first_of_next_month.dt.offset_by("-1d")
             elif operation == "array_contains":
                 # array_contains(col, value) - check if array contains value
@@ -823,6 +832,7 @@ class PolarsExpressionTranslator:
             "isNull": lambda e: e.is_null(),
             "isnotnull": lambda e: e.is_not_null(),
             "isNotNull": lambda e: e.is_not_null(),
+            "last_day": lambda e: self._last_day_expr(e),
             # Array functions
             "size": lambda e: e.list.len(),
             "array_max": lambda e: e.list.max(),
@@ -844,6 +854,29 @@ class PolarsExpressionTranslator:
                         return func(self.translate(op.value))
                     return func()
             raise ValueError(f"Unsupported function: {function_name}")
+
+    def _last_day_expr(self, expr: pl.Expr) -> pl.Expr:
+        """Get last day of month for a date column.
+        
+        Args:
+            expr: Polars expression (date column or string)
+            
+        Returns:
+            Polars expression for last day of month
+        """
+        # Parse string dates first, or use directly if already a date
+        # Try parsing as string first (most common case)
+        try:
+            date_col = expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+        except AttributeError:
+            # Already a date column, use directly
+            date_col = expr.cast(pl.Date)
+        # Get first day of current month
+        first_of_month = date_col.dt.replace(day=1)
+        # Add 1 month to get first of next month (using string offset)
+        first_of_next_month = first_of_month.dt.offset_by("1mo")
+        # Subtract 1 day to get last day of current month
+        return first_of_next_month.dt.offset_by("-1d")
 
     def _reverse_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
         """Handle reverse for both strings and arrays.
