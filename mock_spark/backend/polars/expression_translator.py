@@ -573,9 +573,16 @@ class PolarsExpressionTranslator:
                 else:
                     raise ValueError(f"rpad requires (len, pad) tuple")
             elif operation == "repeat":
-                # repeat(col, n)
+                # repeat(col, n) - repeat string n times
+                # Polars doesn't have str.repeat(), use string concatenation
                 n = op.value if isinstance(op.value, int) else int(op.value)
-                return col_expr.str.repeat(n)
+                if n <= 0:
+                    return pl.lit("")
+                # Build expression: col + col + ... + col (n times)
+                result = col_expr
+                for _ in range(n - 1):
+                    result = result + col_expr
+                return result
             elif operation == "instr":
                 # instr(col, substr) - returns 1-based position, or 0 if not found
                 substr = op.value if isinstance(op.value, str) else str(op.value)
@@ -595,10 +602,19 @@ class PolarsExpressionTranslator:
                     substr = op.value
                     return col_expr.str.find(substr) + 1
             elif operation == "add_months":
-                # add_months(col, months)
+                # add_months(col, months) - add months to a date column
                 months = op.value if isinstance(op.value, int) else int(op.value)
+                # Parse string dates first, or use directly if already a date
+                # Try parsing as string first (most common case)
+                try:
+                    date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                except AttributeError:
+                    # Already a date column, use directly
+                    date_col = col_expr.cast(pl.Date)
+                # Convert to datetime for offset_by, then back to date
+                datetime_col = date_col.cast(pl.Datetime)
                 # Use offset_by with months
-                return col_expr.dt.offset_by(f"{months}mo")
+                return datetime_col.dt.offset_by(f"{months}mo").cast(pl.Date)
             elif operation == "last_day":
                 # last_day(col) - get last day of month
                 # Parse string dates first, or use directly if already a date

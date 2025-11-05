@@ -231,13 +231,20 @@ class LazyEvaluationEngine:
     ) -> bool:
         """Check if data contains default values that indicate backend couldn't handle the operations."""
         if not data:
+            # Empty data could be valid (e.g., filter with no matches, join with no matches)
+            # Only return True if we have a schema but no data AND schema has fields
+            # This is a heuristic - empty result might be valid
             return False
 
         # Check if any numeric fields have default values (0.0, 0, None)
+        # But ignore None values in fields that start with "right_" as these are expected from joins
         for row in data:
             for field in schema.fields:
                 if field.name in row:
                     value = row[field.name]
+                    # Skip fields that are expected to be None from joins
+                    if field.name.startswith("right_") and value is None:
+                        continue
                     # Check for default values that indicate DuckDB couldn't evaluate the function
                     if value == 0.0 and field.dataType.__class__.__name__ in [
                         "DoubleType",
@@ -330,11 +337,37 @@ class LazyEvaluationEngine:
             # This ensures we don't lose fields that aren't in schema (though schema should match)
             converted_dict = dict(row_dict)
             
+            # Handle duplicate column names from joins (Polars renames them with _right suffix)
+            # PySpark allows duplicate names, and when accessing by name, the right-side value wins
+            # BUT: For semi/anti joins, we only return left columns, so don't overwrite
+            # Check if this result has _right columns - if so, it's a regular join with duplicates
+            # If no _right columns, it's likely a semi/anti join or already filtered
+            has_right_columns = any(key.endswith('_right') for key in converted_dict.keys())
+            if has_right_columns:
+                # Regular join with duplicates - overwrite left with right values
+                for key in list(converted_dict.keys()):
+                    if key.endswith('_right'):
+                        original_name = key[:-6]  # Remove '_right' suffix
+                        # If original name exists, the right-side value should overwrite it
+                        # This matches PySpark behavior where duplicate column names use right-side value
+                        if original_name in converted_dict:
+                            converted_dict[original_name] = converted_dict[key]
+                        # Remove _right key after copying
+                        del converted_dict[key]
+            
             # Ensure all schema fields are present (use None if missing from row_dict)
             # This handles cases where schema expects fields that aren't in the row
             for field in schema.fields:
                 if field.name not in converted_dict:
-                    converted_dict[field.name] = None
+                    # Only check for _right version if we didn't already process it above
+                    if not has_right_columns:
+                        right_key = f"{field.name}_right"
+                        if right_key in converted_dict:
+                            converted_dict[field.name] = converted_dict[right_key]
+                        else:
+                            converted_dict[field.name] = None
+                    else:
+                        converted_dict[field.name] = None
 
             # Convert values to match their declared schema types
             for field in schema.fields:
@@ -728,10 +761,20 @@ class LazyEvaluationEngine:
                         other_df = other_df._materialize_if_lazy()
 
                     # Handle join condition
-                    if isinstance(on, str):
+                    # Extract column names from MockColumnOperation if it's a == comparison
+                    if hasattr(on, 'operation') and on.operation == "==":
+                        # Extract column names from == comparison
+                        left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
+                        right_col = on.value.name if hasattr(on.value, 'name') else str(on.value)
+                        # Use left column name (assuming both DataFrames have same column name)
+                        on_columns = [left_col]
+                    elif isinstance(on, str):
                         on_columns = [on]
+                    elif isinstance(on, (list, tuple)):
+                        on_columns = list(on)
                     else:
-                        on_columns = on
+                        # Try to extract column name(s) from the object
+                        on_columns = [on.name] if hasattr(on, 'name') else [str(on)]
 
                     # Perform the join
                     joined_data = []

@@ -174,13 +174,27 @@ class PolarsOperationExecutor:
         Args:
             df1: Left DataFrame
             df2: Right DataFrame
-            on: Join key(s) - column name(s) or list of column names
-            how: Join type ("inner", "left", "right", "outer", "cross")
+            on: Join key(s) - column name(s), list of column names, or MockColumnOperation with ==
+            how: Join type ("inner", "left", "right", "outer", "cross", "semi", "anti")
 
         Returns:
             Joined DataFrame
         """
-        if on is None:
+        # Extract column names from join condition if it's a MockColumnOperation
+        if on is not None and hasattr(on, 'operation') and on.operation == "==":
+            # Extract column names from == comparison
+            left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
+            right_col = on.value.name if hasattr(on.value, 'name') else str(on.value)
+            # Both columns should have the same name for == comparison
+            # Use left column name (both DataFrames should have this column)
+            if left_col in df1.columns and left_col in df2.columns:
+                on = [left_col]
+            elif right_col in df1.columns and right_col in df2.columns:
+                on = [right_col]
+            else:
+                # Fallback: use left column name anyway
+                on = [left_col]
+        elif on is None:
             # Natural join - use common columns
             common_cols = set(df1.columns) & set(df2.columns)
             if not common_cols:
@@ -203,9 +217,45 @@ class PolarsOperationExecutor:
         if isinstance(on, str):
             on = [on]
 
-        if polars_how == "cross":
+        # Handle semi and anti joins (Polars doesn't support natively)
+        if how.lower() == "semi":
+            # Semi join: return rows from left where match exists in right
+            # Do inner join, then select only left columns and distinct
+            joined = df1.join(df2, on=on, how="inner")
+            # Select only columns from df1 (preserve original column order)
+            left_cols = [col for col in df1.columns if col in joined.columns]
+            return joined.select(left_cols).unique()
+        elif how.lower() == "anti":
+            # Anti join: return rows from left where no match exists in right
+            # Do left join, then filter where right columns are null
+            joined = df1.join(df2, on=on, how="left")
+            # Find right-side columns (columns in df2 but not in df1)
+            right_cols = [col for col in df2.columns if col not in df1.columns]
+            if right_cols:
+                # Filter where any right column is null
+                filter_expr = pl.col(right_cols[0]).is_null()
+                for col in right_cols[1:]:
+                    filter_expr = filter_expr | pl.col(col).is_null()
+                joined = joined.filter(filter_expr)
+            else:
+                # If no right columns (all match left), check if join key exists
+                # This case shouldn't happen, but handle it
+                joined = joined.filter(pl.col(on[0]).is_null())
+            # Select only columns from df1
+            left_cols = [col for col in joined.columns if col in df1.columns]
+            return joined.select(left_cols)
+        elif polars_how == "cross":
             return df1.join(df2, how="cross")
         else:
+            # Ensure on is a list of strings
+            if not isinstance(on, list):
+                on = [on] if isinstance(on, str) else list(on)
+            # Verify columns exist in both DataFrames
+            for col in on:
+                if col not in df1.columns:
+                    raise ValueError(f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}")
+                if col not in df2.columns:
+                    raise ValueError(f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}")
             return df1.join(df2, on=on, how=polars_how)
 
     def apply_union(self, df1: pl.DataFrame, df2: pl.DataFrame) -> pl.DataFrame:
