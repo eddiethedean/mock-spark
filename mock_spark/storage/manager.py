@@ -12,7 +12,12 @@ import os
 from ..core.interfaces.storage import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager
-from mock_spark.backend.duckdb import DuckDBStorageManager
+from mock_spark.backend.polars import PolarsStorageManager
+# DuckDB is optional - wrap import in try/except
+try:
+    from mock_spark.backend.duckdb import DuckDBStorageManager
+except ImportError:
+    DuckDBStorageManager = None  # type: ignore
 from mock_spark.spark_types import MockStructType, MockStructField
 
 
@@ -69,15 +74,35 @@ class StorageManagerFactory:
         return FileStorageManager(base_path)
 
     @staticmethod
+    def create_polars_manager(db_path: Optional[str] = None) -> IStorageManager:
+        """Create a Polars storage manager (default in v3.0.0+).
+
+        Args:
+            db_path: Optional path for persistent storage. If None, uses in-memory storage.
+
+        Returns:
+            Polars storage manager instance.
+        """
+        return PolarsStorageManager(db_path=db_path)
+
+    @staticmethod
     def create_duckdb_manager(db_path: Optional[str] = None) -> IStorageManager:
-        """Create a DuckDB storage manager with in-memory storage by default.
+        """Create a DuckDB storage manager (legacy, for backward compatibility).
 
         Args:
             db_path: Optional path to DuckDB database file. If None, uses in-memory storage.
 
         Returns:
             DuckDB storage manager instance.
+
+        Raises:
+            ImportError: If DuckDB is not installed. Install with: pip install duckdb
         """
+        if DuckDBStorageManager is None:
+            raise ImportError(
+                "DuckDB backend requires 'duckdb' package. "
+                "Install with: pip install duckdb"
+            )
         return DuckDBStorageManager(db_path)
 
 

@@ -38,7 +38,7 @@ from mock_spark import MockSparkSession as SparkSession
 |---------|-------------|
 | ⚡ **10x Faster** | No JVM startup (30s → 0.1s) |
 | 🎯 **Drop-in Replacement** | Use existing PySpark code unchanged |
-| 📦 **Zero Java** | Pure Python with pluggable backend architecture (DuckDB default) |
+| 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
 | 🏭 **Production Ready** | 857+ passing tests, 100% mypy typed, CTE-optimized queries |
@@ -58,7 +58,18 @@ from mock_spark import MockSparkSession as SparkSession
 
 ## Recent Updates
 
-### Latest (Version 2.17.0)
+### Latest (Version 3.0.0) - MAJOR UPDATE
+
+**Polars Backend Migration - Breaking Changes**:
+- 🚀 **Polars Backend** - Complete migration from DuckDB to Polars for thread-safe, high-performance operations
+- 🧵 **Thread Safety** - Polars is thread-safe by design - no more connection locks or threading issues
+- 📊 **Parquet Storage** - Tables now persist as Parquet files instead of DuckDB databases
+- ⚡ **Performance** - Polars provides better performance for DataFrame operations
+- 🔄 **Breaking Changes** - This is a major version update - see migration guide for details
+- ✅ **All tests passing** - Full test suite validated with Polars backend
+- 📦 **Production-ready** - Stable release with improved architecture
+
+### Previous (Version 2.17.0)
 
 **Thread Safety & Code Quality Improvements**:
 - 🔒 **Thread-Safe DuckDB Backend** - Added thread-safe locking for schema and table operations to prevent race conditions and segmentation faults
@@ -290,14 +301,18 @@ def test_large_dataset():
 Mock Spark supports multiple backend engines for different use cases:
 
 ```python
-# Default backend (DuckDB) - backward compatible
+# Default backend (Polars) - thread-safe, high-performance
 spark = MockSparkSession("MyApp")
 
 # Explicit backend selection via config
 spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "polars") \
+    .getOrCreate()
+
+# Legacy DuckDB backend (still supported for backward compatibility)
+spark = MockSparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .config("spark.mock.backend.maxMemory", "4GB") \
-    .config("spark.mock.backend.allowDiskSpillover", True) \
     .getOrCreate()
 
 # Memory backend for lightweight testing

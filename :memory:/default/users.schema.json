@@ -1,0 +1,16 @@
+{
+  "fields": [
+    {
+      "name": "name",
+      "type": "StringType",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "age",
+      "type": "IntegerType",
+      "nullable": true,
+      "metadata": {}
+    }
+  ]
+}

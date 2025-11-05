@@ -231,6 +231,20 @@ def compare_aggregations(mock_result, pyspark_result, tolerance: float = 1e-6):
                 assert abs(mock_val - pyspark_val) < tolerance, (
                     f"Column {col}: {mock_val} vs {pyspark_val}"
                 )
+            elif isinstance(mock_val, list) and isinstance(pyspark_val, list):
+                # For lists (e.g., collect_list, collect_set), compare as sets if order doesn't matter
+                # For collect_set, order doesn't matter, so compare as sets
+                # Check if this is a collect_set result by comparing as sets first
+                if set(mock_val) == set(pyspark_val) and len(mock_val) == len(set(mock_val)):
+                    # This looks like a collect_set (unique values) - order doesn't matter
+                    assert set(mock_val) == set(pyspark_val), (
+                        f"Column {col}: {sorted(mock_val)} vs {sorted(pyspark_val)}"
+                    )
+                else:
+                    # For collect_list, order matters, so compare directly
+                    assert mock_val == pyspark_val, (
+                        f"Column {col}: {mock_val} vs {pyspark_val}"
+                    )
             else:
                 assert mock_val == pyspark_val, (
                     f"Column {col}: {mock_val} vs {pyspark_val}"

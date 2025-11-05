@@ -8,10 +8,12 @@ This guide provides comprehensive documentation for Mock Spark's storage seriali
 
 Mock Spark provides a complete storage serialization system that supports multiple data formats:
 
+- **Parquet Storage** - Columnar storage format (default for Polars backend in v3.0.0+)
 - **CSV Serialization** - Comma-separated values format
 - **JSON Serialization** - JavaScript Object Notation format
-- **Parquet Support** - Columnar storage format (planned)
 - **Custom Formats** - Extensible serialization framework
+
+**Note**: With Polars backend (v3.0.0+), tables are persisted as Parquet files by default. CSV and JSON serialization are still available for export/import operations.
 
 ## CSV Serialization
 

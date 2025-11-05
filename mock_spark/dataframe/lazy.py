@@ -187,43 +187,49 @@ class LazyEvaluationEngine:
             backend_type = BackendFactory.get_backend_type(df.storage)
             materializer = BackendFactory.create_materializer(backend_type)
             try:
+                # Compute final schema after all operations
+                from ..dataframe.schema.schema_manager import SchemaManager
+                final_schema = SchemaManager.project_schema_with_operations(
+                    df.schema, df._operations_queue
+                )
+                
                 # Let materializer optimize and execute the operations
                 rows = materializer.materialize(
                     df.data, df.schema, df._operations_queue
                 )
 
-                # Convert rows back to data format
+                # Convert rows back to data format using final schema
                 materialized_data = LazyEvaluationEngine._convert_materialized_rows(
-                    rows, df.schema
+                    rows, final_schema
                 )
 
-                # Check if DuckDB returned default values (0.0 for numeric functions)
+                # Check if backend returned default values (0.0 for numeric functions)
                 # If so, fall back to manual materialization
                 if LazyEvaluationEngine._has_default_values(
-                    materialized_data, df.schema
+                    materialized_data, final_schema
                 ):
                     return LazyEvaluationEngine._materialize_manual(df)
 
-                # Create new eager DataFrame with materialized data
+                # Create new eager DataFrame with materialized data and final schema
                 from ..dataframe import MockDataFrame
 
                 return MockDataFrame(
                     materialized_data,
-                    df.schema,
+                    final_schema,
                     df.storage,
                 )
             finally:
                 materializer.close()
 
         except ImportError:
-            # Fallback to manual materialization if DuckDB is not available
+            # Fallback to manual materialization if backend is not available
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
     def _has_default_values(
         data: List[Dict[str, Any]], schema: "MockStructType"
     ) -> bool:
-        """Check if data contains default values that indicate DuckDB couldn't handle the operations."""
+        """Check if data contains default values that indicate backend couldn't handle the operations."""
         if not data:
             return False
 
@@ -247,8 +253,12 @@ class LazyEvaluationEngine:
                         "StringType"
                     ]:
                         return True
-                    # Check for None values in any field (indicates DuckDB couldn't evaluate)
-                    if value is None:
+                    # Check for None values in any field (indicates backend couldn't evaluate)
+                    # BUT: None is a valid value (NULL) in databases, so we need to be careful
+                    # Only consider it a failure if it's a non-nullable field or if ALL values are None
+                    # For now, we'll be more lenient - None alone doesn't indicate failure
+                    # Only check if it's a non-nullable field that's None
+                    if value is None and not getattr(field, 'nullable', True):
                         return True
 
         return False
@@ -268,10 +278,11 @@ class LazyEvaluationEngine:
                     # Check for MockColumnOperation
                     if hasattr(col, "operation"):
                         # Check for operations that require MockDataFrame evaluation
+                        # Note: "cast" is now handled by Polars backend, so removed from this list
                         if col.operation in [
                             "months_between",
                             # Allow DuckDB to handle datediff via SQL path
-                            "cast",
+                            # "cast",  # Removed - Polars handles cast operations
                             "when",
                             "otherwise",
                         ]:
@@ -314,10 +325,21 @@ class LazyEvaluationEngine:
         materialized_data = []
         for row in rows:
             row_dict = row.asDict()
+            
+            # Start with all data from row_dict, then convert types according to schema
+            # This ensures we don't lose fields that aren't in schema (though schema should match)
+            converted_dict = dict(row_dict)
+            
+            # Ensure all schema fields are present (use None if missing from row_dict)
+            # This handles cases where schema expects fields that aren't in the row
+            for field in schema.fields:
+                if field.name not in converted_dict:
+                    converted_dict[field.name] = None
 
             # Convert values to match their declared schema types
             for field in schema.fields:
                 if field.name not in row_dict:
+                    # Field expected in schema but not in row - keep as None or skip
                     continue
 
                 value = row_dict[field.name]
@@ -332,36 +354,36 @@ class LazyEvaluationEngine:
                             import ast
 
                             try:
-                                row_dict[field.name] = ast.literal_eval(value)
+                                converted_dict[field.name] = ast.literal_eval(value)
                             except Exception:  # noqa: E722
                                 # If parsing fails, split manually
-                                row_dict[field.name] = value[1:-1].split(",")
+                                converted_dict[field.name] = value[1:-1].split(",")
                         elif value.startswith("{") and value.endswith("}"):
                             # PostgreSQL/DuckDB array format: "{a,b}"
-                            row_dict[field.name] = value[1:-1].split(",")
+                            converted_dict[field.name] = value[1:-1].split(",")
 
                 # Handle numeric types that come back as strings
                 elif isinstance(field.dataType, (IntegerType, LongType)):
                     if isinstance(value, str):
                         try:
-                            row_dict[field.name] = int(value)
+                            converted_dict[field.name] = int(value)
                         except (ValueError, TypeError):
                             pass  # Keep as string if conversion fails
 
                 elif isinstance(field.dataType, DoubleType):
                     if isinstance(value, str):
                         try:
-                            row_dict[field.name] = float(value)
+                            converted_dict[field.name] = float(value)
                         except (ValueError, TypeError):
                             pass  # Keep as string if conversion fails
                     else:
                         # Convert Decimal or other numeric types to float
                         try:
-                            row_dict[field.name] = float(value)
+                            converted_dict[field.name] = float(value)
                         except (ValueError, TypeError):
                             pass  # Keep original value if conversion fails
 
-            materialized_data.append(row_dict)
+            materialized_data.append(converted_dict)
 
         return materialized_data
 

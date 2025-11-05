@@ -1349,8 +1349,10 @@ class MockFunctions:
 
     @staticmethod
     def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
-        """Reverse array elements."""
-        return ArrayFunctions.reverse(column)
+        """Reverse string or array elements. Defaults to string reverse."""
+        # Default to string reverse (more common use case)
+        # If array reverse is needed, use ArrayFunctions.reverse() directly
+        return StringFunctions.reverse(column)
 
     @staticmethod
     def explode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:

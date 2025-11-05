@@ -182,9 +182,8 @@ class MockDataFrameWriter:
             else (self.storage.get_current_schema(), table_name)
         )
 
-        # Ensure schema exists (thread-safe with retry logic)
-        # This handles cases where schemas created in other threads aren't visible
-        # to the current thread's DuckDB connection
+        # Ensure schema exists (thread-safe)
+        # Polars backend is thread-safe by design, no special handling needed
         if not self.storage.schema_exists(schema):
             self.storage.create_schema(schema)
             # Double-check after creation to ensure it's visible in this thread

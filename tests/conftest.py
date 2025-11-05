@@ -17,7 +17,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 def cleanup_after_each_test():
     """Automatically clean up resources after each test.
 
-    This fixture runs after every test to ensure DuckDB connections
+    This fixture runs after every test to ensure backend connections
     and other resources are properly cleaned up, preventing test leaks.
     """
     yield

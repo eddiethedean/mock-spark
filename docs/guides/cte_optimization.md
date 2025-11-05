@@ -1,24 +1,50 @@
-# CTE-Based Query Optimization
+# Query Optimization (v3.0.0+)
 
 ## Overview
 
-The CTE (Common Table Expression) optimization refactors the DataFrame materialization system to build a single SQL query with chained CTEs instead of creating intermediate temporary tables for each operation. This significantly reduces I/O and improves pipeline performance.
+With Polars backend (v3.0.0+), query optimization is handled automatically by Polars' native lazy evaluation system. Polars builds an optimized execution plan for the entire operation chain, eliminating the need for manual CTE optimization.
 
-## Problem
+**Note**: This guide describes the previous CTE-based optimization used with DuckDB backend. With Polars, optimization is automatic and more efficient.
 
-Previously, each DataFrame operation (filter, select, withColumn, orderBy, limit) would:
+## Polars Backend (v3.0.0+)
+
+With Polars backend, optimization is automatic:
+
+1. **Lazy Evaluation**: Operations are built into a lazy execution plan
+2. **Automatic Optimization**: Polars optimizes the entire plan before execution
+3. **No Intermediate Tables**: No need to create temporary tables
+4. **Single Materialization**: Only the final result is materialized
+
+### How It Works
+
+```python
+from mock_spark import MockSparkSession
+
+spark = MockSparkSession("MyApp")  # Uses Polars by default
+df = spark.createDataFrame(data)
+
+# Polars automatically optimizes this entire chain
+result = df.filter(age > 25).select("name", "age").withColumn("bonus", salary * 0.1)
+
+# Materialization happens only when needed (show, collect, etc.)
+result.show()  # Polars optimizes and executes the entire plan
+```
+
+### Performance Benefits
+
+- **No SQL Generation**: Direct DataFrame operations
+- **Automatic Optimization**: Polars optimizes the execution plan
+- **Better Performance**: Polars is optimized for DataFrame operations
+- **Thread-Safe**: No connection management overhead
+
+## Legacy: DuckDB CTE Optimization (v2.x)
+
+Previously, with DuckDB backend, each DataFrame operation would:
 1. Create a new temporary table
 2. Execute a SELECT query from the source table
 3. Insert results into the new temporary table
 
-For a chain like `df.filter(...).select(...).withColumn(...)`, this would create 3 intermediate tables with 3 separate query executions and 3 data materialization steps.
-
-## Solution
-
-The new implementation:
-1. Builds a single SQL query with CTEs for all operations
-2. Each CTE references the previous one
-3. Materializes only the final result with a single query execution
+The CTE optimization built a single SQL query with chained CTEs instead.
 
 Example SQL generated for `df.filter(age > 25).select("name", "age").withColumn("bonus", salary * 0.1)`:
 
@@ -33,7 +59,9 @@ SELECT * FROM cte_2
 
 ### Architecture
 
-The implementation is in `mock_spark/backend/duckdb/query_executor.py` with these key components:
+**Note**: CTE optimization is only relevant for DuckDB backend. With Polars (default in v3.0.0+), optimization is automatic.
+
+The legacy implementation was in `mock_spark/backend/duckdb/query_executor.py` with these key components:
 
 #### 1. Updated `materialize()` Method
 
@@ -122,21 +150,36 @@ The implementation includes a fallback mechanism:
 
 ## Performance Benefits
 
-### I/O Reduction
-- **Before**: N intermediate table writes for N operations
-- **After**: 1 final result materialization
+### Polars Backend (v3.0.0+)
 
-### Memory Efficiency
+- **No I/O for Intermediate Results**: Operations are chained in lazy evaluation
+- **Automatic Optimization**: Polars optimizes the entire execution plan
+- **Memory Efficient**: Only final result is materialized
+- **Better Performance**: Polars is optimized for DataFrame operations
+
+### Legacy DuckDB Backend
+
+**I/O Reduction:**
+- **Before**: N intermediate table writes for N operations
+- **After (CTE)**: 1 table creation + 1 SELECT with CTEs
+
+**Memory Efficiency:**
 - **Before**: N temporary tables in memory/disk
 - **After**: 1 query execution with DuckDB's optimized execution plan
 
-### Query Optimization
+**Query Optimization:**
 - DuckDB can optimize the entire CTE chain at once
 - Better query planning and execution strategies
 - Reduced overhead from multiple separate queries
 
 ### Benchmark Results
 
+**Polars Backend:**
+- Operations are chained lazily - no intermediate materialization
+- Single materialization at the end
+- Automatic optimization by Polars
+
+**Legacy DuckDB (CTE optimization):**
 For a typical pipeline with 5 operations:
 - **Table-per-operation**: 5 table creations + 5 SELECTs + 5 INSERTs
 - **CTE optimization**: 1 table creation + 1 SELECT with CTEs
@@ -147,6 +190,17 @@ Example operations: `filter → select → withColumn → orderBy → limit`
 
 ## Usage
 
+**Polars Backend (v3.0.0+):**
+Optimization is **automatic** - no configuration needed:
+
+```python
+from mock_spark import MockSparkSession
+
+spark = MockSparkSession("MyApp")  # Uses Polars by default
+# All operations are automatically optimized
+```
+
+**Legacy DuckDB Backend:**
 The CTE optimization is **automatically applied** when using lazy evaluation:
 
 ```python

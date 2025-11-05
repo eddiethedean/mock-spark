@@ -8,12 +8,13 @@ core DataFrame and Session modules.
 Architecture:
     - protocols.py: Protocol definitions for backend interfaces
     - factory.py: Factory for creating backend instances
-    - duckdb/: DuckDB-specific backend implementation
+    - polars/: Polars-specific backend implementation (default in v3.0.0+)
+    - duckdb/: DuckDB-specific backend implementation (legacy, optional)
 
 Example:
     >>> from mock_spark.backend.factory import BackendFactory
-    >>> storage = BackendFactory.create_storage_backend("duckdb")
-    >>> materializer = BackendFactory.create_materializer("duckdb")
+    >>> storage = BackendFactory.create_storage_backend("polars")
+    >>> materializer = BackendFactory.create_materializer("polars")
 """
 
 from .protocols import (

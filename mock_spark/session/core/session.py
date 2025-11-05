@@ -65,7 +65,7 @@ class MockSparkSession:
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
         storage_backend: Optional[StorageBackend] = None,
-        backend_type: str = "duckdb",
+        backend_type: str = "polars",
         db_path: Optional[str] = None,
     ):
         """Initialize MockSparkSession.
@@ -80,7 +80,7 @@ class MockSparkSession:
             allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
             storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
-            backend_type: Type of backend to use ("duckdb", "sqlite", etc.). Default is "duckdb".
+            backend_type: Type of backend to use ("polars", "duckdb", "sqlite", etc.). Default is "polars".
             db_path: Optional path to persistent database file. If provided, tables will persist across sessions.
                     If None (default), uses in-memory storage and tables don't persist.
                     For test scenarios requiring table persistence across multiple pipeline runs,

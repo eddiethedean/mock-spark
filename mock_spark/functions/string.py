@@ -432,6 +432,25 @@ class StringFunctions:
         return operation
 
     @staticmethod
+    def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
+        """Reverse a string column.
+
+        Args:
+            column: The string column to reverse.
+
+        Returns:
+            MockColumnOperation representing the reverse function.
+
+        Example:
+            >>> df.select(F.reverse(F.col("name")))
+        """
+        if isinstance(column, str):
+            column = MockColumn(column)
+
+        operation = MockColumnOperation(column, "reverse", name=f"reverse({column.name})")
+        return operation
+
+    @staticmethod
     def repeat(column: Union[MockColumn, str], n: int) -> MockColumnOperation:
         """Repeat a string N times.
 

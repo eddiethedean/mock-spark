@@ -2,7 +2,9 @@
 Unit tests for backend factory.
 """
 
+import os
 import pytest
+import tempfile
 
 # Skip if factory module doesn't exist
 try:
@@ -27,8 +29,27 @@ class TestBackendFactory:
 
     def test_create_storage_backend_duckdb_with_path(self):
         """Test creating DuckDB backend with custom path."""
-        backend = BackendFactory.create_storage_backend("duckdb", db_path="test.db")
-        assert backend is not None
+        # Use a temporary file to avoid leaving test.db in the repo
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
+            db_path = tmp_file.name
+        
+        try:
+            backend = BackendFactory.create_storage_backend("duckdb", db_path=db_path)
+            assert backend is not None
+            # Clean up the backend to close connections
+            try:
+                backend.close()
+            except AttributeError:
+                pass
+        finally:
+            # Clean up the database file
+            if os.path.exists(db_path):
+                os.remove(db_path)
+            # Also remove any .wal or .tmp files DuckDB might create
+            for suffix in [".wal", ".tmp"]:
+                wal_path = db_path + suffix
+                if os.path.exists(wal_path):
+                    os.remove(wal_path)
 
     def test_create_storage_backend_duckdb_with_memory(self):
         """Test creating DuckDB backend with memory limit."""

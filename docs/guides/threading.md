@@ -1,18 +1,18 @@
 # Threading Support
 
-Mock-Spark's DuckDB backend includes thread-safe schema creation to support parallel execution contexts such as `ThreadPoolExecutor` and `pytest-xdist`.
+Mock-Spark's Polars backend is **thread-safe by design**, eliminating threading issues that were present with DuckDB. Polars uses Rayon (Rust's data parallelism library) internally, making it safe for concurrent operations.
 
-## DuckDB Connection Isolation Model
+## Thread Safety with Polars
 
-DuckDB connections are **thread-local**, meaning each thread gets its own connection from the SQLAlchemy connection pool. This has important implications:
+Polars backend provides native thread safety:
 
-1. **Schema Visibility**: Schemas created in one thread's connection are **not visible** to other threads (especially for in-memory databases)
-2. **Connection Pooling**: SQLAlchemy manages a connection pool, but each thread receives its own connection instance
-3. **In-Memory Databases**: For in-memory DuckDB databases, each thread has a completely isolated database instance
+1. **No Connection Locks**: Polars is thread-safe by design - no need for connection locks or thread-local handling
+2. **Concurrent Operations**: Multiple threads can safely operate on DataFrames simultaneously
+3. **Parallel Execution**: Polars automatically parallelizes operations across threads when beneficial
 
-## Thread-Safe Schema Creation
+## Thread-Safe Operations
 
-Mock-Spark automatically handles thread-local schema creation:
+All operations with Polars backend are thread-safe:
 
 ```python
 from mock_spark import MockSparkSession
@@ -22,28 +22,28 @@ spark = MockSparkSession("MyApp")
 
 def create_table_in_thread(schema_name, table_name):
     """Create a table in a worker thread."""
-    # Schema is automatically created in this thread's connection
+    # No special handling needed - Polars is thread-safe
     df = spark.createDataFrame([{"id": 1, "name": "Alice"}])
     df.write.saveAsTable(f"{schema_name}.{table_name}")
 
-# Use ThreadPoolExecutor
-with ThreadPoolExecutor(max_workers=4) as executor:
+# Use ThreadPoolExecutor - no threading issues!
+with ThreadPoolExecutor(max_workers=8) as executor:
     futures = [
         executor.submit(create_table_in_thread, f"schema_{i}", f"table_{i}")
         for i in range(10)
     ]
     for future in futures:
-        future.result()  # All operations succeed
+        future.result()  # All operations succeed without locks
 ```
 
 ## How It Works
 
-Mock-Spark implements thread-safe schema creation through:
+Polars provides thread safety through:
 
-1. **Thread-Local Caching**: Each thread maintains a cache of schemas it has created
-2. **Automatic Schema Creation**: When a schema is needed, it's automatically created in the current thread's connection
-3. **Retry Logic**: Schema creation includes retry logic (3 attempts) with exponential backoff to handle race conditions
-4. **Connection Verification**: After creation, the schema is verified to exist in the thread's connection
+1. **Rust-Based Core**: Polars is built on Rust with Rayon for data parallelism
+2. **No Shared Mutable State**: Each operation works on immutable DataFrames
+3. **Automatic Parallelization**: Polars parallelizes operations internally when safe
+4. **No Connection Management**: Unlike SQL databases, Polars doesn't require connection pooling
 
 ## Best Practices
 
@@ -58,7 +58,7 @@ def process_data(schema_name, data):
     """Process data in a worker thread."""
     spark = MockSparkSession("MyApp")
     df = spark.createDataFrame(data)
-    # Schema is automatically created in this thread
+    # No threading concerns - Polars handles it
     df.write.saveAsTable(f"{schema_name}.results")
 
 with ThreadPoolExecutor(max_workers=8) as executor:
@@ -75,56 +75,37 @@ with ThreadPoolExecutor(max_workers=8) as executor:
 When running tests with `pytest-xdist`:
 
 ```bash
-# Run tests in parallel with 8 workers
+# Run tests in parallel with 8 workers - no threading issues!
 pytest -n 8 tests/
 
-# Mock-Spark automatically handles schema creation in each process/thread
+# Polars backend is thread-safe - no special configuration needed
 ```
 
-No special configuration is needed - Mock-Spark handles thread-local schema creation automatically.
+No special configuration is needed - Mock-Spark with Polars backend handles threading automatically.
 
-## Limitations
+## Comparison with DuckDB Backend
 
-### In-Memory Databases
+### DuckDB Backend (v2.x and earlier)
 
-For in-memory DuckDB databases, each thread has a completely isolated database. This means:
+- **Thread-local connections**: Each thread needed its own connection
+- **Schema visibility issues**: Schemas created in one thread weren't visible to others
+- **Connection locks required**: Required `_connection_lock` to prevent race conditions
+- **Retry logic needed**: Schema creation needed retries with exponential backoff
 
-- **Data Isolation**: Data created in one thread is not visible to other threads
-- **Schema Isolation**: Schemas must be created in each thread that needs them
-- **Use Case**: This is typically fine for testing where each test gets its own isolated environment
+### Polars Backend (v3.0.0+)
 
-### Persistent Databases
-
-For persistent databases (using `db_path` parameter), schemas are shared across threads within the same process, but:
-
-- **Schema Creation**: Still needs to be done per-thread to ensure visibility
-- **Data Sharing**: Data is shared across threads (within the same process)
-- **Process Isolation**: Different processes (e.g., pytest-xdist workers) have separate database files
-
-## Error Handling
-
-If schema creation fails, Mock-Spark raises clear error messages:
-
-```python
-try:
-    storage.create_schema("my_schema")
-except RuntimeError as e:
-    # Error message indicates threading issue
-    print(f"Schema creation failed: {e}")
-```
-
-Error messages include:
-- Schema name that failed to create
-- Indication that it may be a threading issue
-- Suggestion to check DuckDB connection
+- **Thread-safe by design**: No connection management needed
+- **No schema visibility issues**: Polars doesn't use SQL schemas
+- **No locks required**: Operations are inherently thread-safe
+- **No retry logic**: No race conditions to handle
 
 ## Performance Considerations
 
-Thread-local schema tracking adds minimal overhead:
+Polars threading provides excellent performance:
 
-- **Fast Path**: Thread-local cache provides O(1) lookup for existing schemas
-- **Retry Logic**: Only activates when schema doesn't exist (rare case)
-- **Overhead**: < 5% overhead for schema operations
+- **Automatic Parallelization**: Polars parallelizes operations across available CPU cores
+- **No Lock Overhead**: No connection locks means lower overhead
+- **Better Scalability**: Can safely use many threads without contention
 
 ## Example: Parallel Pipeline Execution
 
@@ -142,12 +123,12 @@ def run_pipeline_step(step_id, input_data):
     # Process data
     result = df.select("id", "value").filter("value > 10")
     
-    # Save to table (schema automatically created in this thread)
+    # Save to table (thread-safe - no special handling needed)
     result.write.saveAsTable(f"step_{step_id}.results")
     
     return result.count()
 
-# Run multiple pipeline steps in parallel
+# Run multiple pipeline steps in parallel - no threading issues!
 with ThreadPoolExecutor(max_workers=4) as executor:
     futures = [
         executor.submit(run_pipeline_step, i, data[i])
@@ -158,25 +139,35 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 
 ## Troubleshooting
 
-### Schema Not Visible in Thread
+### No Threading Issues!
 
-If you encounter issues where a schema created in one thread isn't visible in another:
+With Polars backend, threading issues should be completely eliminated. If you encounter any issues:
 
-1. **Check Thread Isolation**: Ensure you're not expecting cross-thread schema visibility for in-memory databases
-2. **Verify Schema Creation**: Use `storage.schema_exists()` to check if schema exists in current thread
-3. **Check Error Messages**: Look for threading-related error messages
+1. **Verify Backend**: Ensure you're using Polars backend (default in v3.0.0+)
+   ```python
+   from mock_spark.backend.factory import BackendFactory
+   backend_type = BackendFactory.get_backend_type(spark.storage)
+   assert backend_type == "polars"
+   ```
 
-### Segmentation Faults
+2. **Check Polars Version**: Ensure you have a recent version of Polars
+   ```bash
+   pip install polars>=0.20.0
+   ```
 
-If you encounter segmentation faults when running tests in parallel:
+3. **No Special Configuration**: No threading-related configuration needed
 
-1. **Update Mock-Spark**: Ensure you're using a version with thread-safe schema creation (2.16.1+)
-2. **Check Test Isolation**: Ensure tests properly clean up between runs
-3. **Run with Fewer Workers**: Try `pytest -n 2` instead of `-n 8` to isolate the issue
+## Migration from DuckDB
+
+If you're migrating from DuckDB backend and had threading issues:
+
+- **No more locks**: Remove any threading workarounds
+- **No retry logic**: Remove schema creation retries
+- **Simpler code**: Threading concerns are handled automatically
 
 ## See Also
 
 - [Configuration Guide](./configuration.md) - Configuration options for Mock-Spark
 - [Pytest Integration Guide](./pytest_integration.md) - Using Mock-Spark with pytest
 - [Memory Management Guide](./memory_management.md) - Managing memory in parallel contexts
-
+- [Migration Guide](../migration_from_v2_to_v3.md) - Migrating from DuckDB to Polars

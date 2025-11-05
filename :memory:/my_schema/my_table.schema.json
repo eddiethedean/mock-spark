@@ -1,0 +1,16 @@
+{
+  "fields": [
+    {
+      "name": "id",
+      "type": "LongType",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "value",
+      "type": "StringType",
+      "nullable": true,
+      "metadata": {}
+    }
+  ]
+}

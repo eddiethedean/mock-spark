@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the backend architecture refactor that isolates DuckDB backend logic into a dedicated directory and decouples modules using protocols.
+This document describes the backend architecture with Polars as the default backend (v3.0.0+). The architecture supports multiple backends (Polars, DuckDB, memory, file) through a pluggable system with protocol-based interfaces.
 
 ## Architecture Changes
 
@@ -29,7 +29,7 @@ mock_spark/
 - Difficult to test modules independently
 - No clear separation between backend and business logic
 
-### After Refactor
+### Current Architecture (v3.0.0+)
 
 ```
 mock_spark/
@@ -37,7 +37,18 @@ mock_spark/
     __init__.py
     protocols.py             # Protocol definitions
     factory.py               # Backend factory
-    duckdb/
+    polars/
+      __init__.py
+      storage.py             # Polars storage backend (Parquet-based)
+      materializer.py        # Polars lazy evaluation
+      expression_translator.py  # MockColumn → Polars expressions
+      operation_executor.py    # DataFrame operations
+      window_handler.py        # Window functions
+      export.py              # Polars export utilities
+      type_mapper.py         # Type conversion
+      schema_registry.py     # JSON schema storage
+      parquet_storage.py     # Parquet file operations
+    duckdb/                  # Legacy backend (optional)
       __init__.py
       storage.py             # DuckDB storage backend
       materializer.py        # DuckDB lazy evaluation
@@ -59,7 +70,9 @@ mock_spark/
 - Dependency injection via `BackendFactory`
 - Easy to test with mock backends
 - Clear separation of concerns
-- Backward compatibility maintained
+- Multiple backend support (Polars default, DuckDB optional)
+- Thread-safe by design (Polars backend)
+- Backward compatibility maintained (DuckDB still available)
 
 ## Protocol Definitions
 
@@ -114,10 +127,10 @@ class ExportBackend(Protocol):
 The `BackendFactory` provides centralized backend instantiation with dependency injection support.
 
 ```python
-# Creating backends
-storage = BackendFactory.create_storage_backend("duckdb", max_memory="1GB")
-materializer = BackendFactory.create_materializer("duckdb")
-exporter = BackendFactory.create_export_backend("duckdb")
+# Creating backends (Polars is default)
+storage = BackendFactory.create_storage_backend("polars")
+materializer = BackendFactory.create_materializer("polars")
+exporter = BackendFactory.create_export_backend("polars")
 
 # Using in session with DI
 spark = MockSparkSession("app", storage_backend=custom_storage)
@@ -130,8 +143,8 @@ spark = MockSparkSession("app", storage_backend=custom_storage)
 ```python
 from mock_spark import MockSparkSession
 
-# Uses DuckDB backend by default
-spark = MockSparkSession("MyApp", max_memory="2GB")
+# Uses Polars backend by default (v3.0.0+)
+spark = MockSparkSession("MyApp")
 ```
 
 ### Session with Custom Backend
@@ -140,7 +153,10 @@ spark = MockSparkSession("MyApp", max_memory="2GB")
 from mock_spark import MockSparkSession
 from mock_spark.backend.factory import BackendFactory
 
-# Create custom backend
+# Create custom backend (Polars)
+custom_storage = BackendFactory.create_storage_backend("polars")
+
+# Or use DuckDB backend (legacy)
 custom_storage = BackendFactory.create_storage_backend(
     "duckdb", 
     max_memory="4GB",
@@ -177,10 +193,15 @@ Backend selection is now configurable through the session builder's `.config()` 
 ```python
 from mock_spark import MockSparkSession
 
-# Default backend (DuckDB) - backward compatible
+# Default backend (Polars) - v3.0.0+
 spark = MockSparkSession("MyApp")
 
 # Explicit backend selection
+spark = MockSparkSession.builder \
+    .config("spark.mock.backend", "polars") \
+    .getOrCreate()
+
+# Legacy DuckDB backend (still supported)
 spark = MockSparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .config("spark.mock.backend.maxMemory", "4GB") \
