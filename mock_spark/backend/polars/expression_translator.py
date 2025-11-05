@@ -119,7 +119,7 @@ class PolarsExpressionTranslator:
             "add_months", "last_day"
         ]:
             return self._translate_function_call(op)
-        
+
         # Handle unary operations
         if value is None:
             # Handle operators first (before function calls)
@@ -305,7 +305,7 @@ class PolarsExpressionTranslator:
                 # monotonically_increasing_id() - generate row numbers
                 # Use int_range to generate sequential IDs
                 return pl.int_range(pl.len())
-        
+
         # Translate column expression
         if isinstance(column, MockColumn):
             col_expr = pl.col(column.name)
@@ -484,12 +484,12 @@ class PolarsExpressionTranslator:
                 return col_expr.dt.offset_by(-days)
             elif operation == "datediff":
                 # datediff(end, start) - note: in PySpark, end comes first
-                # But in MockColumnOperation, column is start, value is end
-                end_date = self.translate(op.value)
+                # In MockColumnOperation: column is end, value is start
+                start_date = self.translate(op.value)
                 # Try to parse both as dates - use strptime with strict=False to handle both strings and dates
                 # For strings, try parsing; for dates, use directly
-                start_parsed = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
-                end_parsed = end_date.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
+                end_parsed = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
+                start_parsed = start_date.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 return (end_parsed - start_parsed).dt.total_days()
             elif operation == "lpad":
                 # lpad(col, len, pad)
@@ -751,7 +751,7 @@ class PolarsExpressionTranslator:
             "dayofyear": lambda e: self._extract_datetime_part(e, "dayofyear"),
             "weekofyear": lambda e: self._extract_datetime_part(e, "weekofyear"),
             "quarter": lambda e: self._extract_datetime_part(e, "quarter"),
-            "reverse": lambda e: self._reverse_expr(e),  # Handle both string and array reverse
+            "reverse": lambda e: self._reverse_expr(e, op),  # Handle both string and array reverse
             "isnan": lambda e: e.is_nan(),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
             "isnull": lambda e: e.is_null(),
@@ -780,27 +780,33 @@ class PolarsExpressionTranslator:
                     return func()
             raise ValueError(f"Unsupported function: {function_name}")
 
-    def _reverse_expr(self, expr: pl.Expr) -> pl.Expr:
+    def _reverse_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
         """Handle reverse for both strings and arrays.
         
         Args:
             expr: Polars expression (column reference)
+            op: The MockColumnOperation to check column type
             
         Returns:
             Polars expression for reverse (string or list)
         """
-        # Since F.reverse() defaults to StringFunctions.reverse(), we default to string reverse
-        # For arrays, ArrayFunctions.reverse() should be used directly, which will call list.reverse()
-        # But we need to handle both cases. Since we can't check dtype at translation time,
-        # we'll use a conditional that checks at runtime using pl.when
-        # However, Polars doesn't have a direct way to check dtype in expressions
-        # For now, default to string reverse since that's the default behavior of F.reverse()
-        try:
-            return expr.str.reverse()
-        except AttributeError:
-            # If str.reverse doesn't exist, try list.reverse
-            return expr.list.reverse()
+        # Check if the column is an array type by inspecting the operation's column
+        from mock_spark.spark_types import ArrayType
+        is_array = False
+        if hasattr(op, 'column'):
+            col = op.column
+            if hasattr(col, 'column_type'):
+                is_array = isinstance(col.column_type, ArrayType)
+            elif hasattr(col, 'name'):
+                # Could check schema, but for now default based on context
+                pass
         
+        if is_array:
+            return expr.list.reverse()
+        else:
+            # Default to string reverse (F.reverse() defaults to StringFunctions)
+            return expr.str.reverse()
+
     def _extract_datetime_part(self, expr: pl.Expr, part: str) -> pl.Expr:
         """Extract datetime part from expression, handling both string and datetime columns.
         
@@ -819,7 +825,7 @@ class PolarsExpressionTranslator:
             "hour": lambda e: e.dt.hour(),
             "minute": lambda e: e.dt.minute(),
             "second": lambda e: e.dt.second(),
-            "dayofweek": lambda e: e.dt.weekday() + 1,  # Polars returns 0-6, PySpark expects 1-7
+            "dayofweek": lambda e: (e.dt.weekday() % 7) + 1,  # Polars ISO: Mon=1,Sun=7; PySpark: Sun=1,Mon=2,...,Sat=7
             "dayofyear": lambda e: e.dt.ordinal_day(),
             "weekofyear": lambda e: e.dt.week(),
             "quarter": lambda e: e.dt.quarter(),
