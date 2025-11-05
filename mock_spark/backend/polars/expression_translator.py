@@ -361,24 +361,29 @@ class PolarsExpressionTranslator:
                 delimiter = op.value
                 return col_expr.str.split(delimiter)
             elif operation == "concat":
-                # concat(*columns) - op.value is list of additional columns/literals
-                if isinstance(op.value, list) and len(op.value) > 0:
+                # concat(*columns) - op.value is tuple/list of additional columns/literals
+                # The first column is in op.column, the rest are in op.value
+                if op.value and (isinstance(op.value, (list, tuple)) and len(op.value) > 0):
                     # Translate all columns/literals
-                    other_cols = []
+                    all_cols = [col_expr]  # Start with the first column
                     for col in op.value:
                         if isinstance(col, str):
                             # String literal
-                            other_cols.append(pl.lit(col))
+                            all_cols.append(pl.lit(col))
+                        elif hasattr(col, 'value'):  # MockLiteral
+                            all_cols.append(pl.lit(col.value))
                         else:
                             # Column or expression
-                            other_cols.append(self.translate(col))
-                    # Concatenate all columns
-                    result = col_expr
-                    for other_col in other_cols:
+                            all_cols.append(self.translate(col))
+                    # Cast all to string and concatenate
+                    str_cols = [col.cast(pl.Utf8) for col in all_cols]
+                    result = str_cols[0]
+                    for other_col in str_cols[1:]:
                         result = result + other_col
                     return result
                 else:
-                    return col_expr
+                    # Single column - just cast to string
+                    return col_expr.cast(pl.Utf8)
             elif operation == "concat_ws":
                 # concat_ws(sep, *columns) - op.value is (sep, [columns])
                 if isinstance(op.value, tuple) and len(op.value) >= 1:
@@ -424,7 +429,13 @@ class PolarsExpressionTranslator:
             elif operation == "round":
                 # round(col, decimals)
                 decimals = op.value if isinstance(op.value, int) else 0
-                return col_expr.round(decimals)
+                if decimals < 0:
+                    # Negative decimals: round to nearest 10^|decimals|
+                    # e.g., round(12345, -3) = round(12345/1000) * 1000 = 12000
+                    factor = 10 ** abs(decimals)
+                    return (col_expr / factor).round() * factor
+                else:
+                    return col_expr.round(decimals)
             elif operation == "pow":
                 # pow(col, exponent)
                 exponent = self.translate(op.value) if not isinstance(op.value, (int, float)) else pl.lit(op.value)
