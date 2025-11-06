@@ -1039,6 +1039,139 @@ class PolarsExpressionTranslator:
             # Default to string reverse (F.reverse() defaults to StringFunctions)
             return expr.str.reverse()
 
+    def _parse_simple_case_when(self, sql_expr: str) -> pl.Expr:
+        """Parse simple CASE WHEN expression and convert to Polars expression.
+        
+        Args:
+            sql_expr: SQL expression string like "CASE WHEN age > 30 THEN 'Senior' ELSE 'Junior' END"
+            
+        Returns:
+            Polars expression equivalent
+        """
+        import re
+        
+        # Simple regex-based parser for CASE WHEN ... THEN ... ELSE ... END
+        # Pattern: CASE WHEN condition THEN value1 ELSE value2 END
+        # Remove CASE and END keywords
+        sql_lower = sql_expr.lower()
+        if not sql_lower.startswith("case when") or not sql_lower.endswith("end"):
+            raise ValueError(f"Unsupported CASE WHEN format: {sql_expr}")
+        
+        # Extract the middle part: WHEN ... THEN ... ELSE ...
+        # Remove "CASE " and " END" (case-insensitive)
+        middle = sql_expr[5:-4].strip()  # Remove "CASE " and " END"
+        
+        # Split by THEN and ELSE (case-insensitive)
+        # Pattern: WHEN condition THEN value1 ELSE value2
+        then_match = re.search(r'\s+then\s+', middle, re.IGNORECASE)
+        else_match = re.search(r'\s+else\s+', middle, re.IGNORECASE)
+        
+        if not then_match:
+            raise ValueError(f"Invalid CASE WHEN: missing THEN: {sql_expr}")
+        
+        # Extract condition (between WHEN and THEN)
+        condition_str = middle[:then_match.start()].strip()
+        if condition_str.lower().startswith("when"):
+            condition_str = condition_str[4:].strip()  # Remove "when"
+        
+        # Extract THEN value
+        if else_match:
+            then_value_str = middle[then_match.end():else_match.start()].strip()
+            else_value_str = middle[else_match.end():].strip()
+        else:
+            then_value_str = middle[then_match.end():].strip()
+            else_value_str = None
+        
+        # Parse condition (e.g., "age > 30")
+        # Simple comparison: column operator value
+        condition_expr = self._parse_condition(condition_str)
+        
+        # Parse THEN and ELSE values
+        then_expr = self._parse_value(then_value_str)
+        else_expr = self._parse_value(else_value_str) if else_value_str else None
+        
+        # Build Polars expression: pl.when(condition).then(then_value).otherwise(else_value)
+        if else_expr is not None:
+            return pl.when(condition_expr).then(then_expr).otherwise(else_expr)
+        else:
+            return pl.when(condition_expr).then(then_expr)
+    
+    def _parse_condition(self, condition_str: str) -> pl.Expr:
+        """Parse a condition string into a Polars expression.
+        
+        Args:
+            condition_str: Condition like "age > 30", "salary == 50000", etc.
+            
+        Returns:
+            Polars expression
+        """
+        import re
+        
+        # Simple parser for comparison operators: column operator value
+        operators = ['>=', '<=', '!=', '==', '>', '<', '=']
+        for op in operators:
+            if op in condition_str:
+                parts = condition_str.split(op, 1)
+                if len(parts) == 2:
+                    left = parts[0].strip()
+                    right = parts[1].strip()
+                    
+                    # Parse left side (column reference)
+                    left_expr = pl.col(left)
+                    
+                    # Parse right side (literal or column)
+                    right_expr = self._parse_value(right)
+                    
+                    # Build comparison expression
+                    if op in ['==', '=']:
+                        return left_expr == right_expr
+                    elif op == '!=':
+                        return left_expr != right_expr
+                    elif op == '>':
+                        return left_expr > right_expr
+                    elif op == '>=':
+                        return left_expr >= right_expr
+                    elif op == '<':
+                        return left_expr < right_expr
+                    elif op == '<=':
+                        return left_expr <= right_expr
+        
+        raise ValueError(f"Unable to parse condition: {condition_str}")
+    
+    def _parse_value(self, value_str: str) -> pl.Expr:
+        """Parse a value string into a Polars expression.
+        
+        Args:
+            value_str: Value like "'Senior'", "30", "age", etc.
+            
+        Returns:
+            Polars expression (literal or column reference)
+        """
+        value_str = value_str.strip()
+        
+        # String literal (quoted)
+        if (value_str.startswith("'") and value_str.endswith("'")) or \
+           (value_str.startswith('"') and value_str.endswith('"')):
+            # Remove quotes
+            literal_value = value_str[1:-1]
+            return pl.lit(literal_value)
+        
+        # Numeric literal
+        try:
+            if '.' in value_str:
+                return pl.lit(float(value_str))
+            else:
+                return pl.lit(int(value_str))
+        except ValueError:
+            pass
+        
+        # Boolean literal
+        if value_str.lower() in ['true', 'false']:
+            return pl.lit(value_str.lower() == 'true')
+        
+        # Column reference
+        return pl.col(value_str)
+
     def _extract_datetime_part(self, expr: pl.Expr, part: str) -> pl.Expr:
         """Extract datetime part from expression, handling both string and datetime columns.
         
