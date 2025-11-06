@@ -123,6 +123,14 @@ class PolarsOperationExecutor:
                                     map_cols.append(other_col)
                                 elif hasattr(other_col, 'name'):
                                     map_cols.append(other_col.name)
+                                elif hasattr(other_col, 'column') and hasattr(other_col.column, 'name'):
+                                    # Handle nested column references
+                                    map_cols.append(other_col.column.name)
+                                else:
+                                    # Try to get name from string representation or other attributes
+                                    col_str = str(other_col)
+                                    if col_str in df.columns:
+                                        map_cols.append(col_str)
                             
                             # Merge all struct columns - combine all fields from all maps
                             # Get all field names from all struct columns
