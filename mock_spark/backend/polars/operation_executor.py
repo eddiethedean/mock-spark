@@ -112,6 +112,52 @@ class PolarsOperationExecutor:
                         select_exprs.append(entries_list.alias(alias_name))
                         select_names.append(alias_name)
                         map_op_indices.add(i)
+                    elif map_op_name == 'map_concat':
+                        # map_concat(*cols) - merge multiple maps
+                        # col.value contains additional columns (first column is in col.column)
+                        if hasattr(col, 'value') and col.value and isinstance(col.value, (list, tuple)):
+                            # Get all map column names
+                            map_cols = [map_col_name]  # Start with first column
+                            for other_col in col.value:
+                                if isinstance(other_col, str):
+                                    map_cols.append(other_col)
+                                elif hasattr(other_col, 'name'):
+                                    map_cols.append(other_col.name)
+                            
+                            # Merge all struct columns - combine all fields from all maps
+                            # Get all field names from all struct columns
+                            all_field_names = set()
+                            for map_col in map_cols:
+                                if map_col in df.columns:
+                                    struct_dtype = df[map_col].dtype
+                                    if hasattr(struct_dtype, 'fields'):
+                                        all_field_names.update([f.name for f in struct_dtype.fields])
+                            all_field_names = sorted(list(all_field_names))
+                            
+                            # Build merged struct: for each field, take value from later maps first (they override)
+                            # Later maps override earlier ones (PySpark behavior)
+                            struct_field_exprs = []
+                            for fname in all_field_names:
+                                # Check each map column in reverse order (later maps override earlier)
+                                value_exprs = []
+                                for map_col in reversed(map_cols):
+                                    if map_col in df.columns:
+                                        struct_dtype = df[map_col].dtype
+                                        if hasattr(struct_dtype, 'fields') and any(f.name == fname for f in struct_dtype.fields):
+                                            value_exprs.append(pl.col(map_col).struct.field(fname))
+                                
+                                if value_exprs:
+                                    # Use coalesce to take first non-null value (later maps first)
+                                    if len(value_exprs) == 1:
+                                        struct_field_exprs.append(value_exprs[0].alias(fname))
+                                    else:
+                                        struct_field_exprs.append(pl.coalesce(value_exprs).alias(fname))
+                            
+                            # Create merged struct with all fields
+                            merged_struct = pl.struct(struct_field_exprs)
+                            select_exprs.append(merged_struct.alias(alias_name))
+                            select_names.append(alias_name)
+                            map_op_indices.add(i)
 
         # Second pass: handle all other columns (skip map operations already handled)
         for i, col in enumerate(columns):
