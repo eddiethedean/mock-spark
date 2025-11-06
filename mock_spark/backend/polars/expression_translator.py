@@ -808,29 +808,25 @@ class PolarsExpressionTranslator:
         elif function_name == "map_keys":
             # map_keys(col) - extract all keys from map/dict as array
             # Polars converts dicts to structs, so we need to get only non-null struct fields
-            # Use struct operations to get field names and filter by non-null per row
-            # Get struct dtype to find all possible fields, then filter by non-null
-            # Note: This requires the column to be materialized, so we use map_elements as fallback
-            # For structs, we need to check each field for null
-            # Try to get struct fields from expression context, or use map_elements
-            try:
-                # If we can access the struct dtype, use it to build field checks
-                # Otherwise, use map_elements which handles both dicts and structs
-                return col_expr.map_elements(
-                    lambda x: (
-                        list(x.keys()) if isinstance(x, dict)
-                        else [k for k in x.keys() if x.get(k) is not None] if isinstance(x, dict) and hasattr(x, 'get')
-                        else [k for k, v in x.items() if v is not None] if hasattr(x, 'items')
-                        else None
-                    ) if x is not None else None,
-                    return_dtype=pl.List(pl.Utf8)
-                )
-            except Exception:
-                # Fallback: assume it's a dict
-                return col_expr.map_elements(
-                    lambda x: list(x.keys()) if isinstance(x, dict) and x is not None else None,
-                    return_dtype=pl.List(pl.Utf8)
-                )
+            # Use struct operations to check each field for null and collect non-null field names
+            # This requires accessing the struct dtype, which we can't do at translation time
+            # So we use a workaround: map_elements with a lambda that checks struct fields
+            # For Polars structs, we need to iterate through all possible fields and check nullness
+            # Since we can't access dtype at translation time, use map_elements with runtime dtype check
+            return col_expr.map_elements(
+                lambda x: (
+                    # If it's a dict, use keys directly
+                    list(x.keys()) if isinstance(x, dict)
+                    # If it's a Polars struct (Row object), get field names from schema
+                    else [k for k in getattr(x, '_schema', {}).keys() if getattr(x, k, None) is not None] if hasattr(x, '_schema')
+                    # Try to get struct fields using __struct_fields__
+                    else [f.name for f in getattr(x, '__struct_fields__', []) if getattr(x, f.name, None) is not None] if hasattr(x, '__struct_fields__')
+                    # For dict-like objects, filter by non-null values
+                    else [k for k, v in x.items() if v is not None] if hasattr(x, 'items') and callable(x.items)
+                    else None
+                ) if x is not None else None,
+                return_dtype=pl.List(pl.Utf8)
+            )
         elif function_name == "map_values":
             # map_values(col) - extract all values from map/dict as array
             # For structs, get only non-null values; for dicts, get values

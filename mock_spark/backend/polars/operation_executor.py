@@ -49,8 +49,74 @@ class PolarsOperationExecutor:
         """
         select_exprs = []
         select_names = []
+        map_op_indices = set()  # Track which columns are map operations
 
-        for col in columns:
+        # First pass: handle map_keys, map_values, map_entries using struct operations
+        for i, col in enumerate(columns):
+            # Check if this is a map_keys, map_values, or map_entries operation
+            is_map_op = False
+            map_op_name = None
+            map_col_name = None
+            if hasattr(col, 'operation'):
+                if col.operation in ['map_keys', 'map_values', 'map_entries']:
+                    is_map_op = True
+                    map_op_name = col.operation
+                    if hasattr(col, 'column') and hasattr(col.column, 'name'):
+                        map_col_name = col.column.name
+            elif hasattr(col, 'function_name') and col.function_name in ['map_keys', 'map_values', 'map_entries']:
+                is_map_op = True
+                map_op_name = col.function_name
+                if hasattr(col, 'column') and hasattr(col.column, 'name'):
+                    map_col_name = col.column.name
+            
+            if is_map_op and map_col_name and map_col_name in df.columns:
+                # Get the struct dtype for this column
+                struct_dtype = df[map_col_name].dtype
+                if hasattr(struct_dtype, 'fields') and struct_dtype.fields:
+                    # Build expression using struct.field() checks
+                    field_names = [f.name for f in struct_dtype.fields]
+                    alias_name = getattr(col, "name", None) or f"{map_op_name}({map_col_name})"
+                    if map_op_name == 'map_keys':
+                        # Get only non-null field names
+                        keys_expr = pl.concat_list([
+                            pl.when(pl.col(map_col_name).struct.field(fname).is_not_null())
+                            .then(pl.lit(fname))
+                            .otherwise(None)
+                            for fname in field_names
+                        ]).list.drop_nulls()
+                        select_exprs.append(keys_expr.alias(alias_name))
+                        select_names.append(alias_name)
+                        map_op_indices.add(i)
+                    elif map_op_name == 'map_values':
+                        # Get only non-null field values
+                        values_expr = pl.concat_list([
+                            pl.when(pl.col(map_col_name).struct.field(fname).is_not_null())
+                            .then(pl.col(map_col_name).struct.field(fname))
+                            .otherwise(None)
+                            for fname in field_names
+                        ]).list.drop_nulls()
+                        select_exprs.append(values_expr.alias(alias_name))
+                        select_names.append(alias_name)
+                        map_op_indices.add(i)
+                    elif map_op_name == 'map_entries':
+                        # Create array of structs with key and value
+                        entries_list = pl.concat_list([
+                            pl.struct([
+                                pl.lit(fname).cast(pl.Utf8).alias("key"),
+                                pl.col(map_col_name).struct.field(fname).alias("value")
+                            ])
+                            for fname in field_names
+                        ]).list.filter(
+                            pl.element().struct.field("value").is_not_null()
+                        )
+                        select_exprs.append(entries_list.alias(alias_name))
+                        select_names.append(alias_name)
+                        map_op_indices.add(i)
+
+        # Second pass: handle all other columns (skip map operations already handled)
+        for i, col in enumerate(columns):
+            if i in map_op_indices:
+                continue  # Skip map operations already handled
             if isinstance(col, str):
                 if col == "*":
                     # Select all columns - return original DataFrame
