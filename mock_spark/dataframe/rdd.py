@@ -99,7 +99,9 @@ class MockRDD:
             Reduced value.
         """
         if not self.data:
-            raise ValueError("Cannot reduce empty RDD")
+            from ..core.exceptions import PySparkValueError
+
+            raise PySparkValueError("Cannot reduce empty RDD")
 
         result = self.data[0]
         for item in self.data[1:]:
@@ -131,21 +133,21 @@ class MockRDD:
             schema: Optional schema for the DataFrame.
 
         Returns:
-            MockDataFrame representation.
+            DataFrame representation.
         """
         # Import here to avoid circular imports
-        from ..dataframe import MockDataFrame
-        from ..spark_types import MockStructType
+        from ..dataframe import DataFrame
+        from ..spark_types import StructType
         from ..core.schema_inference import SchemaInferenceEngine
 
         # If schema is None, infer it from data
         if schema is None:
             if not self.data:
-                schema = MockStructType([])
+                schema = StructType([])
             else:
                 schema, _ = SchemaInferenceEngine.infer_from_data(self.data)
 
-        return MockDataFrame(self.data, schema)
+        return DataFrame(self.data, schema)
 
     def cache(self) -> "MockRDD":
         """Cache the RDD.

@@ -1,19 +1,19 @@
-"""Join operations for MockDataFrame."""
+"""Join operations for DataFrame."""
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
-from ...spark_types import MockStructType, MockStructField
+from ...spark_types import StructType, StructField
 
 if TYPE_CHECKING:
-    from ...dataframe.dataframe import MockDataFrame
+    from ...dataframe.dataframe import DataFrame
 
 
-class JoinOperations:
-    """Handles join operations for MockDataFrame."""
+class JoinOperationsStatic:
+    """Static utility methods for join operations (legacy - use JoinOperations mixin instead)."""
 
     @staticmethod
     def cross_join(
-        left_df: "MockDataFrame", right_df: "MockDataFrame"
-    ) -> Tuple[List[Dict[str, Any]], MockStructType]:
+        left_df: "DataFrame", right_df: "DataFrame"
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform cross join (Cartesian product) between two DataFrames.
 
         Args:
@@ -41,13 +41,13 @@ class JoinOperations:
                 while new_name in field_names:
                     new_name = f"{field.name}_right_{counter}"
                     counter += 1
-                new_fields.append(MockStructField(new_name, field.dataType))
+                new_fields.append(StructField(new_name, field.dataType))
                 field_names.add(new_name)
             else:
                 new_fields.append(field)
                 field_names.add(field.name)
 
-        new_schema = MockStructType(new_fields)
+        new_schema = StructType(new_fields)
 
         # Create Cartesian product
         result_data = []
@@ -81,8 +81,8 @@ class JoinOperations:
 
     @staticmethod
     def inner_join(
-        left_df: "MockDataFrame", right_df: "MockDataFrame", on_columns: List[str]
-    ) -> Tuple[List[Dict[str, Any]], MockStructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform inner join between two DataFrames.
 
         Args:
@@ -101,11 +101,9 @@ class JoinOperations:
                 new_fields.append(field)
             else:
                 # Handle field name conflicts by prefixing
-                new_fields.append(
-                    MockStructField(f"right_{field.name}", field.dataType)
-                )
+                new_fields.append(StructField(f"right_{field.name}", field.dataType))
 
-        new_schema = MockStructType(new_fields)
+        new_schema = StructType(new_fields)
 
         # Perform the join
         joined_data = []
@@ -134,8 +132,8 @@ class JoinOperations:
 
     @staticmethod
     def left_join(
-        left_df: "MockDataFrame", right_df: "MockDataFrame", on_columns: List[str]
-    ) -> Tuple[List[Dict[str, Any]], MockStructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform left join between two DataFrames.
 
         Args:
@@ -154,11 +152,9 @@ class JoinOperations:
                 new_fields.append(field)
             else:
                 # Handle field name conflicts by prefixing
-                new_fields.append(
-                    MockStructField(f"right_{field.name}", field.dataType)
-                )
+                new_fields.append(StructField(f"right_{field.name}", field.dataType))
 
-        new_schema = MockStructType(new_fields)
+        new_schema = StructType(new_fields)
 
         # Perform the join
         joined_data = []
@@ -199,8 +195,8 @@ class JoinOperations:
 
     @staticmethod
     def right_join(
-        left_df: "MockDataFrame", right_df: "MockDataFrame", on_columns: List[str]
-    ) -> Tuple[List[Dict[str, Any]], MockStructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform right join between two DataFrames.
 
         Args:
@@ -212,12 +208,12 @@ class JoinOperations:
             Tuple of (result_data, result_schema)
         """
         # Right join is equivalent to left join with DataFrames swapped
-        return JoinOperations.left_join(right_df, left_df, on_columns)
+        return JoinOperationsStatic.left_join(right_df, left_df, on_columns)
 
     @staticmethod
     def outer_join(
-        left_df: "MockDataFrame", right_df: "MockDataFrame", on_columns: List[str]
-    ) -> Tuple[List[Dict[str, Any]], MockStructType]:
+        left_df: "DataFrame", right_df: "DataFrame", on_columns: List[str]
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Perform outer join between two DataFrames.
 
         Args:
@@ -236,11 +232,9 @@ class JoinOperations:
                 new_fields.append(field)
             else:
                 # Handle field name conflicts by prefixing
-                new_fields.append(
-                    MockStructField(f"right_{field.name}", field.dataType)
-                )
+                new_fields.append(StructField(f"right_{field.name}", field.dataType))
 
-        new_schema = MockStructType(new_fields)
+        new_schema = StructType(new_fields)
 
         # Perform the join
         joined_data = []
@@ -305,8 +299,8 @@ class JoinOperations:
 
     @staticmethod
     def infer_join_schema(
-        left_df: "MockDataFrame", join_params: Tuple[Any, Any, str]
-    ) -> MockStructType:
+        left_df: "DataFrame", join_params: Tuple[Any, Any, str]
+    ) -> StructType:
         """Infer schema for join operation.
 
         Args:
@@ -332,4 +326,4 @@ class JoinOperations:
             # If field exists with same name, we keep the left one (SQL standard behavior)
             # No need to add the right field
 
-        return MockStructType(new_fields)
+        return StructType(new_fields)

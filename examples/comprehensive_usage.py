@@ -19,8 +19,7 @@ import sys
 # Allow running this script directly without installing the package
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from mock_spark import MockSparkSession, F
-from mock_spark.window import MockWindow as Window
+from mock_spark.sql import SparkSession, functions as F, Window
 
 
 def create_sample_data() -> List[Dict[str, Any]]:
@@ -282,7 +281,7 @@ def main() -> None:
 
     # Initialize
     print("\n📦 Initializing Mock Spark...")
-    spark = MockSparkSession("ComprehensiveDemo")
+    spark = SparkSession("ComprehensiveDemo")
     print(f"   ✓ Session: {spark.app_name}")
 
     # Default to fast mode unless explicitly requested to run full demo

@@ -14,8 +14,8 @@ Key Features:
     - Context lifecycle management
 
 Example:
-    >>> from mock_spark.session import MockSparkContext
-    >>> sc = MockSparkContext("MyApp")
+    >>> from mock_spark.session import SparkContext
+    >>> sc = SparkContext("MyApp")
     >>> sc.setLogLevel("WARN")
     >>> print(sc.appName)
     MyApp
@@ -32,7 +32,7 @@ class MockJVMFunctions:
         pass
 
 
-class MockJVMContext:
+class JVMContext:
     """Mock JVM context for testing without actual JVM."""
 
     def __init__(self) -> None:
@@ -54,7 +54,7 @@ class MockJVMContext:
         pass  # Mock implementation
 
 
-class MockSparkContext:
+class SparkContext:
     """Mock SparkContext for testing without PySpark.
 
     Provides a comprehensive mock implementation of PySpark's SparkContext
@@ -63,23 +63,23 @@ class MockSparkContext:
 
     Attributes:
         app_name: Application name for the Spark context.
-        _jvm: Mock JVM context for JVM operations.
+        _jvm: JVM context for JVM operations.
 
     Example:
-        >>> sc = MockSparkContext("MyApp")
+        >>> sc = SparkContext("MyApp")
         >>> sc.setLogLevel("WARN")
         >>> print(sc.appName)
         MyApp
     """
 
     def __init__(self, app_name: str = "MockSparkApp"):
-        """Initialize MockSparkContext.
+        """Initialize SparkContext.
 
         Args:
             app_name: Name of the Spark application.
         """
         self.app_name = app_name
-        self._jvm = MockJVMContext()
+        self._jvm = JVMContext()
 
     def setLogLevel(self, level: str) -> None:
         """Set log level.
@@ -100,11 +100,11 @@ class MockSparkContext:
         return self.app_name
 
     @property
-    def jvm(self) -> MockJVMContext:
+    def jvm(self) -> JVMContext:
         """Get JVM context.
 
         Returns:
-            Mock JVM context instance.
+            JVM context instance.
         """
         return self._jvm
 
@@ -117,7 +117,7 @@ class MockSparkContext:
         # Mock implementation - in real Spark this would stop the context
         pass
 
-    def __enter__(self) -> "MockSparkContext":
+    def __enter__(self) -> "SparkContext":
         """Context manager entry."""
         return self
 

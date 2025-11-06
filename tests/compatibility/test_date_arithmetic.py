@@ -6,7 +6,7 @@ ensuring that datediff() auto-converts string dates without requiring explicit t
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -15,8 +15,8 @@ class TestDateArithmeticCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("date_arithmetic_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("date_arithmetic_test")
         yield session
         session.stop()
 

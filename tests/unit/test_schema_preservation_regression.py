@@ -4,10 +4,10 @@ Tests for Regression 3: Schema Preservation During Transformations
 Tests that empty DataFrames preserve their schema through transformations (select, filter, withColumn, etc.).
 """
 
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     StringType,
     IntegerType,
     DoubleType,
@@ -19,13 +19,13 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_select_preserves_schema(self):
         """Test that select operation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
-                MockStructField("score", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+                StructField("score", DoubleType()),
             ]
         )
 
@@ -41,12 +41,12 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_filter_preserves_schema(self):
         """Test that filter operation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
@@ -61,12 +61,12 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_withcolumn_preserves_schema(self):
         """Test that withColumn operation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
@@ -82,13 +82,13 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_multiple_transformations(self):
         """Test that multiple transformations preserve schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
-                MockStructField("value", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+                StructField("value", DoubleType()),
             ]
         )
 
@@ -108,19 +108,19 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_join_preserves_schema(self):
         """Test that join operation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema1 = MockStructType(
+        schema1 = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
-        schema2 = MockStructType(
+        schema2 = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("score", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("score", DoubleType()),
             ]
         )
 
@@ -140,13 +140,13 @@ class TestSchemaPreservationRegression:
 
         This simulates the pipeline scenario mentioned in the regression report.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
         # Bronze schema
-        bronze_schema = MockStructType(
+        bronze_schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("raw_data", StringType()),
+                StructField("id", IntegerType()),
+                StructField("raw_data", StringType()),
             ]
         )
 
@@ -166,13 +166,13 @@ class TestSchemaPreservationRegression:
 
         This simulates the complete pipeline scenario mentioned in the regression report.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
         # Bronze schema
-        bronze_schema = MockStructType(
+        bronze_schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("raw_data", StringType()),
+                StructField("id", IntegerType()),
+                StructField("raw_data", StringType()),
             ]
         )
 
@@ -196,12 +196,12 @@ class TestSchemaPreservationRegression:
         This is the specific use case mentioned in the regression report where
         validation rules fail because columns don't exist.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
@@ -218,12 +218,12 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_groupby_preserves_schema(self):
         """Test that groupBy operation preserves schema information for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("category", StringType()),
-                MockStructField("value", DoubleType()),
+                StructField("category", StringType()),
+                StructField("value", DoubleType()),
             ]
         )
 
@@ -241,12 +241,12 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_orderby_preserves_schema(self):
         """Test that orderBy operation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
@@ -261,12 +261,12 @@ class TestSchemaPreservationRegression:
 
     def test_empty_dataframe_lazy_evaluation_preserves_schema(self):
         """Test that lazy evaluation preserves schema for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 

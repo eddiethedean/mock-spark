@@ -6,7 +6,7 @@ specifically focusing on optional fractional seconds patterns like [.SSSSSS].
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -15,8 +15,8 @@ class TestDatetimeParsingCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("datetime_parsing_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("datetime_parsing_test")
         yield session
         session.stop()
 

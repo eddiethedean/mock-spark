@@ -5,8 +5,8 @@ Tests JSON parsing, serialization, and CSV formatting functions.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
-from mock_spark.functions.core.column import MockColumn, MockColumnOperation
+from mock_spark import SparkSession, F
+from mock_spark.functions.core.column import Column, ColumnOperation
 
 
 @pytest.mark.fast
@@ -15,8 +15,8 @@ class TestJSONFunctions:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+        """Create a SparkSession for testing."""
+        return SparkSession("test")
 
     @pytest.fixture
     def sample_data(self):
@@ -71,7 +71,7 @@ class TestJSONFunctions:
         # Note: Actual implementation may vary
         result = F.from_json("json_data", "name STRING, age INT")
 
-        assert isinstance(result, (MockColumn, MockColumnOperation, type(None)))
+        assert isinstance(result, (Column, ColumnOperation, type(None)))
 
     def test_to_json_column(self, spark, sample_data):
         """Test to_json returns a column operation."""
@@ -81,7 +81,7 @@ class TestJSONFunctions:
         # Note: Actual implementation may vary
         result = F.to_json(F.col("id"))
 
-        assert isinstance(result, (MockColumn, MockColumnOperation, type(None)))
+        assert isinstance(result, (Column, ColumnOperation, type(None)))
 
     def test_json_functions_in_f_namespace(self):
         """Test that JSON functions are accessible via F namespace."""
@@ -99,8 +99,8 @@ class TestCSVFunctions:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+        """Create a SparkSession for testing."""
+        return SparkSession("test")
 
     def test_from_csv_exists(self, spark):
         """Test that from_csv function exists."""

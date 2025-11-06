@@ -1,39 +1,62 @@
 """
-Expression translator for converting MockColumn expressions to Polars expressions.
+Expression translator for converting Column expressions to Polars expressions.
 
-This module translates MockSpark column expressions (MockColumn, MockColumnOperation)
+This module translates MockSpark column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any, Optional
+from typing import Any
 import polars as pl
 import math
-from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
-from mock_spark.functions.base import MockAggregateFunction
-from mock_spark.functions.window_execution import MockWindowFunction
+from mock_spark.functions import Column, ColumnOperation, Literal
+from mock_spark.functions.base import AggregateFunction
+from mock_spark.functions.window_execution import WindowFunction
+
+
+def _is_mock_case_when(expr: Any) -> bool:
+    """Check if expression is a CaseWhen instance.
+
+    Args:
+        expr: Expression to check
+
+    Returns:
+        True if expr is a CaseWhen instance
+    """
+    # Use isinstance if available, otherwise check by class name to avoid import issues
+    try:
+        from mock_spark.functions.conditional import CaseWhen
+
+        return isinstance(expr, CaseWhen)
+    except (ImportError, AttributeError):
+        # Fallback: check by class name
+        return (
+            hasattr(expr, "__class__")
+            and expr.__class__.__name__ == "CaseWhen"
+            and hasattr(expr, "conditions")
+        )
 
 
 class PolarsExpressionTranslator:
-    """Translates MockColumn expressions to Polars expressions."""
+    """Translates Column expressions to Polars expressions."""
 
     def translate(self, expr: Any) -> pl.Expr:
-        """Translate MockColumn expression to Polars expression.
+        """Translate Column expression to Polars expression.
 
         Args:
-            expr: MockColumn, MockColumnOperation, or other expression
+            expr: Column, ColumnOperation, or other expression
 
         Returns:
             Polars expression (pl.Expr)
         """
-        if isinstance(expr, MockColumn):
+        if isinstance(expr, Column):
             return self._translate_column(expr)
-        elif isinstance(expr, MockColumnOperation):
+        elif isinstance(expr, ColumnOperation):
             return self._translate_operation(expr)
-        elif isinstance(expr, MockLiteral):
+        elif isinstance(expr, Literal):
             return self._translate_literal(expr)
-        elif isinstance(expr, MockAggregateFunction):
+        elif isinstance(expr, AggregateFunction):
             return self._translate_aggregate_function(expr)
-        elif isinstance(expr, MockWindowFunction):
+        elif isinstance(expr, WindowFunction):
             # Window functions are handled separately in window_handler.py
             raise ValueError("Window functions should be handled by WindowHandler")
         elif isinstance(expr, str):
@@ -47,17 +70,21 @@ class PolarsExpressionTranslator:
             # Don't try to create a literal from it - tuples as literals are not supported in Polars
             # This should be handled by the function that uses it (e.g., concat_ws, substring)
             # If we reach here, it means a tuple was passed where it shouldn't be
-            raise ValueError(f"Cannot translate tuple as literal: {expr}. This should be handled by the function that uses it.")
+            raise ValueError(
+                f"Cannot translate tuple as literal: {expr}. This should be handled by the function that uses it."
+            )
         elif expr is None:
             return pl.lit(None)
+        elif _is_mock_case_when(expr):
+            return self._translate_case_when(expr)
         else:
             raise ValueError(f"Unsupported expression type: {type(expr)}")
 
-    def _translate_column(self, col: MockColumn) -> pl.Expr:
-        """Translate MockColumn to Polars column expression.
+    def _translate_column(self, col: Column) -> pl.Expr:
+        """Translate Column to Polars column expression.
 
         Args:
-            col: MockColumn instance
+            col: Column instance
 
         Returns:
             Polars column expression
@@ -70,22 +97,22 @@ class PolarsExpressionTranslator:
         # Use the column's name directly
         return pl.col(col.name)
 
-    def _translate_literal(self, lit: MockLiteral) -> pl.Expr:
-        """Translate MockLiteral to Polars literal expression.
+    def _translate_literal(self, lit: Literal) -> pl.Expr:
+        """Translate Literal to Polars literal expression.
 
         Args:
-            lit: MockLiteral instance
+            lit: Literal instance
 
         Returns:
             Polars literal expression
         """
         return pl.lit(lit.value)
 
-    def _translate_operation(self, op: MockColumnOperation) -> pl.Expr:
-        """Translate MockColumnOperation to Polars expression.
+    def _translate_operation(self, op: ColumnOperation) -> pl.Expr:
+        """Translate ColumnOperation to Polars expression.
 
         Args:
-            op: MockColumnOperation instance
+            op: ColumnOperation instance
 
         Returns:
             Polars expression
@@ -95,11 +122,11 @@ class PolarsExpressionTranslator:
         value = op.value
 
         # Translate left side
-        if isinstance(column, MockColumn):
+        if isinstance(column, Column):
             left = pl.col(column.name)
-        elif isinstance(column, MockColumnOperation):
+        elif isinstance(column, ColumnOperation):
             left = self._translate_operation(column)
-        elif isinstance(column, MockLiteral):
+        elif isinstance(column, Literal):
             left = pl.lit(column.value)
         elif isinstance(column, str):
             left = pl.col(column)
@@ -107,15 +134,33 @@ class PolarsExpressionTranslator:
             left = pl.lit(column)
         else:
             left = self.translate(column)
-        
+
         # Special handling for cast operation - value should be a type name, not a column
         if operation == "cast":
             return self._translate_cast(left, value)
 
         # Check if this is a binary operator first (must be handled as binary operation, not function)
-        binary_operators = ["==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "&", "|"]
+        binary_operators = [
+            "==",
+            "!=",
+            "<",
+            "<=",
+            ">",
+            ">=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "&",
+            "|",
+        ]
         if operation in binary_operators:
             # Binary operators should NOT be routed to function calls - handle as binary operation below
+            pass
+        # Check if this is a string operation (must be handled as binary operation, not function)
+        elif operation in ["contains", "startswith", "endswith", "like", "rlike"]:
+            # String operations should NOT be routed to function calls - handle as binary operation below
             pass
         # Check if this is a unary operator (must be handled as unary operation, not function)
         elif value is None and operation in ["!", "-"]:
@@ -124,11 +169,37 @@ class PolarsExpressionTranslator:
         # Check if this is a function call (not a binary or unary operation)
         # Functions like concat_ws, substring, etc. have values but are not binary operations
         elif hasattr(op, "function_name") or operation in [
-            "substring", "regexp_replace", "regexp_extract", "split", "concat", "concat_ws",
-            "like", "rlike", "round", "pow", "to_date", "to_timestamp", "date_format",
-            "date_add", "date_sub", "datediff", "lpad", "rpad", "repeat", "instr", "locate",
-            "add_months", "last_day", "bin", "bround", "conv", "factorial",
-            "map_keys", "map_values", "map_entries", "map_concat"
+            "substring",
+            "regexp_replace",
+            "regexp_extract",
+            "split",
+            "concat",
+            "concat_ws",
+            "like",
+            "rlike",
+            "round",
+            "pow",
+            "to_date",
+            "to_timestamp",
+            "date_format",
+            "date_add",
+            "date_sub",
+            "datediff",
+            "lpad",
+            "rpad",
+            "repeat",
+            "instr",
+            "locate",
+            "add_months",
+            "last_day",
+            "bin",
+            "bround",
+            "conv",
+            "factorial",
+            "map_keys",
+            "map_values",
+            "map_entries",
+            "map_concat",
         ]:
             return self._translate_function_call(op)
 
@@ -146,24 +217,77 @@ class PolarsExpressionTranslator:
             # Check if it's a function call (e.g., upper, lower, length)
             # Also check for datetime functions and other unary functions
             elif hasattr(op, "function_name") or operation in [
-                "upper", "lower", "length", "trim", "ltrim", "rtrim",
-                "abs", "ceil", "floor", "sqrt", "exp", "log", "log10",
-                "sin", "cos", "tan", "round", "bin", "bround", "conv", "factorial",
-                "year", "month", "day", "dayofmonth", "hour", "minute", "second",
-                "dayofweek", "dayofyear", "weekofyear", "quarter",
-                "to_date", "current_timestamp", "current_date",
-                "map_keys", "map_values", "map_entries", "map_concat",
+                "upper",
+                "lower",
+                "length",
+                "trim",
+                "ltrim",
+                "rtrim",
+                "btrim",
+                "bit_length",
+                "octet_length",
+                "char",
+                "ucase",
+                "lcase",
+                "positive",
+                "negative",
+                "power",
+                "now",
+                "curdate",
+                "days",
+                "hours",
+                "months",
+                "equal_null",
+                "substr",
+                "split_part",
+                "position",
+                "elt",
+                "abs",
+                "ceil",
+                "floor",
+                "sqrt",
+                "exp",
+                "log",
+                "log10",
+                "sin",
+                "cos",
+                "tan",
+                "round",
+                "bin",
+                "bround",
+                "conv",
+                "factorial",
+                "year",
+                "month",
+                "day",
+                "dayofmonth",
+                "hour",
+                "minute",
+                "second",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+                "quarter",
+                "to_date",
+                "current_timestamp",
+                "current_date",
+                "now",
+                "curdate",
+                "map_keys",
+                "map_values",
+                "map_entries",
+                "map_concat",
             ]:
                 return self._translate_function_call(op)
             else:
                 raise ValueError(f"Unsupported unary operation: {operation}")
 
         # Translate right side
-        if isinstance(value, MockColumn):
+        if isinstance(value, Column):
             right = pl.col(value.name)
-        elif isinstance(value, MockColumnOperation):
+        elif isinstance(value, ColumnOperation):
             right = self._translate_operation(value)
-        elif isinstance(value, MockLiteral):
+        elif isinstance(value, Literal):
             right = pl.lit(value.value)
         elif isinstance(value, (int, float, bool, str)):
             right = pl.lit(value)
@@ -208,8 +332,11 @@ class PolarsExpressionTranslator:
                 return left.is_in(value)
             else:
                 return left.is_in([value])
-        elif operation in ["contains", "startswith", "endswith"]:
+        elif operation in ["startswith", "endswith"]:
             return self._translate_string_operation(left, operation, value)
+        elif operation == "contains":
+            # Handle contains as a function call
+            return self._translate_function_call(op)
         elif hasattr(op, "function_name"):
             # Handle function calls (e.g., upper, lower, sum, etc.)
             return self._translate_function_call(op)
@@ -221,15 +348,23 @@ class PolarsExpressionTranslator:
 
         Args:
             expr: Polars expression to cast
-            target_type: Target data type (MockDataType or string type name)
+            target_type: Target data type (DataType or string type name)
 
         Returns:
             Casted Polars expression
         """
         from .type_mapper import mock_type_to_polars_dtype
         from mock_spark.spark_types import (
-            StringType, IntegerType, LongType, DoubleType, FloatType,
-            BooleanType, DateType, TimestampType, ShortType, ByteType
+            StringType,
+            IntegerType,
+            LongType,
+            DoubleType,
+            FloatType,
+            BooleanType,
+            DateType,
+            TimestampType,
+            ShortType,
+            ByteType,
         )
 
         # Handle string type names (e.g., "string", "int", "long")
@@ -291,11 +426,11 @@ class PolarsExpressionTranslator:
         else:
             raise ValueError(f"Unsupported string operation: {operation}")
 
-    def _translate_function_call(self, op: MockColumnOperation) -> pl.Expr:
+    def _translate_function_call(self, op: ColumnOperation) -> pl.Expr:
         """Translate function call operations.
 
         Args:
-            op: MockColumnOperation with function call
+            op: ColumnOperation with function call
 
         Returns:
             Polars expression for function call
@@ -309,20 +444,37 @@ class PolarsExpressionTranslator:
             if operation == "current_timestamp":
                 # Use datetime.now() which returns current timestamp
                 from datetime import datetime
+
                 return pl.lit(datetime.now())
             elif operation == "current_date":
                 # Use date.today() which returns current date
                 from datetime import date
+
                 return pl.lit(date.today())
+            elif operation == "now":
+                # Alias for current_timestamp
+                from datetime import datetime
+
+                return pl.lit(datetime.now())
+            elif operation == "curdate":
+                # Alias for current_date
+                from datetime import date
+
+                return pl.lit(date.today())
+            elif operation == "localtimestamp":
+                # Local timestamp (without timezone)
+                from datetime import datetime
+
+                return pl.lit(datetime.now())
             elif function_name == "monotonically_increasing_id":
                 # monotonically_increasing_id() - generate row numbers
                 # Use int_range to generate sequential IDs
                 return pl.int_range(pl.len())
 
         # Translate column expression
-        if isinstance(column, MockColumn):
+        if isinstance(column, Column):
             col_expr = pl.col(column.name)
-        elif isinstance(column, MockColumnOperation):
+        elif isinstance(column, ColumnOperation):
             col_expr = self._translate_operation(column)
         elif isinstance(column, str):
             col_expr = pl.col(column)
@@ -353,7 +505,9 @@ class PolarsExpressionTranslator:
                     replacement = op.value[1]
                     return col_expr.str.replace_all(pattern, replacement, literal=True)
                 else:
-                    raise ValueError(f"regexp_replace requires (pattern, replacement) tuple")
+                    raise ValueError(
+                        "regexp_replace requires (pattern, replacement) tuple"
+                    )
             elif operation == "regexp_extract":
                 # regexp_extract(col, pattern, idx)
                 if isinstance(op.value, tuple) and len(op.value) >= 2:
@@ -362,22 +516,217 @@ class PolarsExpressionTranslator:
                     # Polars extract_all returns a list, we need to get the first match
                     return col_expr.str.extract(pattern, idx)
                 else:
-                    raise ValueError(f"regexp_extract requires (pattern, idx) tuple")
+                    raise ValueError("regexp_extract requires (pattern, idx) tuple")
             elif operation == "split":
                 # split(col, delimiter)
                 delimiter = op.value
                 return col_expr.str.split(delimiter)
+            elif operation == "btrim":
+                # btrim(col, trim_string) or btrim(col)
+                if isinstance(op.value, str):
+                    return col_expr.str.strip_chars(op.value)
+                else:
+                    # No trim_string specified, trim whitespace
+                    return col_expr.str.strip_chars()
+            elif operation == "left":
+                # left(col, length)
+                n = op.value if isinstance(op.value, int) else int(op.value)
+                return col_expr.str.slice(0, n)
+            elif operation == "right":
+                # right(col, length)
+                n = op.value if isinstance(op.value, int) else int(op.value)
+                return col_expr.str.slice(-n) if n > 0 else col_expr.str.slice(0, 0)
+            elif operation == "contains":
+                # contains(col, substring)
+                if isinstance(op.value, str):
+                    return col_expr.str.contains(op.value)
+                else:
+                    value_expr = self.translate(op.value)
+                    return col_expr.str.contains(value_expr)
+            elif operation == "startswith":
+                # startswith(col, substring)
+                if isinstance(op.value, str):
+                    return col_expr.str.starts_with(op.value)
+                else:
+                    value_expr = self.translate(op.value)
+                    return col_expr.str.starts_with(value_expr)
+            elif operation == "endswith":
+                # endswith(col, substring)
+                if isinstance(op.value, str):
+                    return col_expr.str.ends_with(op.value)
+                else:
+                    value_expr = self.translate(op.value)
+                    return col_expr.str.ends_with(value_expr)
+            elif operation == "like":
+                # like(col, pattern) - SQL LIKE pattern matching
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                # Convert SQL LIKE pattern to regex (simplified: % -> .*, _ -> .)
+                regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+                return col_expr.str.contains(regex_pattern, literal=False)
+            elif operation == "rlike":
+                # rlike(col, pattern) - Regular expression pattern matching
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                return col_expr.str.contains(pattern, literal=False)
+            elif operation == "regexp":
+                # regexp(col, pattern) - Alias for rlike
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                return col_expr.str.contains(pattern, literal=False)
+            elif operation == "ilike":
+                # ilike(col, pattern) - Case-insensitive LIKE
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                regex_pattern = pattern.replace("%", ".*").replace("_", ".")
+                return col_expr.str.to_lowercase().str.contains(
+                    regex_pattern, literal=False
+                )
+            elif operation == "regexp_like":
+                # regexp_like(col, pattern) - Alias for rlike
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                return col_expr.str.contains(pattern, literal=False)
+            elif operation == "regexp_count":
+                # regexp_count(col, pattern) - Count regex matches
+                pattern = op.value if isinstance(op.value, str) else str(op.value)
+                # Use regex to find all matches and count them
+                return col_expr.str.count_matches(pattern, literal=False)
+            elif operation == "regexp_substr":
+                # regexp_substr(col, pattern, pos, occurrence) - Extract substring matching regex
+                if isinstance(op.value, tuple) and len(op.value) >= 2:
+                    pattern = op.value[0]
+                    pos = op.value[1] if len(op.value) > 1 else 1
+                    # Simplified implementation - extract first match
+                    return col_expr.str.extract(pattern, 0)
+                else:
+                    pattern = op.value if isinstance(op.value, str) else str(op.value)
+                    return col_expr.str.extract(pattern, 0)
+            elif operation == "regexp_instr":
+                # regexp_instr(col, pattern, pos, occurrence) - Find position of regex match
+                if isinstance(op.value, tuple) and len(op.value) >= 2:
+                    pattern = op.value[0]
+                    # Simplified implementation - find first match position
+                    return col_expr.str.find(pattern)
+                else:
+                    pattern = op.value if isinstance(op.value, str) else str(op.value)
+                    return col_expr.str.find(pattern)
+            elif operation == "find_in_set":
+                # find_in_set(value, str_list) - Find position in comma-separated list
+                # Simplified implementation
+                return pl.lit(0)  # Placeholder
+            elif operation == "pmod":
+                # pmod(dividend, divisor) - Positive modulo
+                if isinstance(op.value, (Column, ColumnOperation)):
+                    divisor = self.translate(op.value)
+                else:
+                    divisor = pl.lit(op.value)
+                # pmod always returns positive: ((dividend % divisor) + divisor) % divisor
+                return ((col_expr % divisor) + divisor) % divisor
+            elif operation == "shiftleft":
+                # shiftleft(col, num_bits) - Bitwise left shift
+                if isinstance(op.value, (Column, ColumnOperation)):
+                    num_bits = self.translate(op.value)
+                else:
+                    num_bits = pl.lit(op.value)
+                return col_expr << num_bits
+            elif operation == "shiftright":
+                # shiftright(col, num_bits) - Bitwise right shift (signed)
+                if isinstance(op.value, (Column, ColumnOperation)):
+                    num_bits = self.translate(op.value)
+                else:
+                    num_bits = pl.lit(op.value)
+                return col_expr >> num_bits
+            elif operation == "shiftrightunsigned":
+                # shiftrightunsigned(col, num_bits) - Bitwise unsigned right shift
+                # In Python, >> is already unsigned for positive numbers
+                if isinstance(op.value, (Column, ColumnOperation)):
+                    num_bits = self.translate(op.value)
+                else:
+                    num_bits = pl.lit(op.value)
+                return col_expr >> num_bits
+            elif operation == "replace":
+                # replace(col, old, new)
+                if isinstance(op.value, tuple) and len(op.value) == 2:
+                    old, new = op.value
+                    return col_expr.str.replace(old, new)
+                else:
+                    raise ValueError("replace requires (old, new) tuple")
+            elif operation == "split_part":
+                # split_part(col, delimiter, part) - Extract part of string split by delimiter
+                if isinstance(op.value, tuple) and len(op.value) == 2:
+                    delimiter, part = op.value
+                    # Split and get the part (1-indexed, so subtract 1)
+                    return col_expr.str.split(delimiter).list.get(part - 1)
+                else:
+                    raise ValueError("split_part requires (delimiter, part) tuple")
+            elif operation == "position":
+                # position(substring, col) - Find position of substring in string (1-indexed)
+                # Note: op.value is the substring, op.column is the string to search in
+                substring = op.value if isinstance(op.value, str) else str(op.value)
+                # Polars find returns 0-based index, add 1 for 1-based
+                return col_expr.str.find(substring) + 1
+            elif operation == "substr":
+                # substr(col, start, length) - Alias for substring
+                if isinstance(op.value, tuple):
+                    start, length = (
+                        op.value[0],
+                        op.value[1] if len(op.value) > 1 else None,
+                    )
+                else:
+                    start, length = op.value, None
+                # Convert to 0-based index for Polars
+                start_idx = start - 1 if start > 0 else 0
+                if length is not None:
+                    return col_expr.str.slice(start_idx, length)
+                else:
+                    return col_expr.str.slice(start_idx)
+            elif operation == "elt":
+                # elt(n, *columns) - Return element at index from list of columns
+                if isinstance(op.value, tuple) and len(op.value) >= 2:
+                    n, columns = op.value[0], op.value[1:]
+                    # Translate n and columns
+                    n_expr = self.translate(n) if not isinstance(n, int) else pl.lit(n)
+                    # Create a list of translated columns
+                    col_list = [col_expr] + [self.translate(col) for col in columns]
+                    # Use Polars list indexing (1-indexed, so subtract 1)
+                    # This is complex - we'll use a when/otherwise chain
+                    result = None
+                    for i, col in enumerate(col_list, 1):
+                        if result is None:
+                            result = pl.when(n_expr == i).then(col)
+                        else:
+                            result = result.when(n_expr == i).then(col)
+                    return (
+                        result.otherwise(None) if result is not None else pl.lit(None)
+                    )
+                else:
+                    raise ValueError("elt requires (n, *columns) tuple")
+            elif operation == "days":
+                # days(n) - Convert number to days interval (for date arithmetic)
+                # This is a numeric multiplier for date operations
+                return col_expr  # Return as-is, will be used in date arithmetic
+            elif operation == "hours":
+                # hours(n) - Convert number to hours interval
+                return col_expr  # Return as-is, will be used in date arithmetic
+            elif operation == "months":
+                # months(n) - Convert number to months interval
+                return col_expr  # Return as-is, will be used in date arithmetic
+            elif operation == "equal_null":
+                # equal_null(col1, col2) - Equality check that treats NULL as equal
+                col2_expr = self.translate(op.value)
+                # Return True if both are NULL, or if both are equal
+                return (col_expr.is_null() & col2_expr.is_null()) | (
+                    col_expr == col2_expr
+                )
             elif operation == "concat":
                 # concat(*columns) - op.value is tuple/list of additional columns/literals
                 # The first column is in op.column, the rest are in op.value
-                if op.value and (isinstance(op.value, (list, tuple)) and len(op.value) > 0):
+                if op.value and (
+                    isinstance(op.value, (list, tuple)) and len(op.value) > 0
+                ):
                     # Translate all columns/literals
                     all_cols = [col_expr]  # Start with the first column
                     for col in op.value:
                         if isinstance(col, str):
                             # String literal
                             all_cols.append(pl.lit(col))
-                        elif hasattr(col, 'value'):  # MockLiteral
+                        elif hasattr(col, "value"):  # Literal
                             all_cols.append(pl.lit(col.value))
                         else:
                             # Column or expression
@@ -409,7 +758,7 @@ class PolarsExpressionTranslator:
                             # Literal value
                             translated_cols.append(pl.lit(col))
                         else:
-                            # Expression or MockColumn
+                            # Expression or Column
                             translated_cols.append(self.translate(col))
                     # Join with separator using Polars
                     # Ensure all columns are strings to avoid nested Objects error
@@ -422,7 +771,7 @@ class PolarsExpressionTranslator:
                         result = result + pl.lit(str(sep)) + other_col
                     return result
                 else:
-                    raise ValueError(f"concat_ws requires (sep, [columns]) tuple")
+                    raise ValueError("concat_ws requires (sep, [columns]) tuple")
             elif operation == "like":
                 # SQL LIKE pattern - convert to Polars regex
                 pattern = op.value
@@ -445,7 +794,19 @@ class PolarsExpressionTranslator:
                     return col_expr.round(decimals)
             elif operation == "pow":
                 # pow(col, exponent)
-                exponent = self.translate(op.value) if not isinstance(op.value, (int, float)) else pl.lit(op.value)
+                exponent = (
+                    self.translate(op.value)
+                    if not isinstance(op.value, (int, float))
+                    else pl.lit(op.value)
+                )
+                return col_expr.pow(exponent)
+            elif operation == "power":
+                # power(col, exponent) - Alias for pow
+                exponent = (
+                    self.translate(op.value)
+                    if not isinstance(op.value, (int, float))
+                    else pl.lit(op.value)
+                )
                 return col_expr.pow(exponent)
             elif operation == "to_date":
                 # to_date(col, format) or to_date(col)
@@ -463,10 +824,11 @@ class PolarsExpressionTranslator:
                     format_str = op.value
                     # Handle optional fractional seconds like [.SSSSSS]
                     import re
+
                     # Check if format has optional fractional seconds
-                    has_optional_fractional = bool(re.search(r'\[\.S+\]', format_str))
+                    has_optional_fractional = bool(re.search(r"\[\.S+\]", format_str))
                     # Remove optional fractional pattern from format string
-                    format_str = re.sub(r'\[\.S+\]', '', format_str)
+                    format_str = re.sub(r"\[\.S+\]", "", format_str)
                     # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
                     format_str = re.sub(r"'([^']*)'", r"\1", format_str)
                     # Convert Java format to Polars format
@@ -479,14 +841,18 @@ class PolarsExpressionTranslator:
                         "ss": "%S",
                     }
                     # Sort by length descending to process longest matches first
-                    for java_pattern, polars_pattern in sorted(format_map.items(), key=lambda x: len(x[0]), reverse=True):
+                    for java_pattern, polars_pattern in sorted(
+                        format_map.items(), key=lambda x: len(x[0]), reverse=True
+                    ):
                         format_str = format_str.replace(java_pattern, polars_pattern)
                     # If there was optional fractional seconds, try parsing with and without
                     if has_optional_fractional:
                         # Try with microseconds format - use %.f for Polars (not .%f)
                         format_with_us = format_str + "%.f"
                         # Use strict=False to handle optional parts
-                        return col_expr.str.strptime(pl.Datetime, format_with_us, strict=False)
+                        return col_expr.str.strptime(
+                            pl.Datetime, format_with_us, strict=False
+                        )
                     return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
                 else:
                     # Without format - try to parse common formats
@@ -498,20 +864,32 @@ class PolarsExpressionTranslator:
                     # Convert Java SimpleDateFormat to Polars strftime format
                     # Common conversions: yyyy -> %Y, MM -> %m, dd -> %d, HH -> %H, mm -> %M, ss -> %S
                     import re
+
                     format_map = {
-                        "yyyy": "%Y", "MM": "%m", "dd": "%d", 
-                        "HH": "%H", "mm": "%M", "ss": "%S",
-                        "EEE": "%a", "EEEE": "%A", "MMM": "%b", "MMMM": "%B"
+                        "yyyy": "%Y",
+                        "MM": "%m",
+                        "dd": "%d",
+                        "HH": "%H",
+                        "mm": "%M",
+                        "ss": "%S",
+                        "EEE": "%a",
+                        "EEEE": "%A",
+                        "MMM": "%b",
+                        "MMMM": "%B",
                     }
                     polars_format = format_str
-                    for java_pattern, polars_pattern in sorted(format_map.items(), key=lambda x: len(x[0]), reverse=True):
-                        polars_format = polars_format.replace(java_pattern, polars_pattern)
+                    for java_pattern, polars_pattern in sorted(
+                        format_map.items(), key=lambda x: len(x[0]), reverse=True
+                    ):
+                        polars_format = polars_format.replace(
+                            java_pattern, polars_pattern
+                        )
                     # If column is string, parse it first; if already date, use directly
                     # For now, assume we need to parse string dates
-                    parsed = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                    parsed = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                     return parsed.dt.strftime(polars_format)
                 else:
-                    raise ValueError(f"date_format requires format string")
+                    raise ValueError("date_format requires format string")
             elif operation == "date_add":
                 # date_add(col, days) - add days to a date column
                 # Handle both string dates and date columns
@@ -531,11 +909,15 @@ class PolarsExpressionTranslator:
                         days = op.value if isinstance(op.value, int) else int(op.value)
                         days_expr = pl.duration(days=days)
                     else:
-                        days = int(days_expr) if not isinstance(days_expr, int) else days_expr
+                        days = (
+                            int(days_expr)
+                            if not isinstance(days_expr, int)
+                            else days_expr
+                        )
                         days_expr = pl.duration(days=days)
                 # Parse string dates first, then add duration
                 # Always try parsing as string first (most common case)
-                date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                date_col = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 return date_col + days_expr
             elif operation == "date_sub":
                 # date_sub(col, days) - subtract days from a date column
@@ -548,14 +930,18 @@ class PolarsExpressionTranslator:
                         days = op.value if isinstance(op.value, int) else int(op.value)
                         days_expr = pl.duration(days=days)
                     else:
-                        days = int(days_expr) if not isinstance(days_expr, int) else days_expr
+                        days = (
+                            int(days_expr)
+                            if not isinstance(days_expr, int)
+                            else days_expr
+                        )
                         days_expr = pl.duration(days=days)
                 # Parse string dates first, then subtract duration
-                date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                date_col = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 return date_col - days_expr
             elif operation == "datediff":
                 # datediff(end, start) - note: in PySpark, end comes first
-                # In MockColumnOperation: column is end, value is start
+                # In ColumnOperation: column is end, value is start
                 start_date = self.translate(op.value)
                 # Handle both string dates and date columns
                 # Polars str.strptime() only works on string columns, so it fails on date columns
@@ -570,7 +956,7 @@ class PolarsExpressionTranslator:
                     pad_str = op.value[1]
                     return col_expr.str.pad_start(target_len, pad_str)
                 else:
-                    raise ValueError(f"lpad requires (len, pad) tuple")
+                    raise ValueError("lpad requires (len, pad) tuple")
             elif operation == "rpad":
                 # rpad(col, len, pad)
                 if isinstance(op.value, tuple) and len(op.value) >= 2:
@@ -578,7 +964,7 @@ class PolarsExpressionTranslator:
                     pad_str = op.value[1]
                     return col_expr.str.pad_end(target_len, pad_str)
                 else:
-                    raise ValueError(f"rpad requires (len, pad) tuple")
+                    raise ValueError("rpad requires (len, pad) tuple")
             elif operation == "repeat":
                 # repeat(col, n) - repeat string n times
                 # Polars doesn't have str.repeat(), use string concatenation
@@ -597,14 +983,21 @@ class PolarsExpressionTranslator:
                 # So we check if it's -1, return 0, otherwise add 1 for 1-based indexing
                 # Add fill_null(0) as fallback for any nulls
                 find_result = col_expr.str.find(substr)
-                return pl.when(find_result == -1).then(0).otherwise(find_result + 1).fill_null(0)
+                return (
+                    pl.when(find_result == -1)
+                    .then(0)
+                    .otherwise(find_result + 1)
+                    .fill_null(0)
+                )
             elif operation == "locate":
                 # locate(substr, col, pos) - op.value is (substr, pos)
                 if isinstance(op.value, tuple) and len(op.value) >= 1:
                     substr = op.value[0]
                     pos = op.value[1] if len(op.value) > 1 else 1
                     # Find substring starting from pos (1-indexed)
-                    return (col_expr.str.slice(pos - 1).str.find(substr) + pos).fill_null(0)
+                    return (
+                        col_expr.str.slice(pos - 1).str.find(substr) + pos
+                    ).fill_null(0)
                 else:
                     substr = op.value
                     return col_expr.str.find(substr) + 1
@@ -614,7 +1007,7 @@ class PolarsExpressionTranslator:
                 # Parse string dates first, or use directly if already a date
                 # Try parsing as string first (most common case)
                 try:
-                    date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                    date_col = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 except AttributeError:
                     # Already a date column, use directly
                     date_col = col_expr.cast(pl.Date)
@@ -627,7 +1020,7 @@ class PolarsExpressionTranslator:
                 # Parse string dates first, or use directly if already a date
                 # Try parsing as string first (most common case)
                 try:
-                    date_col = col_expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+                    date_col = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
                 except AttributeError:
                     # Already a date column, use directly
                     date_col = col_expr.cast(pl.Date)
@@ -639,17 +1032,27 @@ class PolarsExpressionTranslator:
                 return first_of_next_month.dt.offset_by("-1d")
             elif operation == "array_contains":
                 # array_contains(col, value) - check if array contains value
-                value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
+                value_expr = (
+                    pl.lit(op.value)
+                    if not isinstance(op.value, (Column, ColumnOperation))
+                    else self.translate(op.value)
+                )
                 return col_expr.list.contains(value_expr)
             elif operation == "array_position":
                 # array_position(col, value) - find 1-based position of value in array
                 # Polars doesn't have list.index(), so we use list.eval to find position
-                value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
+                value_expr = (
+                    pl.lit(op.value)
+                    if not isinstance(op.value, (Column, ColumnOperation))
+                    else self.translate(op.value)
+                )
                 # Use list.eval to create indices where element equals value, get first, add 1 for 1-based
                 # If not found, returns null, which we convert to 0 (PySpark returns 0 if not found)
-                return (col_expr.list.eval(
-                    pl.int_range(pl.len()).filter(pl.element() == value_expr)
-                ).list.first()).fill_null(-1) + 1
+                return (
+                    col_expr.list.eval(
+                        pl.int_range(pl.len()).filter(pl.element() == value_expr)
+                    ).list.first()
+                ).fill_null(-1) + 1
             elif operation == "element_at":
                 # element_at(col, index) - get element at 1-based index (negative for reverse)
                 index = op.value if isinstance(op.value, int) else int(op.value)
@@ -663,12 +1066,22 @@ class PolarsExpressionTranslator:
             elif operation == "array_append":
                 # array_append(col, value) - append value to array
                 # Polars doesn't have list.append(), use list.eval with concat
-                value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
+                value_expr = (
+                    pl.lit(op.value)
+                    if not isinstance(op.value, (Column, ColumnOperation))
+                    else self.translate(op.value)
+                )
                 return col_expr.list.eval(pl.concat([pl.element(), value_expr]))
             elif operation == "array_remove":
                 # array_remove(col, value) - remove all occurrences of value from array
-                value_expr = pl.lit(op.value) if not isinstance(op.value, (MockColumn, MockColumnOperation)) else self.translate(op.value)
-                return col_expr.list.eval(pl.element().filter(pl.element() != value_expr))
+                value_expr = (
+                    pl.lit(op.value)
+                    if not isinstance(op.value, (Column, ColumnOperation))
+                    else self.translate(op.value)
+                )
+                return col_expr.list.eval(
+                    pl.element().filter(pl.element() != value_expr)
+                )
             elif operation == "array":
                 # array(*cols) - create array from columns
                 # op.value can be list, tuple, or None
@@ -721,8 +1134,286 @@ class PolarsExpressionTranslator:
                     start_idx = start - 1 if start > 0 else 0
                     return col_expr.list.slice(start_idx, length)
                 else:
-                    raise ValueError(f"slice requires (start, length) tuple")
-        
+                    raise ValueError("slice requires (start, length) tuple")
+            elif operation == "str_to_map":
+                # str_to_map(col, pair_delim, key_value_delim)
+                if isinstance(op.value, tuple) and len(op.value) >= 2:
+                    pair_delim, key_value_delim = op.value[0], op.value[1]
+                    return col_expr.map_elements(
+                        lambda x, pd=pair_delim, kvd=key_value_delim: (
+                            {
+                                kv.split(kvd, 1)[0].strip(): kv.split(kvd, 1)[1].strip()
+                                for kv in x.split(pd)
+                                if kvd in kv
+                            }
+                            if isinstance(x, str) and x
+                            else {}
+                        ),
+                        return_dtype=pl.Object,
+                    )
+                else:
+                    raise ValueError(
+                        "str_to_map requires (pair_delim, key_value_delim) tuple"
+                    )
+            # New crypto functions (PySpark 3.5+)
+            elif operation == "aes_encrypt":
+                # aes_encrypt(data, key, mode, padding)
+                # Simplified: return NULL for now (encryption requires external library)
+                return pl.lit(None).cast(pl.Binary)
+            elif operation == "aes_decrypt":
+                # aes_decrypt(data, key, mode, padding)
+                # Simplified: return NULL for now (decryption requires external library)
+                return pl.lit(None).cast(pl.Utf8)
+            elif operation == "try_aes_decrypt":
+                # try_aes_decrypt(data, key, mode, padding) - null-safe version
+                # Simplified: return NULL for now (decryption requires external library)
+                return pl.lit(None).cast(pl.Utf8)
+            # New string functions (PySpark 3.5+)
+            elif operation == "sha":
+                # sha(col) - alias for sha1
+                import hashlib
+
+                return col_expr.map_elements(
+                    lambda x: hashlib.sha1(
+                        x.encode("utf-8")
+                        if isinstance(x, str)
+                        else str(x).encode("utf-8")
+                    ).hexdigest()
+                    if x is not None
+                    else "",
+                    return_dtype=pl.Utf8,
+                )
+            elif operation == "mask":
+                # mask(col, upperChar='X', lowerChar='x', digitChar='n', otherChar='-')
+                import re
+
+                params = op.value if isinstance(op.value, dict) else {}
+                upper_char = params.get("upperChar", "X")
+                lower_char = params.get("lowerChar", "x")
+                digit_char = params.get("digitChar", "n")
+                other_char = params.get("otherChar", "-")
+                return col_expr.map_elements(
+                    lambda x,
+                    uc=upper_char,
+                    lc=lower_char,
+                    dc=digit_char,
+                    oc=other_char: (
+                        "".join(
+                            uc
+                            if c.isupper()
+                            else lc
+                            if c.islower()
+                            else dc
+                            if c.isdigit()
+                            else oc
+                            for c in x
+                        )
+                        if isinstance(x, str) and x
+                        else x
+                    ),
+                    return_dtype=pl.Utf8,
+                )
+            elif operation == "json_array_length":
+                # json_array_length(col, path)
+                import json
+
+                path = op.value if op.value else None
+                return col_expr.map_elements(
+                    lambda x, p=path: (
+                        len(json.loads(x).get(p.lstrip("$."), []))
+                        if p and isinstance(json.loads(x), dict)
+                        else len(json.loads(x))
+                        if isinstance(json.loads(x), list)
+                        else 0
+                        if isinstance(x, str)
+                        else 0
+                    ),
+                    return_dtype=pl.Int64,
+                )
+            elif operation == "json_object_keys":
+                # json_object_keys(col, path)
+                import json
+
+                path = op.value if op.value else None
+                return col_expr.map_elements(
+                    lambda x, p=path: (
+                        list(json.loads(x).get(p.lstrip("$."), {}).keys())
+                        if p and isinstance(json.loads(x), dict)
+                        else list(json.loads(x).keys())
+                        if isinstance(json.loads(x), dict)
+                        else []
+                        if isinstance(x, str)
+                        else []
+                    ),
+                    return_dtype=pl.List(pl.Utf8),
+                )
+            elif operation == "xpath_number":
+                # xpath_number(col, path) - simplified XML parsing
+                # Note: Full XPath support requires lxml or similar library
+                return pl.lit(None).cast(pl.Float64)
+            elif operation == "user":
+                # user() - get current user name
+                import os
+
+                return pl.lit(os.getenv("USER", os.getenv("USERNAME", "unknown")))
+            # New math functions (PySpark 3.5+)
+            elif operation == "getbit":
+                # getbit(col, bit) - get bit at position
+                bit_expr = (
+                    self.translate(op.value)
+                    if not isinstance(op.value, (int, float))
+                    else pl.lit(int(op.value))
+                )
+                return (col_expr.cast(pl.Int64) >> bit_expr.cast(pl.Int64)) & 1
+            elif operation == "width_bucket":
+                # width_bucket(value, min_value, max_value, num_buckets)
+                if isinstance(op.value, tuple) and len(op.value) >= 3:
+                    min_val, max_val, num_buckets = (
+                        op.value[0],
+                        op.value[1],
+                        op.value[2],
+                    )
+                    min_expr = (
+                        self.translate(min_val)
+                        if not isinstance(min_val, (int, float))
+                        else pl.lit(float(min_val))
+                    )
+                    max_expr = (
+                        self.translate(max_val)
+                        if not isinstance(max_val, (int, float))
+                        else pl.lit(float(max_val))
+                    )
+                    num_buckets_expr = (
+                        self.translate(num_buckets)
+                        if not isinstance(num_buckets, int)
+                        else pl.lit(int(num_buckets))
+                    )
+                    # Compute bucket: floor((value - min) / (max - min) * num_buckets) + 1
+                    # Clamp to [1, num_buckets]
+                    bucket = (
+                        (col_expr.cast(pl.Float64) - min_expr)
+                        / (max_expr - min_expr)
+                        * num_buckets_expr
+                    ).floor() + 1
+                    return pl.max_horizontal(
+                        [pl.min_horizontal([bucket, num_buckets_expr]), pl.lit(1)]
+                    )
+                else:
+                    raise ValueError(
+                        "width_bucket requires (min_value, max_value, num_buckets) tuple"
+                    )
+            # New datetime functions (PySpark 3.5+)
+            elif operation == "date_from_unix_date":
+                # date_from_unix_date(days) - convert days since epoch to date
+                # Convert days to date by adding days to epoch
+                return (
+                    pl.datetime(1970, 1, 1) + pl.duration(days=col_expr.cast(pl.Int64))
+                ).dt.date()
+            elif operation == "to_timestamp_ltz":
+                # to_timestamp_ltz(col, format) - timestamp with local timezone
+                format_str = op.value if op.value else None
+                if format_str:
+                    return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
+                else:
+                    return col_expr.str.strptime(pl.Datetime, strict=False)
+            elif operation == "to_timestamp_ntz":
+                # to_timestamp_ntz(col, format) - timestamp with no timezone
+                format_str = op.value if op.value else None
+                if format_str:
+                    return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
+                else:
+                    return col_expr.str.strptime(pl.Datetime, strict=False)
+            # New null-safe try functions (PySpark 3.5+)
+            elif operation == "try_add":
+                # try_add(left, right) - null-safe addition
+                right_expr = self.translate(op.value)
+                return (
+                    pl.when(col_expr.is_null() | right_expr.is_null())
+                    .then(None)
+                    .otherwise(col_expr + right_expr)
+                )
+            elif operation == "try_subtract":
+                # try_subtract(left, right) - null-safe subtraction
+                right_expr = self.translate(op.value)
+                return (
+                    pl.when(col_expr.is_null() | right_expr.is_null())
+                    .then(None)
+                    .otherwise(col_expr - right_expr)
+                )
+            elif operation == "try_multiply":
+                # try_multiply(left, right) - null-safe multiplication
+                right_expr = self.translate(op.value)
+                return (
+                    pl.when(col_expr.is_null() | right_expr.is_null())
+                    .then(None)
+                    .otherwise(col_expr * right_expr)
+                )
+            elif operation == "try_divide":
+                # try_divide(left, right) - null-safe division
+                right_expr = self.translate(op.value)
+                return (
+                    pl.when(
+                        (col_expr.is_null() | right_expr.is_null()) | (right_expr == 0)
+                    )
+                    .then(None)
+                    .otherwise(col_expr / right_expr)
+                )
+            elif operation == "try_element_at":
+                # try_element_at(col, index) - null-safe element_at
+                index_expr = (
+                    self.translate(op.value)
+                    if not isinstance(op.value, (int, float))
+                    else pl.lit(int(op.value))
+                )
+                # Try array access first, then map access
+                try:
+                    # Array access: 1-based indexing
+                    return col_expr.list.get(index_expr.cast(pl.Int64) - 1)
+                except Exception:
+                    # Map access: use key directly
+                    return col_expr.map_elements(
+                        lambda x, idx=index_expr: x.get(idx)
+                        if isinstance(x, dict)
+                        else None,
+                        return_dtype=pl.Object,
+                    )
+            elif operation == "try_to_binary":
+                # try_to_binary(col, format) - null-safe to_binary
+                format_str = op.value if op.value else "utf-8"
+                return col_expr.map_elements(
+                    lambda x, fmt=format_str: (
+                        x.encode(fmt)
+                        if isinstance(x, str) and x
+                        else bytes(x)
+                        if isinstance(x, (int, float))
+                        else x
+                        if isinstance(x, bytes)
+                        else None
+                    ),
+                    return_dtype=pl.Binary,
+                )
+            elif operation == "try_to_number":
+                # try_to_number(col, format) - null-safe to_number
+                return col_expr.map_elements(
+                    lambda x: (
+                        float(x)
+                        if isinstance(x, str) and x
+                        else int(x)
+                        if isinstance(x, str) and x and "." not in x
+                        else x
+                        if isinstance(x, (int, float))
+                        else None
+                    ),
+                    return_dtype=pl.Float64,
+                )
+            elif operation == "try_to_timestamp":
+                # try_to_timestamp(col, format) - null-safe to_timestamp
+                format_str = op.value if op.value else None
+                if format_str:
+                    return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
+                else:
+                    return col_expr.str.strptime(pl.Datetime, strict=False)
+
         # Handle special functions that need custom logic (including those that may have column but ignore it)
         if function_name == "monotonically_increasing_id":
             # monotonically_increasing_id() - can be called with or without column (ignores column)
@@ -740,7 +1431,9 @@ class PolarsExpressionTranslator:
                     return self._parse_simple_case_when(sql_expr)
                 else:
                     # For other SQL expressions, raise error (can be extended later)
-                    raise ValueError(f"F.expr() SQL expressions should be handled by SQL executor, not Polars backend. Unsupported expression: {sql_expr}")
+                    raise ValueError(
+                        f"F.expr() SQL expressions should be handled by SQL executor, not Polars backend. Unsupported expression: {sql_expr}"
+                    )
             else:
                 raise ValueError("F.expr() requires a SQL string")
         if function_name == "coalesce":
@@ -753,7 +1446,11 @@ class PolarsExpressionTranslator:
         elif function_name == "nvl":
             # nvl(col, default) - op.value is default value
             if op.value is not None:
-                default_expr = self.translate(op.value) if not isinstance(op.value, (str, int, float, bool)) else pl.lit(op.value)
+                default_expr = (
+                    self.translate(op.value)
+                    if not isinstance(op.value, (str, int, float, bool))
+                    else pl.lit(op.value)
+                )
                 return pl.coalesce([col_expr, default_expr])
             else:
                 return col_expr
@@ -782,7 +1479,9 @@ class PolarsExpressionTranslator:
             # ascii(col) - return ASCII code of first character
             # Get first character and convert to its ASCII/UTF-8 code point
             first_char = col_expr.str.slice(0, 1)
-            return first_char.map_elements(lambda x: ord(x) if x else 0, return_dtype=pl.Int32).fill_null(0)
+            return first_char.map_elements(
+                lambda x: ord(x) if x else 0, return_dtype=pl.Int32
+            ).fill_null(0)
         elif function_name == "hex":
             # hex(col) - convert to hexadecimal string
             # For numeric types: convert number to hex string (e.g., 10 -> "A", 255 -> "FF")
@@ -791,31 +1490,71 @@ class PolarsExpressionTranslator:
             # For now, try numeric conversion first, fallback to string encoding
             return col_expr.map_elements(
                 lambda x: (
-                    hex(int(x))[2:].upper() if isinstance(x, (int, float)) and not (isinstance(x, float) and math.isnan(x))
-                    else x.encode('utf-8').hex().upper() if isinstance(x, str)
-                    else str(x).encode('utf-8').hex().upper() if x is not None
-                    else ''
+                    hex(int(x))[2:].upper()
+                    if isinstance(x, (int, float))
+                    and not (isinstance(x, float) and math.isnan(x))
+                    else x.encode("utf-8").hex().upper()
+                    if isinstance(x, str)
+                    else str(x).encode("utf-8").hex().upper()
+                    if x is not None
+                    else ""
                 ),
-                return_dtype=pl.Utf8
+                return_dtype=pl.Utf8,
             )
         elif function_name == "base64":
             # base64(col) - encode to base64
             import base64
-            return col_expr.map_elements(lambda x: base64.b64encode(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).decode('utf-8') if x is not None else '', return_dtype=pl.Utf8)
+
+            return col_expr.map_elements(
+                lambda x: base64.b64encode(
+                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
+                ).decode("utf-8")
+                if x is not None
+                else "",
+                return_dtype=pl.Utf8,
+            )
         elif function_name == "md5":
             # md5(col) - hash using MD5
             import hashlib
-            return col_expr.map_elements(lambda x: hashlib.md5(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
+
+            return col_expr.map_elements(
+                lambda x: hashlib.md5(
+                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
+                ).hexdigest()
+                if x is not None
+                else "",
+                return_dtype=pl.Utf8,
+            )
         elif function_name == "sha1":
             # sha1(col) - hash using SHA1
             import hashlib
-            return col_expr.map_elements(lambda x: hashlib.sha1(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
+
+            return col_expr.map_elements(
+                lambda x: hashlib.sha1(
+                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
+                ).hexdigest()
+                if x is not None
+                else "",
+                return_dtype=pl.Utf8,
+            )
         elif function_name == "sha2":
             # sha2(col, bitLength) - hash using SHA2
             import hashlib
+
             bitLength = op.value if op.value is not None else 256
-            hash_func = {256: hashlib.sha256, 384: hashlib.sha384, 512: hashlib.sha512}.get(bitLength, hashlib.sha256)
-            return col_expr.map_elements(lambda x: hash_func(x.encode('utf-8') if isinstance(x, str) else str(x).encode('utf-8')).hexdigest() if x is not None else '', return_dtype=pl.Utf8)
+            hash_func = {
+                256: hashlib.sha256,
+                384: hashlib.sha384,
+                512: hashlib.sha512,
+            }.get(bitLength, hashlib.sha256)
+            return col_expr.map_elements(
+                lambda x: hash_func(
+                    x.encode("utf-8") if isinstance(x, str) else str(x).encode("utf-8")
+                ).hexdigest()
+                if x is not None
+                else "",
+                return_dtype=pl.Utf8,
+            )
         elif function_name == "map_keys":
             # map_keys(col) - extract all keys from map/dict as array
             # Polars converts dicts to structs, so we need to get only non-null struct fields
@@ -827,40 +1566,74 @@ class PolarsExpressionTranslator:
             return col_expr.map_elements(
                 lambda x: (
                     # If it's a dict, use keys directly
-                    list(x.keys()) if isinstance(x, dict)
+                    list(x.keys())
+                    if isinstance(x, dict)
                     # If it's a Polars struct (Row object), get field names from schema
-                    else [k for k in getattr(x, '_schema', {}).keys() if getattr(x, k, None) is not None] if hasattr(x, '_schema')
+                    else [
+                        k
+                        for k in getattr(x, "_schema", {})
+                        if getattr(x, k, None) is not None
+                    ]
+                    if hasattr(x, "_schema")
                     # Try to get struct fields using __struct_fields__
-                    else [f.name for f in getattr(x, '__struct_fields__', []) if getattr(x, f.name, None) is not None] if hasattr(x, '__struct_fields__')
+                    else [
+                        f.name
+                        for f in getattr(x, "__struct_fields__", [])
+                        if getattr(x, f.name, None) is not None
+                    ]
+                    if hasattr(x, "__struct_fields__")
                     # For dict-like objects, filter by non-null values
-                    else [k for k, v in x.items() if v is not None] if hasattr(x, 'items') and callable(x.items)
+                    else [k for k, v in x.items() if v is not None]
+                    if hasattr(x, "items") and callable(x.items)
                     else None
-                ) if x is not None else None,
-                return_dtype=pl.List(pl.Utf8)
+                )
+                if x is not None
+                else None,
+                return_dtype=pl.List(pl.Utf8),
             )
         elif function_name == "map_values":
             # map_values(col) - extract all values from map/dict as array
             # For structs, get only non-null values; for dicts, get values
             return col_expr.map_elements(
                 lambda x: (
-                    list(x.values()) if isinstance(x, dict)
-                    else [x.get(k) for k in x.keys() if x.get(k) is not None] if isinstance(x, dict)
-                    else [getattr(x, f.name) for f in x.__struct_fields__ if getattr(x, f.name, None) is not None] if hasattr(x, '__struct_fields__')
+                    list(x.values())
+                    if isinstance(x, dict)
+                    else [x.get(k) for k in x if x.get(k) is not None]
+                    if isinstance(x, dict)
+                    else [
+                        getattr(x, f.name)
+                        for f in x.__struct_fields__
+                        if getattr(x, f.name, None) is not None
+                    ]
+                    if hasattr(x, "__struct_fields__")
                     else None
-                ) if x is not None else None,
-                return_dtype=pl.List(None)  # Type will be inferred from values
+                )
+                if x is not None
+                else None,
+                return_dtype=pl.List(None),  # Type will be inferred from values
             )
         elif function_name == "map_entries":
             # map_entries(col) - convert map to array of structs with key and value
             # PySpark returns array of structs with 'key' and 'value' fields
             return col_expr.map_elements(
                 lambda x: (
-                    [{"key": k, "value": v} for k, v in x.items()] if isinstance(x, dict)
-                    else [{"key": k, "value": x.get(k)} for k in x.keys() if x.get(k) is not None] if isinstance(x, dict)
-                    else [{"key": f.name, "value": getattr(x, f.name)} for f in x.__struct_fields__ if getattr(x, f.name, None) is not None] if hasattr(x, '__struct_fields__')
+                    [{"key": k, "value": v} for k, v in x.items()]
+                    if isinstance(x, dict)
+                    else [
+                        {"key": k, "value": x.get(k)} for k in x if x.get(k) is not None
+                    ]
+                    if isinstance(x, dict)
+                    else [
+                        {"key": f.name, "value": getattr(x, f.name)}
+                        for f in x.__struct_fields__
+                        if getattr(x, f.name, None) is not None
+                    ]
+                    if hasattr(x, "__struct_fields__")
                     else None
-                ) if x is not None else None,
-                return_dtype=pl.List(None)  # Type will be inferred
+                )
+                if x is not None
+                else None,
+                return_dtype=pl.List(None),  # Type will be inferred
             )
         elif function_name == "map_concat":
             # map_concat(*cols) - concatenate multiple maps
@@ -871,12 +1644,12 @@ class PolarsExpressionTranslator:
                 for col in op.value:
                     if isinstance(col, str):
                         all_cols.append(pl.col(col))
-                    elif isinstance(col, MockColumnOperation) and col.operation == "cast":
+                    elif isinstance(col, ColumnOperation) and col.operation == "cast":
                         # For cast operations nested in function calls, translate the column part
                         # but keep the cast value (type name) as-is
-                        if isinstance(col.column, MockColumn):
+                        if isinstance(col.column, Column):
                             cast_col = pl.col(col.column.name)
-                        elif isinstance(col.column, MockColumnOperation):
+                        elif isinstance(col.column, ColumnOperation):
                             cast_col = self._translate_operation(col.column)
                         else:
                             cast_col = self.translate(col.column)
@@ -891,23 +1664,27 @@ class PolarsExpressionTranslator:
                 for other_col in all_cols[1:]:
                     # Merge maps using map_elements
                     merged = merged.map_elements(
-                        lambda x, y: {**(x if isinstance(x, dict) else {}), **(y if isinstance(y, dict) else {})} if (isinstance(x, dict) or x is None) and (isinstance(y, dict) or y is None) else None,
-                        return_dtype=pl.Object
+                        lambda x, y: {
+                            **(x if isinstance(x, dict) else {}),
+                            **(y if isinstance(y, dict) else {}),
+                        }
+                        if (isinstance(x, dict) or x is None)
+                        and (isinstance(y, dict) or y is None)
+                        else None,
+                        return_dtype=pl.Object,
                     )
                 # Actually, Polars doesn't support multi-argument map_elements easily
                 # We'll need to use a struct approach or handle this differently
                 # For now, return the first column as a placeholder
                 return col_expr.map_elements(
-                    lambda x: x if isinstance(x, dict) else None,
-                    return_dtype=pl.Object
+                    lambda x: x if isinstance(x, dict) else None, return_dtype=pl.Object
                 )
             else:
                 # Single column - just return as-is
                 return col_expr.map_elements(
-                    lambda x: x if isinstance(x, dict) else None,
-                    return_dtype=pl.Object
+                    lambda x: x if isinstance(x, dict) else None, return_dtype=pl.Object
                 )
-        
+
         # Map function names to Polars expressions (unary functions)
         function_map = {
             "upper": lambda e: e.str.to_uppercase(),
@@ -918,8 +1695,23 @@ class PolarsExpressionTranslator:
             "trim": lambda e: e.str.strip_chars(),
             "ltrim": lambda e: e.str.strip_chars_start(),
             "rtrim": lambda e: e.str.strip_chars_end(),
+            "btrim": lambda e: e.str.strip_chars(),  # btrim without trim_string is same as trim
+            "bit_length": lambda e: (e.str.len_bytes() * 8),
+            "octet_length": lambda e: e.str.len_bytes(),  # Byte length (octet = 8 bits, but octet_length is bytes)
+            "char": lambda e: e.map_elements(
+                lambda x: chr(int(x))
+                if x is not None and isinstance(x, (int, float))
+                else None,
+                return_dtype=pl.Utf8,
+            ),
+            "ucase": lambda e: e.str.to_uppercase(),  # Alias for upper
+            "lcase": lambda e: e.str.to_lowercase(),  # Alias for lower
+            "positive": lambda e: e,  # Identity function
+            "negative": lambda e: -e,  # Negate
+            "power": lambda e: e,  # Will be handled in operation-specific code below
             "abs": lambda e: e.abs(),
             "ceil": lambda e: e.ceil(),
+            "ceiling": lambda e: e.ceil(),  # Alias for ceil
             "floor": lambda e: e.floor(),
             "sqrt": lambda e: e.sqrt(),
             "exp": lambda e: e.exp(),
@@ -928,6 +1720,15 @@ class PolarsExpressionTranslator:
             "sin": lambda e: e.sin(),
             "cos": lambda e: e.cos(),
             "tan": lambda e: e.tan(),
+            "asin": lambda e: e.arcsin(),
+            "acos": lambda e: e.arccos(),
+            "atan": lambda e: e.arctan(),
+            "sinh": lambda e: e.sinh(),
+            "cosh": lambda e: e.cosh(),
+            "tanh": lambda e: e.tanh(),
+            "asinh": lambda e: e.arcsinh(),
+            "acosh": lambda e: e.arccosh(),
+            "atanh": lambda e: e.arctanh(),
             "sum": lambda e: e.sum(),
             "avg": lambda e: e.mean(),
             "mean": lambda e: e.mean(),
@@ -948,12 +1749,29 @@ class PolarsExpressionTranslator:
             "dayofyear": lambda e: self._extract_datetime_part(e, "dayofyear"),
             "weekofyear": lambda e: self._extract_datetime_part(e, "weekofyear"),
             "quarter": lambda e: self._extract_datetime_part(e, "quarter"),
-            "reverse": lambda e: self._reverse_expr(e, op),  # Handle both string and array reverse
+            "reverse": lambda e: self._reverse_expr(
+                e, op
+            ),  # Handle both string and array reverse
             "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
-            "bin": lambda e: e.map_elements(lambda x: bin(int(x))[2:] if isinstance(x, (int, float)) and not (isinstance(x, float) and math.isnan(x)) and x is not None else '', return_dtype=pl.Utf8),
+            "bin": lambda e: e.map_elements(
+                lambda x: bin(int(x))[2:]
+                if isinstance(x, (int, float))
+                and not (isinstance(x, float) and math.isnan(x))
+                and x is not None
+                else "",
+                return_dtype=pl.Utf8,
+            ),
             "bround": lambda e: self._bround_expr(e, op),
             "conv": lambda e: self._conv_expr(e, op),
-            "factorial": lambda e: e.map_elements(lambda x: math.factorial(int(x)) if isinstance(x, (int, float)) and x >= 0 and x == int(x) and x is not None else None, return_dtype=pl.Int64),
+            "factorial": lambda e: e.map_elements(
+                lambda x: math.factorial(int(x))
+                if isinstance(x, (int, float))
+                and x >= 0
+                and x == int(x)
+                and x is not None
+                else None,
+                return_dtype=pl.Int64,
+            ),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
             "isnull": lambda e: e.is_null(),
             "isNull": lambda e: e.is_null(),
@@ -965,9 +1783,84 @@ class PolarsExpressionTranslator:
             "array_max": lambda e: e.list.max(),
             "array_min": lambda e: e.list.min(),
             "array_distinct": lambda e: e.list.unique(),
-            # Note: explode expression just returns the array column
+            # Note: explode/explode_outer expressions just return the array column
             # The actual row expansion is handled in operation_executor
             "explode": lambda e: e,  # Return the array column as-is, will be exploded in operation_executor
+            "explode_outer": lambda e: e,  # Return the array column as-is, will be exploded in operation_executor
+            # New string functions
+            "ilike": lambda e: e,  # Will be handled in operation-specific code
+            "find_in_set": lambda e: e,  # Will be handled in operation-specific code
+            "regexp_count": lambda e: e,  # Will be handled in operation-specific code
+            "regexp_like": lambda e: e,  # Will be handled in operation-specific code
+            "regexp_substr": lambda e: e,  # Will be handled in operation-specific code
+            "regexp_instr": lambda e: e,  # Will be handled in operation-specific code
+            "regexp": lambda e: e,  # Will be handled in operation-specific code (alias for rlike)
+            "sentences": lambda e: e,  # Will be handled in operation-specific code
+            "printf": lambda e: e,  # Will be handled in operation-specific code
+            "to_char": lambda e: e,  # Will be handled in operation-specific code
+            "to_varchar": lambda e: e,  # Will be handled in operation-specific code
+            "typeof": lambda e: e,  # Will be handled in operation-specific code
+            "stack": lambda e: e,  # Will be handled in operation-specific code
+            # New math/bitwise functions
+            "pmod": lambda e: e,  # Will be handled in operation-specific code
+            "negate": lambda e: -e,  # Alias for negative
+            "shiftleft": lambda e: e,  # Will be handled in operation-specific code
+            "shiftright": lambda e: e,  # Will be handled in operation-specific code
+            "shiftrightunsigned": lambda e: e,  # Will be handled in operation-specific code
+            "ln": lambda e: e.log(),  # Natural logarithm
+            # New datetime functions
+            "years": lambda e: e,  # Interval function - return as-is
+            "localtimestamp": lambda e: pl.datetime.now(),  # Local timestamp
+            "dateadd": lambda e: e,  # Will be handled in operation-specific code
+            "datepart": lambda e: e,  # Will be handled in operation-specific code
+            "make_timestamp": lambda e: e,  # Will be handled in operation-specific code
+            "make_timestamp_ltz": lambda e: e,  # Will be handled in operation-specific code
+            "make_timestamp_ntz": lambda e: e,  # Will be handled in operation-specific code
+            "make_interval": lambda e: e,  # Will be handled in operation-specific code
+            "make_dt_interval": lambda e: e,  # Will be handled in operation-specific code
+            "make_ym_interval": lambda e: e,  # Will be handled in operation-specific code
+            "to_number": lambda e: e,  # Will be handled in operation-specific code
+            "to_binary": lambda e: e,  # Will be handled in operation-specific code
+            "to_unix_timestamp": lambda e: e,  # Will be handled in operation-specific code
+            "unix_date": lambda e: e,  # Will be handled in operation-specific code
+            "unix_seconds": lambda e: e,  # Will be handled in operation-specific code
+            "unix_millis": lambda e: e,  # Will be handled in operation-specific code
+            "unix_micros": lambda e: e,  # Will be handled in operation-specific code
+            "timestamp_seconds": lambda e: e,  # Will be handled in operation-specific code
+            "timestamp_millis": lambda e: e,  # Will be handled in operation-specific code
+            "timestamp_micros": lambda e: e,  # Will be handled in operation-specific code
+            # New utility functions
+            "get": lambda e: e,  # Will be handled in operation-specific code
+            "inline": lambda e: e,  # Will be handled in operation-specific code
+            "inline_outer": lambda e: e,  # Will be handled in operation-specific code
+            "str_to_map": lambda e: e,  # Will be handled in operation-specific code
+            # New crypto functions (PySpark 3.5+)
+            "aes_encrypt": lambda e: e,  # Will be handled in operation-specific code
+            "aes_decrypt": lambda e: e,  # Will be handled in operation-specific code
+            "try_aes_decrypt": lambda e: e,  # Will be handled in operation-specific code
+            # New string functions (PySpark 3.5+)
+            "sha": lambda e: e,  # Alias for sha1 - will be handled in operation-specific code
+            "mask": lambda e: e,  # Will be handled in operation-specific code
+            "json_array_length": lambda e: e,  # Will be handled in operation-specific code
+            "json_object_keys": lambda e: e,  # Will be handled in operation-specific code
+            "xpath_number": lambda e: e,  # Will be handled in operation-specific code
+            "user": lambda e: pl.lit(""),  # Will be handled in operation-specific code
+            # New math functions (PySpark 3.5+)
+            "getbit": lambda e: e,  # Will be handled in operation-specific code
+            "width_bucket": lambda e: e,  # Will be handled in operation-specific code
+            # New datetime functions (PySpark 3.5+)
+            "date_from_unix_date": lambda e: e,  # Will be handled in operation-specific code
+            "to_timestamp_ltz": lambda e: e,  # Will be handled in operation-specific code
+            "to_timestamp_ntz": lambda e: e,  # Will be handled in operation-specific code
+            # New null-safe try functions (PySpark 3.5+)
+            "try_add": lambda e: e,  # Will be handled in operation-specific code
+            "try_subtract": lambda e: e,  # Will be handled in operation-specific code
+            "try_multiply": lambda e: e,  # Will be handled in operation-specific code
+            "try_divide": lambda e: e,  # Will be handled in operation-specific code
+            "try_element_at": lambda e: e,  # Will be handled in operation-specific code
+            "try_to_binary": lambda e: e,  # Will be handled in operation-specific code
+            "try_to_number": lambda e: e,  # Will be handled in operation-specific code
+            "try_to_timestamp": lambda e: e,  # Will be handled in operation-specific code
         }
 
         if function_name in function_map:
@@ -984,17 +1877,17 @@ class PolarsExpressionTranslator:
 
     def _last_day_expr(self, expr: pl.Expr) -> pl.Expr:
         """Get last day of month for a date column.
-        
+
         Args:
             expr: Polars expression (date column or string)
-            
+
         Returns:
             Polars expression for last day of month
         """
         # Parse string dates first, or use directly if already a date
         # Try parsing as string first (most common case)
         try:
-            date_col = expr.str.strptime(pl.Date, '%Y-%m-%d', strict=False)
+            date_col = expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
         except AttributeError:
             # Already a date column, use directly
             date_col = expr.cast(pl.Date)
@@ -1007,32 +1900,37 @@ class PolarsExpressionTranslator:
 
     def _reverse_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
         """Handle reverse for both strings and arrays.
-        
+
         Args:
             expr: Polars expression (column reference)
-            op: The MockColumnOperation to check column type
-            
+            op: The ColumnOperation to check column type
+
         Returns:
             Polars expression for reverse (string or list)
         """
         # Check if the column is an array type by inspecting the operation's column
         from mock_spark.spark_types import ArrayType
+
         is_array = False
-        
+
         # First, check if column_type is explicitly ArrayType
-        if hasattr(op, 'column'):
+        if hasattr(op, "column"):
             col = op.column
-            if hasattr(col, 'column_type'):
+            if hasattr(col, "column_type"):
                 is_array = isinstance(col.column_type, ArrayType)
-        
+
         # If not determined yet, try to infer from the column name
         # If column name suggests it's an array (e.g., "arr1", "arr2"), treat as array
-        if not is_array and hasattr(op, 'column') and hasattr(op.column, 'name'):
+        if not is_array and hasattr(op, "column") and hasattr(op.column, "name"):
             col_name = op.column.name
             # Common array column name patterns
-            if col_name.startswith('arr') or col_name.endswith('_array') or 'array' in col_name.lower():
+            if (
+                col_name.startswith("arr")
+                or col_name.endswith("_array")
+                or "array" in col_name.lower()
+            ):
                 is_array = True
-        
+
         if is_array:
             return expr.list.reverse()
         else:
@@ -1041,144 +1939,144 @@ class PolarsExpressionTranslator:
 
     def _parse_simple_case_when(self, sql_expr: str) -> pl.Expr:
         """Parse simple CASE WHEN expression and convert to Polars expression.
-        
+
         Args:
             sql_expr: SQL expression string like "CASE WHEN age > 30 THEN 'Senior' ELSE 'Junior' END"
-            
+
         Returns:
             Polars expression equivalent
         """
         import re
-        
+
         # Simple regex-based parser for CASE WHEN ... THEN ... ELSE ... END
         # Pattern: CASE WHEN condition THEN value1 ELSE value2 END
         # Remove CASE and END keywords
         sql_lower = sql_expr.lower()
         if not sql_lower.startswith("case when") or not sql_lower.endswith("end"):
             raise ValueError(f"Unsupported CASE WHEN format: {sql_expr}")
-        
+
         # Extract the middle part: WHEN ... THEN ... ELSE ...
         # Remove "CASE " and " END" (case-insensitive)
         middle = sql_expr[5:-4].strip()  # Remove "CASE " and " END"
-        
+
         # Split by THEN and ELSE (case-insensitive)
         # Pattern: WHEN condition THEN value1 ELSE value2
-        then_match = re.search(r'\s+then\s+', middle, re.IGNORECASE)
-        else_match = re.search(r'\s+else\s+', middle, re.IGNORECASE)
-        
+        then_match = re.search(r"\s+then\s+", middle, re.IGNORECASE)
+        else_match = re.search(r"\s+else\s+", middle, re.IGNORECASE)
+
         if not then_match:
             raise ValueError(f"Invalid CASE WHEN: missing THEN: {sql_expr}")
-        
+
         # Extract condition (between WHEN and THEN)
-        condition_str = middle[:then_match.start()].strip()
+        condition_str = middle[: then_match.start()].strip()
         if condition_str.lower().startswith("when"):
             condition_str = condition_str[4:].strip()  # Remove "when"
-        
+
         # Extract THEN value
         if else_match:
-            then_value_str = middle[then_match.end():else_match.start()].strip()
-            else_value_str = middle[else_match.end():].strip()
+            then_value_str = middle[then_match.end() : else_match.start()].strip()
+            else_value_str = middle[else_match.end() :].strip()
         else:
-            then_value_str = middle[then_match.end():].strip()
+            then_value_str = middle[then_match.end() :].strip()
             else_value_str = None
-        
+
         # Parse condition (e.g., "age > 30")
         # Simple comparison: column operator value
         condition_expr = self._parse_condition(condition_str)
-        
+
         # Parse THEN and ELSE values
         then_expr = self._parse_value(then_value_str)
         else_expr = self._parse_value(else_value_str) if else_value_str else None
-        
+
         # Build Polars expression: pl.when(condition).then(then_value).otherwise(else_value)
         if else_expr is not None:
             return pl.when(condition_expr).then(then_expr).otherwise(else_expr)
         else:
             return pl.when(condition_expr).then(then_expr)
-    
+
     def _parse_condition(self, condition_str: str) -> pl.Expr:
         """Parse a condition string into a Polars expression.
-        
+
         Args:
             condition_str: Condition like "age > 30", "salary == 50000", etc.
-            
+
         Returns:
             Polars expression
         """
-        import re
-        
+
         # Simple parser for comparison operators: column operator value
-        operators = ['>=', '<=', '!=', '==', '>', '<', '=']
+        operators = [">=", "<=", "!=", "==", ">", "<", "="]
         for op in operators:
             if op in condition_str:
                 parts = condition_str.split(op, 1)
                 if len(parts) == 2:
                     left = parts[0].strip()
                     right = parts[1].strip()
-                    
+
                     # Parse left side (column reference)
                     left_expr = pl.col(left)
-                    
+
                     # Parse right side (literal or column)
                     right_expr = self._parse_value(right)
-                    
+
                     # Build comparison expression
-                    if op in ['==', '=']:
+                    if op in ["==", "="]:
                         return left_expr == right_expr
-                    elif op == '!=':
+                    elif op == "!=":
                         return left_expr != right_expr
-                    elif op == '>':
+                    elif op == ">":
                         return left_expr > right_expr
-                    elif op == '>=':
+                    elif op == ">=":
                         return left_expr >= right_expr
-                    elif op == '<':
+                    elif op == "<":
                         return left_expr < right_expr
-                    elif op == '<=':
+                    elif op == "<=":
                         return left_expr <= right_expr
-        
+
         raise ValueError(f"Unable to parse condition: {condition_str}")
-    
+
     def _parse_value(self, value_str: str) -> pl.Expr:
         """Parse a value string into a Polars expression.
-        
+
         Args:
             value_str: Value like "'Senior'", "30", "age", etc.
-            
+
         Returns:
             Polars expression (literal or column reference)
         """
         value_str = value_str.strip()
-        
+
         # String literal (quoted)
-        if (value_str.startswith("'") and value_str.endswith("'")) or \
-           (value_str.startswith('"') and value_str.endswith('"')):
+        if (value_str.startswith("'") and value_str.endswith("'")) or (
+            value_str.startswith('"') and value_str.endswith('"')
+        ):
             # Remove quotes
             literal_value = value_str[1:-1]
             return pl.lit(literal_value)
-        
+
         # Numeric literal
         try:
-            if '.' in value_str:
+            if "." in value_str:
                 return pl.lit(float(value_str))
             else:
                 return pl.lit(int(value_str))
         except ValueError:
             pass
-        
+
         # Boolean literal
-        if value_str.lower() in ['true', 'false']:
-            return pl.lit(value_str.lower() == 'true')
-        
+        if value_str.lower() in ["true", "false"]:
+            return pl.lit(value_str.lower() == "true")
+
         # Column reference
         return pl.col(value_str)
 
     def _extract_datetime_part(self, expr: pl.Expr, part: str) -> pl.Expr:
         """Extract datetime part from expression, handling both string and datetime columns.
-        
+
         Args:
             expr: Polars expression (column reference)
             part: Part to extract (year, month, day, hour, etc.)
-            
+
         Returns:
             Polars expression for datetime part extraction
         """
@@ -1190,45 +2088,46 @@ class PolarsExpressionTranslator:
             "hour": lambda e: e.dt.hour(),
             "minute": lambda e: e.dt.minute(),
             "second": lambda e: e.dt.second(),
-            "dayofweek": lambda e: (e.dt.weekday() % 7) + 1,  # Polars ISO: Mon=1,Sun=7; PySpark: Sun=1,Mon=2,...,Sat=7
+            "dayofweek": lambda e: (e.dt.weekday() % 7)
+            + 1,  # Polars ISO: Mon=1,Sun=7; PySpark: Sun=1,Mon=2,...,Sat=7
             "dayofyear": lambda e: e.dt.ordinal_day(),
             "weekofyear": lambda e: e.dt.week(),
             "quarter": lambda e: e.dt.quarter(),
         }
-        
+
         extractor = part_map.get(part)
         if not extractor:
             raise ValueError(f"Unsupported datetime part: {part}")
-        
+
         # Handle both string and datetime columns
         # For string columns, we need to parse first using str.strptime()
         # For datetime columns, we can use dt methods directly
         # Since we can't check type at expression build time, we use a conditional approach
         # that tries string parsing first, with a fallback for datetime columns
-        
+
         # Use Polars' ability to handle this with a when/then/otherwise pattern
         # But simpler: just always try str.strptime() - it will work for strings
         # For datetime columns, we need to cast them or use directly
         # Actually, str.strptime only works on string columns, so we need a different approach
-        
+
         # Use pl.when() to conditionally handle, but we can't check dtype in expression
         # So we'll use a try-cast pattern: try to parse as string, if that fails use as datetime
         # But Polars doesn't have try-cast in expressions easily
-        
+
         # Simplest approach: assume string and parse it
         # If the column is already datetime, this will fail at runtime
         # For now, we'll parse strings and document that datetime columns should work
         # but may need explicit handling
-        
+
         # For string columns (most common case in tests):
         parsed = expr.str.strptime(pl.Datetime, strict=False)
         return extractor(parsed)
-    
-    def _translate_aggregate_function(self, agg_func: MockAggregateFunction) -> pl.Expr:
+
+    def _translate_aggregate_function(self, agg_func: AggregateFunction) -> pl.Expr:
         """Translate aggregate function.
 
         Args:
-            agg_func: MockAggregateFunction instance
+            agg_func: AggregateFunction instance
 
         Returns:
             Polars aggregate expression
@@ -1236,11 +2135,8 @@ class PolarsExpressionTranslator:
         function_name = agg_func.function_name.lower()
         column = agg_func.column
 
-        if column:
-            col_expr = self.translate(column)
-        else:
-            # Count(*) case
-            col_expr = pl.lit(1)
+        # Count(*) case
+        col_expr = self.translate(column) if column else pl.lit(1)
 
         if function_name == "sum":
             return col_expr.sum()
@@ -1249,6 +2145,12 @@ class PolarsExpressionTranslator:
         elif function_name == "count":
             if column:
                 return col_expr.count()
+            else:
+                return pl.len()
+        elif function_name == "countdistinct":
+            # Count distinct values
+            if column:
+                return col_expr.n_unique()
             else:
                 return pl.len()
         elif function_name == "max":
@@ -1277,11 +2179,11 @@ class PolarsExpressionTranslator:
 
     def _bround_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
         """Banker's rounding (HALF_EVEN rounding mode).
-        
+
         Args:
             expr: Polars expression
-            op: MockColumnOperation with scale in op.value
-            
+            op: ColumnOperation with scale in op.value
+
         Returns:
             Polars expression for banker's rounding
         """
@@ -1293,14 +2195,14 @@ class PolarsExpressionTranslator:
             # Round to scale decimal places using HALF_EVEN
             # Polars doesn't have direct HALF_EVEN, use round() which uses HALF_TO_EVEN
             return expr.round(scale)
-    
+
     def _conv_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
         """Convert number from one base to another.
-        
+
         Args:
             expr: Polars expression (number as string or number)
-            op: MockColumnOperation with (from_base, to_base) in op.value
-            
+            op: ColumnOperation with (from_base, to_base) in op.value
+
         Returns:
             Polars expression for base conversion
         """
@@ -1309,17 +2211,14 @@ class PolarsExpressionTranslator:
             to_base = op.value[1]
         else:
             raise ValueError("conv requires (from_base, to_base) tuple")
-        
+
         # Convert number to string in from_base, then parse from that base, then convert to to_base
         def convert_base(x, from_b, to_b):
             if x is None:
                 return None
             try:
                 # Parse as integer from source base
-                if isinstance(x, str):
-                    num = int(x, from_b)
-                else:
-                    num = int(x)
+                num = int(x, from_b) if isinstance(x, str) else int(x)
                 # Convert to target base
                 if to_b == 10:
                     return str(num)
@@ -1340,9 +2239,76 @@ class PolarsExpressionTranslator:
                     return ("-" if num < 0 else "") + result
             except (ValueError, TypeError):
                 return None
-        
+
         return expr.map_elements(
-            lambda x: convert_base(x, from_base, to_base),
-            return_dtype=pl.Utf8
+            lambda x: convert_base(x, from_base, to_base), return_dtype=pl.Utf8
         )
 
+    def _translate_case_when(self, case_when: Any) -> pl.Expr:
+        """Translate CaseWhen to Polars expression.
+
+        Args:
+            case_when: CaseWhen instance
+
+        Returns:
+            Polars expression using pl.when().then().otherwise() chain
+        """
+        from mock_spark.functions.conditional import CaseWhen
+
+        if not isinstance(case_when, CaseWhen):
+            raise ValueError(f"Expected CaseWhen, got {type(case_when)}")
+
+        if not case_when.conditions:
+            # No conditions - return default value or None
+            if case_when.default_value is not None:
+                return self.translate(case_when.default_value)
+            return pl.lit(None)
+
+        # Build chained when/then/otherwise expression
+        # Start with the first condition
+        condition, value = case_when.conditions[0]
+        condition_expr = self.translate(condition)
+        value_expr = self._translate_value_to_expr(value)
+
+        # Start the chain
+        result = pl.when(condition_expr).then(value_expr)
+
+        # Add additional when/then pairs
+        for condition, value in case_when.conditions[1:]:
+            condition_expr = self.translate(condition)
+            value_expr = self._translate_value_to_expr(value)
+            result = result.when(condition_expr).then(value_expr)
+
+        # Add otherwise clause if default_value is set
+        if case_when.default_value is not None:
+            default_expr = self._translate_value_to_expr(case_when.default_value)
+            result = result.otherwise(default_expr)
+        else:
+            result = result.otherwise(None)
+
+        return result
+
+    def _translate_value_to_expr(self, value: Any) -> pl.Expr:
+        """Translate a value to a Polars expression, handling literals properly.
+
+        This is used for CASE WHEN values where plain strings/numbers should be
+        treated as literals, not column names.
+
+        Args:
+            value: Value to translate (string, number, bool, or expression)
+
+        Returns:
+            Polars expression
+        """
+        # If it's already a Column, ColumnOperation, etc., use translate
+        if isinstance(value, (Column, ColumnOperation, Literal, AggregateFunction)):
+            return self.translate(value)
+        # If it's a plain Python type, treat as literal
+        elif isinstance(value, (str, int, float, bool)):
+            return pl.lit(value)
+        # If it's None, return literal None
+        elif value is None:
+            return pl.lit(None)
+        # Otherwise try translate (might be a CaseWhen or other complex type)
+        else:
+            return self.translate(value)

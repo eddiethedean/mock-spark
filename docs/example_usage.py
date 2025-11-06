@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
 Example usage of Mock Spark package.
-
-Current Status: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 """
 
-from mock_spark import MockSparkSession, F
+from mock_spark.sql import SparkSession, functions as F
 
 
 def main() -> None:
@@ -14,8 +12,8 @@ def main() -> None:
     print("=" * 40)
 
     # Create a mock Spark session
-    spark = MockSparkSession("ExampleApp")
-    print("✅ Created MockSparkSession")
+    spark = SparkSession("ExampleApp")
+    print("✅ Created SparkSession")
 
     # Create sample data
     data = [
@@ -53,8 +51,8 @@ def main() -> None:
     print("\n📊 Sorted by Age:")
     sorted_df.show()
 
-    # New 2.4.0 features
-    print("\n🆕 New 2.4.0 Features:")
+    # Additional features
+    print("\n🆕 Additional Features:")
 
     # String functions
     print("\n🔤 String Functions:")
@@ -77,7 +75,7 @@ def main() -> None:
 
     # Window functions
     print("\n🪟 Window Functions:")
-    from mock_spark.window import MockWindow as Window
+    from mock_spark.sql import Window
 
     window_spec = Window.orderBy(F.desc("age"))
     window_ops = df.select(

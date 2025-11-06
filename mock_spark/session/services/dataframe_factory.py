@@ -1,5 +1,5 @@
 """
-DataFrame factory service for MockSparkSession.
+DataFrame factory service for SparkSession.
 
 This service handles DataFrame creation, schema inference, and validation
 following the Single Responsibility Principle.
@@ -7,12 +7,12 @@ following the Single Responsibility Principle.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     StringType,
 )
-from mock_spark.dataframe import MockDataFrame
-from mock_spark.session.config import MockSparkConfig
+from mock_spark.dataframe import DataFrame
+from mock_spark.session.config import SparkConfig
 from mock_spark.core.exceptions import IllegalArgumentException
 
 
@@ -22,20 +22,20 @@ class DataFrameFactory:
     def create_dataframe(
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[MockStructType, List[str], str]],
-        engine_config: MockSparkConfig,
+        schema: Optional[Union[StructType, List[str], str]],
+        engine_config: SparkConfig,
         storage: Any,
-    ) -> MockDataFrame:
+    ) -> DataFrame:
         """Create a DataFrame from data.
 
         Args:
             data: List of dictionaries or tuples representing rows.
-            schema: Optional schema definition (MockStructType or list of column names).
+            schema: Optional schema definition (StructType or list of column names).
             engine_config: Engine configuration for validation and coercion.
             storage: Storage manager for the DataFrame.
 
         Returns:
-            MockDataFrame instance with the specified data and schema.
+            DataFrame instance with the specified data and schema.
 
         Raises:
             IllegalArgumentException: If data is not in the expected format.
@@ -49,11 +49,11 @@ class DataFrameFactory:
                 "Data must be a list of dictionaries or tuples"
             )
 
-        # Handle PySpark StructType - convert to MockStructType
-        # Check if it's a PySpark StructType (has 'fields' attribute but not MockStructType)
+        # Handle PySpark StructType - convert to StructType
+        # Check if it's a PySpark StructType (has 'fields' attribute but not StructType)
         if (
             schema is not None
-            and not isinstance(schema, (MockStructType, str, list))
+            and not isinstance(schema, (StructType, str, list))
             and hasattr(schema, "fields")
         ):
             # This is likely a PySpark StructType - convert it
@@ -85,14 +85,14 @@ class DataFrameFactory:
                 schema, data = SchemaInferenceEngine.infer_from_data(data)
             else:
                 # For non-tuple data with column names, use StringType as default
-                fields = [MockStructField(name, StringType()) for name in schema]
-                schema = MockStructType(fields)
+                fields = [StructField(name, StringType()) for name in schema]
+                schema = StructType(fields)
 
         if schema is None:
             # Infer schema from data using SchemaInferenceEngine
             if not data:
                 # For empty dataset, create empty schema
-                schema = MockStructType([])
+                schema = StructType([])
             else:
                 # Check if data is in expected format
                 sample_row = data[0]
@@ -117,7 +117,7 @@ class DataFrameFactory:
         # Apply validation and optional type coercion per mode
         # Note: When an explicit schema is provided with empty data, we still need to preserve
         # the schema even though validation is skipped (since there's no data to validate)
-        if isinstance(schema, MockStructType) and data:
+        if isinstance(schema, StructType) and data:
             from mock_spark.core.data_validation import DataValidator
 
             validator = DataValidator(
@@ -134,27 +134,25 @@ class DataFrameFactory:
             if engine_config.enable_type_coercion:
                 data = validator.coerce(data)
 
-        # Ensure schema is always MockStructType at this point
+        # Ensure schema is always StructType at this point
         # IMPORTANT: When explicit schema is provided with empty data, preserve it!
-        if not isinstance(schema, MockStructType):
+        if not isinstance(schema, StructType):
             # This should never happen, but provide a fallback
-            schema = MockStructType([])
+            schema = StructType([])
 
         # Validate that schema is properly initialized with fields attribute
         # This ensures empty DataFrames with explicit schemas preserve column information
-        if isinstance(schema, MockStructType):
-            # Ensure fields attribute exists (should always exist for MockStructType)
-            if not hasattr(schema, "fields"):
-                # This shouldn't happen, but handle edge case
-                schema = MockStructType([])
+        if isinstance(schema, StructType) and not hasattr(schema, "fields"):
+            # This shouldn't happen, but handle edge case
+            schema = StructType([])
             # fields can be empty list, but that's valid for empty schemas
             # If schema was provided explicitly, trust it even if fields is empty
 
-        return MockDataFrame(data, schema, storage)
+        return DataFrame(data, schema, storage)
 
     def _handle_schema_inference(
         self, data: List[Dict[str, Any]], schema: Optional[Any]
-    ) -> Tuple[MockStructType, List[Dict[str, Any]]]:
+    ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """Handle schema inference or conversion.
 
         Args:
@@ -175,8 +173,8 @@ class DataFrameFactory:
     def _apply_validation_and_coercion(
         self,
         data: List[Dict[str, Any]],
-        schema: MockStructType,
-        engine_config: MockSparkConfig,
+        schema: StructType,
+        engine_config: SparkConfig,
     ) -> List[Dict[str, Any]]:
         """Apply validation and type coercion.
 
@@ -206,17 +204,17 @@ class DataFrameFactory:
 
         return data
 
-    def _convert_pyspark_struct_type(self, pyspark_schema: Any) -> MockStructType:
-        """Convert PySpark StructType to MockStructType.
+    def _convert_pyspark_struct_type(self, pyspark_schema: Any) -> StructType:
+        """Convert PySpark StructType to StructType.
 
         Args:
             pyspark_schema: PySpark StructType object with 'fields' attribute.
 
         Returns:
-            MockStructType equivalent.
+            StructType equivalent.
         """
         from mock_spark.spark_types import (
-            MockDataType,
+            DataType,
             StringType,
             IntegerType,
             LongType,
@@ -228,11 +226,11 @@ class DataFrameFactory:
             DecimalType,
             ArrayType,
             MapType,
-            MockStructType,
+            StructType,
         )
 
-        def convert_pyspark_field(field: Any) -> MockStructField:
-            """Convert PySpark StructField to MockStructField."""
+        def convert_pyspark_field(field: Any) -> StructField:
+            """Convert PySpark StructField to StructField."""
             field_name = field.name
             field_nullable = getattr(field, "nullable", True)
 
@@ -240,12 +238,12 @@ class DataFrameFactory:
             pyspark_type = field.dataType
             mock_type = convert_pyspark_data_type(pyspark_type)
 
-            return MockStructField(
+            return StructField(
                 name=field_name, dataType=mock_type, nullable=field_nullable
             )
 
-        def convert_pyspark_data_type(pyspark_type: Any) -> MockDataType:
-            """Convert PySpark DataType to MockDataType."""
+        def convert_pyspark_data_type(pyspark_type: Any) -> DataType:
+            """Convert PySpark DataType to DataType."""
             # Get the type name as string for comparison
             type_name = type(pyspark_type).__name__
 
@@ -279,11 +277,11 @@ class DataFrameFactory:
             elif type_name == "StructType":
                 # Recursive conversion for nested structs
                 fields = [convert_pyspark_field(f) for f in pyspark_type.fields]
-                return MockStructType(fields)
+                return StructType(fields)
             else:
                 # Default to StringType for unknown types
                 return StringType()
 
         # Convert all fields
         fields = [convert_pyspark_field(field) for field in pyspark_schema.fields]
-        return MockStructType(fields)
+        return StructType(fields)

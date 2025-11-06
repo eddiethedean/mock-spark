@@ -1,7 +1,7 @@
 """
 Session Performance and Memory Tracking
 
-This module handles memory tracking and benchmarking for MockSparkSession.
+This module handles memory tracking and benchmarking for SparkSession.
 Extracted from session.py to improve organization.
 """
 
@@ -9,7 +9,7 @@ import time
 from typing import Any, Dict, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mock_spark.dataframe import MockDataFrame
+    from mock_spark.dataframe import DataFrame
 
 
 class SessionPerformanceTracker:
@@ -25,7 +25,7 @@ class SessionPerformanceTracker:
     # Memory Tracking
     # -------------------------------------------------------------------------
 
-    def track_dataframe(self, df: "MockDataFrame") -> None:
+    def track_dataframe(self, df: "DataFrame") -> None:
         """Track DataFrame for approximate memory accounting.
 
         Args:
@@ -34,7 +34,7 @@ class SessionPerformanceTracker:
         self._tracked_dataframes.append(df)
         self._approx_memory_usage_bytes += self._estimate_dataframe_size(df)
 
-    def _estimate_dataframe_size(self, df: "MockDataFrame") -> int:
+    def _estimate_dataframe_size(self, df: "DataFrame") -> int:
         """Very rough size estimate based on rows, columns, and value sizes.
 
         Args:

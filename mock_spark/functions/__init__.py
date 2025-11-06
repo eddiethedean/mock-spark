@@ -17,8 +17,8 @@ Key Features:
     - Type-safe operations with proper return types
 
 Example:
-    >>> from mock_spark import MockSparkSession, F
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession, functions as F
+    >>> spark = SparkSession("test")
     >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
     >>> df = spark.createDataFrame(data)
     >>> df.select(
@@ -26,33 +26,33 @@ Example:
     ...     F.col("age") * 2,
     ...     F.when(F.col("age") > 25, "senior").otherwise("junior")
     ... ).show()
-    +--- MockDataFrame: 2 rows ---+
-     upper_name |    (age * 2) |    CASE WHEN
-    ------------------------------------------
-           ALICE |           50 |       junior
-             BOB |           60 |       senior
+    DataFrame[2 rows, 3 columns]
+
+    upper_name (age * 2) CASE WHEN ((age > 25)) THEN senior ELSE junior END
+    ALICE        50          junior
+    BOB          60          senior
 """
 
-from .core.column import MockColumn, MockColumnOperation
-from .core.literals import MockLiteral
+from .core.column import Column, ColumnOperation
+from .core.literals import Literal
 from .core.expressions import ExpressionFunctions
-from .base import MockAggregateFunction
-from .conditional import MockCaseWhen
-from .window_execution import MockWindowFunction
-from .functions import MockFunctions, F
+from .base import AggregateFunction
+from .conditional import CaseWhen
+from .window_execution import WindowFunction
+from .functions import Functions, F
 from .string import StringFunctions
 from .math import MathFunctions
 from .aggregate import AggregateFunctions
 from .datetime import DateTimeFunctions
 from .array import ArrayFunctions
 from .map import MapFunctions
-from .udf import UserDefinedFunction
+from .crypto import CryptoFunctions  # noqa: F401
+from .udf import UserDefinedFunction, UserDefinedTableFunction
 from .pandas_types import PandasUDFType
 
 # Note: Module-level function aliases are NOT defined here.
 # All function access is handled by __getattr__ at the end of this file.
-# This allows version compatibility gating - functions unavailable in the
-# current PySpark compatibility mode will raise AttributeError.
+# This allows dynamic function access - all functions are available.
 #
 # To use functions, import from this module:
 #   from mock_spark.functions import col, lit, when
@@ -61,14 +61,14 @@ from .pandas_types import PandasUDFType
 #   F.col("name")
 
 __all__ = [
-    "MockColumn",
-    "MockColumnOperation",
-    "MockLiteral",
+    "Column",
+    "ColumnOperation",
+    "Literal",
     "ExpressionFunctions",
-    "MockAggregateFunction",
-    "MockCaseWhen",
-    "MockWindowFunction",
-    "MockFunctions",
+    "AggregateFunction",
+    "CaseWhen",
+    "WindowFunction",
+    "Functions",
     "F",
     "StringFunctions",
     "MathFunctions",
@@ -106,7 +106,16 @@ __all__ = [
     "md5",
     "sha1",
     "sha2",
+    "sha",
+    "mask",
+    "json_array_length",
+    "json_object_keys",
+    "xpath_number",
+    "user",
     "crc32",
+    "aes_encrypt",
+    "aes_decrypt",
+    "try_aes_decrypt",
     "regexp_extract_all",
     "array_join",
     "repeat",
@@ -152,6 +161,7 @@ __all__ = [
     "rint",
     "bround",
     "sign",
+    "width_bucket",
     "greatest",
     "least",
     "count",
@@ -205,6 +215,10 @@ __all__ = [
     "timestampdiff",
     "date_trunc",
     "datediff",
+    "date_diff",
+    "date_from_unix_date",
+    "to_timestamp_ltz",
+    "to_timestamp_ntz",
     "unix_timestamp",
     "last_day",
     "next_day",
@@ -214,6 +228,8 @@ __all__ = [
     "dense_rank",
     "lag",
     "lead",
+    "first_value",
+    "last_value",
     "nth_value",
     "ntile",
     "cume_dist",
@@ -266,6 +282,12 @@ __all__ = [
     "named_struct",
     "bit_count",
     "bit_get",
+    "bitmap_bit_position",
+    "bitmap_bucket_number",
+    "bitmap_construct_agg",
+    "bitmap_count",
+    "bitmap_or_agg",
+    "getbit",
     "bitwise_not",
     "convert_timezone",
     "current_timezone",
@@ -306,6 +328,7 @@ __all__ = [
     # Phase 2: Advanced Features (PySpark 3.0)
     "mean",
     "approx_count_distinct",
+    "count_distinct",
     "stddev_pop",
     "stddev_samp",
     "var_pop",
@@ -352,13 +375,29 @@ __all__ = [
     # New functions from implementation plan
     "char_length",
     "character_length",
+    "btrim",
+    "contains",
+    "left",
+    "right",
+    "bit_length",
     "weekday",
     "extract",
     "median",
     "mode",
     "percentile",
+    "approx_percentile",
     "ifnull",
     "nullif",
+    "try_add",
+    "try_subtract",
+    "try_multiply",
+    "try_divide",
+    "try_sum",
+    "try_avg",
+    "try_element_at",
+    "try_to_binary",
+    "try_to_number",
+    "try_to_timestamp",
     "array_agg",
     "cardinality",
     "cot",
@@ -367,6 +406,7 @@ __all__ = [
     "e",
     "pi",
     "ln",
+    "ceiling",
     "bit_and",
     "bit_or",
     "bit_xor",
@@ -381,11 +421,120 @@ __all__ = [
     # Phase 1: High-priority missing features
     "pandas_udf",
     "UserDefinedFunction",
+    "UserDefinedTableFunction",
     # Final core features for 100% PySpark 3.0-3.5 coverage
     "PandasUDFType",
     "to_str",
     # PySpark 3.4+ features
     "window_time",
+    # Next 25 missing features
+    "startswith",
+    "endswith",
+    "like",
+    "rlike",
+    "replace",
+    "substr",
+    "split_part",
+    "position",
+    "octet_length",
+    "char",
+    "ucase",
+    "lcase",
+    "elt",
+    "power",
+    "std",
+    "product",
+    "positive",
+    "negative",
+    "sum_distinct",
+    "now",
+    "curdate",
+    "days",
+    "hours",
+    "months",
+    "equal_null",
+    # Next 50 missing features
+    "ilike",
+    "find_in_set",
+    "regexp_count",
+    "regexp_like",
+    "regexp_substr",
+    "regexp_instr",
+    "regexp",
+    "sentences",
+    "printf",
+    "to_char",
+    "to_varchar",
+    "pmod",
+    "negate",
+    "shiftleft",
+    "shiftright",
+    "shiftrightunsigned",
+    "shiftLeft",
+    "shiftRight",
+    "shiftRightUnsigned",
+    "years",
+    "localtimestamp",
+    "dateadd",
+    "datepart",
+    "make_timestamp",
+    "make_timestamp_ltz",
+    "make_timestamp_ntz",
+    "make_interval",
+    "make_dt_interval",
+    "make_ym_interval",
+    "to_number",
+    "to_binary",
+    "to_unix_timestamp",
+    "unix_date",
+    "unix_seconds",
+    "unix_millis",
+    "unix_micros",
+    "timestamp_seconds",
+    "timestamp_millis",
+    "timestamp_micros",
+    "regr_avgx",
+    "regr_avgy",
+    "regr_count",
+    "regr_intercept",
+    "regr_r2",
+    "regr_slope",
+    "regr_sxx",
+    "regr_sxy",
+    "regr_syy",
+    "cast",
+    "stack",
+    "str_to_map",
+    "typeof",
+    "get",
+    "inline",
+    "inline_outer",
+    # Next 50 missing features (crypto, string, math, datetime, try functions)
+    "aes_encrypt",
+    "aes_decrypt",
+    "try_aes_decrypt",
+    "sha",
+    "mask",
+    "json_array_length",
+    "json_object_keys",
+    "xpath_number",
+    "user",
+    "getbit",
+    "width_bucket",
+    "approx_percentile",
+    "date_from_unix_date",
+    "to_timestamp_ltz",
+    "to_timestamp_ntz",
+    "try_add",
+    "try_subtract",
+    "try_multiply",
+    "try_divide",
+    "try_sum",
+    "try_avg",
+    "try_element_at",
+    "try_to_binary",
+    "try_to_number",
+    "try_to_timestamp",
 ]
 
 from typing import Any  # noqa: E402
@@ -393,11 +542,10 @@ from typing import Any  # noqa: E402
 
 def __getattr__(name: str) -> Any:
     """
-    Custom attribute access to enforce PySpark version compatibility.
+    Custom attribute access for function imports.
 
     This function is called when accessing any attribute that isn't already defined
-    in the module. It checks if the requested function is available in the current
-    PySpark compatibility mode.
+    in the module. It enables `from mock_spark.functions import function_name` syntax.
 
     Args:
         name: Name of the function being accessed
@@ -406,21 +554,11 @@ def __getattr__(name: str) -> Any:
         The requested function/attribute
 
     Raises:
-        AttributeError: If function not available in current version mode
+        AttributeError: If function not found
     """
-    from mock_spark._version_compat import is_available, get_pyspark_version
-
     # Check if this is a known function
     if name in __all__:
-        # Check version compatibility
-        if not is_available(name, "function"):
-            version = get_pyspark_version()
-            raise AttributeError(
-                f"module 'pyspark.sql.functions' has no attribute '{name}' "
-                f"(PySpark {version} compatibility mode)"
-            )
-
-        # If available, try to return it from F
+        # Try to return it from F
         try:
             return getattr(F, name)
         except AttributeError:
@@ -433,17 +571,15 @@ def __getattr__(name: str) -> Any:
 
 # Populate module namespace with ALL functions from F
 # This enables `from mock_spark.functions import function_name` syntax
-# Note: Version checking is disabled for now to maintain backward compatibility
-# Use environment variable MOCK_SPARK_PYSPARK_VERSION or call set_pyspark_version() before import
 _CLASS_EXPORTS = {
-    "MockColumn",
-    "MockColumnOperation",
-    "MockLiteral",
+    "Column",
+    "ColumnOperation",
+    "Literal",
     "ExpressionFunctions",
-    "MockAggregateFunction",
-    "MockCaseWhen",
-    "MockWindowFunction",
-    "MockFunctions",
+    "AggregateFunction",
+    "CaseWhen",
+    "WindowFunction",
+    "Functions",
     "F",
     "StringFunctions",
     "MathFunctions",
@@ -451,13 +587,16 @@ _CLASS_EXPORTS = {
     "DateTimeFunctions",
     "ArrayFunctions",
     "MapFunctions",
+    "BitwiseFunctions",
+    "XMLFunctions",
+    "CryptoFunctions",
     "UserDefinedFunction",
+    "UserDefinedTableFunction",
     "PandasUDFType",
 }
 
 # Add ALL functions to module namespace unconditionally
 # (Version checking via environment variable or F.function_name access)
 for _name in __all__:
-    if _name not in _CLASS_EXPORTS:
-        if hasattr(F, _name):
-            globals()[_name] = getattr(F, _name)
+    if _name not in _CLASS_EXPORTS and hasattr(F, _name):
+        globals()[_name] = getattr(F, _name)

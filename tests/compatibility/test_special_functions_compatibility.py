@@ -15,10 +15,10 @@ class TestSpecialFunctionsCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("special_functions_test")
+        session = SparkSession("special_functions_test")
         yield session
         session.stop()
 
@@ -28,14 +28,6 @@ class TestSpecialFunctionsCompatibility:
         expected = load_expected_output("functions", "hash")
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.hash(df.name))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="input_file_name is context-dependent")
-    def test_input_file_name(self, spark):
-        """Test input_file_name function."""
-        expected = load_expected_output("functions", "input_file_name")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.input_file_name())
         assert_dataframes_equal(result, expected)
 
     def test_isnan(self, spark):

@@ -7,7 +7,6 @@ file-based storage and various serialization formats.
 
 Key Features:
     - Polars as primary persistent storage backend (v3.0.0+, default)
-    - DuckDB backend available for backward compatibility (legacy)
     - In-memory storage for testing
     - File-based storage for data export/import
     - Flexible serialization (JSON, CSV, Parquet)
@@ -19,12 +18,12 @@ Key Features:
 
 Example:
     >>> from mock_spark.storage import PolarsStorageManager
-    >>> from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+    >>> from mock_spark.spark_types import StructType, StructField, StringType, IntegerType
     >>> storage = PolarsStorageManager()
     >>> storage.create_schema("test_db")
-    >>> schema = MockStructType([
-    ...     MockStructField("name", StringType()),
-    ...     MockStructField("age", IntegerType())
+    >>> schema = StructType([
+    ...     StructField("name", StringType()),
+    ...     StructField("age", IntegerType())
     ... ])
     >>> storage.create_table("test_db", "users", schema)
     >>> storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
@@ -39,21 +38,10 @@ from .backends.memory import MemoryStorageManager, MemoryTable, MemorySchema
 
 # Import Polars from backend location (default in v3.0.0+)
 from mock_spark.backend.polars import PolarsStorageManager, PolarsTable, PolarsSchema
-
-# Import DuckDB from backend location, re-export for backward compatibility
-# Note: DuckDB is optional - install with: pip install duckdb
-try:
-    from mock_spark.backend.duckdb import DuckDBStorageManager, DuckDBTable, DuckDBSchema
-except ImportError:
-    # DuckDB not installed - set to None for optional usage
-    DuckDBStorageManager = None  # type: ignore
-    DuckDBTable = None  # type: ignore
-    DuckDBSchema = None  # type: ignore
 from .models import (
     MockTableMetadata,
-    MockColumnDefinition,
+    ColumnDefinition,
     StorageMode,
-    DuckDBTableModel,
     StorageOperationResult,
     QueryResult,
 )
@@ -75,19 +63,14 @@ __all__ = [
     "MemoryStorageManager",
     "MemoryTable",
     "MemorySchema",
-        # Polars backend (default in v3.0.0+)
-        "PolarsStorageManager",
-        "PolarsTable",
-        "PolarsSchema",
-        # DuckDB backend (legacy, optional - requires: pip install duckdb)
-        "DuckDBStorageManager",
-        "DuckDBTable",
-        "DuckDBSchema",
+    # Polars backend (default in v3.0.0+)
+    "PolarsStorageManager",
+    "PolarsTable",
+    "PolarsSchema",
     # Storage models (dataclasses)
     "MockTableMetadata",
-    "MockColumnDefinition",
+    "ColumnDefinition",
     "StorageMode",
-    "DuckDBTableModel",
     "StorageOperationResult",
     "QueryResult",
     # File backend

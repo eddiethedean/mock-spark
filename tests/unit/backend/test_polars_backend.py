@@ -9,10 +9,14 @@ import pytest
 from mock_spark.backend.polars import (
     PolarsStorageManager,
     PolarsMaterializer,
-    PolarsTable,
 )
 from mock_spark.backend.factory import BackendFactory
-from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+from mock_spark.spark_types import (
+    StructType,
+    StructField,
+    StringType,
+    IntegerType,
+)
 
 
 @pytest.mark.unit
@@ -33,10 +37,12 @@ class TestPolarsStorageManager:
     def test_create_table(self):
         """Test table creation."""
         storage = PolarsStorageManager()
-        schema = MockStructType([
-            MockStructField("name", StringType()),
-            MockStructField("age", IntegerType()),
-        ])
+        schema = StructType(
+            [
+                StructField("name", StringType()),
+                StructField("age", IntegerType()),
+            ]
+        )
         table = storage.create_table("default", "users", schema)
         assert table is not None
         assert storage.table_exists("default", "users")
@@ -44,18 +50,20 @@ class TestPolarsStorageManager:
     def test_insert_and_query_data(self):
         """Test data insertion and querying."""
         storage = PolarsStorageManager()
-        schema = MockStructType([
-            MockStructField("name", StringType()),
-            MockStructField("age", IntegerType()),
-        ])
+        schema = StructType(
+            [
+                StructField("name", StringType()),
+                StructField("age", IntegerType()),
+            ]
+        )
         storage.create_table("default", "users", schema)
-        
+
         data = [
             {"name": "Alice", "age": 25},
             {"name": "Bob", "age": 30},
         ]
         storage.insert_data("default", "users", data)
-        
+
         results = storage.query_data("default", "users")
         assert len(results) == 2
         assert results[0]["name"] == "Alice"
@@ -74,25 +82,26 @@ class TestPolarsMaterializer:
     def test_materialize_simple_filter(self):
         """Test materializing a simple filter operation."""
         materializer = PolarsMaterializer()
-        
+
         data = [
             {"name": "Alice", "age": 25},
             {"name": "Bob", "age": 30},
             {"name": "Charlie", "age": 35},
         ]
-        schema = MockStructType([
-            MockStructField("name", StringType()),
-            MockStructField("age", IntegerType()),
-        ])
-        
-        from mock_spark.functions import F
-        from mock_spark.functions.core.column import MockColumn
-        
+        schema = StructType(
+            [
+                StructField("name", StringType()),
+                StructField("age", IntegerType()),
+            ]
+        )
+
+        from mock_spark.functions.core.column import Column
+
         # Create filter operation: age > 30
-        age_col = MockColumn("age")
+        age_col = Column("age")
         condition = age_col > 30
         operations = [("filter", condition)]
-        
+
         results = materializer.materialize(data, schema, operations)
         assert len(results) == 1
         assert results[0]["name"] == "Charlie"
@@ -101,13 +110,13 @@ class TestPolarsMaterializer:
 
 @pytest.mark.unit
 class TestPolarsBackendIntegration:
-    """Test Polars backend integration with MockSparkSession."""
+    """Test Polars backend integration with SparkSession."""
 
     def test_session_uses_polars_by_default(self):
-        """Test that MockSparkSession uses Polars backend by default."""
-        from mock_spark import MockSparkSession
-        
-        spark = MockSparkSession("test_app")
+        """Test that SparkSession uses Polars backend by default."""
+        from mock_spark import SparkSession
+
+        spark = SparkSession("test_app")
         # Check that storage backend is Polars
         backend_type = BackendFactory.get_backend_type(spark.storage)
         assert backend_type == "polars"
@@ -115,13 +124,12 @@ class TestPolarsBackendIntegration:
 
     def test_create_dataframe_with_polars(self):
         """Test creating DataFrame with Polars backend."""
-        from mock_spark import MockSparkSession
-        
-        spark = MockSparkSession("test_app")
+        from mock_spark import SparkSession
+
+        spark = SparkSession("test_app")
         data = [{"name": "Alice", "age": 25}]
         df = spark.createDataFrame(data)
-        
+
         # Verify DataFrame works
         assert df.count() == 1
         spark.stop()
-

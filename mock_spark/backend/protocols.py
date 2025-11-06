@@ -6,8 +6,8 @@ must satisfy. Using protocols enables dependency injection and makes modules
 testable independently.
 """
 
-from typing import Protocol, List, Dict, Any, Optional, Tuple
-from mock_spark.spark_types import MockStructType, MockRow
+from typing import Protocol, List, Dict, Any, Tuple
+from mock_spark.spark_types import StructType, Row
 from mock_spark.core.interfaces.storage import IStorageManager
 
 
@@ -15,7 +15,7 @@ class QueryExecutor(Protocol):
     """Protocol for executing queries on data.
 
     This protocol defines the interface for query execution backends.
-    Implementations can use different engines (DuckDB, SQLite, etc.).
+    Implementations can use different engines.
     """
 
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
@@ -30,7 +30,7 @@ class QueryExecutor(Protocol):
         ...
 
     def create_table(
-        self, name: str, schema: MockStructType, data: List[Dict[str, Any]]
+        self, name: str, schema: StructType, data: List[Dict[str, Any]]
     ) -> None:
         """Create a table with the given schema and data.
 
@@ -56,9 +56,9 @@ class DataMaterializer(Protocol):
     def materialize(
         self,
         data: List[Dict[str, Any]],
-        schema: MockStructType,
+        schema: StructType,
         operations: List[Tuple[str, Any]],
-    ) -> List[MockRow]:
+    ) -> List[Row]:
         """Materialize lazy operations into actual data.
 
         Args:
@@ -89,30 +89,6 @@ class ExportBackend(Protocol):
     methods for exporting to their specific target systems.
     """
 
-    def to_duckdb(
-        self, df: Any, connection: Any = None, table_name: Optional[str] = None
-    ) -> str:
-        """Export DataFrame to DuckDB.
-
-        Args:
-            df: Source DataFrame
-            connection: DuckDB connection (creates new if None)
-            table_name: Table name (auto-generated if None)
-
-        Returns:
-            Table name in DuckDB
-        """
-        ...
-
-    def create_duckdb_table(self, df: Any, connection: Any, table_name: str) -> Any:
-        """Create a DuckDB table from DataFrame schema.
-
-        Args:
-            df: Source DataFrame
-            connection: DuckDB connection
-            table_name: Table name
-
-        Returns:
-            Table object
-        """
-        ...
+    # Protocol intentionally minimal - specific export methods
+    # are implemented directly in backend implementations
+    ...

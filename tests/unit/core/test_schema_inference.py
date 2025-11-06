@@ -5,7 +5,7 @@ Unit tests for schema inference.
 import pytest
 from mock_spark.core.schema_inference import SchemaInferenceEngine
 from mock_spark.spark_types import (
-    MockStructType,
+    StructType,
     LongType,
     StringType,
     BooleanType,
@@ -22,7 +22,7 @@ class TestSchemaInferenceEngine:
     def test_infer_from_empty_data(self):
         """Test inference from empty data."""
         schema, data = SchemaInferenceEngine.infer_from_data([])
-        assert isinstance(schema, MockStructType)
+        assert isinstance(schema, StructType)
         assert len(schema.fields) == 0
         assert len(data) == 0
 

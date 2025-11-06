@@ -16,8 +16,8 @@ class BackendFactory:
     allowing for easy swapping of implementations and testing with mocks.
 
     Example:
-        >>> storage = BackendFactory.create_storage_backend("duckdb")
-        >>> materializer = BackendFactory.create_materializer("duckdb")
+        >>> storage = BackendFactory.create_storage_backend("polars")
+        >>> materializer = BackendFactory.create_materializer("polars")
     """
 
     @staticmethod
@@ -31,9 +31,9 @@ class BackendFactory:
         """Create a storage backend instance.
 
         Args:
-            backend_type: Type of backend ("polars", "duckdb", "memory", "file")
+            backend_type: Type of backend ("polars", "memory", "file")
             db_path: Optional database file path
-            max_memory: Maximum memory for DuckDB (ignored for Polars)
+            max_memory: Maximum memory (ignored for Polars, kept for compatibility)
             allow_disk_spillover: Whether to allow disk spillover (ignored for Polars)
             **kwargs: Additional backend-specific arguments
 
@@ -47,20 +47,6 @@ class BackendFactory:
             from .polars.storage import PolarsStorageManager
 
             return PolarsStorageManager(db_path=db_path)
-        elif backend_type == "duckdb":
-            try:
-                from .duckdb.storage import DuckDBStorageManager
-            except ImportError as e:
-                raise ImportError(
-                    "DuckDB backend requires 'duckdb' package. "
-                    "Install with: pip install duckdb"
-                ) from e
-
-            return DuckDBStorageManager(
-                db_path=db_path,
-                max_memory=max_memory,
-                allow_disk_spillover=allow_disk_spillover,
-            )
         elif backend_type == "memory":
             from mock_spark.storage.backends.memory import MemoryStorageManager
 
@@ -83,8 +69,8 @@ class BackendFactory:
         """Create a data materializer instance.
 
         Args:
-            backend_type: Type of materializer ("polars", "duckdb", "sqlalchemy")
-            max_memory: Maximum memory for DuckDB (ignored for Polars)
+            backend_type: Type of materializer ("polars", "memory", "file")
+            max_memory: Maximum memory (ignored for Polars, kept for compatibility)
             allow_disk_spillover: Whether to allow disk spillover (ignored for Polars)
             **kwargs: Additional materializer-specific arguments
 
@@ -98,30 +84,6 @@ class BackendFactory:
             from .polars.materializer import PolarsMaterializer
 
             return PolarsMaterializer()
-        elif backend_type == "duckdb":
-            try:
-                from .duckdb.materializer import DuckDBMaterializer
-            except ImportError as e:
-                raise ImportError(
-                    "DuckDB backend requires 'duckdb' package. "
-                    "Install with: pip install duckdb"
-                ) from e
-
-            return DuckDBMaterializer(
-                max_memory=max_memory,
-                allow_disk_spillover=allow_disk_spillover,
-            )
-        elif backend_type == "sqlalchemy":
-            try:
-                from .duckdb.query_executor import SQLAlchemyMaterializer
-            except ImportError as e:
-                raise ImportError(
-                    "SQLAlchemy materializer with DuckDB requires 'duckdb' package. "
-                    "Install with: pip install duckdb"
-                ) from e
-
-            engine_url = kwargs.get("engine_url", "duckdb:///:memory:")
-            return SQLAlchemyMaterializer(engine_url=engine_url)
         elif backend_type == "memory":
             # For memory backend, use Polars materializer
             from .polars.materializer import PolarsMaterializer
@@ -140,7 +102,7 @@ class BackendFactory:
         """Create an export backend instance.
 
         Args:
-            backend_type: Type of export backend ("polars", "duckdb")
+            backend_type: Type of export backend ("polars", "memory", "file")
 
         Returns:
             Export backend instance
@@ -152,16 +114,6 @@ class BackendFactory:
             from .polars.export import PolarsExporter
 
             return PolarsExporter()
-        elif backend_type == "duckdb":
-            try:
-                from .duckdb.export import DuckDBExporter
-            except ImportError as e:
-                raise ImportError(
-                    "DuckDB export backend requires 'duckdb' package. "
-                    "Install with: pip install duckdb"
-                ) from e
-
-            return DuckDBExporter()
         elif backend_type == "memory":
             # For memory backend, use Polars exporter
             from .polars.export import PolarsExporter
@@ -183,7 +135,7 @@ class BackendFactory:
             storage: Storage backend instance
 
         Returns:
-            Backend type string ("polars", "duckdb", "memory", "file", etc.)
+            Backend type string ("polars", "memory", "file", etc.)
 
         Raises:
             ValueError: If backend type cannot be determined
@@ -193,8 +145,6 @@ class BackendFactory:
 
         if "polars" in module_name:
             return "polars"
-        elif "duckdb" in module_name:
-            return "duckdb"
         elif "memory" in module_name:
             return "memory"
         elif "file" in module_name:
@@ -204,8 +154,6 @@ class BackendFactory:
             class_name = type(storage).__name__.lower()
             if "polars" in class_name:
                 return "polars"
-            elif "duckdb" in class_name:
-                return "duckdb"
             elif "memory" in class_name:
                 return "memory"
             elif "file" in class_name:
@@ -220,7 +168,7 @@ class BackendFactory:
         Returns:
             List of supported backend type strings
         """
-        return ["polars", "duckdb", "memory", "file"]
+        return ["polars", "memory", "file"]
 
     @staticmethod
     def validate_backend_type(backend_type: str) -> None:

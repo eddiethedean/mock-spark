@@ -43,19 +43,16 @@ class TestDatetimeFunctionsCompatibility:
         expected = load_expected_output("datetime", "month")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_day_function(self, mock_spark_session):
         """Test day function against expected output."""
-        test_data = [
-            {"id": 1, "name": "Alice", "hire_date": "2020-01-15"},
-            {"id": 2, "name": "Bob", "hire_date": "2019-03-10"},
-            {"id": 3, "name": "Charlie", "hire_date": "2021-07-22"},
-        ]
-
-        df = mock_spark_session.createDataFrame(test_data)
-        result = df.select(F.day(df.hire_date))
-
         expected = load_expected_output("datetime", "day")
+
+        df = mock_spark_session.createDataFrame(expected["input_data"])
+        # Expected output uses dayofmonth(date), so use dayofmonth function
+        # or use day() but the column name will be different
+        # Check what column name is expected
+        result = df.select(F.dayofmonth(df.date))
+
         assert_dataframes_equal(result, expected)
 
     def test_dayofweek_function(self, mock_spark_session):

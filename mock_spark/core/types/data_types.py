@@ -211,8 +211,8 @@ class IMapType(IDataType):
         pass
 
 
-class IStructType(IDataType):
-    """Abstract interface for struct data type."""
+class IStructTypeLegacy(IDataType):
+    """Abstract interface for struct data type (legacy - use IStructType from schema instead)."""
 
     @property
     @abstractmethod

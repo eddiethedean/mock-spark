@@ -14,8 +14,7 @@ import sys
 # Allow running this script directly without installing the package
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from mock_spark import MockSparkSession, F
-from mock_spark.window import MockWindow as Window
+from mock_spark.sql import SparkSession, functions as F, Window
 
 
 def main() -> None:
@@ -23,7 +22,7 @@ def main() -> None:
     # Default to fast mode unless explicitly requested to run full demo
     if os.environ.get("MOCK_SPARK_EXAMPLES_FULL") != "1":
         print("🚀 Mock Spark - Basic Usage Example (fast mode)")
-        spark = MockSparkSession("BasicExampleFast")
+        spark = SparkSession("BasicExampleFast")
         df = spark.createDataFrame([{"id": 1, "name": "Alice", "salary": 80000}])
         _ = df.select(
             "name", F.round(F.col("salary") / 1000, 1).alias("salary_k")
@@ -35,7 +34,7 @@ def main() -> None:
 
     # 1. Create Session
     print("\n1️⃣  Creating Mock Spark Session...")
-    spark = MockSparkSession("BasicExample")
+    spark = SparkSession("BasicExample")
     print(f"   ✓ Session created: {spark.app_name}")
 
     # 2. Create DataFrame
@@ -89,7 +88,7 @@ def main() -> None:
 
     # 6. Window Functions
     print("\n6️⃣  Window Functions...")
-    window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
+    window_spec = Window.partitionBy("dept").orderBy("salary")
     ranked = df.select(
         "name", "dept", "salary", F.row_number().over(window_spec).alias("rank")
     )

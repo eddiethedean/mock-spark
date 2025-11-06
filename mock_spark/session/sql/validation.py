@@ -13,8 +13,8 @@ Key Features:
     - Error reporting
 
 Example:
-    >>> from mock_spark.session.sql import MockSQLValidator
-    >>> validator = MockSQLValidator()
+    >>> from mock_spark.session.sql import SQLValidator
+    >>> validator = SQLValidator()
     >>> is_valid = validator.validate("SELECT * FROM users WHERE age > 18")
     >>> print(is_valid)
     True
@@ -23,7 +23,7 @@ Example:
 from typing import Any, Dict, List, Tuple
 
 
-class MockSQLValidator:
+class SQLValidator:
     """SQL Validator for Mock Spark.
 
     Provides SQL validation functionality that checks SQL queries
@@ -31,14 +31,14 @@ class MockSQLValidator:
     with the Mock Spark system.
 
     Example:
-        >>> validator = MockSQLValidator()
+        >>> validator = SQLValidator()
         >>> is_valid, errors = validator.validate("SELECT * FROM users")
         >>> print(is_valid)
         True
     """
 
     def __init__(self) -> None:
-        """Initialize MockSQLValidator."""
+        """Initialize SQLValidator."""
         self._reserved_keywords = {
             "SELECT",
             "FROM",
@@ -199,9 +199,8 @@ class MockSQLValidator:
         errors = []
 
         # Check for required clauses in SELECT queries
-        if query.upper().strip().startswith("SELECT"):
-            if "FROM" not in query.upper():
-                errors.append("SELECT query must have FROM clause")
+        if query.upper().strip().startswith("SELECT") and "FROM" not in query.upper():
+            errors.append("SELECT query must have FROM clause")
 
         # Check for required clauses in INSERT queries
         if query.upper().strip().startswith("INSERT"):
@@ -211,9 +210,8 @@ class MockSQLValidator:
                 errors.append("INSERT query must have VALUES or SELECT clause")
 
         # Check for required clauses in UPDATE queries
-        if query.upper().strip().startswith("UPDATE"):
-            if "SET" not in query.upper():
-                errors.append("UPDATE query must have SET clause")
+        if query.upper().strip().startswith("UPDATE") and "SET" not in query.upper():
+            errors.append("UPDATE query must have SET clause")
 
         return errors
 

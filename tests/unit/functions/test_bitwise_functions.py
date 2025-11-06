@@ -12,7 +12,7 @@ class TestBitwiseFunctions:
     """Test bitwise functions."""
 
     def test_bit_count_with_column(self):
-        """Test bit_count with MockColumn."""
+        """Test bit_count with Column."""
         col = F.col("value")
         result = BitwiseFunctions.bit_count(col)
         assert result.operation == "bit_count"
@@ -37,7 +37,7 @@ class TestBitwiseFunctions:
         assert result.value == -1
 
     def test_bitwise_not_with_column(self):
-        """Test bitwise_not with MockColumn."""
+        """Test bitwise_not with Column."""
         result = BitwiseFunctions.bitwise_not(F.col("value"))
         assert result.operation == "bitwise_not"
 

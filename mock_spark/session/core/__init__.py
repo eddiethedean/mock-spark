@@ -5,14 +5,14 @@ This module provides the core session components including the main session clas
 builder pattern implementation, and context management.
 """
 
-from .session import MockSparkSession
-from .builder import MockSparkSessionBuilder
-from ..context import MockSparkContext, MockJVMContext, MockJVMFunctions
+from .session import SparkSession
+from .builder import SparkSessionBuilder
+from ..context import SparkContext, JVMContext, MockJVMFunctions
 
 __all__ = [
-    "MockSparkSession",
-    "MockSparkSessionBuilder",
-    "MockSparkContext",
-    "MockJVMContext",
+    "SparkSession",
+    "SparkSessionBuilder",
+    "SparkContext",
+    "JVMContext",
     "MockJVMFunctions",
 ]

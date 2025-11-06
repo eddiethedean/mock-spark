@@ -6,29 +6,29 @@ management for Mock Spark, following the Single Responsibility Principle
 and enabling better testability and modularity.
 
 Components:
-    - MockSparkSession: Main session class
-    - MockSparkContext: Spark context management
-    - MockCatalog: Database and table catalog operations
+    - SparkSession: Main session class
+    - SparkContext: Spark context management
+    - Catalog: Database and table catalog operations
     - Configuration management
     - SQL processing pipeline
 """
 
 from .core import (
-    MockSparkSession,
-    MockSparkSessionBuilder,
-    MockSparkContext,
-    MockJVMContext,
+    SparkSession,
+    SparkSessionBuilder,
+    SparkContext,
+    JVMContext,
 )
-from .catalog import MockCatalog, MockDatabase, MockTable
-from .config import MockConfiguration
+from .catalog import Catalog, Database, Table
+from .config import Configuration
 
 __all__ = [
-    "MockSparkSession",
-    "MockSparkSessionBuilder",
-    "MockSparkContext",
-    "MockJVMContext",
-    "MockCatalog",
-    "MockDatabase",
-    "MockTable",
-    "MockConfiguration",
+    "SparkSession",
+    "SparkSessionBuilder",
+    "SparkContext",
+    "JVMContext",
+    "Catalog",
+    "Database",
+    "Table",
+    "Configuration",
 ]

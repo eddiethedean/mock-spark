@@ -10,7 +10,7 @@ import string
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 from ..spark_types import (
-    MockStructType,
+    StructType,
     StringType,
     IntegerType,
     LongType,
@@ -20,7 +20,7 @@ from ..spark_types import (
     TimestampType,
     ArrayType,
     MapType,
-    MockDataType,
+    DataType,
 )
 
 
@@ -38,12 +38,12 @@ class MockDataGenerator:
 
     @staticmethod
     def create_test_data(
-        schema: MockStructType, num_rows: int = 100, seed: int = 42
+        schema: StructType, num_rows: int = 100, seed: int = 42
     ) -> List[Dict[str, Any]]:
         """Generate test data based on schema.
 
         Args:
-            schema: MockStructType defining the data structure.
+            schema: StructType defining the data structure.
             num_rows: Number of rows to generate.
             seed: Random seed for reproducible data.
 
@@ -65,7 +65,7 @@ class MockDataGenerator:
 
     @staticmethod
     def create_corrupted_data(
-        schema: MockStructType,
+        schema: StructType,
         corruption_rate: float = 0.1,
         num_rows: int = 100,
         seed: int = 42,
@@ -73,7 +73,7 @@ class MockDataGenerator:
         """Generate data with some corruption for error testing.
 
         Args:
-            schema: MockStructType defining the data structure.
+            schema: StructType defining the data structure.
             corruption_rate: Fraction of data to corrupt (0.0 to 1.0).
             num_rows: Number of rows to generate.
             seed: Random seed for reproducible data.
@@ -103,12 +103,12 @@ class MockDataGenerator:
 
     @staticmethod
     def create_realistic_data(
-        schema: MockStructType, num_rows: int = 100, seed: int = 42
+        schema: StructType, num_rows: int = 100, seed: int = 42
     ) -> List[Dict[str, Any]]:
         """Generate realistic data with proper distributions and patterns.
 
         Args:
-            schema: MockStructType defining the data structure.
+            schema: StructType defining the data structure.
             num_rows: Number of rows to generate.
             seed: Random seed for reproducible data.
 
@@ -134,7 +134,7 @@ class MockDataGenerator:
         return data
 
     @staticmethod
-    def _generate_field_value(data_type: MockDataType) -> Any:
+    def _generate_field_value(data_type: DataType) -> Any:
         """Generate a value for a specific data type."""
         if isinstance(data_type, StringType):
             return MockDataGenerator._generate_string()
@@ -160,7 +160,7 @@ class MockDataGenerator:
             return None
 
     @staticmethod
-    def _generate_corrupted_value(data_type: MockDataType) -> Any:
+    def _generate_corrupted_value(data_type: DataType) -> Any:
         """Generate a corrupted value for a specific data type."""
         if isinstance(data_type, StringType):
             return random.randint(1, 100)  # Wrong type
@@ -185,7 +185,7 @@ class MockDataGenerator:
 
     @staticmethod
     def _generate_realistic_field_value(
-        data_type: MockDataType,
+        data_type: DataType,
         index: int,
         names: List[str],
         emails: List[str],
@@ -251,7 +251,7 @@ class MockDataGenerator:
         return start_date + timedelta(seconds=random_seconds)
 
     @staticmethod
-    def _generate_array(element_type: MockDataType) -> List[Any]:
+    def _generate_array(element_type: DataType) -> List[Any]:
         """Generate a random array."""
         length = random.randint(0, 5)
         return [
@@ -259,9 +259,7 @@ class MockDataGenerator:
         ]
 
     @staticmethod
-    def _generate_map(
-        key_type: MockDataType, value_type: MockDataType
-    ) -> Dict[str, Any]:
+    def _generate_map(key_type: DataType, value_type: DataType) -> Dict[str, Any]:
         """Generate a random map."""
         length = random.randint(0, 3)
         result = {}

@@ -14,11 +14,11 @@ Key Features:
     - Integration with storage manager
 
 Example:
-    >>> from mock_spark.session import MockCatalog
-    >>> catalog = MockCatalog(storage_manager)
+    >>> from mock_spark.session import Catalog
+    >>> catalog = Catalog(storage_manager)
     >>> catalog.createDatabase("test_db")
     >>> catalog.listDatabases()
-    [MockDatabase(name='test_db')]
+    [Database(name='test_db')]
 """
 
 from typing import Any, List, Optional
@@ -27,11 +27,11 @@ from ..core.exceptions.analysis import AnalysisException
 from ..core.exceptions.validation import IllegalArgumentException
 
 
-class MockDatabase:
+class Database:
     """Mock database object for catalog operations."""
 
     def __init__(self, name: str):
-        """Initialize MockDatabase.
+        """Initialize Database.
 
         Args:
             name: Database name.
@@ -40,18 +40,18 @@ class MockDatabase:
 
     def __str__(self) -> str:
         """String representation."""
-        return f"MockDatabase(name='{self.name}')"
+        return f"Database(name='{self.name}')"
 
     def __repr__(self) -> str:
         """Representation."""
         return self.__str__()
 
 
-class MockTable:
+class Table:
     """Mock table object for catalog operations."""
 
     def __init__(self, name: str, database: str = "default"):
-        """Initialize MockTable.
+        """Initialize Table.
 
         Args:
             name: Table name.
@@ -62,14 +62,14 @@ class MockTable:
 
     def __str__(self) -> str:
         """String representation."""
-        return f"MockTable(name='{self.name}', database='{self.database}')"
+        return f"Table(name='{self.name}', database='{self.database}')"
 
     def __repr__(self) -> str:
         """Representation."""
         return self.__str__()
 
 
-class MockCatalog:
+class Catalog:
     """Mock Catalog for Spark session.
 
     Provides a comprehensive mock implementation of PySpark's Catalog
@@ -80,14 +80,14 @@ class MockCatalog:
         storage: Storage manager for data persistence.
 
     Example:
-        >>> catalog = MockCatalog(storage_manager)
+        >>> catalog = Catalog(storage_manager)
         >>> catalog.createDatabase("test_db")
         >>> catalog.listDatabases()
-        [MockDatabase(name='test_db')]
+        [Database(name='test_db')]
     """
 
     def __init__(self, storage: IStorageManager):
-        """Initialize MockCatalog.
+        """Initialize Catalog.
 
         Args:
             storage: Storage manager instance.
@@ -95,13 +95,13 @@ class MockCatalog:
         self.storage = storage
         self._cached_tables: set[str] = set()  # Track cached tables
 
-    def listDatabases(self) -> List[MockDatabase]:
+    def listDatabases(self) -> List[Database]:
         """List all databases.
 
         Returns:
-            List of MockDatabase objects.
+            List of Database objects.
         """
-        return [MockDatabase(name) for name in self.storage.list_schemas()]
+        return [Database(name) for name in self.storage.list_schemas()]
 
     def setCurrentDatabase(self, dbName: str) -> None:
         """Set current/active database.
@@ -283,7 +283,7 @@ class MockCatalog:
                 f"Failed to check table existence '{dbName}.{tableName}': {str(e)}"
             )
 
-    def listTables(self, dbName: Optional[str] = None) -> List[MockTable]:
+    def listTables(self, dbName: Optional[str] = None) -> List[Table]:
         """List tables in database.
 
         Args:
@@ -309,7 +309,7 @@ class MockCatalog:
 
         try:
             table_names = self.storage.list_tables(dbName)
-            return [MockTable(name, dbName) for name in table_names]
+            return [Table(name, dbName) for name in table_names]
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise

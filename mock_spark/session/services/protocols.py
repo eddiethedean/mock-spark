@@ -1,14 +1,14 @@
 """
-Protocol interfaces for MockSparkSession services.
+Protocol interfaces for SparkSession services.
 
 This module defines Protocol interfaces that provide type safety
 and clear contracts for service implementations.
 """
 
 from typing import Protocol, List, Dict, Any, Optional, Tuple, Union
-from mock_spark.spark_types import MockStructType
-from mock_spark.dataframe import MockDataFrame
-from mock_spark.session.config import MockSparkConfig
+from mock_spark.spark_types import StructType
+from mock_spark.dataframe import DataFrame
+from mock_spark.session.config import SparkConfig
 
 
 class IDataFrameFactory(Protocol):
@@ -17,24 +17,24 @@ class IDataFrameFactory(Protocol):
     def create_dataframe(
         self,
         data: List[Dict[str, Any]],
-        schema: Optional[Union[MockStructType, List[str], str]],
-        engine_config: MockSparkConfig,
+        schema: Optional[Union[StructType, List[str], str]],
+        engine_config: SparkConfig,
         storage: Any,
-    ) -> MockDataFrame:
+    ) -> DataFrame:
         """Create a DataFrame with validation and coercion."""
         ...
 
     def _handle_schema_inference(
         self, data: List[Dict[str, Any]], schema: Optional[Any]
-    ) -> Tuple[MockStructType, List[Dict[str, Any]]]:
+    ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """Handle schema inference or conversion."""
         ...
 
     def _apply_validation_and_coercion(
         self,
         data: List[Dict[str, Any]],
-        schema: MockStructType,
-        engine_config: MockSparkConfig,
+        schema: StructType,
+        engine_config: SparkConfig,
     ) -> List[Dict[str, Any]]:
         """Apply validation and type coercion."""
         ...

@@ -16,10 +16,10 @@ class TestFunctionsCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("functions_test")
+        session = SparkSession("functions_test")
         yield session
         session.stop()
 
@@ -229,9 +229,6 @@ class TestFunctionsCompatibility:
         result = df.select(F.col("name").like("%a%"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="rlike: SQL generation creates invalid alias with special characters"
-    )
     def test_string_rlike(self, spark):
         """Test rlike function against expected outputs."""
         expected = load_expected_output("functions", "string_rlike")

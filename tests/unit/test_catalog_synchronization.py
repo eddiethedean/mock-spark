@@ -5,7 +5,7 @@ This module tests that catalog.tableExists() works correctly after saveAsTable()
 """
 
 import pytest
-from mock_spark import MockSparkSession
+from mock_spark import SparkSession
 
 
 @pytest.mark.unit
@@ -14,8 +14,8 @@ class TestCatalogSynchronization:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("catalog_sync_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("catalog_sync_test")
         yield session
         session.stop()
 

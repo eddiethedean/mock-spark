@@ -6,230 +6,230 @@ for creating column expressions and transformations.
 """
 
 from typing import Any, Union, List, TYPE_CHECKING
-from .column import MockColumn, MockColumnOperation
-from .literals import MockLiteral
+from .column import Column, ColumnOperation
+from .literals import Literal
 
 if TYPE_CHECKING:
-    from ..conditional import MockCaseWhen
+    from ..conditional import CaseWhen
 
 
 class ExpressionFunctions:
     """Expression functions for creating column expressions."""
 
     @staticmethod
-    def col(name: str) -> MockColumn:
+    def col(name: str) -> Column:
         """Create a column reference.
 
-        Delegates to canonical MockColumn constructor.
+        Delegates to canonical Column constructor.
 
         Args:
             name: Column name.
 
         Returns:
-            MockColumn instance.
+            Column instance.
         """
-        return MockColumn(name)
+        return Column(name)
 
     @staticmethod
-    def lit(value: Any) -> MockLiteral:
+    def lit(value: Any) -> Literal:
         """Create a literal value.
 
-        Delegates to canonical MockLiteral constructor.
+        Delegates to canonical Literal constructor.
 
         Args:
             value: Literal value.
 
         Returns:
-            MockLiteral instance.
+            Literal instance.
         """
-        return MockLiteral(value)
+        return Literal(value)
 
     @staticmethod
-    def when(condition: MockColumnOperation, value: Any) -> "MockCaseWhen":
+    def when(condition: ColumnOperation, value: Any) -> "CaseWhen":
         """Start a CASE WHEN expression.
 
-        Delegates to canonical MockCaseWhen constructor.
+        Delegates to canonical CaseWhen constructor.
 
         Args:
             condition: Condition to evaluate.
             value: Value if condition is true.
 
         Returns:
-            MockCaseWhen instance.
+            CaseWhen instance.
         """
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        return MockCaseWhen(None, condition, value)
+        return CaseWhen(None, condition, value)
 
     @staticmethod
     def coalesce(
-        *columns: Union[MockColumn, MockColumnOperation, str],
-    ) -> MockColumnOperation:
+        *columns: Union[Column, ColumnOperation, str],
+    ) -> ColumnOperation:
         """Return the first non-null value from a list of columns.
 
         Args:
             *columns: Columns to check for non-null values.
 
         Returns:
-            MockColumnOperation for coalesce.
+            ColumnOperation for coalesce.
         """
-        col_refs: List[Union[MockColumn, MockColumnOperation]] = []
+        col_refs: List[Union[Column, ColumnOperation]] = []
         for col in columns:
             if isinstance(col, str):
-                col_refs.append(MockColumn(col))
+                col_refs.append(Column(col))
             else:
                 col_refs.append(col)
 
-        return MockColumnOperation(None, "coalesce", col_refs)
+        return ColumnOperation(None, "coalesce", col_refs)
 
     @staticmethod
-    def isnull(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnull(column: Union[Column, str]) -> ColumnOperation:
         """Check if column value is null.
 
         Args:
             column: Column to check.
 
         Returns:
-            MockColumnOperation for isnull.
+            ColumnOperation for isnull.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
         return column.isnull()
 
     @staticmethod
-    def isnotnull(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnotnull(column: Union[Column, str]) -> ColumnOperation:
         """Check if column value is not null.
 
         Args:
             column: Column to check.
 
         Returns:
-            MockColumnOperation for isnotnull.
+            ColumnOperation for isnotnull.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
         return column.isnotnull()
 
     @staticmethod
-    def isnan(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnan(column: Union[Column, str]) -> ColumnOperation:
         """Check if column value is NaN.
 
         Args:
             column: Column to check.
 
         Returns:
-            MockColumnOperation for isnan.
+            ColumnOperation for isnan.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumnOperation(column, "isnan", None)
+            column = Column(column)
+        return ColumnOperation(column, "isnan", None)
 
     @staticmethod
-    def isnotnan(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnotnan(column: Union[Column, str]) -> ColumnOperation:
         """Check if column value is not NaN.
 
         Args:
             column: Column to check.
 
         Returns:
-            MockColumnOperation for isnotnan.
+            ColumnOperation for isnotnan.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
-        return MockColumnOperation(column, "isnotnan", None)
+            column = Column(column)
+        return ColumnOperation(column, "isnotnan", None)
 
     @staticmethod
-    def expr(expr: str) -> MockColumnOperation:
+    def expr(expr: str) -> ColumnOperation:
         """Create a column expression from SQL string.
 
         Args:
             expr: SQL expression string.
 
         Returns:
-            MockColumnOperation for the expression.
+            ColumnOperation for the expression.
         """
-        return MockColumnOperation(None, "expr", expr)
+        return ColumnOperation(None, "expr", expr)
 
     @staticmethod
-    def array(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def array(*columns: Union[Column, str]) -> ColumnOperation:
         """Create an array from columns.
 
         Args:
             *columns: Columns to include in array.
 
         Returns:
-            MockColumnOperation for array.
+            ColumnOperation for array.
         """
         col_refs = []
         for col in columns:
             if isinstance(col, str):
-                col_refs.append(MockColumn(col))
+                col_refs.append(Column(col))
             else:
                 col_refs.append(col)
 
-        return MockColumnOperation(None, "array", col_refs)
+        return ColumnOperation(None, "array", col_refs)
 
     @staticmethod
-    def struct(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def struct(*columns: Union[Column, str]) -> ColumnOperation:
         """Create a struct from columns.
 
         Args:
             *columns: Columns to include in struct.
 
         Returns:
-            MockColumnOperation for struct.
+            ColumnOperation for struct.
         """
         col_refs = []
         for col in columns:
             if isinstance(col, str):
-                col_refs.append(MockColumn(col))
+                col_refs.append(Column(col))
             else:
                 col_refs.append(col)
 
-        return MockColumnOperation(None, "struct", col_refs)
+        return ColumnOperation(None, "struct", col_refs)
 
     @staticmethod
-    def greatest(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def greatest(*columns: Union[Column, str]) -> ColumnOperation:
         """Return the greatest value among columns.
 
         Args:
             *columns: Columns to compare.
 
         Returns:
-            MockColumnOperation for greatest.
+            ColumnOperation for greatest.
         """
         col_refs = []
         for col in columns:
             if isinstance(col, str):
-                col_refs.append(MockColumn(col))
+                col_refs.append(Column(col))
             else:
                 col_refs.append(col)
 
-        return MockColumnOperation(None, "greatest", col_refs)
+        return ColumnOperation(None, "greatest", col_refs)
 
     @staticmethod
-    def least(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def least(*columns: Union[Column, str]) -> ColumnOperation:
         """Return the least value among columns.
 
         Args:
             *columns: Columns to compare.
 
         Returns:
-            MockColumnOperation for least.
+            ColumnOperation for least.
         """
         col_refs = []
         for col in columns:
             if isinstance(col, str):
-                col_refs.append(MockColumn(col))
+                col_refs.append(Column(col))
             else:
                 col_refs.append(col)
 
-        return MockColumnOperation(None, "least", col_refs)
+        return ColumnOperation(None, "least", col_refs)
 
     @staticmethod
     def when_otherwise(
-        condition: MockColumnOperation, value: Any, otherwise: Any
-    ) -> "MockCaseWhen":
+        condition: ColumnOperation, value: Any, otherwise: Any
+    ) -> "CaseWhen":
         """Create a complete CASE WHEN expression.
 
         Args:
@@ -238,9 +238,9 @@ class ExpressionFunctions:
             otherwise: Default value.
 
         Returns:
-            MockCaseWhen instance.
+            CaseWhen instance.
         """
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        case_when = MockCaseWhen(None, condition, value)
+        case_when = CaseWhen(None, condition, value)
         return case_when.otherwise(otherwise)

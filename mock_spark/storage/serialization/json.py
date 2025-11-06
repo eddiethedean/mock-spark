@@ -6,7 +6,7 @@ This module provides JSON serialization and deserialization for storage.
 
 import json
 from typing import List, Dict, Any
-from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.spark_types import StructType, StructField
 
 
 class JSONSerializer:
@@ -34,14 +34,14 @@ class JSONSerializer:
             Deserialized data.
         """
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 data = json.load(f)
                 return data if isinstance(data, list) else []
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 
     @staticmethod
-    def serialize_schema(schema: MockStructType, file_path: str) -> None:
+    def serialize_schema(schema: StructType, file_path: str) -> None:
         """Serialize schema to JSON file.
 
         Args:
@@ -63,7 +63,7 @@ class JSONSerializer:
             json.dump(schema_data, f, indent=2)
 
     @staticmethod
-    def deserialize_schema(file_path: str) -> MockStructType:
+    def deserialize_schema(file_path: str) -> StructType:
         """Deserialize schema from JSON file.
 
         Args:
@@ -73,21 +73,21 @@ class JSONSerializer:
             Deserialized schema.
         """
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 schema_data = json.load(f)
 
             fields = []
             for field_data in schema_data.get("fields", []):
                 # Create appropriate data type based on type name
                 data_type = JSONSerializer._create_data_type(field_data["data_type"])
-                field = MockStructField(
+                field = StructField(
                     field_data["name"], data_type, field_data.get("nullable", True)
                 )
                 fields.append(field)
 
-            return MockStructType(fields)
+            return StructType(fields)
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
-            return MockStructType([])
+            return StructType([])
 
     @staticmethod
     def _create_data_type(type_name: str) -> Any:

@@ -14,29 +14,28 @@ Key Features:
     - Proper partitioning and ordering logic
 
 Example:
-    >>> from mock_spark.window import MockWindow
-    >>> from mock_spark import F, MockSparkSession
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession, functions as F, Window
+    >>> spark = SparkSession("test")
     >>> data = [{"department": "IT", "salary": 50000}, {"department": "IT", "salary": 60000}]
     >>> df = spark.createDataFrame(data)
-    >>> window = MockWindow.partitionBy("department").orderBy("salary")
+    >>> window = Window.partitionBy("department").orderBy("salary")
     >>> result = df.select(F.row_number().over(window).alias("rank"))
     >>> result.show()
-    +--- MockDataFrame: 2 rows ---+
-            rank
-    ------------
-               1
-               2
+    DataFrame[2 rows, 1 columns]
+
+    rank
+    1
+    2
 """
 
 import sys
 from typing import List, Optional, Union, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .functions import MockColumn
+    from .functions import Column
 
 
-class MockWindowSpec:
+class WindowSpec:
     """Mock WindowSpec for window function specifications.
 
     Provides a PySpark-compatible interface for defining window specifications
@@ -49,22 +48,22 @@ class MockWindowSpec:
         _range_between: Range-based window boundaries.
 
     Example:
-        >>> window = MockWindowSpec()
+        >>> window = WindowSpec()
         >>> window.partitionBy("department").orderBy("salary")
         >>> window.rowsBetween(-1, 1)
     """
 
     def __init__(self) -> None:
-        self._partition_by: List[Union[str, "MockColumn"]] = []
-        self._order_by: List[Union[str, "MockColumn"]] = []
+        self._partition_by: List[Union[str, Column]] = []
+        self._order_by: List[Union[str, Column]] = []
         self._rows_between: Optional[Tuple[int, int]] = None
         self._range_between: Optional[Tuple[int, int]] = None
 
-    def partitionBy(self, *cols: Union[str, "MockColumn"]) -> "MockWindowSpec":
+    def partitionBy(self, *cols: Union[str, "Column"]) -> "WindowSpec":
         """Add partition by columns.
 
         Args:
-            *cols: Column names or "MockColumn" objects to partition by.
+            *cols: Column names or "Column" objects to partition by.
 
         Returns:
             Self for method chaining.
@@ -76,20 +75,20 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for partitionBy")
 
         for col in cols:
-            # Check if it's a string or has the name attribute (MockColumn-like)
+            # Check if it's a string or has the name attribute (Column-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
                 raise ValueError(
-                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                    f"Invalid column type: {type(col)}. Must be str or Column"
                 )
 
         self._partition_by = list(cols)
         return self
 
-    def orderBy(self, *cols: Union[str, "MockColumn"]) -> "MockWindowSpec":
+    def orderBy(self, *cols: Union[str, "Column"]) -> "WindowSpec":
         """Add order by columns.
 
         Args:
-            *cols: Column names or "MockColumn" objects to order by.
+            *cols: Column names or "Column" objects to order by.
 
         Returns:
             Self for method chaining.
@@ -101,16 +100,16 @@ class MockWindowSpec:
             raise ValueError("At least one column must be specified for orderBy")
 
         for col in cols:
-            # Check if it's a string or has the name attribute (MockColumn-like)
+            # Check if it's a string or has the name attribute (Column-like)
             if not isinstance(col, str) and not hasattr(col, "name"):
                 raise ValueError(
-                    f"Invalid column type: {type(col)}. Must be str or MockColumn"
+                    f"Invalid column type: {type(col)}. Must be str or Column"
                 )
 
         self._order_by = list(cols)
         return self
 
-    def rowsBetween(self, start: int, end: int) -> "MockWindowSpec":
+    def rowsBetween(self, start: int, end: int) -> "WindowSpec":
         """Set rows between boundaries.
 
         Args:
@@ -129,7 +128,7 @@ class MockWindowSpec:
         self._rows_between = (start, end)
         return self
 
-    def rangeBetween(self, start: int, end: int) -> "MockWindowSpec":
+    def rangeBetween(self, start: int, end: int) -> "WindowSpec":
         """Set range between boundaries.
 
         Args:
@@ -165,19 +164,19 @@ class MockWindowSpec:
             parts.append(
                 f"rangeBetween({self._range_between[0]}, {self._range_between[1]})"
             )
-        return f"MockWindowSpec({', '.join(parts)})"
+        return f"WindowSpec({', '.join(parts)})"
 
 
-class MockWindow:
+class Window:
     """Mock Window class for creating window specifications.
 
     Provides static methods for creating window specifications with partitioning,
     ordering, and boundary conditions. Equivalent to PySpark's Window class.
 
     Example:
-        >>> MockWindow.partitionBy("department")
-        >>> MockWindow.orderBy("salary")
-        >>> MockWindow.partitionBy("department").orderBy("salary")
+        >>> Window.partitionBy("department")
+        >>> Window.orderBy("salary")
+        >>> Window.partitionBy("department").orderBy("salary")
     """
 
     # Window boundary constants
@@ -186,21 +185,21 @@ class MockWindow:
     unboundedFollowing = sys.maxsize
 
     @staticmethod
-    def partitionBy(*cols: Union[str, "MockColumn"]) -> MockWindowSpec:
+    def partitionBy(*cols: Union[str, "Column"]) -> WindowSpec:
         """Create a window spec with partition by columns."""
-        return MockWindowSpec().partitionBy(*cols)
+        return WindowSpec().partitionBy(*cols)
 
     @staticmethod
-    def orderBy(*cols: Union[str, "MockColumn"]) -> MockWindowSpec:
+    def orderBy(*cols: Union[str, "Column"]) -> WindowSpec:
         """Create a window spec with order by columns."""
-        return MockWindowSpec().orderBy(*cols)
+        return WindowSpec().orderBy(*cols)
 
     @staticmethod
-    def rowsBetween(start: int, end: int) -> MockWindowSpec:
+    def rowsBetween(start: int, end: int) -> WindowSpec:
         """Create a window spec with rows between boundaries."""
-        return MockWindowSpec().rowsBetween(start, end)
+        return WindowSpec().rowsBetween(start, end)
 
     @staticmethod
-    def rangeBetween(start: int, end: int) -> MockWindowSpec:
+    def rangeBetween(start: int, end: int) -> WindowSpec:
         """Create a window spec with range between boundaries."""
-        return MockWindowSpec().rangeBetween(start, end)
+        return WindowSpec().rangeBetween(start, end)

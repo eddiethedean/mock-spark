@@ -21,8 +21,7 @@ import sys
 # Allow running this script directly without installing the package
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from mock_spark import MockSparkSession, F
-from mock_spark.window import MockWindow as Window
+from mock_spark.sql import SparkSession, functions as F, Window
 
 
 def main() -> None:
@@ -31,8 +30,8 @@ def main() -> None:
     print("=" * 50)
 
     # Create session
-    spark = MockSparkSession("NewFeaturesDemo")
-    print("✅ Created MockSparkSession")
+    spark = SparkSession("NewFeaturesDemo")
+    print("✅ Created SparkSession")
 
     # Sample data for demonstrations
     data = [
@@ -79,60 +78,83 @@ def main() -> None:
     print("\n🔤 New String Functions:")
     print("-" * 30)
 
-    # format_string
-    print("✓ format_string:")
+    # format_string (Note: Not yet supported in Polars backend, using concat as alternative)
+    print("✓ format_string (using concat as alternative):")
     format_ops = df.select(
         F.col("name"),
-        F.format_string(
-            "Hello %s, you are %d years old", F.col("name"), F.col("age")
+        F.concat(
+            F.lit("Hello "),
+            F.col("name"),
+            F.lit(", you are "),
+            F.col("age").cast("string"),
+            F.lit(" years old"),
         ).alias("greeting"),
     )
     format_ops.show()
 
-    # translate
-    print("✓ translate:")
-    translate_ops = df.select(
-        F.col("name"),
-        F.translate(F.col("name"), "aeiou", "AEIOU").alias("vowels_upper"),
-    )
-    translate_ops.show()
+    # translate (Note: Not yet supported in Polars backend)
+    try:
+        print("✓ translate:")
+        translate_ops = df.select(
+            F.col("name"),
+            F.translate(F.col("name"), "aeiou", "AEIOU").alias("vowels_upper"),
+        )
+        translate_ops.show()
+    except Exception as e:
+        print(f"  ⚠️  translate not yet supported in Polars backend: {type(e).__name__}")
 
     # ascii
-    print("✓ ascii:")
-    ascii_ops = df.select(
-        F.col("name"), F.ascii(F.col("name")).alias("first_char_ascii")
-    )
-    ascii_ops.show()
+    try:
+        print("✓ ascii:")
+        ascii_ops = df.select(
+            F.col("name"), F.ascii(F.col("name")).alias("first_char_ascii")
+        )
+        ascii_ops.show()
+    except Exception as e:
+        print(f"  ⚠️  ascii not yet supported in Polars backend: {type(e).__name__}")
 
     # base64
-    print("✓ base64:")
-    base64_ops = df.select(F.col("name"), F.base64(F.col("name")).alias("name_base64"))
-    base64_ops.show()
+    try:
+        print("✓ base64:")
+        base64_ops = df.select(
+            F.col("name"), F.base64(F.col("name")).alias("name_base64")
+        )
+        base64_ops.show()
+    except Exception as e:
+        print(f"  ⚠️  base64 not yet supported in Polars backend: {type(e).__name__}")
 
     # 2. New Math Functions
     print("\n🔢 New Math Functions:")
     print("-" * 30)
 
     # sign
-    print("✓ sign:")
-    sign_ops = df.select(
-        F.col("age"),
-        F.col("salary"),
-        F.sign(F.col("age") - 30).alias("age_sign"),
-        F.sign(F.col("salary") - 70000).alias("salary_sign"),
-    )
-    sign_ops.show()
+    try:
+        print("✓ sign:")
+        sign_ops = df.select(
+            F.col("age"),
+            F.col("salary"),
+            F.sign(F.col("age") - 30).alias("age_sign"),
+            F.sign(F.col("salary") - 70000).alias("salary_sign"),
+        )
+        sign_ops.show()
+    except Exception as e:
+        print(f"  ⚠️  sign not yet supported in Polars backend: {type(e).__name__}")
 
     # greatest and least
-    print("✓ greatest and least:")
-    comparison_ops = df.select(
-        F.col("name"),
-        F.col("age"),
-        F.col("salary"),
-        F.greatest(F.col("age"), F.lit(30)).alias("max_age_30"),
-        F.least(F.col("salary"), F.lit(80000)).alias("min_salary_80k"),
-    )
-    comparison_ops.show()
+    try:
+        print("✓ greatest and least:")
+        comparison_ops = df.select(
+            F.col("name"),
+            F.col("age"),
+            F.col("salary"),
+            F.greatest(F.col("age"), F.lit(30)).alias("max_age_30"),
+            F.least(F.col("salary"), F.lit(80000)).alias("min_salary_80k"),
+        )
+        comparison_ops.show()
+    except Exception as e:
+        print(
+            f"  ⚠️  greatest/least not yet supported in Polars backend: {type(e).__name__}"
+        )
 
     # 3. New Aggregate Functions
     print("\n📊 New Aggregate Functions:")
@@ -161,13 +183,18 @@ def main() -> None:
     print("-" * 30)
 
     # minute and second
-    print("✓ minute and second:")
-    time_ops = df.select(
-        F.col("hire_date"),
-        F.minute(F.current_timestamp()).alias("current_minute"),
-        F.second(F.current_timestamp()).alias("current_second"),
-    )
-    time_ops.show()
+    try:
+        print("✓ minute and second:")
+        time_ops = df.select(
+            F.col("hire_date"),
+            F.minute(F.current_timestamp()).alias("current_minute"),
+            F.second(F.current_timestamp()).alias("current_second"),
+        )
+        time_ops.show()
+    except Exception as e:
+        print(
+            f"  ⚠️  minute/second with current_timestamp not yet supported: {type(e).__name__}"
+        )
 
     # add_months
     print("✓ add_months:")
@@ -266,7 +293,7 @@ def main() -> None:
 
     # getOrCreate
     print("✓ getOrCreate:")
-    spark2 = MockSparkSession.builder.appName("TestApp").getOrCreate()
+    spark2 = SparkSession.builder.appName("TestApp").getOrCreate()
     print(f"Created session with getOrCreate: {spark2.app_name}")
 
     # createOrReplaceTempView and createGlobalTempView

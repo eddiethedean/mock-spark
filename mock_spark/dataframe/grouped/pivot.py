@@ -7,23 +7,23 @@ operations, maintaining compatibility with PySpark's GroupedData interface.
 
 from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
 
-from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
+from ...functions import Column, ColumnOperation, AggregateFunction
 
 if TYPE_CHECKING:
-    from ..dataframe import MockDataFrame
+    from ..dataframe import DataFrame
 
 
-class MockPivotGroupedData:
+class PivotGroupedData:
     """Mock pivot grouped data for pivot table operations."""
 
     def __init__(
         self,
-        df: "MockDataFrame",
+        df: "DataFrame",
         group_columns: List[str],
         pivot_col: str,
         pivot_values: List[Any],
     ):
-        """Initialize MockPivotGroupedData.
+        """Initialize PivotGroupedData.
 
         Args:
             df: The DataFrame being grouped.
@@ -37,8 +37,8 @@ class MockPivotGroupedData:
         self.pivot_values = pivot_values
 
     def agg(
-        self, *exprs: Union[str, MockColumn, MockColumnOperation, MockAggregateFunction]
-    ) -> "MockDataFrame":
+        self, *exprs: Union[str, Column, ColumnOperation, AggregateFunction]
+    ) -> "DataFrame":
         """Aggregate pivot grouped data.
 
         Creates pivot table with pivot columns as separate columns.
@@ -47,7 +47,7 @@ class MockPivotGroupedData:
             *exprs: Aggregation expressions.
 
         Returns:
-            New MockDataFrame with pivot aggregated results.
+            New DataFrame with pivot aggregated results.
         """
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
@@ -78,10 +78,9 @@ class MockPivotGroupedData:
                         result_row[pivot_col_name] = result_value
                     elif hasattr(expr, "function_name"):
                         from typing import cast
-                        from ...functions import MockAggregateFunction
 
                         result_key, result_value = self._evaluate_aggregate_function(
-                            cast(MockAggregateFunction, expr), pivot_rows
+                            cast("AggregateFunction", expr), pivot_rows
                         )
                         # Create pivot column name
                         pivot_col_name = f"{result_key}_{pivot_value}"
@@ -97,10 +96,10 @@ class MockPivotGroupedData:
             result_data.append(result_row)
 
         # Create result DataFrame with proper schema
-        from ..dataframe import MockDataFrame
+        from ..dataframe import DataFrame
         from ...spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             StringType,
             LongType,
             DoubleType,
@@ -110,22 +109,22 @@ class MockPivotGroupedData:
             fields = []
             for key, value in result_data[0].items():
                 if key in self.group_columns:
-                    fields.append(MockStructField(key, StringType()))
+                    fields.append(StructField(key, StringType()))
                 elif isinstance(value, int):
-                    fields.append(MockStructField(key, LongType()))
+                    fields.append(StructField(key, LongType()))
                 elif isinstance(value, float):
-                    fields.append(MockStructField(key, DoubleType()))
+                    fields.append(StructField(key, DoubleType()))
                 else:
-                    fields.append(MockStructField(key, StringType()))
-            schema = MockStructType(fields)
-            return MockDataFrame(result_data, schema)
+                    fields.append(StructField(key, StringType()))
+            schema = StructType(fields)
+            return DataFrame(result_data, schema)
         else:
-            return MockDataFrame(result_data, MockStructType([]))
+            return DataFrame(result_data, StructType([]))
 
     def _evaluate_string_expression(
         self, expr: str, group_rows: List[Dict[str, Any]]
     ) -> Tuple[str, Any]:
-        """Evaluate string aggregation expression (reused from MockGroupedData)."""
+        """Evaluate string aggregation expression (reused from GroupedData)."""
         if expr.startswith("sum("):
             col_name = expr[4:-1]
             values = [
@@ -160,9 +159,9 @@ class MockPivotGroupedData:
             return expr, None
 
     def _evaluate_aggregate_function(
-        self, expr: MockAggregateFunction, group_rows: List[Dict[str, Any]]
+        self, expr: AggregateFunction, group_rows: List[Dict[str, Any]]
     ) -> Tuple[str, Any]:
-        """Evaluate MockAggregateFunction (reused from MockGroupedData)."""
+        """Evaluate AggregateFunction (reused from GroupedData)."""
         func_name = expr.function_name
         col_name = (
             getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
@@ -213,10 +212,10 @@ class MockPivotGroupedData:
 
     def _evaluate_column_expression(
         self,
-        expr: Union[MockColumn, MockColumnOperation],
+        expr: Union[Column, ColumnOperation],
         group_rows: List[Dict[str, Any]],
     ) -> Tuple[str, Any]:
-        """Evaluate MockColumn or MockColumnOperation (reused from MockGroupedData)."""
+        """Evaluate Column or ColumnOperation (reused from GroupedData)."""
         expr_name = expr.name
         if expr_name.startswith("sum("):
             col_name = expr_name[4:-1]

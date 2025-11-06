@@ -15,8 +15,8 @@ Key Features:
     - Error handling for invalid configurations
 
 Example:
-    >>> from mock_spark import MockSparkSession
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession
+    >>> spark = SparkSession("test")
     >>> df = spark.createDataFrame([{"name": "Alice", "age": 25}])
     >>> # Save as table
     >>> df.write.mode("overwrite").saveAsTable("users")
@@ -28,10 +28,10 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 from ..storage import MemoryStorageManager
 
 if TYPE_CHECKING:
-    from .dataframe import MockDataFrame
+    from .dataframe import DataFrame
 
 
-class MockDataFrameWriter:
+class DataFrameWriter:
     """Mock DataFrame writer for saveAsTable operations.
 
     Provides a PySpark-compatible interface for writing DataFrames to storage
@@ -48,8 +48,8 @@ class MockDataFrameWriter:
         >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
     """
 
-    def __init__(self, df: "MockDataFrame", storage: MemoryStorageManager):
-        """Initialize MockDataFrameWriter.
+    def __init__(self, df: "DataFrame", storage: MemoryStorageManager):
+        """Initialize DataFrameWriter.
 
         Args:
             df: The DataFrame to be written.
@@ -61,7 +61,7 @@ class MockDataFrameWriter:
         self.save_mode = "append"
         self._options: Dict[str, Any] = {}
 
-    def format(self, source: str) -> "MockDataFrameWriter":
+    def format(self, source: str) -> "DataFrameWriter":
         """Set the output format for the DataFrame writer.
 
         Args:
@@ -76,7 +76,7 @@ class MockDataFrameWriter:
         self.format_name = source
         return self
 
-    def mode(self, mode: str) -> "MockDataFrameWriter":
+    def mode(self, mode: str) -> "DataFrameWriter":
         """Set the save mode for the DataFrame writer.
 
         Args:
@@ -111,7 +111,7 @@ class MockDataFrameWriter:
         """
         return self.save_mode
 
-    def option(self, key: str, value: Any) -> "MockDataFrameWriter":
+    def option(self, key: str, value: Any) -> "DataFrameWriter":
         """Set an option for the DataFrame writer.
 
         Args:
@@ -127,7 +127,7 @@ class MockDataFrameWriter:
         self._options[key] = value
         return self
 
-    def options(self, **kwargs: Any) -> "MockDataFrameWriter":
+    def options(self, **kwargs: Any) -> "DataFrameWriter":
         """Set multiple options for the DataFrame writer.
 
         Args:
@@ -142,7 +142,7 @@ class MockDataFrameWriter:
         self._options.update(kwargs)
         return self
 
-    def partitionBy(self, *cols: str) -> "MockDataFrameWriter":
+    def partitionBy(self, *cols: str) -> "DataFrameWriter":
         """Partition output by given columns.
 
         Args:
@@ -192,7 +192,7 @@ class MockDataFrameWriter:
 
                 raise AnalysisException(
                     f"Failed to create or verify schema '{schema}' in thread-local "
-                    f"connection. This may indicate a threading issue with DuckDB."
+                    f"connection. This may indicate a threading issue."
                 )
 
         # Check if this is a Delta table write
@@ -303,7 +303,7 @@ class MockDataFrameWriter:
 
         # Insert data
         data = self.df.collect()
-        # Convert MockRow objects to dictionaries
+        # Convert Row objects to dictionaries
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data)
 
@@ -337,7 +337,7 @@ class MockDataFrameWriter:
                 version = meta.get("version", 0) if meta else 0
 
             # Capture version snapshot for time travel
-            from datetime import datetime
+            from datetime import datetime, timezone
             from ..storage.models import MockDeltaVersion
 
             current_data = self.storage.get_data(schema, table)
@@ -354,7 +354,7 @@ class MockDataFrameWriter:
 
             version_snapshot = MockDeltaVersion(
                 version=version,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 operation=operation,
                 data_snapshot=[
                     row if isinstance(row, dict) else row for row in current_data

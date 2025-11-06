@@ -6,10 +6,10 @@ including argument validation, type checking, and input validation.
 """
 
 from typing import Any, Optional
-from .base import MockSparkException
+from .base import SparkException
 
 
-class IllegalArgumentException(MockSparkException):
+class IllegalArgumentException(SparkException):
     """Exception raised for invalid arguments.
 
     Raised when invalid arguments are passed to functions or methods,

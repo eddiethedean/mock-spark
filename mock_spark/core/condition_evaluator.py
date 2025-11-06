@@ -6,7 +6,7 @@ between DataFrame and conditional function modules.
 """
 
 from typing import Any, Dict, List, Tuple, Union, Optional, cast
-from ..functions.base import MockColumn, MockColumnOperation
+from ..functions.base import Column, ColumnOperation
 
 
 class ConditionEvaluator:
@@ -23,7 +23,7 @@ class ConditionEvaluator:
         Returns:
             The evaluated result.
         """
-        if isinstance(expression, MockColumnOperation):
+        if isinstance(expression, ColumnOperation):
             return ConditionEvaluator._evaluate_column_operation_value(row, expression)
         elif hasattr(expression, "evaluate"):
             return expression.evaluate(row)
@@ -43,10 +43,10 @@ class ConditionEvaluator:
         Returns:
             True if condition is met, False otherwise.
         """
-        if isinstance(condition, MockColumn):
+        if isinstance(condition, Column):
             return row.get(condition.name) is not None
 
-        if isinstance(condition, MockColumnOperation):
+        if isinstance(condition, ColumnOperation):
             return ConditionEvaluator._evaluate_column_operation(row, condition)
 
         # For simple values, check if truthy
@@ -54,7 +54,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_column_operation_value(
-        row: Dict[str, Any], operation: MockColumnOperation
+        row: Dict[str, Any], operation: ColumnOperation
     ) -> Optional[Any]:
         """Evaluate a column operation and return the value (not boolean).
 
@@ -77,19 +77,19 @@ class ConditionEvaluator:
 
             try:
                 if operation_type == "+":
-                    return cast(bool, left_value + right_value)
+                    return cast("bool", left_value + right_value)
                 elif operation_type == "-":
-                    return cast(bool, left_value - right_value)
+                    return cast("bool", left_value - right_value)
                 elif operation_type == "*":
-                    return cast(bool, left_value * right_value)
+                    return cast("bool", left_value * right_value)
                 elif operation_type == "/":
                     if right_value == 0:
                         return None
-                    return cast(bool, left_value / right_value)
+                    return cast("bool", left_value / right_value)
                 elif operation_type == "%":
                     if right_value == 0:
                         return None
-                    return cast(bool, left_value % right_value)
+                    return cast("bool", left_value % right_value)
             except (TypeError, ValueError):
                 return None
 
@@ -216,7 +216,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_function_operation_value(
-        row: Dict[str, Any], operation: MockColumnOperation
+        row: Dict[str, Any], operation: ColumnOperation
     ) -> Any:
         """Evaluate a function operation and return the value.
 
@@ -406,7 +406,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_comparison_operation(
-        row: Dict[str, Any], operation: MockColumnOperation
+        row: Dict[str, Any], operation: ColumnOperation
     ) -> bool:
         """Evaluate a comparison operation.
 
@@ -425,23 +425,23 @@ class ConditionEvaluator:
 
         operation_type = operation.operation
         if operation_type in ["==", "eq"]:
-            return cast(bool, left_value == right_value)
+            return cast("bool", left_value == right_value)
         elif operation_type in ["!=", "ne"]:
-            return cast(bool, left_value != right_value)
+            return cast("bool", left_value != right_value)
         elif operation_type in ["<", "lt"]:
-            return cast(bool, left_value < right_value)
+            return cast("bool", left_value < right_value)
         elif operation_type in ["<=", "le"]:
-            return cast(bool, left_value <= right_value)
+            return cast("bool", left_value <= right_value)
         elif operation_type in [">", "gt"]:
-            return cast(bool, left_value > right_value)
+            return cast("bool", left_value > right_value)
         elif operation_type in [">=", "ge"]:
-            return cast(bool, left_value >= right_value)
+            return cast("bool", left_value >= right_value)
         else:
             return False
 
     @staticmethod
     def _evaluate_logical_operation(
-        row: Dict[str, Any], operation: MockColumnOperation
+        row: Dict[str, Any], operation: ColumnOperation
     ) -> Optional[bool]:
         """Evaluate a logical operation.
 
@@ -469,7 +469,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_column_operation(
-        row: Dict[str, Any], operation: MockColumnOperation
+        row: Dict[str, Any], operation: ColumnOperation
     ) -> Optional[bool]:
         """Evaluate a column operation.
 
@@ -497,14 +497,20 @@ class ConditionEvaluator:
 
         # String operations
         if operation_type == "like":
+            if operation.value is None:
+                return False
             return ConditionEvaluator._evaluate_like_operation(
                 col_value, operation.value
             )
         elif operation_type == "isin":
+            if operation.value is None:
+                return False
             return ConditionEvaluator._evaluate_isin_operation(
                 col_value, operation.value
             )
         elif operation_type == "between":
+            if operation.value is None:
+                return False
             return ConditionEvaluator._evaluate_between_operation(
                 col_value, operation.value
             )
@@ -574,14 +580,14 @@ class ConditionEvaluator:
             "from_unixtime",
         ]:
             return cast(
-                bool,
+                "bool",
                 ConditionEvaluator._evaluate_function_operation(
                     col_value, operation_type
                 ),
             )
         elif operation_type == "transform":
             return cast(
-                bool,
+                "bool",
                 ConditionEvaluator._evaluate_transform_operation(col_value, operation),
             )
 
@@ -595,19 +601,19 @@ class ConditionEvaluator:
 
             try:
                 if operation_type == "+":
-                    return cast(bool, left_value + right_value)
+                    return cast("bool", left_value + right_value)
                 elif operation_type == "-":
-                    return cast(bool, left_value - right_value)
+                    return cast("bool", left_value - right_value)
                 elif operation_type == "*":
-                    return cast(bool, left_value * right_value)
+                    return cast("bool", left_value * right_value)
                 elif operation_type == "/":
                     if right_value == 0:
                         return None
-                    return cast(bool, left_value / right_value)
+                    return cast("bool", left_value / right_value)
                 elif operation_type == "%":
                     if right_value == 0:
                         return None
-                    return cast(bool, left_value % right_value)
+                    return cast("bool", left_value % right_value)
             except (TypeError, ValueError, ZeroDivisionError):
                 return None
 
@@ -800,6 +806,8 @@ class ConditionEvaluator:
             if value is None:
                 return False
             try:
+                import math
+
                 return math.isnan(float(value))
             except (ValueError, TypeError):
                 return False
@@ -860,20 +868,7 @@ class ConditionEvaluator:
                 return dt.hour
             except (ValueError, AttributeError):
                 return None
-        elif operation_type == "day":
-            if value is None:
-                return None
-            try:
-                from datetime import datetime
-
-                if isinstance(value, str):
-                    dt = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-                else:
-                    dt = value
-                return dt.day
-            except (ValueError, AttributeError):
-                return None
-        elif operation_type == "dayofmonth":
+        elif operation_type == "day" or operation_type == "dayofmonth":
             if value is None:
                 return None
             try:
@@ -1059,9 +1054,7 @@ class ConditionEvaluator:
         return None
 
     @staticmethod
-    def _get_column_value(
-        row: Dict[str, Any], column: Union[MockColumn, str, Any]
-    ) -> Any:
+    def _get_column_value(row: Dict[str, Any], column: Union[Column, str, Any]) -> Any:
         """Get column value from row.
 
         Args:
@@ -1071,15 +1064,15 @@ class ConditionEvaluator:
         Returns:
             Column value.
         """
-        if isinstance(column, MockColumn):
+        if isinstance(column, Column):
             return row.get(column.name)
         elif isinstance(column, str):
             return row.get(column)
-        elif isinstance(column, MockColumnOperation):
+        elif isinstance(column, ColumnOperation):
             # Recursively evaluate the operation
             return ConditionEvaluator._evaluate_column_operation_value(row, column)
         elif hasattr(column, "value"):
-            # MockLiteral or similar object with a value attribute
+            # Literal or similar object with a value attribute
             return column.value
         else:
             return column
@@ -1172,7 +1165,7 @@ class ConditionEvaluator:
 
         Args:
             value: The input value (array) to transform
-            operation: The MockColumnOperation containing the transform operation
+            operation: The ColumnOperation containing the transform operation
 
         Returns:
             The transformed array, or None if input is None
@@ -1184,34 +1177,17 @@ class ConditionEvaluator:
         # Get the lambda function from the operation
         lambda_expr = operation.value
 
-        # Get the DuckDB lambda syntax
+        # Apply the transform using Python lambda evaluation
         try:
-            duckdb_lambda = lambda_expr.to_duckdb_lambda()
-        except Exception as e:
-            print(f"Warning: Failed to get DuckDB lambda syntax: {e}")
-            return value  # Return original value if parsing fails
-
-        # Apply the transform using DuckDB
-        try:
-            import duckdb
-
-            conn = duckdb.connect()
-
-            # Create a temporary table with the array
-            conn.execute("CREATE TEMP TABLE temp_array AS SELECT ? as arr", [value])
-
-            # Apply the transform using DuckDB's array_transform function
-            result = conn.execute(
-                f"SELECT array_transform(arr, {duckdb_lambda}) as transformed FROM temp_array"
-            ).fetchone()
-
-            conn.close()
-
-            if result and result[0] is not None:
-                return result[0]
+            # If lambda_expr is callable, apply it directly
+            if callable(lambda_expr):
+                if isinstance(value, list):
+                    return [lambda_expr(x) for x in value]
+                else:
+                    return value
             else:
-                return value  # Return original value if transform fails
-
+                # Return original value if lambda is not callable
+                return value
         except Exception as e:
             print(f"Warning: Failed to evaluate transform lambda: {e}")
             return value  # Return original value if evaluation fails

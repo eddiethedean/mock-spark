@@ -4,17 +4,18 @@ Conditional functions for Mock Spark.
 This module contains conditional functions including CASE WHEN expressions.
 """
 
-from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING, cast
-from mock_spark.functions.base import MockColumn, MockColumnOperation
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING, cast
+from mock_spark.functions.base import Column, ColumnOperation
 from mock_spark.core.condition_evaluator import ConditionEvaluator
 
 if TYPE_CHECKING:
-    from mock_spark.spark_types import MockDataType
+    from mock_spark.spark_types import DataType
+    from mock_spark.functions.aggregate import AggregateFunction
 
 
 def validate_rule(
-    column: Union[MockColumn, str], rule: Union[str, List[Any]]
-) -> MockColumnOperation:
+    column: Union[Column, str], rule: Union[str, List[Any]]
+) -> ColumnOperation:
     """Convert validation rule to column expression.
 
     Args:
@@ -22,13 +23,13 @@ def validate_rule(
         rule: Validation rule as string or list.
 
     Returns:
-        MockColumn expression for the validation rule.
+        Column expression for the validation rule.
 
     Raises:
         ValueError: If rule is not recognized.
     """
     if isinstance(column, str):
-        column = MockColumn(column)
+        column = Column(column)
 
     if isinstance(rule, str):
         # String rules
@@ -57,27 +58,27 @@ def validate_rule(
         if op == "gt":
             if len(rule) < 2:
                 raise ValueError("gt rule requires a value")
-            return cast(MockColumnOperation, column > rule[1])
+            return cast("ColumnOperation", column > rule[1])
         elif op == "gte":
             if len(rule) < 2:
                 raise ValueError("gte rule requires a value")
-            return cast(MockColumnOperation, column >= rule[1])
+            return cast("ColumnOperation", column >= rule[1])
         elif op == "lt":
             if len(rule) < 2:
                 raise ValueError("lt rule requires a value")
-            return cast(MockColumnOperation, column < rule[1])
+            return cast("ColumnOperation", column < rule[1])
         elif op == "lte":
             if len(rule) < 2:
                 raise ValueError("lte rule requires a value")
-            return cast(MockColumnOperation, column <= rule[1])
+            return cast("ColumnOperation", column <= rule[1])
         elif op == "eq":
             if len(rule) < 2:
                 raise ValueError("eq rule requires a value")
-            return cast(MockColumnOperation, column == rule[1])
+            return cast("ColumnOperation", column == rule[1])
         elif op == "ne":
             if len(rule) < 2:
                 raise ValueError("ne rule requires a value")
-            return cast(MockColumnOperation, column != rule[1])
+            return cast("ColumnOperation", column != rule[1])
         elif op == "between":
             if len(rule) < 3:
                 raise ValueError("between rule requires two values")
@@ -112,7 +113,7 @@ def validate_rule(
         raise ValueError(f"Unknown validation rule type: {type(rule)}")
 
 
-class MockCaseWhen:
+class CaseWhen:
     """Represents a CASE WHEN expression.
 
     This class handles complex conditional logic with multiple conditions
@@ -120,7 +121,7 @@ class MockCaseWhen:
     """
 
     def __init__(self, column: Any = None, condition: Any = None, value: Any = None):
-        """Initialize MockCaseWhen.
+        """Initialize CaseWhen.
 
         Args:
             column: The column or expression being evaluated.
@@ -148,7 +149,7 @@ class MockCaseWhen:
         """Set the else value (alias for default_value for compatibility)."""
         self.default_value = value
 
-    def when(self, condition: Any, value: Any) -> "MockCaseWhen":
+    def when(self, condition: Any, value: Any) -> "CaseWhen":
         """Add another WHEN condition.
 
         Args:
@@ -161,7 +162,7 @@ class MockCaseWhen:
         self.conditions.append((condition, value))
         return self
 
-    def otherwise(self, value: Any) -> "MockCaseWhen":
+    def otherwise(self, value: Any) -> "CaseWhen":
         """Set the default value for the CASE WHEN expression.
 
         Args:
@@ -184,7 +185,7 @@ class MockCaseWhen:
 
         return self
 
-    def alias(self, name: str) -> "MockCaseWhen":
+    def alias(self, name: str) -> "CaseWhen":
         """Create an alias for the CASE WHEN expression.
 
         Args:
@@ -213,7 +214,7 @@ class MockCaseWhen:
         # Return default value if no condition matches
         return self._evaluate_value(row, self.default_value)
 
-    def get_result_type(self) -> "MockDataType":
+    def get_result_type(self) -> "DataType":
         """Infer the result type from condition values."""
         from ..spark_types import (
             BooleanType,
@@ -222,7 +223,7 @@ class MockCaseWhen:
             DoubleType,
             LongType,
         )
-        from .core.literals import MockLiteral
+        from .core.literals import Literal
 
         # Check all condition values and default value
         all_values = [v for _, v in self.conditions]
@@ -230,14 +231,15 @@ class MockCaseWhen:
             all_values.append(self.default_value)
 
         # Check if all values are literals (which are never nullable)
+
         all_literals = all(
-            isinstance(val, MockLiteral) or val is None for val in all_values
+            isinstance(val, Literal) or val is None for val in all_values
         )
 
         for val in all_values:
             if val is not None:
-                if isinstance(val, MockLiteral):
-                    # For MockLiteral, create a new instance with correct nullable
+                if isinstance(val, Literal):
+                    # For Literal, create a new instance with correct nullable
                     data_type = val.data_type
                     if isinstance(data_type, BooleanType):
                         return BooleanType(
@@ -265,7 +267,7 @@ class MockCaseWhen:
                 elif isinstance(val, str):
                     return StringType(nullable=False)  # Literals are never nullable
                 elif hasattr(val, "operation") and hasattr(val, "column"):
-                    # Handle MockColumnOperation - check the operation type
+                    # Handle ColumnOperation - check the operation type
                     if val.operation in ["+", "-", "*", "/", "%", "abs"]:
                         # Arithmetic operations return LongType
                         return LongType(nullable=False)
@@ -305,16 +307,16 @@ class MockCaseWhen:
         Returns:
             The evaluated value.
         """
-        from .core.literals import MockLiteral
+        from .core.literals import Literal
 
-        if isinstance(value, MockLiteral):
-            # For MockLiteral, return the actual value
+        if isinstance(value, Literal):
+            # For Literal, return the actual value
             return value.value
         elif hasattr(value, "operation") and hasattr(value, "column"):
-            # Handle MockColumnOperation (e.g., unary minus, arithmetic operations)
-            from mock_spark.functions.base import MockColumnOperation
+            # Handle ColumnOperation (e.g., unary minus, arithmetic operations)
+            from mock_spark.functions.base import ColumnOperation
 
-            if isinstance(value, MockColumnOperation):
+            if isinstance(value, ColumnOperation):
                 return self._evaluate_column_operation_value(row, value)
         elif hasattr(value, "name"):
             return row.get(value.name)
@@ -371,32 +373,32 @@ class ConditionalFunctions:
     """Collection of conditional functions."""
 
     @staticmethod
-    def coalesce(*columns: Union[MockColumn, str, Any]) -> MockColumnOperation:
+    def coalesce(*columns: Union[Column, str, Any]) -> ColumnOperation:
         """Return the first non-null value from a list of columns.
 
         Args:
             *columns: Variable number of columns or values to check.
 
         Returns:
-            MockColumnOperation representing the coalesce function.
+            ColumnOperation representing the coalesce function.
         """
-        # Convert string columns to MockColumn objects
+        # Convert string columns to Column objects
         mock_columns = []
         for col in columns:
             if isinstance(col, str):
-                mock_columns.append(MockColumn(col))
+                mock_columns.append(Column(col))
             else:
                 mock_columns.append(col)
 
         # Create operation with first column as base
-        operation = MockColumnOperation(mock_columns[0], "coalesce", mock_columns[1:])
-        # Generate column name, handling MockLiterals specially
+        operation = ColumnOperation(mock_columns[0], "coalesce", mock_columns[1:])
+        # Generate column name, handling Literals specially
         name_parts = []
         for c in mock_columns:
-            if hasattr(c, "value") and hasattr(c, "_name"):  # MockLiteral
-                from mock_spark.functions.core.literals import MockLiteral
+            if hasattr(c, "value") and hasattr(c, "_name"):  # Literal
+                from mock_spark.functions.core.literals import Literal
 
-                if isinstance(c, MockLiteral):
+                if isinstance(c, Literal):
                     name_parts.append(str(c.value))
                 else:
                     name_parts.append(str(c))
@@ -408,61 +410,59 @@ class ConditionalFunctions:
         return operation
 
     @staticmethod
-    def isnull(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnull(column: Union[Column, str]) -> ColumnOperation:
         """Check if a column is null.
 
         Args:
             column: The column to check.
 
         Returns:
-            MockColumnOperation representing the isnull function.
+            ColumnOperation representing the isnull function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        operation = MockColumnOperation(
-            column, "isnull", name=f"({column.name} IS NULL)"
-        )
+        operation = ColumnOperation(column, "isnull", name=f"({column.name} IS NULL)")
         return operation
 
     @staticmethod
-    def isnotnull(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnotnull(column: Union[Column, str]) -> ColumnOperation:
         """Check if a column is not null.
 
         Args:
             column: The column to check.
 
         Returns:
-            MockColumnOperation representing the isnotnull function.
+            ColumnOperation representing the isnotnull function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # PySpark's isnotnull is implemented as ~isnull, so it generates (NOT (column IS NULL))
-        operation = MockColumnOperation(
+        operation = ColumnOperation(
             column, "isnotnull", name=f"(NOT ({column.name} IS NULL))"
         )
         return operation
 
     @staticmethod
-    def isnan(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def isnan(column: Union[Column, str]) -> ColumnOperation:
         """Check if a column is NaN (Not a Number).
 
         Args:
             column: The column to check.
 
         Returns:
-            MockColumnOperation representing the isnan function.
+            ColumnOperation representing the isnan function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        operation = MockColumnOperation(column, "isnan")
+        operation = ColumnOperation(column, "isnan")
         operation.name = f"isnan({column.name})"
         return operation
 
     @staticmethod
-    def when(condition: Any, value: Any = None) -> MockCaseWhen:
+    def when(condition: Any, value: Any = None) -> CaseWhen:
         """Start a CASE WHEN expression.
 
         Args:
@@ -470,39 +470,37 @@ class ConditionalFunctions:
             value: Optional value for the condition.
 
         Returns:
-            MockCaseWhen object for chaining.
+            CaseWhen object for chaining.
         """
         if value is not None:
-            return MockCaseWhen(condition=condition, value=value)
-        return MockCaseWhen(condition=condition)
+            return CaseWhen(condition=condition, value=value)
+        return CaseWhen(condition=condition)
 
     @staticmethod
     def assert_true(
-        condition: Union[MockColumn, MockColumnOperation],
-    ) -> MockColumnOperation:
+        condition: Union[Column, ColumnOperation],
+    ) -> ColumnOperation:
         """Assert that a condition is true, raises error if false.
 
         Args:
             condition: Boolean condition to assert.
 
         Returns:
-            MockColumnOperation representing the assert_true function.
+            ColumnOperation representing the assert_true function.
 
         Example:
             >>> df.select(F.assert_true(F.col("value") > 0))
         """
-        return MockColumnOperation(
-            condition if isinstance(condition, MockColumn) else condition.column,
+        return ColumnOperation(
+            condition if isinstance(condition, Column) else condition.column,
             "assert_true",
-            condition if not isinstance(condition, MockColumn) else None,
+            condition if not isinstance(condition, Column) else None,
             name=f"assert_true({condition if isinstance(condition, str) else getattr(condition, 'name', 'condition')})",
         )
 
     # Priority 2: Conditional/Null Functions
     @staticmethod
-    def ifnull(
-        col1: Union[MockColumn, str], col2: Union[MockColumn, str]
-    ) -> MockColumnOperation:
+    def ifnull(col1: Union[Column, str], col2: Union[Column, str]) -> ColumnOperation:
         """Alias for coalesce(col1, col2) - Returns col2 if col1 is null (PySpark 3.5+).
 
         Args:
@@ -510,12 +508,38 @@ class ConditionalFunctions:
             col2: Second column (replacement for null).
 
         Returns:
-            MockColumnOperation representing the ifnull function.
+            ColumnOperation representing the ifnull function.
         """
         return ConditionalFunctions.coalesce(col1, col2)
 
     @staticmethod
-    def nullif(col1: Union[MockColumn, str], col2: Any) -> MockColumnOperation:
+    def equal_null(
+        col1: Union[Column, str], col2: Union[Column, str, Any]
+    ) -> ColumnOperation:
+        """Equality check that treats NULL as equal.
+
+        Args:
+            col1: First column or value.
+            col2: Second column or value.
+
+        Returns:
+            ColumnOperation representing the equal_null function.
+        """
+        if isinstance(col1, str):
+            col1 = Column(col1)
+        if isinstance(col2, str):
+            col2 = Column(col2)
+
+        operation = ColumnOperation(
+            col1,
+            "equal_null",
+            col2,
+            name=f"equal_null({col1.name}, {col2.name if hasattr(col2, 'name') else col2})",
+        )
+        return operation
+
+    @staticmethod
+    def nullif(col1: Union[Column, str], col2: Any) -> ColumnOperation:
         """Returns null if col1 equals col2, otherwise returns col1 (PySpark 3.5+).
 
         Args:
@@ -523,30 +547,30 @@ class ConditionalFunctions:
             col2: Column, column name, or literal value to compare.
 
         Returns:
-            MockColumnOperation representing the nullif function.
+            ColumnOperation representing the nullif function.
         """
         from typing import Union, Any
-        from ..functions.core.literals import MockLiteral
+        from ..functions.core.literals import Literal
 
-        column1 = MockColumn(col1) if isinstance(col1, str) else col1
+        column1 = Column(col1) if isinstance(col1, str) else col1
 
         # col2 can be a column, column name, or literal value
-        column2: Union[MockLiteral, MockColumn, Any]
+        column2: Union[Literal, Column, Any]
         if isinstance(col2, (int, float, bool, type(None))):
             # It's a literal value
-            column2 = MockLiteral(col2)
+            column2 = Literal(col2)
         elif isinstance(col2, str):
             # It's a column name (str not in literal tuple above)
-            column2 = MockColumn(col2)
+            column2 = Column(col2)
         else:
-            # It's already a MockColumn or MockColumnOperation
+            # It's already a Column or ColumnOperation
             column2 = col2
 
         # Get proper name for the column expression
         col2_name = column2.name if hasattr(column2, "name") else str(column2)
 
-        # Use NULLIF function for DuckDB
-        return MockColumnOperation(
+        # Use NULLIF function for DuckDB (DuckDB backend only)
+        return ColumnOperation(
             column1,
             "nullif",
             value=column2,
@@ -554,7 +578,7 @@ class ConditionalFunctions:
         )
 
     @staticmethod
-    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> MockCaseWhen:
+    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> CaseWhen:
         """Create CASE WHEN expression with multiple conditions.
 
         Args:
@@ -562,7 +586,7 @@ class ConditionalFunctions:
             else_value: Default value if no conditions match.
 
         Returns:
-            MockCaseWhen object representing the CASE WHEN expression.
+            CaseWhen object representing the CASE WHEN expression.
 
         Example:
             >>> F.case_when(
@@ -574,9 +598,9 @@ class ConditionalFunctions:
         if not conditions:
             raise ValueError("At least one condition must be provided")
 
-        # Create MockCaseWhen with the first condition
+        # Create CaseWhen with the first condition
         first_condition, first_value = conditions[0]
-        case_when = MockCaseWhen(condition=first_condition, value=first_value)
+        case_when = CaseWhen(condition=first_condition, value=first_value)
 
         # Add remaining conditions
         for condition, value in conditions[1:]:
@@ -587,3 +611,282 @@ class ConditionalFunctions:
             case_when.otherwise(else_value)
 
         return case_when
+
+    @staticmethod
+    def try_add(
+        left: Union[Column, str, int, float], right: Union[Column, str, int, float]
+    ) -> ColumnOperation:
+        """Null-safe addition - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            left: Left operand (column or literal).
+            right: Right operand (column or literal).
+
+        Returns:
+            ColumnOperation representing the try_add function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(left, (str, int, float)):
+            left = Column(str(left)) if isinstance(left, (int, float)) else Column(left)
+        if isinstance(right, (str, int, float)):
+            right = (
+                Column(str(right)) if isinstance(right, (int, float)) else Column(right)
+            )
+
+        operation = ColumnOperation(
+            left,
+            "try_add",
+            value=right,
+            name=f"try_add({left.name}, {right.name if hasattr(right, 'name') else right})",
+        )
+        return operation
+
+    @staticmethod
+    def try_subtract(
+        left: Union[Column, str, int, float], right: Union[Column, str, int, float]
+    ) -> ColumnOperation:
+        """Null-safe subtraction - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            left: Left operand (column or literal).
+            right: Right operand (column or literal).
+
+        Returns:
+            ColumnOperation representing the try_subtract function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(left, (str, int, float)):
+            left = Column(str(left)) if isinstance(left, (int, float)) else Column(left)
+        if isinstance(right, (str, int, float)):
+            right = (
+                Column(str(right)) if isinstance(right, (int, float)) else Column(right)
+            )
+
+        operation = ColumnOperation(
+            left,
+            "try_subtract",
+            value=right,
+            name=f"try_subtract({left.name}, {right.name if hasattr(right, 'name') else right})",
+        )
+        return operation
+
+    @staticmethod
+    def try_multiply(
+        left: Union[Column, str, int, float], right: Union[Column, str, int, float]
+    ) -> ColumnOperation:
+        """Null-safe multiplication - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            left: Left operand (column or literal).
+            right: Right operand (column or literal).
+
+        Returns:
+            ColumnOperation representing the try_multiply function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(left, (str, int, float)):
+            left = Column(str(left)) if isinstance(left, (int, float)) else Column(left)
+        if isinstance(right, (str, int, float)):
+            right = (
+                Column(str(right)) if isinstance(right, (int, float)) else Column(right)
+            )
+
+        operation = ColumnOperation(
+            left,
+            "try_multiply",
+            value=right,
+            name=f"try_multiply({left.name}, {right.name if hasattr(right, 'name') else right})",
+        )
+        return operation
+
+    @staticmethod
+    def try_divide(
+        left: Union[Column, str, int, float], right: Union[Column, str, int, float]
+    ) -> ColumnOperation:
+        """Null-safe division - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            left: Left operand (column or literal).
+            right: Right operand (column or literal).
+
+        Returns:
+            ColumnOperation representing the try_divide function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(left, (str, int, float)):
+            left = Column(str(left)) if isinstance(left, (int, float)) else Column(left)
+        if isinstance(right, (str, int, float)):
+            right = (
+                Column(str(right)) if isinstance(right, (int, float)) else Column(right)
+            )
+
+        operation = ColumnOperation(
+            left,
+            "try_divide",
+            value=right,
+            name=f"try_divide({left.name}, {right.name if hasattr(right, 'name') else right})",
+        )
+        return operation
+
+    @staticmethod
+    def try_sum(column: Union[Column, str]) -> "AggregateFunction":
+        """Null-safe sum aggregate - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column to sum.
+
+        Returns:
+            AggregateFunction representing the try_sum function.
+        """
+        from mock_spark.functions.base import AggregateFunction, Column
+        from mock_spark.spark_types import DoubleType
+
+        if isinstance(column, str):
+            column = Column(column)
+
+        operation = ColumnOperation(column, "try_sum", name=f"try_sum({column.name})")
+        return AggregateFunction(operation, "try_sum", DoubleType())
+
+    @staticmethod
+    def try_avg(column: Union[Column, str]) -> "AggregateFunction":
+        """Null-safe average aggregate - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column to average.
+
+        Returns:
+            AggregateFunction representing the try_avg function.
+        """
+        from mock_spark.functions.base import AggregateFunction, Column
+        from mock_spark.spark_types import DoubleType
+
+        if isinstance(column, str):
+            column = Column(column)
+
+        operation = ColumnOperation(column, "try_avg", name=f"try_avg({column.name})")
+        return AggregateFunction(operation, "try_avg", DoubleType())
+
+    @staticmethod
+    def try_element_at(
+        column: Union[Column, str], index: Union[Column, str, int]
+    ) -> ColumnOperation:
+        """Null-safe element_at - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column containing array or map.
+            index: The index or key to access.
+
+        Returns:
+            ColumnOperation representing the try_element_at function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(column, str):
+            column = Column(column)
+        if isinstance(index, (str, int)):
+            index = Column(str(index)) if isinstance(index, int) else Column(index)
+
+        operation = ColumnOperation(
+            column,
+            "try_element_at",
+            value=index,
+            name=f"try_element_at({column.name}, {index.name if hasattr(index, 'name') else index})",
+        )
+        return operation
+
+    @staticmethod
+    def try_to_binary(
+        column: Union[Column, str], format: Optional[str] = None
+    ) -> ColumnOperation:
+        """Null-safe to_binary - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column to convert to binary.
+            format: Optional format ('hex', 'base64', 'utf-8').
+
+        Returns:
+            ColumnOperation representing the try_to_binary function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(column, str):
+            column = Column(column)
+
+        if format is not None:
+            operation = ColumnOperation(
+                column,
+                "try_to_binary",
+                value=format,
+                name=f"try_to_binary({column.name}, '{format}')",
+            )
+        else:
+            operation = ColumnOperation(
+                column, "try_to_binary", name=f"try_to_binary({column.name})"
+            )
+        return operation
+
+    @staticmethod
+    def try_to_number(
+        column: Union[Column, str], format: Optional[str] = None
+    ) -> ColumnOperation:
+        """Null-safe to_number - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column to convert to number.
+            format: Optional format string.
+
+        Returns:
+            ColumnOperation representing the try_to_number function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(column, str):
+            column = Column(column)
+
+        if format is not None:
+            operation = ColumnOperation(
+                column,
+                "try_to_number",
+                value=format,
+                name=f"try_to_number({column.name}, '{format}')",
+            )
+        else:
+            operation = ColumnOperation(
+                column, "try_to_number", name=f"try_to_number({column.name})"
+            )
+        return operation
+
+    @staticmethod
+    def try_to_timestamp(
+        column: Union[Column, str], format: Optional[str] = None
+    ) -> ColumnOperation:
+        """Null-safe to_timestamp - returns NULL on error (PySpark 3.5+).
+
+        Args:
+            column: The column to convert to timestamp.
+            format: Optional format string.
+
+        Returns:
+            ColumnOperation representing the try_to_timestamp function.
+        """
+        from mock_spark.functions.base import Column
+
+        if isinstance(column, str):
+            column = Column(column)
+
+        if format is not None:
+            operation = ColumnOperation(
+                column,
+                "try_to_timestamp",
+                value=format,
+                name=f"try_to_timestamp({column.name}, '{format}')",
+            )
+        else:
+            operation = ColumnOperation(
+                column, "try_to_timestamp", name=f"try_to_timestamp({column.name})"
+            )
+        return operation

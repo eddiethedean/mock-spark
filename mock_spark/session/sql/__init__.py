@@ -12,14 +12,16 @@ Components:
     - SQL Validator: Validate SQL syntax and semantics
 """
 
-from .parser import MockSQLParser
-from .executor import MockSQLExecutor
-from .optimizer import MockQueryOptimizer
-from .validation import MockSQLValidator
+from .parser import SQLParser, SQLAST
+from .executor import SQLExecutor
+from .optimizer import SQLQueryOptimizer, QueryPlan
+from .validation import SQLValidator
 
 __all__ = [
-    "MockSQLParser",
-    "MockSQLExecutor",
-    "MockQueryOptimizer",
-    "MockSQLValidator",
+    "SQLParser",
+    "SQLAST",
+    "SQLExecutor",
+    "SQLQueryOptimizer",
+    "QueryPlan",
+    "SQLValidator",
 ]

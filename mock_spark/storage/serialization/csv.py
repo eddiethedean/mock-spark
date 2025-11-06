@@ -6,7 +6,7 @@ This module provides CSV serialization and deserialization for storage.
 
 import csv
 from typing import List, Dict, Any
-from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.spark_types import StructType, StructField
 
 
 class CSVSerializer:
@@ -40,14 +40,14 @@ class CSVSerializer:
             Deserialized data.
         """
         try:
-            with open(file_path, "r", newline="") as f:
+            with open(file_path, newline="") as f:
                 reader = csv.DictReader(f)
                 return list(reader)
         except FileNotFoundError:
             return []
 
     @staticmethod
-    def serialize_schema(schema: MockStructType, file_path: str) -> None:
+    def serialize_schema(schema: StructType, file_path: str) -> None:
         """Serialize schema to CSV file.
 
         Args:
@@ -64,7 +64,7 @@ class CSVSerializer:
                 )
 
     @staticmethod
-    def deserialize_schema(file_path: str) -> MockStructType:
+    def deserialize_schema(file_path: str) -> StructType:
         """Deserialize schema from CSV file.
 
         Args:
@@ -74,22 +74,22 @@ class CSVSerializer:
             Deserialized schema.
         """
         try:
-            with open(file_path, "r", newline="") as f:
+            with open(file_path, newline="") as f:
                 reader = csv.DictReader(f)
                 fields = []
 
                 for row in reader:
                     data_type = CSVSerializer._create_data_type(row["data_type"])
-                    field = MockStructField(
+                    field = StructField(
                         row["name"],
                         data_type,
                         row.get("nullable", "True").lower() == "true",
                     )
                     fields.append(field)
 
-                return MockStructType(fields)
+                return StructType(fields)
         except (FileNotFoundError, KeyError):
-            return MockStructType([])
+            return StructType([])
 
     @staticmethod
     def _create_data_type(type_name: str) -> Any:

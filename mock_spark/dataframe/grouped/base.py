@@ -1,7 +1,7 @@
 """
 Base grouped data implementation for Mock Spark.
 
-This module provides the core MockGroupedData class for DataFrame aggregation
+This module provides the core GroupedData class for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
@@ -9,28 +9,28 @@ from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional, Set
 import statistics
 
 from ...functions import (
-    MockColumn,
-    MockColumnOperation,
-    MockAggregateFunction,
+    Column,
+    ColumnOperation,
+    AggregateFunction,
 )
 from ...core.exceptions.analysis import AnalysisException
 
 if TYPE_CHECKING:
-    from ..dataframe import MockDataFrame
-    from .rollup import MockRollupGroupedData
-    from .cube import MockCubeGroupedData
-    from .pivot import MockPivotGroupedData
+    from ..dataframe import DataFrame
+    from .rollup import RollupGroupedData
+    from .cube import CubeGroupedData
+    from .pivot import PivotGroupedData
 
 
-class MockGroupedData:
+class GroupedData:
     """Mock grouped data for aggregation operations.
 
     Provides grouped data functionality for DataFrame aggregation operations,
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
-    def __init__(self, df: "MockDataFrame", group_columns: List[str]):
-        """Initialize MockGroupedData.
+    def __init__(self, df: "DataFrame", group_columns: List[str]):
+        """Initialize GroupedData.
 
         Args:
             df: The DataFrame being grouped.
@@ -40,17 +40,17 @@ class MockGroupedData:
         self.group_columns = group_columns
 
     def agg(
-        self, *exprs: Union[str, MockColumn, MockColumnOperation, MockAggregateFunction]
-    ) -> "MockDataFrame":
+        self, *exprs: Union[str, Column, ColumnOperation, AggregateFunction]
+    ) -> "DataFrame":
         """Aggregate grouped data.
 
         Args:
             *exprs: Aggregation expressions.
 
         Returns:
-            New MockDataFrame with aggregated results.
+            New DataFrame with aggregated results.
         """
-        from ...functions.core.literals import MockLiteral
+        from ...functions.core.literals import Literal
 
         # Materialize the DataFrame if it has queued operations
         if self.df._operations_queue:
@@ -83,25 +83,24 @@ class MockGroupedData:
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name"):
-                    # Handle MockAggregateFunction
+                    # Handle AggregateFunction
                     from typing import cast
-                    from ...functions import MockAggregateFunction
 
                     result_key, result_value = self._evaluate_aggregate_function(
-                        cast(MockAggregateFunction, expr), group_rows
+                        cast("AggregateFunction", expr), group_rows
                     )
                     # Check if this is a count function
                     if expr.function_name == "count":
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif isinstance(expr, MockLiteral):
+                elif isinstance(expr, Literal):
                     # For literals in aggregation, just use their value
                     lit_expr = expr
                     # Use the literal's name as key if it has an alias
                     result_key = getattr(lit_expr, "name", str(lit_expr.value))
                     result_row[result_key] = lit_expr.value
                 elif hasattr(expr, "name"):
-                    # Handle MockColumn or MockColumnOperation
+                    # Handle Column or ColumnOperation
                     result_key, result_value = self._evaluate_column_expression(
                         expr, group_rows
                     )
@@ -110,22 +109,22 @@ class MockGroupedData:
             result_data.append(result_row)
 
         # Create result DataFrame with proper schema
-        from ..dataframe import MockDataFrame
+        from ..dataframe import DataFrame
         from ...spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             StringType,
             LongType,
             DoubleType,
             BooleanType,
-            MockDataType,
+            DataType,
         )
 
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
         literal_keys: Set[str] = set()
         for expr in exprs:
-            if isinstance(expr, MockLiteral):
+            if isinstance(expr, Literal):
                 lit_key = getattr(expr, "name", str(expr.value))
                 literal_keys.add(lit_key)
 
@@ -173,26 +172,24 @@ class MockGroupedData:
 
                     if isinstance(value, bool):
                         data_type = BooleanType(nullable=nullable)
-                        fields.append(
-                            MockStructField(key, data_type, nullable=nullable)
-                        )
+                        fields.append(StructField(key, data_type, nullable=nullable))
                     elif isinstance(value, str):
-                        str_data_type: MockDataType = StringType(nullable=nullable)
+                        str_data_type: DataType = StringType(nullable=nullable)
                         fields.append(
-                            MockStructField(key, str_data_type, nullable=nullable)
+                            StructField(key, str_data_type, nullable=nullable)
                         )
                     elif isinstance(value, float):
-                        float_data_type: MockDataType = DoubleType(nullable=nullable)
+                        float_data_type: DataType = DoubleType(nullable=nullable)
                         fields.append(
-                            MockStructField(key, float_data_type, nullable=nullable)
+                            StructField(key, float_data_type, nullable=nullable)
                         )
                     else:
-                        long_data_type: MockDataType = LongType(nullable=nullable)
+                        long_data_type: DataType = LongType(nullable=nullable)
                         fields.append(
-                            MockStructField(key, long_data_type, nullable=nullable)
+                            StructField(key, long_data_type, nullable=nullable)
                         )
-            schema = MockStructType(fields)
-            return MockDataFrame(result_data, schema)
+            schema = StructType(fields)
+            return DataFrame(result_data, schema)
         else:
             # Empty result - but we still need to preserve schema
             # Build schema from group columns and aggregation expressions
@@ -233,7 +230,7 @@ class MockGroupedData:
                         or "mean(" in result_key
                     ):
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key,
                                 DoubleType(nullable=nullable),
                                 nullable=nullable,
@@ -241,14 +238,14 @@ class MockGroupedData:
                         )
                     elif "count(" in result_key:
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key, LongType(nullable=False), nullable=False
                             )
                         )
                     elif "min(" in result_key or "max(" in result_key:
                         # For min/max, we'd need to check the column type, default to StringType
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key,
                                 StringType(nullable=nullable),
                                 nullable=nullable,
@@ -257,36 +254,36 @@ class MockGroupedData:
                     else:
                         # Default to StringType for unknown expressions
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key,
                                 StringType(nullable=nullable),
                                 nullable=nullable,
                             )
                         )
-                elif isinstance(expr, MockLiteral):
+                elif isinstance(expr, Literal):
                     # Handle literals
                     lit_key = getattr(expr, "name", str(expr.value))
                     lit_value = expr.value
                     if isinstance(lit_value, bool):
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 lit_key, BooleanType(nullable=False), nullable=False
                             )
                         )
                     elif isinstance(lit_value, (int, float)):
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 lit_key, DoubleType(nullable=False), nullable=False
                             )
                         )
                     else:
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 lit_key, StringType(nullable=False), nullable=False
                             )
                         )
                 elif hasattr(expr, "name"):
-                    # Handle MockColumn or MockColumnOperation with aggregation
+                    # Handle Column or ColumnOperation with aggregation
                     result_key = expr.name
                     is_count_function = result_key in non_nullable_keys or any(
                         result_key.startswith(func)
@@ -299,7 +296,7 @@ class MockGroupedData:
                     if hasattr(expr, "operation") and expr.operation:
                         if expr.operation in ["sum", "avg", "mean"]:
                             fields.append(
-                                MockStructField(
+                                StructField(
                                     result_key,
                                     DoubleType(nullable=nullable),
                                     nullable=nullable,
@@ -307,14 +304,14 @@ class MockGroupedData:
                             )
                         elif expr.operation == "count":
                             fields.append(
-                                MockStructField(
+                                StructField(
                                     result_key, LongType(nullable=False), nullable=False
                                 )
                             )
                         else:
                             # Default to StringType
                             fields.append(
-                                MockStructField(
+                                StructField(
                                     result_key,
                                     StringType(nullable=nullable),
                                     nullable=nullable,
@@ -323,36 +320,36 @@ class MockGroupedData:
                     else:
                         # Default to StringType for unknown expressions
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key,
                                 StringType(nullable=nullable),
                                 nullable=nullable,
                             )
                         )
                 elif hasattr(expr, "function_name"):
-                    # Handle MockAggregateFunction
+                    # Handle AggregateFunction
                     result_key = getattr(expr, "name", expr.function_name)
                     if expr.function_name == "count":
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key, LongType(nullable=False), nullable=False
                             )
                         )
                     elif expr.function_name in ["sum", "avg", "mean"]:
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key, DoubleType(nullable=True), nullable=True
                             )
                         )
                     else:
                         fields.append(
-                            MockStructField(
+                            StructField(
                                 result_key, StringType(nullable=True), nullable=True
                             )
                         )
 
-            schema = MockStructType(fields)
-            return MockDataFrame(result_data, schema)
+            schema = StructType(fields)
+            return DataFrame(result_data, schema)
 
     def _evaluate_string_expression(
         self, expr: str, group_rows: List[Dict[str, Any]]
@@ -420,9 +417,9 @@ class MockGroupedData:
             return expr, None
 
     def _evaluate_aggregate_function(
-        self, expr: MockAggregateFunction, group_rows: List[Dict[str, Any]]
+        self, expr: AggregateFunction, group_rows: List[Dict[str, Any]]
     ) -> Tuple[str, Any]:
-        """Evaluate MockAggregateFunction.
+        """Evaluate AggregateFunction.
 
         Args:
             expr: Aggregate function to evaluate.
@@ -436,9 +433,9 @@ class MockGroupedData:
             getattr(expr, "column_name", "") if hasattr(expr, "column_name") else ""
         )
 
-        # Check if the function has an alias set
-        has_alias = expr.name != expr._generate_name()
-        alias_name = expr.name if has_alias else None
+        # Use the name from the aggregate function (already set correctly by _generate_name)
+        # This handles both explicit aliases and the correct default names (e.g., count(dept) for countDistinct)
+        alias_name = expr.name
 
         if func_name == "sum":
             # If the aggregate targets an expression (e.g., cast or arithmetic), evaluate per-row
@@ -488,9 +485,9 @@ class MockGroupedData:
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+                from ...core.exceptions.operation import SparkColumnNotFoundError
 
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+                raise SparkColumnNotFoundError(col_name, available_columns)
             values = []
             for row in group_rows:
                 val = row.get(col_name)
@@ -551,9 +548,9 @@ class MockGroupedData:
                 and col_name not in [field.name for field in self.df.schema.fields]
             ):
                 available_columns = [field.name for field in self.df.schema.fields]
-                from ...core.exceptions.operation import MockSparkColumnNotFoundError
+                from ...core.exceptions.operation import SparkColumnNotFoundError
 
-                raise MockSparkColumnNotFoundError(col_name, available_columns)
+                raise SparkColumnNotFoundError(col_name, available_columns)
             values = []
             for row in group_rows:
                 val = row.get(col_name)
@@ -577,7 +574,7 @@ class MockGroupedData:
                 result_key = alias_name if alias_name else f"count({col_name})"
                 return result_key, len(group_rows)
         elif func_name == "max":
-            # Check if this is a complex expression (MockColumnOperation)
+            # Check if this is a complex expression (ColumnOperation)
             if hasattr(expr, "column") and hasattr(expr.column, "operation"):
                 # Evaluate the expression for each row
                 values = []
@@ -602,7 +599,7 @@ class MockGroupedData:
                 result_key = alias_name if alias_name else f"max({col_name})"
                 return result_key, max(values) if values else None
         elif func_name == "min":
-            # Check if this is a complex expression (MockColumnOperation)
+            # Check if this is a complex expression (ColumnOperation)
             if hasattr(expr, "column") and hasattr(expr.column, "operation"):
                 # Evaluate the expression for each row
                 values = []
@@ -650,7 +647,7 @@ class MockGroupedData:
             ]
             result_key = alias_name if alias_name else f"last({col_name})"
             return result_key, values[-1] if values else None
-        elif func_name == "stddev":
+        elif func_name == "stddev" or func_name == "std":
             values = [
                 row.get(col_name)
                 for row in group_rows
@@ -662,6 +659,48 @@ class MockGroupedData:
                 return result_key, statistics.stdev(values) if len(values) > 1 else 0.0
             else:
                 return result_key, None
+        elif func_name == "product":
+            # product(col) - multiply all values
+            values = []
+            for row in group_rows:
+                val = row.get(col_name)
+                if val is not None:
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue
+                    values.append(val)
+            result_key = alias_name if alias_name else f"product({col_name})"
+            if values:
+                product_result = 1.0
+                for val in values:
+                    product_result *= val
+                return result_key, product_result
+            else:
+                return result_key, 1.0  # Empty set returns 1.0
+        elif func_name == "sum_distinct":
+            # sum_distinct(col) - sum of distinct values
+            values = []
+            seen = set()
+            for row in group_rows:
+                val = row.get(col_name)
+                if val is not None:
+                    if isinstance(val, bool):
+                        val = 1 if val else 0
+                    if isinstance(val, str):
+                        try:
+                            val = float(val) if "." in val else int(val)
+                        except ValueError:
+                            continue
+                    # Only add if not seen before
+                    if val not in seen:
+                        seen.add(val)
+                        values.append(val)
+            result_key = alias_name if alias_name else f"sum_distinct({col_name})"
+            return result_key, sum(values) if values else 0
         elif func_name == "variance":
             values = [
                 row.get(col_name)
@@ -800,9 +839,12 @@ class MockGroupedData:
                         elif cond_expr.operation == "<=":
                             if col_val is not None and col_val <= comp_val:
                                 true_count += 1
-                        elif cond_expr.operation == "==":
-                            if col_val is not None and col_val == comp_val:
-                                true_count += 1
+                        elif (
+                            cond_expr.operation == "=="
+                            and col_val is not None
+                            and col_val == comp_val
+                        ):
+                            true_count += 1
                 result_key = alias_name if alias_name else "count_if"
                 return result_key, true_count
             else:
@@ -829,7 +871,9 @@ class MockGroupedData:
             values = [
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
-            result_key = alias_name if alias_name else f"mean({col_name})"
+            result_key = (
+                alias_name  # Use the name from expr.name (already set correctly)
+            )
             return result_key, statistics.mean(values) if values else None
         elif func_name == "approx_count_distinct":
             # approx_count_distinct(col) - approximate distinct count
@@ -847,7 +891,9 @@ class MockGroupedData:
                 row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
             distinct_count = len(set(values))
-            result_key = alias_name if alias_name else f"countDistinct({col_name})"
+            result_key = (
+                alias_name  # Use the name from expr.name (already set correctly)
+            )
             return result_key, distinct_count
         elif func_name == "stddev_pop":
             # stddev_pop(col) - population standard deviation
@@ -920,16 +966,168 @@ class MockGroupedData:
             else:
                 result_key = alias_name if alias_name else f"covar_pop({col_name})"
                 return result_key, None
+        elif func_name in [
+            "regr_avgx",
+            "regr_avgy",
+            "regr_count",
+            "regr_intercept",
+            "regr_r2",
+            "regr_slope",
+            "regr_sxx",
+            "regr_sxy",
+            "regr_syy",
+        ]:
+            # Linear regression functions - require two columns (y, x)
+            # The expr.column is a ColumnOperation with y as base and x as value
+            if (
+                hasattr(expr, "column")
+                and hasattr(expr.column, "operation")
+                and expr.column.operation == func_name
+            ):
+                # Extract y and x columns from the ColumnOperation
+                y_col = expr.column.column
+                x_col = expr.column.value
+                y_col_name = y_col.name if hasattr(y_col, "name") else str(y_col)
+                x_col_name = x_col.name if hasattr(x_col, "name") else str(x_col)
+
+                # Get pairs of (y, x) values where both are not None
+                pairs = [
+                    (row.get(y_col_name), row.get(x_col_name))
+                    for row in group_rows
+                    if row.get(y_col_name) is not None
+                    and row.get(x_col_name) is not None
+                ]
+
+                if not pairs:
+                    result_key = (
+                        alias_name
+                        if alias_name
+                        else f"{func_name}({y_col_name}, {x_col_name})"
+                    )
+                    return result_key, None
+
+                y_values = [p[0] for p in pairs]
+                x_values = [p[1] for p in pairs]
+                n = len(pairs)
+
+                # Calculate basic statistics
+                y_mean = statistics.mean(y_values) if y_values else 0.0
+                x_mean = statistics.mean(x_values) if x_values else 0.0
+
+                # Calculate regression statistics
+                sxx = sum((x - x_mean) ** 2 for x in x_values)
+                syy = sum((y - y_mean) ** 2 for y in y_values)
+                sxy = sum(
+                    (x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values)
+                )
+
+                result_key = (
+                    alias_name
+                    if alias_name
+                    else f"{func_name}({y_col_name}, {x_col_name})"
+                )
+
+                if func_name == "regr_avgx":
+                    return result_key, x_mean
+                elif func_name == "regr_avgy":
+                    return result_key, y_mean
+                elif func_name == "regr_count":
+                    return result_key, n
+                elif func_name == "regr_sxx":
+                    return result_key, sxx
+                elif func_name == "regr_syy":
+                    return result_key, syy
+                elif func_name == "regr_sxy":
+                    return result_key, sxy
+                elif func_name == "regr_slope":
+                    # slope = sxy / sxx
+                    if sxx != 0:
+                        return result_key, sxy / sxx
+                    else:
+                        return result_key, None
+                elif func_name == "regr_intercept":
+                    # intercept = y_mean - slope * x_mean
+                    if sxx != 0:
+                        slope = sxy / sxx
+                        intercept = y_mean - slope * x_mean
+                        return result_key, intercept
+                    else:
+                        return result_key, None
+                elif func_name == "regr_r2":
+                    # R-squared = (sxy^2) / (sxx * syy)
+                    if sxx != 0 and syy != 0:
+                        r2 = (sxy**2) / (sxx * syy)
+                        return result_key, r2
+                    else:
+                        return result_key, None
+            else:
+                result_key = alias_name if alias_name else f"{func_name}({col_name})"
+                return result_key, None
+        elif func_name == "approx_percentile":
+            # approx_percentile(col, percentage, accuracy)
+            # Get values
+            values = []
+            for row in group_rows:
+                val = row.get(col_name)
+                if val is not None:
+                    try:
+                        values.append(float(val))
+                    except (ValueError, TypeError):
+                        continue
+
+            if not values:
+                result_key = (
+                    alias_name if alias_name else f"approx_percentile({col_name})"
+                )
+                return result_key, None
+
+            # Get percentage and accuracy from expr.column.operation
+            percentage = 0.5  # Default
+            if (
+                hasattr(expr, "column")
+                and hasattr(expr.column, "operation")
+                and hasattr(expr.column.operation, "value")
+                and isinstance(expr.column.operation.value, tuple)
+                and len(expr.column.operation.value) >= 1
+            ):
+                percentage = (
+                    float(expr.column.operation.value[0])
+                    if isinstance(expr.column.operation.value[0], (int, float))
+                    else 0.5
+                )
+
+            # Sort values for percentile calculation
+            values.sort()
+            n = len(values)
+            # Calculate approximate percentile using linear interpolation
+            index = percentage * (n - 1)
+            lower_idx = int(index)
+            upper_idx = min(lower_idx + 1, n - 1)
+            fraction = index - lower_idx
+
+            if lower_idx == upper_idx:
+                percentile_value = values[lower_idx]
+            else:
+                percentile_value = (
+                    values[lower_idx] * (1 - fraction) + values[upper_idx] * fraction
+                )
+
+            result_key = (
+                alias_name
+                if alias_name
+                else f"approx_percentile({col_name}, {percentage})"
+            )
+            return result_key, percentile_value
         else:
             result_key = alias_name if alias_name else f"{func_name}({col_name})"
             return result_key, None
 
     def _evaluate_column_expression(
         self,
-        expr: Union[MockColumn, MockColumnOperation],
+        expr: Union[Column, ColumnOperation],
         group_rows: List[Dict[str, Any]],
     ) -> Tuple[str, Any]:
-        """Evaluate MockColumn or MockColumnOperation.
+        """Evaluate Column or ColumnOperation.
 
         Args:
             expr: Column expression to evaluate.
@@ -972,14 +1170,14 @@ class MockGroupedData:
         else:
             return expr_name, None
 
-    def sum(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def sum(self, *columns: Union[str, Column]) -> "DataFrame":
         """Sum grouped data.
 
         Args:
             *columns: Columns to sum.
 
         Returns:
-            MockDataFrame with sum aggregations.
+            DataFrame with sum aggregations.
         """
         if not columns:
             return self.agg("sum(1)")
@@ -990,14 +1188,14 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
-    def avg(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def avg(self, *columns: Union[str, Column]) -> "DataFrame":
         """Average grouped data.
 
         Args:
             *columns: Columns to average.
 
         Returns:
-            MockDataFrame with average aggregations.
+            DataFrame with average aggregations.
         """
         if not columns:
             return self.agg("avg(1)")
@@ -1008,17 +1206,17 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
-    def count(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def count(self, *columns: Union[str, Column]) -> "DataFrame":
         """Count grouped data.
 
         Args:
             *columns: Columns to count.
 
         Returns:
-            MockDataFrame with count aggregations.
+            DataFrame with count aggregations.
         """
         if not columns:
-            # Use MockAggregateFunction for count(*) to get proper naming
+            # Use AggregateFunction for count(*) to get proper naming
             from ...functions.aggregate import AggregateFunctions
 
             return self.agg(AggregateFunctions.count())
@@ -1029,14 +1227,14 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
-    def max(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def max(self, *columns: Union[str, Column]) -> "DataFrame":
         """Max grouped data.
 
         Args:
             *columns: Columns to get max of.
 
         Returns:
-            MockDataFrame with max aggregations.
+            DataFrame with max aggregations.
         """
         if not columns:
             return self.agg("max(1)")
@@ -1047,14 +1245,14 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
-    def min(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def min(self, *columns: Union[str, Column]) -> "DataFrame":
         """Min grouped data.
 
         Args:
             *columns: Columns to get min of.
 
         Returns:
-            MockDataFrame with min aggregations.
+            DataFrame with min aggregations.
         """
         if not columns:
             return self.agg("min(1)")
@@ -1065,140 +1263,140 @@ class MockGroupedData:
         ]
         return self.agg(*exprs)
 
-    def count_distinct(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def count_distinct(self, *columns: Union[str, Column]) -> "DataFrame":
         """Count distinct values in columns.
 
         Args:
             *columns: Columns to count distinct values for.
 
         Returns:
-            MockDataFrame with count distinct results.
+            DataFrame with count distinct results.
         """
         from ...functions import count_distinct
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(count_distinct(col))
             else:
                 exprs.append(count_distinct(col))
 
         return self.agg(*exprs)
 
-    def collect_set(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def collect_set(self, *columns: Union[str, Column]) -> "DataFrame":
         """Collect unique values into a set.
 
         Args:
             *columns: Columns to collect unique values for.
 
         Returns:
-            MockDataFrame with collect_set results.
+            DataFrame with collect_set results.
         """
         from ...functions import collect_set
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(collect_set(col))
             else:
                 exprs.append(collect_set(col))
 
         return self.agg(*exprs)
 
-    def first(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def first(self, *columns: Union[str, Column]) -> "DataFrame":
         """Get first value in each group.
 
         Args:
             *columns: Columns to get first values for.
 
         Returns:
-            MockDataFrame with first values.
+            DataFrame with first values.
         """
         from ...functions import first
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(first(col))
             else:
                 exprs.append(first(col))
 
         return self.agg(*exprs)
 
-    def last(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def last(self, *columns: Union[str, Column]) -> "DataFrame":
         """Get last value in each group.
 
         Args:
             *columns: Columns to get last values for.
 
         Returns:
-            MockDataFrame with last values.
+            DataFrame with last values.
         """
         from ...functions import last
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(last(col))
             else:
                 exprs.append(last(col))
 
         return self.agg(*exprs)
 
-    def stddev(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def stddev(self, *columns: Union[str, Column]) -> "DataFrame":
         """Calculate standard deviation.
 
         Args:
             *columns: Columns to calculate standard deviation for.
 
         Returns:
-            MockDataFrame with standard deviation results.
+            DataFrame with standard deviation results.
         """
         from ...functions import stddev
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(stddev(col))
             else:
                 exprs.append(stddev(col))
 
         return self.agg(*exprs)
 
-    def variance(self, *columns: Union[str, MockColumn]) -> "MockDataFrame":
+    def variance(self, *columns: Union[str, Column]) -> "DataFrame":
         """Calculate variance.
 
         Args:
             *columns: Columns to calculate variance for.
 
         Returns:
-            MockDataFrame with variance results.
+            DataFrame with variance results.
         """
         from ...functions import variance
 
         exprs = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 exprs.append(variance(col))
             else:
                 exprs.append(variance(col))
 
         return self.agg(*exprs)
 
-    def rollup(self, *columns: Union[str, MockColumn]) -> "MockRollupGroupedData":
+    def rollup(self, *columns: Union[str, Column]) -> "RollupGroupedData":
         """Create rollup grouped data for hierarchical grouping.
 
         Args:
             *columns: Columns to rollup.
 
         Returns:
-            MockRollupGroupedData for hierarchical grouping.
+            RollupGroupedData for hierarchical grouping.
         """
-        from .rollup import MockRollupGroupedData
+        from .rollup import RollupGroupedData
 
         col_names = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 col_names.append(col.name)
             else:
                 col_names.append(col)
@@ -1208,22 +1406,22 @@ class MockGroupedData:
             if col_name not in [field.name for field in self.df.schema.fields]:
                 raise AnalysisException(f"Column '{col_name}' does not exist")
 
-        return MockRollupGroupedData(self.df, col_names)
+        return RollupGroupedData(self.df, col_names)
 
-    def cube(self, *columns: Union[str, MockColumn]) -> "MockCubeGroupedData":
+    def cube(self, *columns: Union[str, Column]) -> "CubeGroupedData":
         """Create cube grouped data for multi-dimensional grouping.
 
         Args:
             *columns: Columns to cube.
 
         Returns:
-            MockCubeGroupedData for multi-dimensional grouping.
+            CubeGroupedData for multi-dimensional grouping.
         """
-        from .cube import MockCubeGroupedData
+        from .cube import CubeGroupedData
 
         col_names = []
         for col in columns:
-            if isinstance(col, MockColumn):
+            if isinstance(col, Column):
                 col_names.append(col.name)
             else:
                 col_names.append(col)
@@ -1233,11 +1431,11 @@ class MockGroupedData:
             if col_name not in [field.name for field in self.df.schema.fields]:
                 raise AnalysisException(f"Column '{col_name}' does not exist")
 
-        return MockCubeGroupedData(self.df, col_names)
+        return CubeGroupedData(self.df, col_names)
 
     def pivot(
         self, pivot_col: str, values: Optional[List[Any]] = None
-    ) -> "MockPivotGroupedData":
+    ) -> "PivotGroupedData":
         """Create pivot grouped data.
 
         Args:
@@ -1245,9 +1443,9 @@ class MockGroupedData:
             values: Optional list of pivot values. If None, uses all unique values.
 
         Returns:
-            MockPivotGroupedData for pivot operations.
+            PivotGroupedData for pivot operations.
         """
-        from .pivot import MockPivotGroupedData
+        from .pivot import PivotGroupedData
 
         # Validate that pivot column exists
         if pivot_col not in [field.name for field in self.df.schema.fields]:
@@ -1256,17 +1454,17 @@ class MockGroupedData:
         # If values not provided, get unique values from pivot column
         if values is None:
             values = list(
-                set(
+                {
                     row.get(pivot_col)
                     for row in self.df.data
                     if row.get(pivot_col) is not None
-                )
+                }
             )
             values.sort()  # Sort for consistent ordering
 
-        return MockPivotGroupedData(self.df, self.group_columns, pivot_col, values)
+        return PivotGroupedData(self.df, self.group_columns, pivot_col, values)
 
-    def applyInPandas(self, func: Any, schema: Any) -> "MockDataFrame":
+    def applyInPandas(self, func: Any, schema: Any) -> "DataFrame":
         """Apply a Python native function to each group using pandas DataFrames.
 
         The function should take a pandas DataFrame and return a pandas DataFrame.
@@ -1278,7 +1476,7 @@ class MockGroupedData:
             schema: The schema of the output DataFrame (StructType or DDL string).
 
         Returns:
-            MockDataFrame: Result of applying the function to each group.
+            DataFrame: Result of applying the function to each group.
 
         Example:
             >>> def normalize(pdf):
@@ -1295,10 +1493,7 @@ class MockGroupedData:
             )
 
         # Materialize DataFrame if lazy
-        if self.df._operations_queue:
-            df = self.df._materialize_if_lazy()
-        else:
-            df = self.df
+        df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
@@ -1335,17 +1530,17 @@ class MockGroupedData:
             ]
 
         # Parse schema
-        from ...spark_types import MockStructType
+        from ...spark_types import StructType
         from ...core.schema_inference import infer_schema_from_data
 
-        result_schema: MockStructType
+        result_schema: StructType
         if isinstance(schema, str):
             # For DDL string, use schema inference from result data
             # (DDL parsing is complex, so we rely on inference for now)
             result_schema = (
                 infer_schema_from_data(result_data) if result_data else self.df.schema
             )
-        elif isinstance(schema, MockStructType):
+        elif isinstance(schema, StructType):
             result_schema = schema
         else:
             # Try to infer schema from result data
@@ -1353,12 +1548,12 @@ class MockGroupedData:
                 infer_schema_from_data(result_data) if result_data else self.df.schema
             )
 
-        from ..dataframe import MockDataFrame as MDF
+        from ..dataframe import DataFrame as MDF
 
         storage: Any = getattr(self.df, "storage", None)
         return MDF(result_data, result_schema, storage)
 
-    def transform(self, func: Any) -> "MockDataFrame":
+    def transform(self, func: Any) -> "DataFrame":
         """Apply a function to each group and return a DataFrame with the same schema.
 
         This is similar to applyInPandas but preserves the original schema.
@@ -1369,7 +1564,7 @@ class MockGroupedData:
             func: A function that takes a pandas DataFrame and returns a pandas DataFrame.
 
         Returns:
-            MockDataFrame: Result of applying the function to each group.
+            DataFrame: Result of applying the function to each group.
 
         Example:
             >>> def add_group_stats(pdf):
@@ -1387,10 +1582,7 @@ class MockGroupedData:
             )
 
         # Materialize DataFrame if lazy
-        if self.df._operations_queue:
-            df = self.df._materialize_if_lazy()
-        else:
-            df = self.df
+        df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
         groups: Dict[Any, List[Dict[str, Any]]] = {}
@@ -1433,7 +1625,7 @@ class MockGroupedData:
             infer_schema_from_data(result_rows) if result_rows else df.schema
         )
 
-        from ..dataframe import MockDataFrame as MDF
+        from ..dataframe import DataFrame as MDF
 
         storage: Any = getattr(self.df, "storage", None)
         return MDF(result_rows, result_schema, storage)

@@ -10,15 +10,15 @@ Key Features:
     - Complete PySpark data type hierarchy
     - Primitive types (String, Integer, Long, Double, Boolean)
     - Complex types (Array, Map, Struct)
-    - Schema definition with MockStructType and MockStructField
+    - Schema definition with StructType and StructField
     - Row objects with PySpark-compatible interface
     - Type inference and conversion utilities
 
 Example:
-    >>> from mock_spark.spark_types import StringType, IntegerType, MockStructType, MockStructField
-    >>> schema = MockStructType([
-    ...     MockStructField("name", StringType()),
-    ...     MockStructField("age", IntegerType())
+    >>> from mock_spark.spark_types import StringType, IntegerType, StructType, StructField
+    >>> schema = StructType([
+    ...     StructField("name", StringType()),
+    ...     StructField("age", IntegerType())
     ... ])
     >>> df = spark.createDataFrame(data, schema)
 """
@@ -38,7 +38,7 @@ from typing import (
 from dataclasses import dataclass
 
 
-class MockDataType:
+class DataType:
     """Base class for mock data types.
 
     Provides the foundation for all data types in the Mock Spark type system.
@@ -65,7 +65,7 @@ class MockDataType:
         return False
 
     def __hash__(self) -> int:
-        """Hash method to make MockDataType hashable."""
+        """Hash method to make DataType hashable."""
         return hash((self.__class__.__name__, self.nullable))
 
     def __repr__(self) -> str:
@@ -102,49 +102,49 @@ class MockDataType:
         )
 
 
-class StringType(MockDataType):
+class StringType(DataType):
     """Mock StringType."""
 
     pass
 
 
-class IntegerType(MockDataType):
+class IntegerType(DataType):
     """Mock IntegerType."""
 
     pass
 
 
-class LongType(MockDataType):
+class LongType(DataType):
     """Mock LongType."""
 
     pass
 
 
-class DoubleType(MockDataType):
+class DoubleType(DataType):
     """Mock DoubleType."""
 
     pass
 
 
-class BooleanType(MockDataType):
+class BooleanType(DataType):
     """Mock BooleanType."""
 
     pass
 
 
-class DateType(MockDataType):
+class DateType(DataType):
     """Mock DateType."""
 
     pass
 
 
-class TimestampType(MockDataType):
+class TimestampType(DataType):
     """Mock TimestampType."""
 
     pass
 
 
-class DecimalType(MockDataType):
+class DecimalType(DataType):
     """Mock decimal type."""
 
     def __init__(self, precision: int = 10, scale: int = 0, nullable: bool = True):
@@ -158,10 +158,10 @@ class DecimalType(MockDataType):
         return f"DecimalType({self.precision}, {self.scale})"
 
 
-class ArrayType(MockDataType):
+class ArrayType(DataType):
     """Mock array type."""
 
-    def __init__(self, element_type: MockDataType, nullable: bool = True):
+    def __init__(self, element_type: DataType, nullable: bool = True):
         """Initialize ArrayType."""
         super().__init__(nullable)
         self.element_type = element_type
@@ -171,12 +171,10 @@ class ArrayType(MockDataType):
         return f"ArrayType({self.element_type})"
 
 
-class MapType(MockDataType):
+class MapType(DataType):
     """Mock map type."""
 
-    def __init__(
-        self, key_type: MockDataType, value_type: MockDataType, nullable: bool = True
-    ):
+    def __init__(self, key_type: DataType, value_type: DataType, nullable: bool = True):
         """Initialize MapType."""
         super().__init__(nullable)
         self.key_type = key_type
@@ -187,37 +185,37 @@ class MapType(MockDataType):
         return f"MapType({self.key_type}, {self.value_type})"
 
 
-class BinaryType(MockDataType):
+class BinaryType(DataType):
     """Mock BinaryType for binary data."""
 
     pass
 
 
-class NullType(MockDataType):
+class NullType(DataType):
     """Mock NullType for null values."""
 
     pass
 
 
-class FloatType(MockDataType):
+class FloatType(DataType):
     """Mock FloatType for single precision floating point numbers."""
 
     pass
 
 
-class ShortType(MockDataType):
+class ShortType(DataType):
     """Mock ShortType for short integers."""
 
     pass
 
 
-class ByteType(MockDataType):
+class ByteType(DataType):
     """Mock ByteType for byte values."""
 
     pass
 
 
-class CharType(MockDataType):
+class CharType(DataType):
     """Mock CharType for fixed-length character strings."""
 
     def __init__(self, length: int = 1, nullable: bool = True):
@@ -228,7 +226,7 @@ class CharType(MockDataType):
         return f"CharType({self.length})"
 
 
-class VarcharType(MockDataType):
+class VarcharType(DataType):
     """Mock VarcharType for variable-length character strings."""
 
     def __init__(self, length: int = 255, nullable: bool = True):
@@ -239,13 +237,13 @@ class VarcharType(MockDataType):
         return f"VarcharType({self.length})"
 
 
-class TimestampNTZType(MockDataType):
+class TimestampNTZType(DataType):
     """Mock TimestampNTZType for timestamp without timezone."""
 
     pass
 
 
-class IntervalType(MockDataType):
+class IntervalType(DataType):
     """Mock IntervalType for time intervals."""
 
     def __init__(
@@ -259,7 +257,7 @@ class IntervalType(MockDataType):
         return f"IntervalType({self.start_field}, {self.end_field})"
 
 
-class YearMonthIntervalType(MockDataType):
+class YearMonthIntervalType(DataType):
     """Mock YearMonthIntervalType for year-month intervals."""
 
     def __init__(
@@ -273,7 +271,7 @@ class YearMonthIntervalType(MockDataType):
         return f"YearMonthIntervalType({self.start_field}, {self.end_field})"
 
 
-class DayTimeIntervalType(MockDataType):
+class DayTimeIntervalType(DataType):
     """Mock DayTimeIntervalType for day-time intervals."""
 
     def __init__(
@@ -288,11 +286,11 @@ class DayTimeIntervalType(MockDataType):
 
 
 @dataclass
-class MockStructField:
+class StructField:
     """Mock StructField for schema definition."""
 
     name: str
-    dataType: MockDataType
+    dataType: DataType
     nullable: bool = True
     metadata: Optional[Dict[str, Any]] = None
     default_value: Optional[Any] = None  # PySpark 3.2+ feature
@@ -305,7 +303,7 @@ class MockStructField:
 
     def __eq__(self, other: Any) -> bool:
         return (
-            isinstance(other, MockStructField)
+            isinstance(other, StructField)
             and self.name == other.name
             and self.dataType == other.dataType
             and self.nullable == other.nullable
@@ -317,49 +315,39 @@ class MockStructField:
             if self.default_value is not None
             else ""
         )
-        return f"MockStructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable}{default_str})"
+        return f"StructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable}{default_str})"
 
 
-class StructType(MockDataType):
-    """Mock struct type."""
-
-    def __init__(
-        self, fields: Optional[List[MockStructField]] = None, nullable: bool = True
-    ):
-        """Initialize StructType."""
-        super().__init__(nullable)
-        self.fields = fields or []
-
-    def __repr__(self) -> str:
-        """String representation."""
-        return f"StructType({self.fields})"
-
-
-class MockStructType(StructType):
+class StructType(DataType):
     """Mock StructType for schema definition."""
 
-    def __init__(self, fields: Optional[List[MockStructField]] = None):
-        super().__init__(fields or [])
+    def __init__(
+        self, fields: Optional[List[StructField]] = None, nullable: bool = True
+    ):
+        super().__init__(nullable)
         self.fields = fields or []
-        self._field_map = {field.name: field for field in self.fields}
+        if fields:
+            self._field_map = {field.name: field for field in self.fields}
+        else:
+            self._field_map = {}
 
-    def __getitem__(self, index: int) -> MockStructField:
+    def __getitem__(self, index: int) -> StructField:
         return self.fields[index]
 
     def __len__(self) -> int:
         return len(self.fields)
 
-    def __iter__(self) -> Iterator[MockStructField]:
+    def __iter__(self) -> Iterator[StructField]:
         return iter(self.fields)
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, MockStructType) and self.fields == other.fields
+        return isinstance(other, StructType) and self.fields == other.fields
 
     def __repr__(self) -> str:
         fields_str = ", ".join(repr(field) for field in self.fields)
-        return f"MockStructType([{fields_str}])"
+        return f"StructType([{fields_str}])"
 
-    def merge_with(self, other: "MockStructType") -> "MockStructType":
+    def merge_with(self, other: "StructType") -> "StructType":
         """Merge this schema with another, adding new fields from other.
 
         Args:
@@ -377,9 +365,9 @@ class MockStructType(StructType):
             if field.name not in existing_fields:
                 merged_fields.append(field)
 
-        return MockStructType(merged_fields)
+        return StructType(merged_fields)
 
-    def has_same_columns(self, other: "MockStructType") -> bool:
+    def has_same_columns(self, other: "StructType") -> bool:
         """Check if two schemas have the same column names.
 
         Args:
@@ -406,12 +394,12 @@ class MockStructType(StructType):
         """Check if field exists in schema."""
         return name in self._field_map
 
-    def add_field(self, field: MockStructField) -> None:
+    def add_field(self, field: StructField) -> None:
         """Add a field to the struct type."""
         self.fields.append(field)
         self._field_map[field.name] = field
 
-    def get_field_by_name(self, name: str) -> Optional[MockStructField]:
+    def get_field_by_name(self, name: str) -> Optional[StructField]:
         """Get field by name."""
         return self._field_map.get(name)
 
@@ -446,8 +434,8 @@ class MockTable:
 
 
 # Type conversion utilities
-def convert_python_type_to_mock_type(python_type: type) -> MockDataType:
-    """Convert Python type to MockDataType."""
+def convert_python_type_to_mock_type(python_type: type) -> DataType:
+    """Convert Python type to DataType."""
     type_mapping = {
         str: StringType(),
         int: LongType(),  # Use LongType for integers to match PySpark
@@ -460,10 +448,10 @@ def convert_python_type_to_mock_type(python_type: type) -> MockDataType:
     return type_mapping.get(python_type, StringType())
 
 
-def infer_schema_from_data(data: List[Dict[str, Any]]) -> MockStructType:
+def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
     """Infer schema from data."""
     if not data:
-        return MockStructType([])
+        return StructType([])
 
     # Get field names and types from first row
     first_row = data[0]
@@ -471,22 +459,22 @@ def infer_schema_from_data(data: List[Dict[str, Any]]) -> MockStructType:
 
     for name, value in first_row.items():
         if value is None:
-            data_type: MockDataType = StringType()
+            data_type: DataType = StringType()
         else:
             data_type = convert_python_type_to_mock_type(type(value))
 
-        fields.append(MockStructField(name=name, dataType=data_type))
+        fields.append(StructField(name=name, dataType=data_type))
 
-    return MockStructType(fields)
+    return StructType(fields)
 
 
-def create_schema_from_columns(columns: List[str]) -> MockStructType:
+def create_schema_from_columns(columns: List[str]) -> StructType:
     """Create schema from column names (all StringType)."""
-    fields = [MockStructField(name=col, dataType=StringType()) for col in columns]
-    return MockStructType(fields)
+    fields = [StructField(name=col, dataType=StringType()) for col in columns]
+    return StructType(fields)
 
 
-class MockRow:
+class Row:
     """Mock Row object providing PySpark-compatible row interface.
 
     Represents a single row in a DataFrame with PySpark-compatible methods
@@ -496,7 +484,7 @@ class MockRow:
         data: Dictionary containing row data.
 
     Example:
-        >>> row = MockRow({"name": "Alice", "age": 25})
+        >>> row = Row({"name": "Alice", "age": 25})
         >>> row.name
         'Alice'
         >>> row[0]
@@ -505,8 +493,8 @@ class MockRow:
         {'name': 'Alice', 'age': 25}
     """
 
-    def __init__(self, data: Any, schema: Optional["MockStructType"] = None):
-        """Initialize MockRow.
+    def __init__(self, data: Any, schema: Optional["StructType"] = None):
+        """Initialize Row.
 
         Args:
             data: Row data. Accepts dict, list of tuples, or sequence-like.
@@ -524,15 +512,13 @@ class MockRow:
             self.data: Union[List[Tuple[str, Any]], Dict[str, Any]] = list(
                 data
             )  # Keep as list
-            self._data_dict = {k: v for k, v in data}  # For backward compatibility
+            self._data_dict = dict(data)  # For backward compatibility
         elif isinstance(data, dict):
             if schema is not None and getattr(schema, "fields", None):
                 # Reorder dict according to schema field order
                 ordered_items = [(f.name, data.get(f.name)) for f in schema.fields]
                 self.data = list(ordered_items)  # Store as list of tuples
-                self._data_dict = {
-                    k: v for k, v in ordered_items
-                }  # For backward compatibility
+                self._data_dict = dict(ordered_items)  # For backward compatibility
             else:
                 self.data = list(data.items())
                 self._data_dict = dict(data)
@@ -629,7 +615,7 @@ class MockRow:
     def __eq__(self, other: Any) -> bool:
         """Compare with another row object."""
         if hasattr(other, "data"):
-            # Compare with another MockRow
+            # Compare with another Row
             result: bool = self.data == other.data
             return result
         elif hasattr(other, "__dict__"):

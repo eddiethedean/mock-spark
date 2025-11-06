@@ -2,20 +2,20 @@
 
 ## Overview
 
-Mock-Spark provides 100% API compatibility with PySpark while using DuckDB as the backend. This reference covers all supported functions, classes, and operations.
+Mock-Spark provides 100% API compatibility with PySpark while using Polars as the default backend. This reference covers all supported functions, classes, and operations.
 
 ## Session Management
 
-### MockSparkSession
+### SparkSession
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 # Create session
-spark = MockSparkSession("my_app")
+spark = SparkSession("my_app")
 
 # With configuration
-spark = MockSparkSession("my_app", config={
+spark = SparkSession("my_app", config={
     "spark.sql.debug": "true",
     "spark.sql.adaptive.enabled": "true"
 })
@@ -50,7 +50,7 @@ df = spark.createDataFrame([
 ])
 
 # With explicit schema
-from mock_spark.types import StructType, StructField, StringType, IntegerType
+from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
 
 schema = StructType([
     StructField("id", IntegerType(), True),
@@ -131,7 +131,7 @@ df.groupBy("department").agg(
 #### Basic Operations
 
 ```python
-import mock_spark.functions as F
+from mock_spark.sql import functions as F
 
 # Literal values
 F.lit("constant")
@@ -267,7 +267,7 @@ F.col("value").cast("int")  # May fail on invalid values
 ### Window Specification
 
 ```python
-from mock_spark.window import Window
+from mock_spark.sql import Window
 
 # Basic window
 window = Window.partitionBy("department").orderBy("salary")
@@ -315,7 +315,7 @@ F.first(F.col("value"), ignoreNulls=True).over(window)
 ### Primitive Types
 
 ```python
-from mock_spark.types import *
+from mock_spark.sql.types import *
 
 # Basic types
 StringType()
@@ -526,11 +526,11 @@ df.storageLevel
 
 ```python
 import pytest
-from mock_spark import MockSparkSession
+from mock_spark import SparkSession
 
 @pytest.fixture
 def spark():
-    return MockSparkSession("test")
+    return SparkSession("test")
 
 def test_data_processing(spark):
     df = spark.createDataFrame([
@@ -569,7 +569,7 @@ def test_complex_pipeline(spark):
 
 ### Known Differences
 
-- **Backend**: Uses DuckDB instead of Spark SQL
+- **Backend**: Uses Polars instead of Spark SQL (DuckDB available as optional legacy backend)
 - **Performance**: 10x faster than PySpark for most operations
 - **Memory**: Lower memory usage, no JVM overhead
 - **SQL Generation**: Some complex operations may generate different SQL
@@ -583,10 +583,10 @@ See `docs/migration_from_pyspark.md` for detailed migration guide.
 ### Basic Data Processing
 
 ```python
-from mock_spark import MockSparkSession, functions as F
+from mock_spark.sql import SparkSession, functions as F
 
 # Create session
-spark = MockSparkSession("data_processing")
+spark = SparkSession("data_processing")
 
 # Create DataFrame
 df = spark.createDataFrame([
@@ -608,7 +608,7 @@ print(result)
 ### Window Functions
 
 ```python
-from mock_spark.window import Window
+from mock_spark.sql import Window
 
 # Define window
 window = Window.partitionBy("department").orderBy("salary")

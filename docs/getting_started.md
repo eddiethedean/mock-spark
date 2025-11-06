@@ -19,10 +19,10 @@ pip install mock-spark[dev]
 ### Basic Example
 
 ```python
-from mock_spark import MockSparkSession, F
+from mock_spark.sql import SparkSession, functions as F
 
 # Create session
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 
 # Create DataFrame
 data = [
@@ -45,7 +45,7 @@ Mock Spark is designed to be a drop-in replacement for PySpark:
 from pyspark.sql import SparkSession
 
 # After (Mock Spark)
-from mock_spark import MockSparkSession as SparkSession
+from mock_spark.sql import SparkSession
 ```
 
 That's it! Your existing PySpark code works unchanged.
@@ -55,9 +55,9 @@ That's it! Your existing PySpark code works unchanged.
 ### DataFrame Operations
 
 ```python
-from mock_spark import MockSparkSession, F
+from mock_spark.sql import SparkSession, functions as F
 
-spark = MockSparkSession("Example")
+spark = SparkSession("Example")
 data = [
     {"name": "Alice", "dept": "Engineering", "salary": 80000},
     {"name": "Bob", "dept": "Sales", "salary": 75000},
@@ -78,7 +78,7 @@ dept_avg = df.groupBy("dept").avg("salary")
 ### Window Functions
 
 ```python
-from mock_spark.window import MockWindow as Window
+from mock_spark.sql import Window, functions as F
 
 # Ranking within departments
 window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
@@ -107,11 +107,11 @@ result.show()
 
 ```python
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark.sql import SparkSession, functions as F
 
 def test_data_transformation():
     """Test DataFrame transformation logic."""
-    spark = MockSparkSession("TestApp")
+    spark = SparkSession("TestApp")
     
     # Test data
     data = [{"value": 10}, {"value": 20}, {"value": 30}]
@@ -128,7 +128,7 @@ def test_data_transformation():
 
 def test_aggregation():
     """Test aggregation logic."""
-    spark = MockSparkSession("TestApp")
+    spark = SparkSession("TestApp")
     
     data = [
         {"category": "A", "value": 100},
@@ -163,10 +163,10 @@ Control evaluation mode:
 
 ```python
 # Lazy (default, recommended)
-spark = MockSparkSession("App", enable_lazy_evaluation=True)
+spark = SparkSession("App", enable_lazy_evaluation=True)
 
 # Eager (for legacy tests)
-spark = MockSparkSession("App", enable_lazy_evaluation=False)
+spark = SparkSession("App", enable_lazy_evaluation=False)
 ```
 
 ## Performance

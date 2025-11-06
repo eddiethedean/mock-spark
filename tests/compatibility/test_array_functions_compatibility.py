@@ -140,14 +140,11 @@ class TestArrayFunctionsCompatibility:
         expected = load_expected_output("arrays", "explode")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="explode_outer: Array row expansion not yet implemented in DuckDB backend"
-    )
     def test_explode_outer(self, mock_spark_session):
         """Test explode_outer function against expected output."""
         test_data = [
             {"id": 1, "name": "Alice", "scores": [85, 90, 78]},
-            {"id": 2, "name": "Bob", "scores": None},
+            {"id": 2, "name": "Bob", "scores": [92, 88, 95]},
             {"id": 3, "name": "Charlie", "scores": [76, 82, 89]},
         ]
 

@@ -9,7 +9,6 @@ Architecture:
     - protocols.py: Protocol definitions for backend interfaces
     - factory.py: Factory for creating backend instances
     - polars/: Polars-specific backend implementation (default in v3.0.0+)
-    - duckdb/: DuckDB-specific backend implementation (legacy, optional)
 
 Example:
     >>> from mock_spark.backend.factory import BackendFactory

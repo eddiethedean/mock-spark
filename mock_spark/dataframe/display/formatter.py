@@ -2,14 +2,14 @@
 
 from typing import Any, List, Optional
 
-from ...spark_types import MockRow
+from ...spark_types import Row
 
 
 class DataFrameFormatter:
     """Handles DataFrame formatting for display operations."""
 
     @staticmethod
-    def format_row(row: MockRow, columns: List[str]) -> str:
+    def format_row(row: Row, columns: List[str]) -> str:
         """Format a single row for display."""
         formatted_values = []
         for col in columns:
@@ -24,7 +24,7 @@ class DataFrameFormatter:
 
     @staticmethod
     def format_rows(
-        rows: List[MockRow], columns: List[str], limit: Optional[int] = None
+        rows: List[Row], columns: List[str], limit: Optional[int] = None
     ) -> List[str]:
         """Format multiple rows for display."""
         if limit is not None:

@@ -69,8 +69,8 @@ class OptimizationRule(ABC):
         pass
 
 
-class FilterPushdownRule(OptimizationRule):
-    """Push filters as early as possible in the query plan."""
+class FilterPushdownRuleLegacy(OptimizationRule):
+    """Legacy inline FilterPushdownRule - use FilterPushdownRule from optimization_rules instead."""
 
     def apply(self, operations: List[Operation]) -> List[Operation]:
         """Move filter operations before other operations when possible."""
@@ -136,7 +136,7 @@ class FilterPushdownRule(OptimizationRule):
         ]
 
 
-class ColumnPruningRule(OptimizationRule):
+class ColumnPruningRuleLegacy(OptimizationRule):
     """Remove unnecessary columns from the query plan."""
 
     def apply(self, operations: List[Operation]) -> List[Operation]:
@@ -203,7 +203,7 @@ class ColumnPruningRule(OptimizationRule):
         return needed
 
 
-class JoinOptimizationRule(OptimizationRule):
+class JoinOptimizationRuleLegacy(OptimizationRule):
     """Optimize join operations for better performance."""
 
     def apply(self, operations: List[Operation]) -> List[Operation]:
@@ -240,12 +240,12 @@ class JoinOptimizationRule(OptimizationRule):
 
         # Simple heuristic: sort by estimated size (metadata)
         def get_estimated_size(op: Operation) -> int:
-            return cast(int, op.metadata.get("estimated_size", 1000))  # Default size
+            return cast("int", op.metadata.get("estimated_size", 1000))  # Default size
 
         return sorted(join_ops, key=get_estimated_size)
 
 
-class PredicatePushdownRule(OptimizationRule):
+class PredicatePushdownRuleLegacy(OptimizationRule):
     """Push predicates down to reduce data early."""
 
     def apply(self, operations: List[Operation]) -> List[Operation]:
@@ -294,7 +294,7 @@ class PredicatePushdownRule(OptimizationRule):
         return op.type in [OperationType.SELECT, OperationType.FILTER]
 
 
-class ProjectionPushdownRule(OptimizationRule):
+class ProjectionPushdownRuleLegacy(OptimizationRule):
     """Push column projections as early as possible."""
 
     def apply(self, operations: List[Operation]) -> List[Operation]:
@@ -344,6 +344,15 @@ class QueryOptimizer:
 
     def __init__(self) -> None:
         """Initialize optimizer with default rules."""
+        # Import here to avoid circular import with optimization_rules
+        from .optimization_rules import (
+            FilterPushdownRule,
+            ColumnPruningRule,
+            JoinOptimizationRule,
+            PredicatePushdownRule,
+            ProjectionPushdownRule,
+        )
+
         self.rules = [
             FilterPushdownRule(),
             ColumnPruningRule(),

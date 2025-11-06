@@ -2,7 +2,6 @@
 
 This guide provides comprehensive documentation for Mock Spark's SQL operations, including parsing, validation, optimization, and execution.
 
-**Current Status**: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 
 ## Overview
 
@@ -15,15 +14,15 @@ Mock Spark provides a complete SQL processing pipeline that mirrors PySpark's SQ
 
 ## SQL Parser
 
-The `MockSQLParser` class provides SQL parsing functionality with support for common SQL operations.
+The `SQLParser` class provides SQL parsing functionality with support for common SQL operations.
 
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import MockSQLParser
+from mock_spark.session.sql import SQLParser
 
 # Create parser instance
-parser = MockSQLParser()
+parser = SQLParser()
 
 # Parse a simple SELECT query
 ast = parser.parse("SELECT name, age FROM users WHERE age > 18")
@@ -81,10 +80,10 @@ ast = parser.parse("DELETE FROM users WHERE age < 18")
 
 ### AST Structure
 
-The `MockSQLAST` object contains the following components:
+The `SQLAST` object contains the following components:
 
 ```python
-class MockSQLAST:
+class SQLAST:
     def __init__(self, query_type: str, components: Dict[str, Any]):
         self.query_type = query_type  # Type of SQL query
         self.components = components  # Parsed query components
@@ -127,14 +126,14 @@ except ParseException as e:
 
 ## SQL Validator
 
-The `MockSQLValidator` class validates parsed SQL queries for syntax and semantic correctness.
+The `SQLValidator` class validates parsed SQL queries for syntax and semantic correctness.
 
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import MockSQLValidator
+from mock_spark.session.sql import SQLValidator
 
-validator = MockSQLValidator()
+validator = SQLValidator()
 
 # Validate a parsed AST
 ast = parser.parse("SELECT name FROM users WHERE age > 18")
@@ -170,14 +169,14 @@ is_valid = validator.validate(ast, custom_rules=True)
 
 ## SQL Optimizer
 
-The `MockSQLOptimizer` class optimizes SQL queries for better performance.
+The `SQLQueryOptimizer` class optimizes SQL queries for better performance.
 
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import MockSQLOptimizer
+from mock_spark.session.sql import SQLQueryOptimizer
 
-optimizer = MockSQLOptimizer()
+optimizer = SQLQueryOptimizer()
 
 # Optimize a parsed AST
 ast = parser.parse("SELECT * FROM users WHERE age > 18 ORDER BY name")
@@ -207,14 +206,14 @@ optimized_ast = optimizer.optimize(ast, custom_rules=True)
 
 ## SQL Executor
 
-The `MockSQLExecutor` class executes optimized SQL queries against data.
+The `SQLExecutor` class executes optimized SQL queries against data.
 
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import MockSQLExecutor
+from mock_spark.session.sql import SQLExecutor
 
-executor = MockSQLExecutor(spark_session)
+executor = SQLExecutor(spark_session)
 
 # Execute a parsed and optimized AST
 result = executor.execute(optimized_ast)
@@ -245,11 +244,11 @@ result = executor.execute(ast, custom_handlers=True)
 Here's a complete example of using the SQL pipeline:
 
 ```python
-from mock_spark import MockSparkSession
-from mock_spark.session.sql import MockSQLParser, MockSQLValidator, MockSQLOptimizer, MockSQLExecutor
+from mock_spark.sql import SparkSession
+from mock_spark.session.sql import SQLParser, SQLValidator, SQLQueryOptimizer, SQLExecutor
 
 # Create Spark session
-spark = MockSparkSession("SQLExample")
+spark = SparkSession("SQLExample")
 
 # Create sample data
 data = [
@@ -261,10 +260,10 @@ df = spark.createDataFrame(data)
 df.createOrReplaceTempView("employees")
 
 # SQL Pipeline
-parser = MockSQLParser()
-validator = MockSQLValidator()
-optimizer = MockSQLOptimizer()
-executor = MockSQLExecutor(spark)
+parser = SQLParser()
+validator = SQLValidator()
+optimizer = SQLQueryOptimizer()
+executor = SQLExecutor(spark)
 
 # Parse SQL query
 query = "SELECT department, COUNT(*) as count FROM employees WHERE age > 25 GROUP BY department ORDER BY count DESC"

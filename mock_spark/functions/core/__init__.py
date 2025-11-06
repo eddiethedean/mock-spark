@@ -5,8 +5,8 @@ This module provides the core function classes and utilities for
 column operations, expressions, and literals.
 """
 
-from .column import MockColumn, MockColumnOperation
-from .literals import MockLiteral
+from .column import Column, ColumnOperation
+from .literals import Literal
 from .expressions import ExpressionFunctions
 from .operations import (
     ColumnOperations,
@@ -19,9 +19,9 @@ from .operations import (
 from .lambda_parser import MockLambdaExpression, LambdaParser, LambdaTranslationError
 
 __all__ = [
-    "MockColumn",
-    "MockColumnOperation",
-    "MockLiteral",
+    "Column",
+    "ColumnOperation",
+    "Literal",
     "ExpressionFunctions",
     "ColumnOperations",
     "ComparisonOperations",

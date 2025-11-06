@@ -2,26 +2,26 @@
 Lazy Evaluation Engine for DataFrames
 
 This module handles lazy evaluation, operation queuing, and materialization
-for MockDataFrame. Extracted from dataframe.py to improve organization.
+for DataFrame. Extracted from dataframe.py to improve organization.
 """
 
-from typing import Any, Dict, List, TYPE_CHECKING, Optional, Tuple
+import contextlib
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple
 from ..spark_types import (
     StringType,
-    MockStructField,
+    StructField,
     DoubleType,
     LongType,
     IntegerType,
     BooleanType,
-    MockDataType,
-    MockStructType,
+    DataType,
+    StructType,
     ArrayType,
 )
 from ..optimizer.query_optimizer import OperationType
 
 if TYPE_CHECKING:
-    from mock_spark.dataframe import MockDataFrame
-    from mock_spark.spark_types import MockStructType
+    from mock_spark.dataframe import DataFrame
 
 
 class LazyEvaluationEngine:
@@ -45,9 +45,7 @@ class LazyEvaluationEngine:
                 self._optimizer = None
 
     @staticmethod
-    def queue_operation(
-        df: "MockDataFrame", op_name: str, payload: Any
-    ) -> "MockDataFrame":
+    def queue_operation(df: "DataFrame", op_name: str, payload: Any) -> "DataFrame":
         """Queue an operation for lazy evaluation.
 
         Args:
@@ -58,7 +56,7 @@ class LazyEvaluationEngine:
         Returns:
             New DataFrame with queued operation
         """
-        from ..dataframe import MockDataFrame
+        from ..dataframe import DataFrame
 
         # Infer new schema for operations that change schema
         new_schema = df.schema
@@ -69,7 +67,7 @@ class LazyEvaluationEngine:
         elif op_name == "withColumn":
             new_schema = LazyEvaluationEngine._infer_withcolumn_schema(df, payload)
 
-        return MockDataFrame(
+        return DataFrame(
             df.data,
             new_schema,
             df.storage,
@@ -161,7 +159,7 @@ class LazyEvaluationEngine:
         return operations
 
     @staticmethod
-    def materialize(df: "MockDataFrame") -> "MockDataFrame":
+    def materialize(df: "DataFrame") -> "DataFrame":
         """Materialize queued lazy operations.
 
         Args:
@@ -171,9 +169,9 @@ class LazyEvaluationEngine:
             Eager DataFrame with operations applied
         """
         if not df._operations_queue:
-            from ..dataframe import MockDataFrame
+            from ..dataframe import DataFrame
 
-            return MockDataFrame(df.data, df.schema, df.storage)
+            return DataFrame(df.data, df.schema, df.storage)
 
         # Check if operations require manual materialization
         if LazyEvaluationEngine._requires_manual_materialization(df._operations_queue):
@@ -189,10 +187,11 @@ class LazyEvaluationEngine:
             try:
                 # Compute final schema after all operations
                 from ..dataframe.schema.schema_manager import SchemaManager
+
                 final_schema = SchemaManager.project_schema_with_operations(
                     df.schema, df._operations_queue
                 )
-                
+
                 # Let materializer optimize and execute the operations
                 rows = materializer.materialize(
                     df.data, df.schema, df._operations_queue
@@ -211,12 +210,14 @@ class LazyEvaluationEngine:
                     return LazyEvaluationEngine._materialize_manual(df)
 
                 # Create new eager DataFrame with materialized data and final schema
-                from ..dataframe import MockDataFrame
+                # IMPORTANT: Clear operations queue since all operations have been materialized
+                from ..dataframe import DataFrame
 
-                return MockDataFrame(
+                return DataFrame(
                     materialized_data,
                     final_schema,
                     df.storage,
+                    operations=[],  # Clear operations queue - all operations have been applied
                 )
             finally:
                 materializer.close()
@@ -226,9 +227,7 @@ class LazyEvaluationEngine:
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
-    def _has_default_values(
-        data: List[Dict[str, Any]], schema: "MockStructType"
-    ) -> bool:
+    def _has_default_values(data: List[Dict[str, Any]], schema: "StructType") -> bool:
         """Check if data contains default values that indicate backend couldn't handle the operations."""
         if not data:
             # Empty data could be valid (e.g., filter with no matches, join with no matches)
@@ -238,6 +237,7 @@ class LazyEvaluationEngine:
 
         # Check if any numeric fields have default values (0.0, 0, None)
         # But ignore None values in fields that start with "right_" as these are expected from joins
+        # Also ignore None values in nullable fields - they are valid (e.g., window function lag/lead)
         for row in data:
             for field in schema.fields:
                 if field.name in row:
@@ -245,7 +245,10 @@ class LazyEvaluationEngine:
                     # Skip fields that are expected to be None from joins
                     if field.name.startswith("right_") and value is None:
                         continue
-                    # Check for default values that indicate DuckDB couldn't evaluate the function
+                    # Skip None values in nullable fields - they are valid (e.g., window functions)
+                    if value is None and field.nullable:
+                        continue
+                    # Check for default values that indicate the backend couldn't evaluate the function
                     if value == 0.0 and field.dataType.__class__.__name__ in [
                         "DoubleType",
                         "FloatType",
@@ -265,7 +268,7 @@ class LazyEvaluationEngine:
                     # Only consider it a failure if it's a non-nullable field or if ALL values are None
                     # For now, we'll be more lenient - None alone doesn't indicate failure
                     # Only check if it's a non-nullable field that's None
-                    if value is None and not getattr(field, 'nullable', True):
+                    if value is None and not getattr(field, "nullable", True):
                         return True
 
         return False
@@ -274,21 +277,21 @@ class LazyEvaluationEngine:
     def _requires_manual_materialization(
         operations_queue: List[Tuple[str, Any]],
     ) -> bool:
-        """Check if operations require manual materialization (DuckDB can't handle them)."""
+        """Check if operations require manual materialization."""
         for op_name, op_val in operations_queue:
             if op_name == "select":
-                # Check if select contains operations that DuckDB can't handle
+                # Check if select contains operations that require manual materialization
                 for col in op_val:
-                    # Check for MockCaseWhen (when/otherwise expressions)
+                    # Check for CaseWhen (when/otherwise expressions)
                     if hasattr(col, "conditions"):
                         return True
-                    # Check for MockColumnOperation
+                    # Check for ColumnOperation
                     if hasattr(col, "operation"):
-                        # Check for operations that require MockDataFrame evaluation
+                        # Check for operations that require DataFrame evaluation
                         # Note: "cast" is now handled by Polars backend, so removed from this list
                         if col.operation in [
                             "months_between",
-                            # Allow DuckDB to handle datediff via SQL path
+                            # Allow backend to handle datediff via SQL path
                             # "cast",  # Removed - Polars handles cast operations
                             "when",
                             "otherwise",
@@ -316,7 +319,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _convert_materialized_rows(
-        rows: List[Any], schema: "MockStructType"
+        rows: List[Any], schema: "StructType"
     ) -> List[Dict[str, Any]]:
         """Convert materialized rows to proper data format with type conversion.
 
@@ -331,41 +334,56 @@ class LazyEvaluationEngine:
 
         materialized_data = []
         for row in rows:
-            row_dict = row.asDict()
-            
-            # Start with all data from row_dict, then convert types according to schema
-            # This ensures we don't lose fields that aren't in schema (though schema should match)
-            converted_dict = dict(row_dict)
-            
+            row_dict = (
+                row.asDict()
+                if hasattr(row, "asDict")
+                else dict(row)
+                if isinstance(row, dict)
+                else {}
+            )
+
             # Handle duplicate column names from joins (Polars renames them with _right suffix)
-            # PySpark allows duplicate names, and when accessing by name, the right-side value wins
-            # BUT: For semi/anti joins, we only return left columns, so don't overwrite
-            # Check if this result has _right columns - if so, it's a regular join with duplicates
-            # If no _right columns, it's likely a semi/anti join or already filtered
-            has_right_columns = any(key.endswith('_right') for key in converted_dict.keys())
-            if has_right_columns:
-                # Regular join with duplicates - overwrite left with right values
-                for key in list(converted_dict.keys()):
-                    if key.endswith('_right'):
-                        original_name = key[:-6]  # Remove '_right' suffix
-                        # If original name exists, the right-side value should overwrite it
-                        # This matches PySpark behavior where duplicate column names use right-side value
-                        if original_name in converted_dict:
-                            converted_dict[original_name] = converted_dict[key]
-                        # Remove _right key after copying
-                        del converted_dict[key]
-            
+            # PySpark allows duplicate names in schema, so we need to map Polars columns to schema fields
+            # Build dict matching schema field order, handling _right suffix columns
+            schema_field_names = [f.name for f in schema.fields]
+            converted_dict = {}
+            seen_field_names = {}  # Track how many times we've seen each field name
+
+            for field_name in schema_field_names:
+                # Count occurrences of this field name in schema
+                current_occurrence = seen_field_names.get(field_name, 0) + 1
+                seen_field_names[field_name] = current_occurrence
+
+                if current_occurrence == 1:
+                    # First occurrence - use left value if available, otherwise right
+                    if field_name in row_dict:
+                        converted_dict[field_name] = row_dict[field_name]
+                    elif f"{field_name}_right" in row_dict:
+                        converted_dict[field_name] = row_dict[f"{field_name}_right"]
+                    else:
+                        converted_dict[field_name] = None
+                else:
+                    # Subsequent occurrence (duplicate) - use right value
+                    right_key = f"{field_name}_right"
+                    if right_key in row_dict:
+                        converted_dict[field_name] = row_dict[right_key]
+                    elif field_name in row_dict:
+                        # Fallback to left value if right not available
+                        converted_dict[field_name] = row_dict[field_name]
+                    else:
+                        converted_dict[field_name] = None
+
             # Ensure all schema fields are present (use None if missing from row_dict)
             # This handles cases where schema expects fields that aren't in the row
+            has_right_columns = any(
+                f"{name}_right" in row_dict for name in schema_field_names
+            )
             for field in schema.fields:
                 if field.name not in converted_dict:
                     # Only check for _right version if we didn't already process it above
                     if not has_right_columns:
                         right_key = f"{field.name}_right"
-                        if right_key in converted_dict:
-                            converted_dict[field.name] = converted_dict[right_key]
-                        else:
-                            converted_dict[field.name] = None
+                        converted_dict[field.name] = converted_dict.get(right_key)
                     else:
                         converted_dict[field.name] = None
 
@@ -379,7 +397,7 @@ class LazyEvaluationEngine:
 
                 # Handle ArrayType
                 if isinstance(field.dataType, ArrayType):
-                    # DuckDB may return arrays as strings like "['a', 'b']" or as lists
+                    # Backend may return arrays as strings like "['a', 'b']" or as lists
                     if isinstance(value, str):
                         # Try different array formats
                         if value.startswith("[") and value.endswith("]"):
@@ -392,37 +410,34 @@ class LazyEvaluationEngine:
                                 # If parsing fails, split manually
                                 converted_dict[field.name] = value[1:-1].split(",")
                         elif value.startswith("{") and value.endswith("}"):
-                            # PostgreSQL/DuckDB array format: "{a,b}"
+                            # PostgreSQL array format: "{a,b}"
                             converted_dict[field.name] = value[1:-1].split(",")
 
                 # Handle numeric types that come back as strings
                 elif isinstance(field.dataType, (IntegerType, LongType)):
                     if isinstance(value, str):
-                        try:
+                        with contextlib.suppress(ValueError, TypeError):
                             converted_dict[field.name] = int(value)
-                        except (ValueError, TypeError):
-                            pass  # Keep as string if conversion fails
+                        # Keep as string if conversion fails
 
                 elif isinstance(field.dataType, DoubleType):
                     if isinstance(value, str):
-                        try:
+                        with contextlib.suppress(ValueError, TypeError):
                             converted_dict[field.name] = float(value)
-                        except (ValueError, TypeError):
-                            pass  # Keep as string if conversion fails
+                        # Keep as string if conversion fails
                     else:
                         # Convert Decimal or other numeric types to float
-                        try:
+                        with contextlib.suppress(ValueError, TypeError):
                             converted_dict[field.name] = float(value)
-                        except (ValueError, TypeError):
-                            pass  # Keep original value if conversion fails
+                        # Keep original value if conversion fails
 
             materialized_data.append(converted_dict)
 
         return materialized_data
 
     @staticmethod
-    def _materialize_manual(df: "MockDataFrame") -> "MockDataFrame":
-        """Fallback manual materialization when DuckDB is not available.
+    def _materialize_manual(df: "DataFrame") -> "DataFrame":
+        """Fallback manual materialization when backend materialization is not available.
 
         Args:
             df: Lazy DataFrame
@@ -430,11 +445,11 @@ class LazyEvaluationEngine:
         Returns:
             Eager DataFrame with operations applied
         """
-        from ..dataframe import MockDataFrame
+        from ..dataframe import DataFrame
 
         # Preserve schema from original DataFrame - this ensures empty DataFrames
         # with explicit schemas maintain their column information
-        current = MockDataFrame(df.data, df.schema, df.storage)
+        current = DataFrame(df.data, df.schema, df.storage)
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
@@ -445,22 +460,20 @@ class LazyEvaluationEngine:
                     for row in current.data:
                         if ConditionEvaluator.evaluate_condition(row, op_val):
                             filtered_data.append(row)
-                    current = MockDataFrame(
-                        filtered_data, current.schema, current.storage
-                    )
+                    current = DataFrame(filtered_data, current.schema, current.storage)
                 elif op_name == "withColumn":
                     col_name, col = op_val
                     current = current.withColumn(col_name, col)  # eager path
                 elif op_name == "select":
                     # Manual select implementation
                     from ..core.schema_inference import SchemaInferenceEngine
-                    from ..functions.core.column import MockColumn, MockColumnOperation
-                    from ..functions.core.literals import MockLiteral
-                    from ..spark_types import MockStructType, MockStructField
+                    from ..functions.core.column import Column, ColumnOperation
+                    from ..functions.core.literals import Literal
+                    from ..spark_types import StructType, StructField
 
                     new_fields = []
                     for col in op_val:
-                        if isinstance(col, MockColumn) and (
+                        if isinstance(col, Column) and (
                             not hasattr(col, "operation") or col.operation is None
                         ):
                             # Simple column reference
@@ -468,7 +481,7 @@ class LazyEvaluationEngine:
                                 field = current.schema._field_map.get(col.name)
                             if field:
                                 new_fields.append(field)
-                        elif isinstance(col, MockColumnOperation):
+                        elif isinstance(col, ColumnOperation):
                             # Column operation - need to evaluate
                             col_name = getattr(col, "name", "result")
 
@@ -479,7 +492,7 @@ class LazyEvaluationEngine:
 
                                 # Get the column being transformed
                                 transform_col = col.column
-                                if isinstance(transform_col, MockColumn):
+                                if isinstance(transform_col, Column):
                                     col_name = transform_col.name
 
                                 # Get the lambda function
@@ -488,36 +501,33 @@ class LazyEvaluationEngine:
                                 # Parse the lambda function
                                 try:
                                     parser = LambdaParser(lambda_func)
-                                    duckdb_lambda = parser.to_duckdb_lambda()
+                                    # Lambda parsing for transform operations
+                                    lambda_expr = parser.parse()
                                 except Exception as e:
                                     print(
                                         f"Warning: Failed to parse lambda for transform: {e}"
                                     )
-                                    duckdb_lambda = None
+                                    lambda_expr = None
 
                                 # Create a field for the transformed result
                                 col_type = SchemaInferenceEngine._infer_type(
                                     []
                                 )  # Array type
-                                new_fields.append(
-                                    MockStructField(col_name, col_type, True)
-                                )
+                                new_fields.append(StructField(col_name, col_type, True))
                             else:
                                 # For other operations, use the standard approach
                                 col_type = SchemaInferenceEngine._infer_type(col)
-                                new_fields.append(
-                                    MockStructField(col_name, col_type, True)
-                                )
+                                new_fields.append(StructField(col_name, col_type, True))
                         elif hasattr(col, "get_result_type"):
-                            # MockCaseWhen or similar conditional expression
+                            # CaseWhen or similar conditional expression
                             col_name = getattr(col, "name", "case_when")
                             col_type = col.get_result_type()
-                            new_fields.append(MockStructField(col_name, col_type, True))
-                        elif isinstance(col, MockLiteral):
+                            new_fields.append(StructField(col_name, col_type, True))
+                        elif isinstance(col, Literal):
                             # Literal value
                             col_name = getattr(col, "name", "literal")
                             col_type = SchemaInferenceEngine._infer_type(col)
-                            new_fields.append(MockStructField(col_name, col_type, True))
+                            new_fields.append(StructField(col_name, col_type, True))
                         elif hasattr(col, "function_name") and hasattr(
                             col, "window_spec"
                         ):
@@ -561,27 +571,27 @@ class LazyEvaluationEngine:
                                     0.0
                                 )  # DoubleType
 
-                            new_fields.append(MockStructField(col_name, col_type, True))
+                            new_fields.append(StructField(col_name, col_type, True))
                         else:
                             # Fallback for other types
                             col_name = str(col)
                             col_type = SchemaInferenceEngine._infer_type(col)
-                            new_fields.append(MockStructField(col_name, col_type, True))
+                            new_fields.append(StructField(col_name, col_type, True))
 
-                    new_schema = MockStructType(new_fields)
+                    new_schema = StructType(new_fields)
 
                     # Evaluate the select operation on each row
                     new_data = []
                     for row_index, row in enumerate(current.data):
                         new_row = {}
                         for i, col in enumerate(op_val):
-                            if isinstance(col, MockColumn) and (
+                            if isinstance(col, Column) and (
                                 not hasattr(col, "operation") or col.operation is None
                             ):
                                 # Simple column reference
                                 if col.name in row and i < len(new_fields):
                                     new_row[new_fields[i].name] = row[col.name]
-                            elif isinstance(col, MockColumnOperation):
+                            elif isinstance(col, ColumnOperation):
                                 # Column operation - evaluate using condition evaluator
                                 if col.operation == "transform":
                                     # Handle transform operation for higher-order array functions
@@ -713,7 +723,7 @@ class LazyEvaluationEngine:
                             elif hasattr(col, "evaluate") and hasattr(
                                 col, "conditions"
                             ):
-                                # MockCaseWhen or similar conditional expression
+                                # CaseWhen or similar conditional expression
                                 try:
                                     result = col.evaluate(row)
                                     if i < len(new_fields):
@@ -721,7 +731,7 @@ class LazyEvaluationEngine:
                                 except Exception:
                                     if i < len(new_fields):
                                         new_row[new_fields[i].name] = None
-                            elif isinstance(col, MockLiteral):
+                            elif isinstance(col, Literal):
                                 # Literal value
                                 if i < len(new_fields):
                                     new_row[new_fields[i].name] = col.value
@@ -730,7 +740,7 @@ class LazyEvaluationEngine:
                             ):
                                 # Window function (lag, lead, rank, etc.)
                                 try:
-                                    # The col is already a MockWindowFunction, just evaluate it
+                                    # The col is already a WindowFunction, just evaluate it
                                     result = col.evaluate(current.data)
 
                                     # Get the result for this specific row using the row_index
@@ -748,9 +758,9 @@ class LazyEvaluationEngine:
                                     new_row[new_fields[i].name] = None
                         new_data.append(new_row)
 
-                    current = MockDataFrame(new_data, new_schema, current.storage)
+                    current = DataFrame(new_data, new_schema, current.storage)
                 elif op_name == "groupBy":
-                    current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns MockGroupedData
+                    current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns GroupedData
                 elif op_name == "join":
                     other_df, on, how = op_val
                     # Manual join implementation
@@ -761,11 +771,14 @@ class LazyEvaluationEngine:
                         other_df = other_df._materialize_if_lazy()
 
                     # Handle join condition
-                    # Extract column names from MockColumnOperation if it's a == comparison
-                    if hasattr(on, 'operation') and on.operation == "==":
+                    # Extract column names from ColumnOperation if it's a == comparison
+                    if hasattr(on, "operation") and on.operation == "==":
                         # Extract column names from == comparison
-                        left_col = on.column.name if hasattr(on.column, 'name') else str(on.column)
-                        right_col = on.value.name if hasattr(on.value, 'name') else str(on.value)
+                        left_col = (
+                            on.column.name
+                            if hasattr(on.column, "name")
+                            else str(on.column)
+                        )
                         # Use left column name (assuming both DataFrames have same column name)
                         on_columns = [left_col]
                     elif isinstance(on, str):
@@ -774,7 +787,7 @@ class LazyEvaluationEngine:
                         on_columns = list(on)
                     else:
                         # Try to extract column name(s) from the object
-                        on_columns = [on.name] if hasattr(on, 'name') else [str(on)]
+                        on_columns = [on.name] if hasattr(on, "name") else [str(on)]
 
                     # Perform the join
                     joined_data = []
@@ -815,12 +828,14 @@ class LazyEvaluationEngine:
                                 new_fields.append(field)
                             else:
                                 # Handle field name conflicts by prefixing
-                                new_field = MockStructField(
-                                    f"right_{field.name}", field.dataType, field.nullable
+                                new_field = StructField(
+                                    f"right_{field.name}",
+                                    field.dataType,
+                                    field.nullable,
                                 )
                                 new_fields.append(new_field)
-                        new_schema = MockStructType(new_fields)
-                    current = MockDataFrame(joined_data, new_schema, current.storage)
+                        new_schema = StructType(new_fields)
+                    current = DataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
                     other_df = op_val
                     # Use SetOperations for union
@@ -833,7 +848,7 @@ class LazyEvaluationEngine:
                         other_df.schema,
                         current.storage,
                     )
-                    current = MockDataFrame(result_data, result_schema, current.storage)
+                    current = DataFrame(result_data, result_schema, current.storage)
                 elif op_name == "orderBy":
                     current = current.orderBy(*op_val)  # eager path
                 elif op_name == "transform":
@@ -848,7 +863,10 @@ class LazyEvaluationEngine:
                         # Parse the lambda function
                         try:
                             parser = LambdaParser(lambda_func)
-                            duckdb_lambda = parser.to_duckdb_lambda()
+                            # Lambda parsing for transform operations
+                            lambda_expr = (
+                                parser.parse() if hasattr(parser, "parse") else None
+                            )
                         except Exception as e:
                             # If lambda parsing fails, skip the transform
                             print(f"Warning: Failed to parse lambda for transform: {e}")
@@ -858,46 +876,31 @@ class LazyEvaluationEngine:
                         new_data = []
                         for row in current.data:
                             new_row = row.copy()
-                            if col_name in row and row[col_name] is not None:
+                            if (
+                                col_name in row
+                                and row[col_name] is not None
+                                and isinstance(row[col_name], list)
+                            ):
                                 # Apply the lambda function to each element of the array
-                                if isinstance(row[col_name], list):
-                                    try:
-                                        # Use DuckDB to evaluate the lambda
-                                        import duckdb
-
-                                        conn = duckdb.connect()
-
-                                        # Create a temporary table with the array
-                                        conn.execute(
-                                            "CREATE TEMP TABLE temp_array AS SELECT ? as arr",
-                                            [row[col_name]],
-                                        )
-
-                                        # Apply the transform using DuckDB's array_transform function
-                                        transform_result: Optional[Tuple[Any, ...]] = (
-                                            conn.execute(
-                                                f"SELECT array_transform(arr, {duckdb_lambda}) as transformed FROM temp_array"
-                                            ).fetchone()
-                                        )
-
-                                        if (
-                                            transform_result is not None
-                                            and transform_result[0] is not None
-                                        ):
-                                            new_row[col_name] = transform_result[0]
-
-                                        conn.close()
-                                    except Exception as e:
-                                        # If DuckDB evaluation fails, skip the transform
-                                        print(
-                                            f"Warning: Failed to evaluate transform lambda: {e}"
-                                        )
+                                try:
+                                    # Evaluate lambda function directly in Python
+                                    if lambda_expr and callable(lambda_func):
+                                        # Apply lambda function to each element
+                                        new_row[col_name] = [
+                                            lambda_func(x) for x in row[col_name]
+                                        ]
+                                    else:
+                                        # If lambda parsing failed, keep original array
                                         pass
+                                except Exception as e:
+                                    # If lambda evaluation fails, skip the transform
+                                    print(
+                                        f"Warning: Failed to evaluate transform lambda: {e}"
+                                    )
+                                    pass
                             new_data.append(new_row)
 
-                        current = MockDataFrame(
-                            new_data, current.schema, current.storage
-                        )
+                        current = DataFrame(new_data, current.schema, current.storage)
                 else:
                     # Unknown ops ignored for now
                     continue
@@ -914,7 +917,7 @@ class LazyEvaluationEngine:
         return current
 
     @staticmethod
-    def _infer_select_schema(df: "MockDataFrame", columns: Any) -> "MockStructType":
+    def _infer_select_schema(df: "DataFrame", columns: Any) -> "StructType":
         """Infer schema for select operation.
 
         Args:
@@ -924,7 +927,7 @@ class LazyEvaluationEngine:
         Returns:
             Inferred schema for selected columns
         """
-        from ..functions import MockAggregateFunction
+        from ..functions import AggregateFunction
 
         new_fields = []
         for col in columns:
@@ -942,9 +945,9 @@ class LazyEvaluationEngine:
                             break
                     if not found:
                         # Column not in current schema, might come from join
-                        new_fields.append(MockStructField(col, StringType()))
+                        new_fields.append(StructField(col, StringType()))
             elif hasattr(col, "operation") and hasattr(col, "column"):
-                # Handle MockColumnOperation
+                # Handle ColumnOperation
                 col_name = col.name
 
                 # Check operation type
@@ -954,34 +957,32 @@ class LazyEvaluationEngine:
                     if isinstance(cast_type, str):
                         # String type name, convert to actual type
                         if cast_type.lower() in ["double", "float"]:
-                            new_fields.append(MockStructField(col_name, DoubleType()))
+                            new_fields.append(StructField(col_name, DoubleType()))
                         elif cast_type.lower() in ["int", "integer"]:
-                            new_fields.append(MockStructField(col_name, IntegerType()))
+                            new_fields.append(StructField(col_name, IntegerType()))
                         elif cast_type.lower() in ["long", "bigint"]:
-                            new_fields.append(MockStructField(col_name, LongType()))
+                            new_fields.append(StructField(col_name, LongType()))
                         elif cast_type.lower() in ["string", "varchar"]:
-                            new_fields.append(MockStructField(col_name, StringType()))
+                            new_fields.append(StructField(col_name, StringType()))
                         elif cast_type.lower() in ["boolean", "bool"]:
-                            new_fields.append(MockStructField(col_name, BooleanType()))
+                            new_fields.append(StructField(col_name, BooleanType()))
                         else:
-                            new_fields.append(MockStructField(col_name, StringType()))
+                            new_fields.append(StructField(col_name, StringType()))
                     else:
                         # Type object, use directly
-                        new_fields.append(MockStructField(col_name, cast_type))
+                        new_fields.append(StructField(col_name, cast_type))
                 elif col.operation in ["upper", "lower"]:
-                    new_fields.append(MockStructField(col_name, StringType()))
+                    new_fields.append(StructField(col_name, StringType()))
                 elif col.operation == "length":
-                    new_fields.append(MockStructField(col_name, IntegerType()))
+                    new_fields.append(StructField(col_name, IntegerType()))
                 elif col.operation == "split":
                     # Split returns ArrayType of strings
-                    new_fields.append(
-                        MockStructField(col_name, ArrayType(StringType()))
-                    )
+                    new_fields.append(StructField(col_name, ArrayType(StringType())))
                 elif col.operation in ["isnull", "isnotnull", "isnan"]:
                     # Boolean operations - always return BooleanType and are non-nullable
 
                     new_fields.append(
-                        MockStructField(col_name, BooleanType(), nullable=False)
+                        StructField(col_name, BooleanType(), nullable=False)
                     )
                 elif col.operation == "coalesce":
                     # Coalesce with a non-null literal fallback is non-nullable
@@ -995,12 +996,12 @@ class LazyEvaluationEngine:
                                 break
                     # Mark as non-nullable if there's a literal fallback
                     new_fields.append(
-                        MockStructField(col_name, source_type, nullable=False)
+                        StructField(col_name, source_type, nullable=False)
                     )
                 elif col.operation == "datediff":
-                    new_fields.append(MockStructField(col_name, IntegerType()))
+                    new_fields.append(StructField(col_name, IntegerType()))
                 elif col.operation == "months_between":
-                    new_fields.append(MockStructField(col_name, DoubleType()))
+                    new_fields.append(StructField(col_name, DoubleType()))
                 elif col.operation in [
                     "hour",
                     "minute",
@@ -1014,11 +1015,11 @@ class LazyEvaluationEngine:
                     "dayofyear",
                     "weekofyear",
                 ]:
-                    new_fields.append(MockStructField(col_name, IntegerType()))
+                    new_fields.append(StructField(col_name, IntegerType()))
                 else:
                     # Default to StringType for unknown operations
-                    new_fields.append(MockStructField(col_name, StringType()))
-            elif isinstance(col, MockAggregateFunction):
+                    new_fields.append(StructField(col_name, StringType()))
+            elif isinstance(col, AggregateFunction):
                 # Handle aggregate functions - set proper nullability
                 col_name = col.name
 
@@ -1044,12 +1045,10 @@ class LazyEvaluationEngine:
                 else:
                     data_type = DoubleType(nullable=nullable)
 
-                new_fields.append(
-                    MockStructField(col_name, data_type, nullable=nullable)
-                )
+                new_fields.append(StructField(col_name, data_type, nullable=nullable))
 
             elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
-                # Handle MockWindowFunction (e.g., rank().over(window))
+                # Handle WindowFunction (e.g., rank().over(window))
                 # For window functions, col.name should be the alias, not the object itself
                 if hasattr(col, "name") and isinstance(col.name, str):
                     col_name = col.name
@@ -1068,7 +1067,7 @@ class LazyEvaluationEngine:
                 if col.function_name in non_nullable_window_functions:
                     # Ranking functions return IntegerType and are non-nullable
                     new_fields.append(
-                        MockStructField(col_name, IntegerType(), nullable=False)
+                        StructField(col_name, IntegerType(), nullable=False)
                     )
                 elif col.function_name in ["lag", "lead"]:
                     # Lag/lead can return null (out of bounds)
@@ -1080,36 +1079,34 @@ class LazyEvaluationEngine:
                                 source_type2 = field.dataType
                                 break
                         new_fields.append(
-                            MockStructField(col_name, source_type2, nullable=True)
+                            StructField(col_name, source_type2, nullable=True)
                         )
                     else:
                         new_fields.append(
-                            MockStructField(col_name, StringType(), nullable=True)
+                            StructField(col_name, StringType(), nullable=True)
                         )
                 elif col.function_name in ["sum", "avg", "min", "max"]:
                     # Aggregate window functions - nullable
                     new_fields.append(
-                        MockStructField(col_name, DoubleType(), nullable=True)
+                        StructField(col_name, DoubleType(), nullable=True)
                     )
                 elif col.function_name in ["count", "countDistinct"]:
                     # Count functions are non-nullable
-                    new_fields.append(
-                        MockStructField(col_name, LongType(), nullable=False)
-                    )
+                    new_fields.append(StructField(col_name, LongType(), nullable=False))
                 else:
                     # Default for other window functions
                     new_fields.append(
-                        MockStructField(col_name, DoubleType(), nullable=True)
+                        StructField(col_name, DoubleType(), nullable=True)
                     )
 
             elif hasattr(col, "value") and hasattr(col, "data_type"):
-                # Handle MockLiteral objects - literals are never nullable
+                # Handle Literal objects - literals are never nullable
                 col_name = col.name
                 # Use the literal's data_type and explicitly set nullable=False
 
                 data_type = col.data_type
                 # Create a new instance of the data type with nullable=False
-                data_type_non_null: MockDataType
+                data_type_non_null: DataType
                 if isinstance(data_type, BooleanType):
                     data_type_non_null = BooleanType(nullable=False)
                 elif isinstance(data_type, IntegerType):
@@ -1125,38 +1122,38 @@ class LazyEvaluationEngine:
                     data_type_non_null = data_type.__class__(nullable=False)
 
                 new_fields.append(
-                    MockStructField(col_name, data_type_non_null, nullable=False)
+                    StructField(col_name, data_type_non_null, nullable=False)
                 )
             elif hasattr(col, "conditions") and hasattr(col, "default_value"):
-                # Handle MockCaseWhen objects - use get_result_type() method
+                # Handle CaseWhen objects - use get_result_type() method
                 col_name = col.name
-                from ..functions.conditional import MockCaseWhen
+                from ..functions.conditional import CaseWhen
 
-                if isinstance(col, MockCaseWhen):
+                if isinstance(col, CaseWhen):
                     # Use the proper type inference method
                     inferred_type = col.get_result_type()
                     new_fields.append(
-                        MockStructField(col_name, inferred_type, nullable=False)
+                        StructField(col_name, inferred_type, nullable=False)
                     )
                 else:
                     # Fallback for other conditional objects
-                    new_fields.append(MockStructField(col_name, IntegerType()))
+                    new_fields.append(StructField(col_name, IntegerType()))
             elif hasattr(col, "conditions"):
-                # Handle MockCaseWhen objects that didn't match the first condition
+                # Handle CaseWhen objects that didn't match the first condition
                 col_name = col.name
-                from ..functions.conditional import MockCaseWhen
+                from ..functions.conditional import CaseWhen
 
-                if isinstance(col, MockCaseWhen):
+                if isinstance(col, CaseWhen):
                     # Use the proper type inference method
                     inferred_type = col.get_result_type()
                     new_fields.append(
-                        MockStructField(col_name, inferred_type, nullable=False)
+                        StructField(col_name, inferred_type, nullable=False)
                     )
                 else:
                     # Default to StringType for unknown operations
-                    new_fields.append(MockStructField(col_name, StringType()))
+                    new_fields.append(StructField(col_name, StringType()))
             elif hasattr(col, "name"):
-                # Handle MockColumn
+                # Handle Column
                 col_name = col.name
                 if col_name == "*":
                     # Add all existing fields
@@ -1171,12 +1168,12 @@ class LazyEvaluationEngine:
                             break
                     if not found:
                         # Column not in current schema, might come from join
-                        new_fields.append(MockStructField(col_name, StringType()))
+                        new_fields.append(StructField(col_name, StringType()))
 
-        return MockStructType(new_fields)
+        return StructType(new_fields)
 
     @staticmethod
-    def _infer_join_schema(df: "MockDataFrame", join_params: Any) -> "MockStructType":
+    def _infer_join_schema(df: "DataFrame", join_params: Any) -> "StructType":
         """Infer schema for join operation.
 
         Args:
@@ -1186,30 +1183,34 @@ class LazyEvaluationEngine:
         Returns:
             Inferred schema after join
         """
-        from ..spark_types import MockStructType
+        from ..spark_types import StructType
 
         other_df, on, how = join_params
 
         # Start with all fields from left DataFrame
         new_fields = df.schema.fields.copy()
 
-        # Add ALL fields from right DataFrame
-        # In SQL joins, all columns from both tables are available
-        for field in other_df.schema.fields:
-            # Check if field already exists (same name and type)
-            existing_field = next((f for f in new_fields if f.name == field.name), None)
-            if existing_field is None:
-                # Field doesn't exist, add it
-                new_fields.append(field)
-            # If field exists with same name, we keep the left one (SQL standard behavior)
-            # No need to add the right field
+        # Add ALL fields from right DataFrame, including duplicates
+        # PySpark allows duplicate column names in join results
+        # Order: left fields first, then right fields (non-duplicates first, then duplicates)
+        left_field_names = {f.name for f in df.schema.fields}
 
-        return MockStructType(new_fields)
+        # First add right fields that don't exist in left
+        for field in other_df.schema.fields:
+            if field.name not in left_field_names:
+                new_fields.append(field)
+
+        # Then add right fields that DO exist in left (duplicates)
+        for field in other_df.schema.fields:
+            if field.name in left_field_names:
+                new_fields.append(field)
+
+        return StructType(new_fields)
 
     @staticmethod
     def _infer_withcolumn_schema(
-        df: "MockDataFrame", withcolumn_params: Any
-    ) -> "MockStructType":
+        df: "DataFrame", withcolumn_params: Any
+    ) -> "StructType":
         """Infer schema for withColumn operation.
 
         Args:
@@ -1220,8 +1221,8 @@ class LazyEvaluationEngine:
             Inferred schema after withColumn
         """
         from ..spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             BooleanType,
             IntegerType,
             LongType,
@@ -1231,7 +1232,7 @@ class LazyEvaluationEngine:
             TimestampType,
             DecimalType,
         )
-        from ..functions.core.column import MockColumnOperation
+        from ..functions.core.column import ColumnOperation
 
         col_name, col = withcolumn_params
 
@@ -1240,7 +1241,7 @@ class LazyEvaluationEngine:
 
         # Infer the type of the new column
         if (
-            isinstance(col, MockColumnOperation)
+            isinstance(col, ColumnOperation)
             and hasattr(col, "operation")
             and col.operation == "cast"
         ):
@@ -1249,19 +1250,19 @@ class LazyEvaluationEngine:
             if isinstance(cast_type, str):
                 # String type name, convert to actual type
                 if cast_type.lower() in ["double", "float"]:
-                    new_fields.append(MockStructField(col_name, DoubleType()))
+                    new_fields.append(StructField(col_name, DoubleType()))
                 elif cast_type.lower() in ["int", "integer"]:
-                    new_fields.append(MockStructField(col_name, IntegerType()))
+                    new_fields.append(StructField(col_name, IntegerType()))
                 elif cast_type.lower() in ["long", "bigint"]:
-                    new_fields.append(MockStructField(col_name, LongType()))
+                    new_fields.append(StructField(col_name, LongType()))
                 elif cast_type.lower() in ["string", "varchar"]:
-                    new_fields.append(MockStructField(col_name, StringType()))
+                    new_fields.append(StructField(col_name, StringType()))
                 elif cast_type.lower() in ["boolean", "bool"]:
-                    new_fields.append(MockStructField(col_name, BooleanType()))
+                    new_fields.append(StructField(col_name, BooleanType()))
                 elif cast_type.lower() in ["date"]:
-                    new_fields.append(MockStructField(col_name, DateType()))
+                    new_fields.append(StructField(col_name, DateType()))
                 elif cast_type.lower() in ["timestamp"]:
-                    new_fields.append(MockStructField(col_name, TimestampType()))
+                    new_fields.append(StructField(col_name, TimestampType()))
                 elif cast_type.lower().startswith("decimal"):
                     # Parse decimal(10,2) format
                     import re
@@ -1270,23 +1271,23 @@ class LazyEvaluationEngine:
                     if match:
                         precision, scale = int(match.group(1)), int(match.group(2))
                         new_fields.append(
-                            MockStructField(col_name, DecimalType(precision, scale))
+                            StructField(col_name, DecimalType(precision, scale))
                         )
                     else:
-                        new_fields.append(MockStructField(col_name, DecimalType(10, 2)))
+                        new_fields.append(StructField(col_name, DecimalType(10, 2)))
                 else:
                     # Default to StringType for unknown types
-                    new_fields.append(MockStructField(col_name, StringType()))
+                    new_fields.append(StructField(col_name, StringType()))
             else:
-                # Already a MockDataType object
+                # Already a DataType object
                 if hasattr(cast_type, "__class__"):
                     new_fields.append(
-                        MockStructField(col_name, cast_type.__class__(nullable=True))
+                        StructField(col_name, cast_type.__class__(nullable=True))
                     )
                 else:
-                    new_fields.append(MockStructField(col_name, cast_type))
+                    new_fields.append(StructField(col_name, cast_type))
         elif (
-            isinstance(col, MockColumnOperation)
+            isinstance(col, ColumnOperation)
             and hasattr(col, "operation")
             and col.operation in ["+", "-", "*", "/", "%"]
         ):
@@ -1316,23 +1317,23 @@ class LazyEvaluationEngine:
             if (left_type and isinstance(left_type, DoubleType)) or (
                 right_type and isinstance(right_type, DoubleType)
             ):
-                new_fields.append(MockStructField(col_name, DoubleType()))
+                new_fields.append(StructField(col_name, DoubleType()))
             else:
-                new_fields.append(MockStructField(col_name, LongType()))
+                new_fields.append(StructField(col_name, LongType()))
         elif (
-            isinstance(col, MockColumnOperation)
+            isinstance(col, ColumnOperation)
             and hasattr(col, "operation")
             and col.operation == "datediff"
         ):
-            new_fields.append(MockStructField(col_name, IntegerType()))
+            new_fields.append(StructField(col_name, IntegerType()))
         elif (
-            isinstance(col, MockColumnOperation)
+            isinstance(col, ColumnOperation)
             and hasattr(col, "operation")
             and col.operation == "months_between"
         ):
-            new_fields.append(MockStructField(col_name, DoubleType()))
+            new_fields.append(StructField(col_name, DoubleType()))
         elif (
-            isinstance(col, MockColumnOperation)
+            isinstance(col, ColumnOperation)
             and hasattr(col, "operation")
             and col.operation
             in [
@@ -1349,17 +1350,17 @@ class LazyEvaluationEngine:
                 "weekofyear",
             ]
         ):
-            new_fields.append(MockStructField(col_name, IntegerType()))
+            new_fields.append(StructField(col_name, IntegerType()))
         else:
             # For other column types, default to StringType
             # TODO: Add more sophisticated type inference for other operations
-            new_fields.append(MockStructField(col_name, StringType()))
+            new_fields.append(StructField(col_name, StringType()))
 
-        return MockStructType(new_fields)
+        return StructType(new_fields)
 
     @staticmethod
     def _filter_depends_on_original_columns(
-        filter_condition: Any, original_schema: "MockStructType"
+        filter_condition: Any, original_schema: "StructType"
     ) -> bool:
         """Check if a filter condition depends on original columns.
 

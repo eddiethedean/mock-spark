@@ -13,10 +13,10 @@ Key Features:
     - Easy integration with existing test frameworks
 
 Example:
-    >>> from mock_spark import MockSparkSession
+    >>> from mock_spark.sql import SparkSession
     >>> from mock_spark.performance_simulation import MockPerformanceSimulator
     >>>
-    >>> spark = MockSparkSession("test")
+    >>> spark = SparkSession("test")
     >>> perf_sim = MockPerformanceSimulator(spark)
     >>>
     >>> # Simulate slow operations
@@ -38,7 +38,7 @@ class MockPerformanceSimulator:
     memory limits, and performance monitoring for realistic testing scenarios.
 
     Attributes:
-        spark_session: The MockSparkSession instance to simulate performance on.
+        spark_session: The SparkSession instance to simulate performance on.
         slowdown_factor: Multiplier for operation delays (1.0 = normal speed).
         memory_limit: Maximum number of rows allowed in operations.
         performance_metrics: Dictionary storing performance statistics.
@@ -53,7 +53,7 @@ class MockPerformanceSimulator:
         """Initialize MockPerformanceSimulator.
 
         Args:
-            spark_session: MockSparkSession instance to simulate performance on.
+            spark_session: SparkSession instance to simulate performance on.
         """
         self.spark_session = spark_session
         self.slowdown_factor = 1.0
@@ -216,7 +216,7 @@ class MockPerformanceSimulatorBuilder:
         """Initialize MockPerformanceSimulatorBuilder.
 
         Args:
-            spark_session: MockSparkSession instance to build performance simulation for.
+            spark_session: SparkSession instance to build performance simulation for.
         """
         self.spark_session = spark_session
         self.perf_sim = MockPerformanceSimulator(spark_session)
@@ -260,7 +260,7 @@ def performance_simulation(
     """Context manager for temporary performance simulation.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         slowdown_factor: Slowdown multiplier for operations.
         memory_limit: Maximum number of rows allowed.
 
@@ -287,7 +287,7 @@ def create_slow_simulator(
     """Create a simulator that slows down operations.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         slowdown_factor: Slowdown multiplier.
 
     Returns:
@@ -304,7 +304,7 @@ def create_memory_limited_simulator(
     """Create a simulator that limits memory usage.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         memory_limit: Maximum number of rows allowed.
 
     Returns:
@@ -321,7 +321,7 @@ def create_high_performance_simulator(spark_session: Any) -> MockPerformanceSimu
     """Create a simulator optimized for high performance.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
 
     Returns:
         MockPerformanceSimulator configured for high performance.

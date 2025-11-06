@@ -13,7 +13,7 @@ Example:
 """
 
 # Re-export from core.exceptions for backward compatibility
-from .core.exceptions.base import MockException, MockSparkException
+from .core.exceptions.base import MockException, SparkException
 from .core.exceptions.analysis import (
     AnalysisException,
     ParseException,
@@ -44,8 +44,8 @@ from .core.exceptions.runtime import (
     ConfigurationException,
 )
 
-# Alias for PySparkException (same as MockSparkException)
-PySparkException = MockSparkException
+# Alias for PySparkException (same as SparkException)
+PySparkException = SparkException
 
 # Mark as available
 PYSPARK_AVAILABLE = True
@@ -110,7 +110,7 @@ def raise_runtime_error(message: str) -> None:
 __all__ = [
     # Base exceptions
     "MockException",
-    "MockSparkException",
+    "SparkException",
     "PySparkException",
     # Analysis exceptions
     "AnalysisException",

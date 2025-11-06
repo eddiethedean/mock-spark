@@ -15,10 +15,10 @@ class TestAggregationFunctionsExtendedCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("aggregation_functions_test")
+        session = SparkSession("aggregation_functions_test")
         yield session
         session.stop()
 
@@ -36,7 +36,6 @@ class TestAggregationFunctionsExtendedCompatibility:
         result = df.agg(F.collect_list("name"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="collect_set not yet implemented correctly")
     def test_collect_set(self, spark):
         """Test collect_set aggregation."""
         expected = load_expected_output("aggregations", "collect_set")
@@ -68,7 +67,6 @@ class TestAggregationFunctionsExtendedCompatibility:
         result = df.agg(F.covar_samp("age", "salary"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="countDistinct not yet implemented correctly")
     def test_countDistinct(self, spark):
         """Test countDistinct aggregation."""
         expected = load_expected_output("aggregations", "countDistinct")
@@ -84,7 +82,6 @@ class TestAggregationFunctionsExtendedCompatibility:
         result = df.agg(F.kurtosis("salary"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="mean not yet implemented correctly")
     def test_mean(self, spark):
         """Test mean aggregation."""
         expected = load_expected_output("aggregations", "mean")

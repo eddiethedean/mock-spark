@@ -13,18 +13,17 @@ from mock_spark.spark_types import (
     ArrayType,
     MapType,
     StructType,
-    MockStructField,
-    MockStructType,
+    StructField,
     CharType,
     VarcharType,
     IntervalType,
-    MockRow,
+    Row,
 )
 
 
 @pytest.mark.unit
-class TestMockDataType:
-    """Test MockDataType base class."""
+class TestDataType:
+    """Test DataType base class."""
 
     def test_eq_with_same_type(self):
         """Test equality with same type."""
@@ -78,7 +77,7 @@ class TestMockDataType:
         assert map_type.typeName() == "map"
 
         # struct_type.typeName() may not work as expected
-        struct_type = MockStructType([MockStructField("name", StringType())])
+        struct_type = StructType([StructField("name", StringType())])
         assert hasattr(struct_type, "typeName")
 
 
@@ -209,186 +208,186 @@ class TestDecimalType:
 
 
 @pytest.mark.unit
-class TestMockStructType:
-    """Test MockStructType."""
+class TestStructType:
+    """Test StructType."""
 
     def test_struct_type_creation(self):
-        """Test MockStructType creation."""
-        st = MockStructType([])
+        """Test StructType creation."""
+        st = StructType([])
         assert isinstance(st, StructType)
         assert len(st.fields) == 0
 
     def test_struct_type_with_fields(self):
-        """Test MockStructType with fields."""
+        """Test StructType with fields."""
         fields = [
-            MockStructField("id", LongType()),
-            MockStructField("name", StringType()),
+            StructField("id", LongType()),
+            StructField("name", StringType()),
         ]
-        st = MockStructType(fields)
+        st = StructType(fields)
         assert len(st.fields) == 2
 
     def test_struct_type_field_names(self):
         """Test getting field names."""
         fields = [
-            MockStructField("id", LongType()),
-            MockStructField("name", StringType()),
+            StructField("id", LongType()),
+            StructField("name", StringType()),
         ]
-        st = MockStructType(fields)
+        st = StructType(fields)
         assert st.fieldNames() == ["id", "name"]
 
     def test_struct_type_field_names_empty(self):
         """Test fieldNames with empty struct."""
-        st = MockStructType([])
+        st = StructType([])
         assert st.fieldNames() == []
 
 
 @pytest.mark.unit
-class TestMockRow:
-    """Test MockRow operations."""
+class TestRow:
+    """Test Row operations."""
 
     def test_row_creation(self):
-        """Test MockRow creation."""
-        schema = MockStructType(
+        """Test Row creation."""
+        schema = StructType(
             [
-                MockStructField("id", LongType()),
-                MockStructField("name", StringType()),
+                StructField("id", LongType()),
+                StructField("name", StringType()),
             ]
         )
         data = {"id": 1, "name": "Alice"}
-        row = MockRow(data, schema)
+        row = Row(data, schema)
         assert row.id == 1
         assert row.name == "Alice"
         assert row["id"] == 1
         assert row["name"] == "Alice"
 
     def test_row_with_all_none(self):
-        """Test MockRow with None values."""
-        schema = MockStructType(
+        """Test Row with None values."""
+        schema = StructType(
             [
-                MockStructField("col1", StringType()),
-                MockStructField("col2", LongType()),
+                StructField("col1", StringType()),
+                StructField("col2", LongType()),
             ]
         )
         data = {"col1": None, "col2": None}
-        row = MockRow(data, schema)
+        row = Row(data, schema)
         assert row.col1 is None
         assert row.col2 is None
 
     def test_row_len(self):
         """Test row length."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("a", LongType()),
-                MockStructField("b", StringType()),
+                StructField("a", LongType()),
+                StructField("b", StringType()),
             ]
         )
-        row = MockRow({"a": 1, "b": "x"}, schema)
+        row = Row({"a": 1, "b": "x"}, schema)
         assert len(row) == 2
 
     def test_row_getitem_by_index(self):
         """Test row __getitem__ by index."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("a", LongType()),
-                MockStructField("b", StringType()),
+                StructField("a", LongType()),
+                StructField("b", StringType()),
             ]
         )
-        row = MockRow({"a": 1, "b": "x"}, schema)
+        row = Row({"a": 1, "b": "x"}, schema)
         assert row[0] == 1
         assert row[1] == "x"
 
     def test_row_getitem_by_key(self):
         """Test row __getitem__ by key."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", LongType()),
+                StructField("id", LongType()),
             ]
         )
-        row = MockRow({"id": 42}, schema)
+        row = Row({"id": 42}, schema)
         assert row["id"] == 42
 
     def test_row_getitem_key_error(self):
         """Test row __getitem__ raises KeyError for missing key."""
-        schema = MockStructType([MockStructField("id", LongType())])
-        row = MockRow({"id": 1}, schema)
+        schema = StructType([StructField("id", LongType())])
+        row = Row({"id": 1}, schema)
         with pytest.raises(KeyError):
             _ = row["nonexistent"]
 
     def test_row_getattr(self):
         """Test row attribute access."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("value", LongType()),
+                StructField("value", LongType()),
             ]
         )
-        row = MockRow({"value": 100}, schema)
+        row = Row({"value": 100}, schema)
         assert row.value == 100
 
     def test_row_getattr_missing(self):
         """Test row attribute access with missing field."""
-        schema = MockStructType([MockStructField("a", LongType())])
-        row = MockRow({"a": 1}, schema)
+        schema = StructType([StructField("a", LongType())])
+        row = Row({"a": 1}, schema)
         with pytest.raises(AttributeError):
             _ = row.missing_field
 
     def test_row_repr(self):
         """Test row representation."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", LongType()),
-                MockStructField("name", StringType()),
+                StructField("id", LongType()),
+                StructField("name", StringType()),
             ]
         )
-        row = MockRow({"id": 1, "name": "Alice"}, schema)
+        row = Row({"id": 1, "name": "Alice"}, schema)
         repr_str = repr(row)
-        assert "Row" in repr_str  # MockRow uses "Row" in repr
+        assert "Row" in repr_str  # Row uses "Row" in repr
 
     def test_row_values(self):
         """Test row.values() method."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("a", LongType()),
-                MockStructField("b", StringType()),
+                StructField("a", LongType()),
+                StructField("b", StringType()),
             ]
         )
-        row = MockRow({"a": 1, "b": "x"}, schema)
+        row = Row({"a": 1, "b": "x"}, schema)
         values = list(row.values())
         assert values == [1, "x"]
 
     def test_row_keys(self):
         """Test row.keys() method."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("a", LongType()),
-                MockStructField("b", StringType()),
+                StructField("a", LongType()),
+                StructField("b", StringType()),
             ]
         )
-        row = MockRow({"a": 1, "b": "x"}, schema)
+        row = Row({"a": 1, "b": "x"}, schema)
         keys = list(row.keys())
         # Keys should be in schema order, not data order
         assert isinstance(keys, list)
 
     def test_row_items(self):
         """Test row.items() method."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("a", LongType()),
-                MockStructField("b", StringType()),
+                StructField("a", LongType()),
+                StructField("b", StringType()),
             ]
         )
-        row = MockRow({"a": 1, "b": "x"}, schema)
+        row = Row({"a": 1, "b": "x"}, schema)
         items = list(row.items())
         assert len(items) == 2
 
     def test_row_as_dict(self):
         """Test row asDict() method."""
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", LongType()),
-                MockStructField("name", StringType()),
+                StructField("id", LongType()),
+                StructField("name", StringType()),
             ]
         )
-        row = MockRow({"id": 1, "name": "Alice"}, schema)
+        row = Row({"id": 1, "name": "Alice"}, schema)
         result = row.asDict()
         assert result["id"] == 1
         assert result["name"] == "Alice"

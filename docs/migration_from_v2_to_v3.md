@@ -38,9 +38,9 @@ Most code will work without changes since Polars backend implements the same int
 
 ```python
 # Before (v2.x) - works the same in v3.0.0
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 df = spark.createDataFrame([{"name": "Alice", "age": 25}])
 df.show()
 ```
@@ -64,16 +64,16 @@ If you explicitly configured DuckDB backend, you may need to update:
 
 ```python
 # v2.x
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .config("spark.mock.backend.maxMemory", "4GB") \
     .getOrCreate()
 
 # v3.0.0 - Polars is default, no memory config needed
-spark = MockSparkSession("MyApp")  # Uses Polars automatically
+spark = SparkSession("MyApp")  # Uses Polars automatically
 
 # Or explicitly set Polars
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "polars") \
     .getOrCreate()
 ```
@@ -84,7 +84,7 @@ If you need DuckDB for specific features, you can still use it:
 
 ```python
 # v3.0.0 - Use DuckDB backend explicitly
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .config("spark.mock.backend.maxMemory", "4GB") \
     .getOrCreate()
@@ -157,7 +157,7 @@ pytest tests/
 All tests should pass with Polars backend. If you encounter issues, you can temporarily use DuckDB backend:
 
 ```python
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .getOrCreate()
 ```

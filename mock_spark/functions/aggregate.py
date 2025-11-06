@@ -16,8 +16,8 @@ Key Features:
     - Proper handling of null values and edge cases
 
 Example:
-    >>> from mock_spark import MockSparkSession, F
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession, functions as F
+    >>> spark = SparkSession("test")
     >>> data = [{"dept": "IT", "salary": 50000}, {"dept": "IT", "salary": 60000}]
     >>> df = spark.createDataFrame(data)
     >>> grouped = df.groupBy("dept")
@@ -27,14 +27,13 @@ Example:
     ...     F.max("salary").alias("max_salary")
     ... )
     >>> result.show()
-    +--- MockDataFrame: 1 rows ---+
-            dept |        count |   avg_salary |   max_salary
-    ---------------------------------------------------------
-              IT |            2 |      55000.0 |        60000
+    DataFrame[1 rows, 4 columns]
+    dept count avg_salary max_salary
+    IT 2 55000.0 60000
 """
 
 from typing import Union
-from mock_spark.functions.base import MockAggregateFunction, MockColumn
+from mock_spark.functions.base import AggregateFunction, Column, ColumnOperation
 from mock_spark.spark_types import (
     LongType,
     DoubleType,
@@ -48,177 +47,226 @@ class AggregateFunctions:
     """Collection of aggregate functions."""
 
     @staticmethod
-    def count(column: Union[MockColumn, str, None] = None) -> MockAggregateFunction:
+    def count(column: Union[Column, str, None] = None) -> AggregateFunction:
         """Count non-null values.
 
         Args:
             column: The column to count (None for count(*)).
 
         Returns:
-            MockAggregateFunction representing the count function.
+            AggregateFunction representing the count function.
         """
-        return MockAggregateFunction(column, "count", LongType(nullable=False))
+        return AggregateFunction(column, "count", LongType(nullable=False))
 
     @staticmethod
-    def sum(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def sum(column: Union[Column, str]) -> AggregateFunction:
         """Sum values.
 
         Args:
             column: The column to sum.
 
         Returns:
-            MockAggregateFunction representing the sum function.
+            AggregateFunction representing the sum function.
         """
-        return MockAggregateFunction(column, "sum", DoubleType())
+        return AggregateFunction(column, "sum", DoubleType())
 
     @staticmethod
-    def avg(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def avg(column: Union[Column, str]) -> AggregateFunction:
         """Average values.
 
         Args:
             column: The column to average.
 
         Returns:
-            MockAggregateFunction representing the avg function.
+            AggregateFunction representing the avg function.
         """
-        return MockAggregateFunction(column, "avg", DoubleType())
+        return AggregateFunction(column, "avg", DoubleType())
 
     @staticmethod
-    def max(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def max(column: Union[Column, str]) -> AggregateFunction:
         """Maximum value.
 
         Args:
             column: The column to get max of.
 
         Returns:
-            MockAggregateFunction representing the max function.
+            AggregateFunction representing the max function.
         """
-        return MockAggregateFunction(column, "max", DoubleType())
+        return AggregateFunction(column, "max", DoubleType())
 
     @staticmethod
-    def min(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def min(column: Union[Column, str]) -> AggregateFunction:
         """Minimum value.
 
         Args:
             column: The column to get min of.
 
         Returns:
-            MockAggregateFunction representing the min function.
+            AggregateFunction representing the min function.
         """
-        return MockAggregateFunction(column, "min", DoubleType())
+        return AggregateFunction(column, "min", DoubleType())
 
     @staticmethod
-    def first(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def first(column: Union[Column, str]) -> AggregateFunction:
         """First value.
 
         Args:
             column: The column to get first value of.
 
         Returns:
-            MockAggregateFunction representing the first function.
+            AggregateFunction representing the first function.
         """
-        return MockAggregateFunction(column, "first", DoubleType())
+        return AggregateFunction(column, "first", DoubleType())
 
     @staticmethod
-    def last(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def last(column: Union[Column, str]) -> AggregateFunction:
         """Last value.
 
         Args:
             column: The column to get last value of.
 
         Returns:
-            MockAggregateFunction representing the last function.
+            AggregateFunction representing the last function.
         """
-        return MockAggregateFunction(column, "last", DoubleType())
+        return AggregateFunction(column, "last", DoubleType())
 
     @staticmethod
-    def collect_list(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def collect_list(column: Union[Column, str]) -> AggregateFunction:
         """Collect values into a list.
 
         Args:
             column: The column to collect.
 
         Returns:
-            MockAggregateFunction representing the collect_list function.
+            AggregateFunction representing the collect_list function.
         """
-        return MockAggregateFunction(column, "collect_list", DoubleType())
+        return AggregateFunction(column, "collect_list", DoubleType())
 
     @staticmethod
-    def collect_set(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def collect_set(column: Union[Column, str]) -> AggregateFunction:
         """Collect unique values into a set.
 
         Args:
             column: The column to collect.
 
         Returns:
-            MockAggregateFunction representing the collect_set function.
+            AggregateFunction representing the collect_set function.
         """
-        return MockAggregateFunction(column, "collect_set", DoubleType())
+        return AggregateFunction(column, "collect_set", DoubleType())
 
     @staticmethod
-    def stddev(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def stddev(column: Union[Column, str]) -> AggregateFunction:
         """Standard deviation.
 
         Args:
             column: The column to get stddev of.
 
         Returns:
-            MockAggregateFunction representing the stddev function.
+            AggregateFunction representing the stddev function.
         """
-        return MockAggregateFunction(column, "stddev", DoubleType())
+        return AggregateFunction(column, "stddev", DoubleType())
 
     @staticmethod
-    def variance(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def std(column: Union[Column, str]) -> AggregateFunction:
+        """Alias for stddev - Standard deviation.
+
+        Args:
+            column: The column to get stddev of.
+
+        Returns:
+            AggregateFunction representing the std function.
+        """
+        return AggregateFunctions.stddev(column)
+
+    @staticmethod
+    def product(column: Union[Column, str]) -> AggregateFunction:
+        """Multiply all values in column.
+
+        Args:
+            column: The column to multiply values of.
+
+        Returns:
+            AggregateFunction representing the product function.
+        """
+        return AggregateFunction(column, "product", DoubleType())
+
+    @staticmethod
+    def sum_distinct(column: Union[Column, str]) -> AggregateFunction:
+        """Sum of distinct values.
+
+        Args:
+            column: The column to sum distinct values of.
+
+        Returns:
+            AggregateFunction representing the sum_distinct function.
+        """
+        return AggregateFunction(column, "sum_distinct", DoubleType())
+
+    @staticmethod
+    def variance(column: Union[Column, str]) -> AggregateFunction:
         """Variance.
 
         Args:
             column: The column to get variance of.
 
         Returns:
-            MockAggregateFunction representing the variance function.
+            AggregateFunction representing the variance function.
         """
-        return MockAggregateFunction(column, "variance", DoubleType())
+        return AggregateFunction(column, "variance", DoubleType())
 
     @staticmethod
-    def skewness(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def skewness(column: Union[Column, str]) -> AggregateFunction:
         """Skewness.
 
         Args:
             column: The column to get skewness of.
 
         Returns:
-            MockAggregateFunction representing the skewness function.
+            AggregateFunction representing the skewness function.
         """
-        return MockAggregateFunction(column, "skewness", DoubleType())
+        return AggregateFunction(column, "skewness", DoubleType())
 
     @staticmethod
-    def kurtosis(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def kurtosis(column: Union[Column, str]) -> AggregateFunction:
         """Kurtosis.
 
         Args:
             column: The column to get kurtosis of.
 
         Returns:
-            MockAggregateFunction representing the kurtosis function.
+            AggregateFunction representing the kurtosis function.
         """
-        return MockAggregateFunction(column, "kurtosis", DoubleType())
+        return AggregateFunction(column, "kurtosis", DoubleType())
 
     @staticmethod
-    def countDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def countDistinct(column: Union[Column, str]) -> AggregateFunction:
         """Count distinct values.
 
         Args:
             column: The column to count distinct values of.
 
         Returns:
-            MockAggregateFunction representing the countDistinct function.
+            AggregateFunction representing the countDistinct function.
         """
-        return MockAggregateFunction(column, "countDistinct", LongType(nullable=False))
+        return AggregateFunction(column, "countDistinct", LongType(nullable=False))
+
+    @staticmethod
+    def count_distinct(column: Union[Column, str]) -> AggregateFunction:
+        """Alias for countDistinct - Count distinct values.
+
+        Args:
+            column: The column to count distinct values of.
+
+        Returns:
+            AggregateFunction representing the count_distinct function.
+        """
+        # Call countDistinct directly (same implementation)
+        return AggregateFunction(column, "countDistinct", LongType(nullable=False))
 
     @staticmethod
     def percentile_approx(
-        column: Union[MockColumn, str], percentage: float, accuracy: int = 10000
-    ) -> MockAggregateFunction:
+        column: Union[Column, str], percentage: float, accuracy: int = 10000
+    ) -> AggregateFunction:
         """Approximate percentile.
 
         Args:
@@ -227,15 +275,15 @@ class AggregateFunctions:
             accuracy: The accuracy parameter.
 
         Returns:
-            MockAggregateFunction representing the percentile_approx function.
+            AggregateFunction representing the percentile_approx function.
         """
-        # Store parameters in the name via MockAggregateFunction's generator (data type only is needed)
-        return MockAggregateFunction(column, "percentile_approx", DoubleType())
+        # Store parameters in the name via AggregateFunction's generator (data type only is needed)
+        return AggregateFunction(column, "percentile_approx", DoubleType())
 
     @staticmethod
     def corr(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockAggregateFunction:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> AggregateFunction:
         """Correlation between two columns.
 
         Args:
@@ -243,14 +291,14 @@ class AggregateFunctions:
             column2: The second column.
 
         Returns:
-            MockAggregateFunction representing the corr function.
+            AggregateFunction representing the corr function.
         """
-        return MockAggregateFunction(column1, "corr", DoubleType())
+        return AggregateFunction(column1, "corr", DoubleType())
 
     @staticmethod
     def covar_samp(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockAggregateFunction:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> AggregateFunction:
         """Sample covariance between two columns.
 
         Args:
@@ -258,62 +306,62 @@ class AggregateFunctions:
             column2: The second column.
 
         Returns:
-            MockAggregateFunction representing the covar_samp function.
+            AggregateFunction representing the covar_samp function.
         """
-        return MockAggregateFunction(column1, "covar_samp", DoubleType())
+        return AggregateFunction(column1, "covar_samp", DoubleType())
 
     @staticmethod
-    def bool_and(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def bool_and(column: Union[Column, str]) -> AggregateFunction:
         """Aggregate AND - returns true if all values are true (PySpark 3.1+).
 
         Args:
             column: Column containing boolean values.
 
         Returns:
-            MockAggregateFunction representing the bool_and function.
+            AggregateFunction representing the bool_and function.
         """
-        return MockAggregateFunction(column, "bool_and", BooleanType())
+        return AggregateFunction(column, "bool_and", BooleanType())
 
     @staticmethod
-    def bool_or(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def bool_or(column: Union[Column, str]) -> AggregateFunction:
         """Aggregate OR - returns true if any value is true (PySpark 3.1+).
 
         Args:
             column: Column containing boolean values.
 
         Returns:
-            MockAggregateFunction representing the bool_or function.
+            AggregateFunction representing the bool_or function.
         """
-        return MockAggregateFunction(column, "bool_or", BooleanType())
+        return AggregateFunction(column, "bool_or", BooleanType())
 
     @staticmethod
-    def every(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def every(column: Union[Column, str]) -> AggregateFunction:
         """Alias for bool_and (PySpark 3.1+).
 
         Args:
             column: Column containing boolean values.
 
         Returns:
-            MockAggregateFunction representing the every function.
+            AggregateFunction representing the every function.
         """
-        return MockAggregateFunction(column, "bool_and", BooleanType())
+        return AggregateFunction(column, "bool_and", BooleanType())
 
     @staticmethod
-    def some(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def some(column: Union[Column, str]) -> AggregateFunction:
         """Alias for bool_or (PySpark 3.1+).
 
         Args:
             column: Column containing boolean values.
 
         Returns:
-            MockAggregateFunction representing the some function.
+            AggregateFunction representing the some function.
         """
-        return MockAggregateFunction(column, "bool_or", BooleanType())
+        return AggregateFunction(column, "bool_or", BooleanType())
 
     @staticmethod
     def max_by(
-        column: Union[MockColumn, str], ord: Union[MockColumn, str]
-    ) -> MockAggregateFunction:
+        column: Union[Column, str], ord: Union[Column, str]
+    ) -> AggregateFunction:
         """Return value associated with the maximum of ord column (PySpark 3.1+).
 
         Args:
@@ -321,19 +369,19 @@ class AggregateFunctions:
             ord: Column to find maximum of.
 
         Returns:
-            MockAggregateFunction representing the max_by function.
+            AggregateFunction representing the max_by function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
         # Store ord column in value for handler
-        col_func = MockAggregateFunction(column, "max_by", StringType())
+        col_func = AggregateFunction(column, "max_by", StringType())
         col_func.ord_column = ord
         return col_func
 
     @staticmethod
     def min_by(
-        column: Union[MockColumn, str], ord: Union[MockColumn, str]
-    ) -> MockAggregateFunction:
+        column: Union[Column, str], ord: Union[Column, str]
+    ) -> AggregateFunction:
         """Return value associated with the minimum of ord column (PySpark 3.1+).
 
         Args:
@@ -341,115 +389,115 @@ class AggregateFunctions:
             ord: Column to find minimum of.
 
         Returns:
-            MockAggregateFunction representing the min_by function.
+            AggregateFunction representing the min_by function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
         # Store ord column in value for handler
-        col_func = MockAggregateFunction(column, "min_by", StringType())
+        col_func = AggregateFunction(column, "min_by", StringType())
         col_func.ord_column = ord
         return col_func
 
     @staticmethod
-    def count_if(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def count_if(column: Union[Column, str]) -> AggregateFunction:
         """Count rows where condition is true (PySpark 3.1+).
 
         Args:
             column: Boolean column or condition.
 
         Returns:
-            MockAggregateFunction representing the count_if function.
+            AggregateFunction representing the count_if function.
         """
-        return MockAggregateFunction(column, "count_if", IntegerType())
+        return AggregateFunction(column, "count_if", IntegerType())
 
     @staticmethod
-    def any_value(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def any_value(column: Union[Column, str]) -> AggregateFunction:
         """Return any non-null value (non-deterministic) (PySpark 3.1+).
 
         Args:
             column: Column to return value from.
 
         Returns:
-            MockAggregateFunction representing the any_value function.
+            AggregateFunction representing the any_value function.
         """
-        return MockAggregateFunction(column, "any_value", StringType())
+        return AggregateFunction(column, "any_value", StringType())
 
     @staticmethod
-    def mean(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def mean(column: Union[Column, str]) -> AggregateFunction:
         """Aggregate function: returns the mean of the values (alias for avg).
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the mean function.
+            AggregateFunction representing the mean function.
         """
-        return MockAggregateFunction(column, "mean", DoubleType())
+        return AggregateFunction(column, "mean", DoubleType())
 
     @staticmethod
-    def approx_count_distinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def approx_count_distinct(column: Union[Column, str]) -> AggregateFunction:
         """Returns approximate count of distinct elements (alias for approxCountDistinct).
 
         Args:
             column: Column to count distinct values.
 
         Returns:
-            MockAggregateFunction representing the approx_count_distinct function.
+            AggregateFunction representing the approx_count_distinct function.
         """
-        return MockAggregateFunction(column, "approx_count_distinct", LongType())
+        return AggregateFunction(column, "approx_count_distinct", LongType())
 
     @staticmethod
-    def stddev_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def stddev_pop(column: Union[Column, str]) -> AggregateFunction:
         """Returns population standard deviation.
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the stddev_pop function.
+            AggregateFunction representing the stddev_pop function.
         """
-        return MockAggregateFunction(column, "stddev_pop", DoubleType())
+        return AggregateFunction(column, "stddev_pop", DoubleType())
 
     @staticmethod
-    def stddev_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def stddev_samp(column: Union[Column, str]) -> AggregateFunction:
         """Returns sample standard deviation.
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the stddev_samp function.
+            AggregateFunction representing the stddev_samp function.
         """
-        return MockAggregateFunction(column, "stddev_samp", DoubleType())
+        return AggregateFunction(column, "stddev_samp", DoubleType())
 
     @staticmethod
-    def var_pop(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def var_pop(column: Union[Column, str]) -> AggregateFunction:
         """Returns population variance.
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the var_pop function.
+            AggregateFunction representing the var_pop function.
         """
-        return MockAggregateFunction(column, "var_pop", DoubleType())
+        return AggregateFunction(column, "var_pop", DoubleType())
 
     @staticmethod
-    def var_samp(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def var_samp(column: Union[Column, str]) -> AggregateFunction:
         """Returns sample variance.
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the var_samp function.
+            AggregateFunction representing the var_samp function.
         """
-        return MockAggregateFunction(column, "var_samp", DoubleType())
+        return AggregateFunction(column, "var_samp", DoubleType())
 
     @staticmethod
     def covar_pop(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockAggregateFunction:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> AggregateFunction:
         """Returns population covariance.
 
         Args:
@@ -457,43 +505,41 @@ class AggregateFunctions:
             column2: Second numeric column.
 
         Returns:
-            MockAggregateFunction representing the covar_pop function.
+            AggregateFunction representing the covar_pop function.
         """
-        col1 = MockColumn(column1) if isinstance(column1, str) else column1
-        col2 = MockColumn(column2) if isinstance(column2, str) else column2
-        agg_func = MockAggregateFunction(col1, "covar_pop", DoubleType())
+        col1 = Column(column1) if isinstance(column1, str) else column1
+        col2 = Column(column2) if isinstance(column2, str) else column2
+        agg_func = AggregateFunction(col1, "covar_pop", DoubleType())
         agg_func.ord_column = col2  # Store second column for covariance
         return agg_func
 
     # Priority 2: Statistical Aggregate Functions
     @staticmethod
-    def median(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def median(column: Union[Column, str]) -> AggregateFunction:
         """Returns the median value (PySpark 3.4+).
 
         Args:
             column: Numeric column.
 
         Returns:
-            MockAggregateFunction representing the median function.
+            AggregateFunction representing the median function.
         """
-        return MockAggregateFunction(column, "median", DoubleType())
+        return AggregateFunction(column, "median", DoubleType())
 
     @staticmethod
-    def mode(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def mode(column: Union[Column, str]) -> AggregateFunction:
         """Returns the most frequent value (mode) (PySpark 3.4+).
 
         Args:
             column: Column to find mode of.
 
         Returns:
-            MockAggregateFunction representing the mode function.
+            AggregateFunction representing the mode function.
         """
-        return MockAggregateFunction(column, "mode", StringType())
+        return AggregateFunction(column, "mode", StringType())
 
     @staticmethod
-    def percentile(
-        column: Union[MockColumn, str], percentage: float
-    ) -> MockAggregateFunction:
+    def percentile(column: Union[Column, str], percentage: float) -> AggregateFunction:
         """Returns the exact percentile value (PySpark 3.5+).
 
         Args:
@@ -501,15 +547,15 @@ class AggregateFunctions:
             percentage: Percentile to compute (between 0.0 and 1.0).
 
         Returns:
-            MockAggregateFunction representing the percentile function.
+            AggregateFunction representing the percentile function.
         """
-        agg_func = MockAggregateFunction(column, "percentile", DoubleType())
+        agg_func = AggregateFunction(column, "percentile", DoubleType())
         agg_func.percentage = percentage  # type: ignore
         return agg_func
 
     # Deprecated Aliases
     @staticmethod
-    def approxCountDistinct(*cols: Union[MockColumn, str]) -> MockAggregateFunction:
+    def approxCountDistinct(*cols: Union[Column, str]) -> AggregateFunction:
         """Deprecated alias for approx_count_distinct (all PySpark versions).
 
         Use approx_count_distinct instead.
@@ -518,7 +564,7 @@ class AggregateFunctions:
             cols: Columns to count distinct values for.
 
         Returns:
-            MockAggregateFunction for approximate distinct count.
+            AggregateFunction for approximate distinct count.
         """
         import warnings
 
@@ -530,7 +576,7 @@ class AggregateFunctions:
         return AggregateFunctions.approx_count_distinct(*cols)
 
     @staticmethod
-    def sumDistinct(column: Union[MockColumn, str]) -> MockAggregateFunction:
+    def sumDistinct(column: Union[Column, str]) -> AggregateFunction:
         """Deprecated alias for sum_distinct (PySpark 3.2+).
 
         Use sum_distinct instead (or sum(distinct(col)) for earlier versions).
@@ -539,7 +585,7 @@ class AggregateFunctions:
             column: Numeric column to sum.
 
         Returns:
-            MockAggregateFunction for distinct sum.
+            AggregateFunction for distinct sum.
         """
         import warnings
 
@@ -549,4 +595,260 @@ class AggregateFunctions:
             stacklevel=2,
         )
         # For mock implementation, create sum_distinct aggregate
-        return MockAggregateFunction(column, "sum_distinct", DoubleType())
+        return AggregateFunction(column, "sum_distinct", DoubleType())
+
+    @staticmethod
+    def regr_avgx(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression average of x.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_avgx function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        # Store both columns in the operation
+        operation = ColumnOperation(
+            y_col, "regr_avgx", x_col, name=f"regr_avgx({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_avgx", DoubleType())
+
+    @staticmethod
+    def regr_avgy(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression average of y.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_avgy function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_avgy", x_col, name=f"regr_avgy({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_avgy", DoubleType())
+
+    @staticmethod
+    def regr_count(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression count.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_count function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_count", x_col, name=f"regr_count({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_count", LongType())
+
+    @staticmethod
+    def regr_intercept(
+        y: Union[Column, str], x: Union[Column, str]
+    ) -> AggregateFunction:
+        """Linear regression intercept.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_intercept function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col,
+            "regr_intercept",
+            x_col,
+            name=f"regr_intercept({y_col.name}, {x_col.name})",
+        )
+        return AggregateFunction(operation, "regr_intercept", DoubleType())
+
+    @staticmethod
+    def regr_r2(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression R-squared.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_r2 function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_r2", x_col, name=f"regr_r2({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_r2", DoubleType())
+
+    @staticmethod
+    def regr_slope(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression slope.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_slope function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_slope", x_col, name=f"regr_slope({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_slope", DoubleType())
+
+    @staticmethod
+    def regr_sxx(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression sum of squares of x.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_sxx function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_sxx", x_col, name=f"regr_sxx({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_sxx", DoubleType())
+
+    @staticmethod
+    def regr_sxy(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression sum of products.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_sxy function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_sxy", x_col, name=f"regr_sxy({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_sxy", DoubleType())
+
+    @staticmethod
+    def regr_syy(y: Union[Column, str], x: Union[Column, str]) -> AggregateFunction:
+        """Linear regression sum of squares of y.
+
+        Args:
+            y: The y column.
+            x: The x column.
+
+        Returns:
+            AggregateFunction representing the regr_syy function.
+        """
+        from mock_spark.functions.base import Column
+
+        y_col = Column(y) if isinstance(y, str) else y
+        x_col = Column(x) if isinstance(x, str) else x
+
+        operation = ColumnOperation(
+            y_col, "regr_syy", x_col, name=f"regr_syy({y_col.name}, {x_col.name})"
+        )
+        return AggregateFunction(operation, "regr_syy", DoubleType())
+
+    @staticmethod
+    def approx_percentile(
+        column: Union[Column, str],
+        percentage: Union[float, Column, str],
+        accuracy: Union[int, Column, str] = 10000,
+    ) -> AggregateFunction:
+        """Compute approximate percentile (PySpark 3.5+).
+
+        Args:
+            column: The column to compute percentile for.
+            percentage: The percentage (0.0 to 1.0) or array of percentages.
+            accuracy: The accuracy parameter (default: 10000).
+
+        Returns:
+            AggregateFunction representing the approx_percentile function.
+
+        Example:
+            >>> df.groupBy("dept").agg(F.approx_percentile(F.col("salary"), 0.5))
+        """
+        from mock_spark.functions.base import Column
+
+        col = Column(column) if isinstance(column, str) else column
+
+        if isinstance(percentage, (int, float)):
+            # Single percentage value
+            if isinstance(accuracy, (int, float)):
+                operation = ColumnOperation(
+                    col,
+                    "approx_percentile",
+                    value=(percentage, accuracy),
+                    name=f"approx_percentile({col.name}, {percentage}, {accuracy})",
+                )
+            else:
+                acc_col = Column(accuracy) if isinstance(accuracy, str) else accuracy
+                operation = ColumnOperation(
+                    col,
+                    "approx_percentile",
+                    value=(percentage, acc_col),
+                    name=f"approx_percentile({col.name}, {percentage}, {acc_col.name})",
+                )
+        else:
+            # Percentage as column
+            perc_col = Column(percentage) if isinstance(percentage, str) else percentage
+            if isinstance(accuracy, (int, float)):
+                operation = ColumnOperation(
+                    col,
+                    "approx_percentile",
+                    value=(perc_col, accuracy),
+                    name=f"approx_percentile({col.name}, {perc_col.name}, {accuracy})",
+                )
+            else:
+                acc_col = Column(accuracy) if isinstance(accuracy, str) else accuracy
+                operation = ColumnOperation(
+                    col,
+                    "approx_percentile",
+                    value=(perc_col, acc_col),
+                    name=f"approx_percentile({col.name}, {perc_col.name}, {acc_col.name})",
+                )
+
+        return AggregateFunction(operation, "approx_percentile", DoubleType())

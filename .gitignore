@@ -221,6 +221,10 @@ test_output/
 temp/
 tmp/
 
+# File storage directories (should only exist in temp directories during tests)
+custom_path/
+mock_spark_storage/
+
 # Coverage reports
 htmlcov/
 .coverage

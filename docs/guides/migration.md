@@ -4,7 +4,7 @@
 
 ```python
 # from pyspark.sql import SparkSession
-from mock_spark import MockSparkSession as SparkSession, functions as F, Window
+from mock_spark.sql import SparkSession as SparkSession, functions as F, Window
 ```
 
 ## Common Patterns

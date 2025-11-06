@@ -6,7 +6,7 @@ focusing on concat_ws, + operator, and type coercion.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -15,8 +15,8 @@ class TestStringConcatenationCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("string_concatenation_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("string_concatenation_test")
         yield session
         session.stop()
 

@@ -4,19 +4,22 @@ Window functions for Mock Spark.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, Dict, List, Optional
-from mock_spark.window import MockWindowSpec
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import contextlib
+
+if TYPE_CHECKING:
+    from mock_spark.sql import WindowSpec
 
 
-class MockWindowFunction:
+class WindowFunction:
     """Represents a window function.
 
     This class handles window functions like row_number(), rank(), etc.
     that operate over a window specification.
     """
 
-    def __init__(self, function: Any, window_spec: "MockWindowSpec"):
-        """Initialize MockWindowFunction.
+    def __init__(self, function: Any, window_spec: "WindowSpec"):
+        """Initialize WindowFunction.
 
         Args:
             function: The window function (e.g., row_number(), rank()).
@@ -31,7 +34,7 @@ class MockWindowFunction:
         elif self.column_name and isinstance(self.column_name, str):
             self.column_name = self.column_name
         elif self.column_name and hasattr(self.column_name, "column"):
-            # Handle MockColumn objects
+            # Handle Column objects
             if hasattr(self.column_name.column, "name"):
                 self.column_name = self.column_name.column.name
             elif isinstance(self.column_name.column, str):
@@ -40,6 +43,20 @@ class MockWindowFunction:
                 self.column_name = None
         else:
             self.column_name = None
+
+        # Extract offset and default for lag/lead functions
+        self.offset = 1  # Default offset
+        self.default = None  # Default default value
+        if (
+            hasattr(function, "value")
+            and function.value is not None
+            and isinstance(function.value, tuple)
+            and len(function.value) == 2
+        ):
+            # lag/lead store (offset, default_value) as tuple
+            self.offset = function.value[0]
+            self.default = function.value[1]
+
         self.name = self._generate_name()
 
         # Add column property for compatibility with query executor
@@ -49,7 +66,7 @@ class MockWindowFunction:
         """Generate a name for this window function."""
         return f"{self.function_name}() OVER ({self.window_spec})"
 
-    def alias(self, name: str) -> "MockWindowFunction":
+    def alias(self, name: str) -> "WindowFunction":
         """Create an alias for this window function.
 
         Args:
@@ -92,6 +109,10 @@ class MockWindowFunction:
             return self._evaluate_first(data)
         elif self.function_name == "last":
             return self._evaluate_last(data)
+        elif self.function_name == "first_value":
+            return self._evaluate_first_value(data)
+        elif self.function_name == "last_value":
+            return self._evaluate_last_value(data)
         elif self.function_name == "sum":
             return self._evaluate_sum(data)
         elif self.function_name == "avg":
@@ -116,10 +137,7 @@ class MockWindowFunction:
 
         # Extract the first ordering column (for simplicity)
         order_col = order_columns[0]
-        if hasattr(order_col, "name"):
-            col_name = order_col.name
-        else:
-            col_name = str(order_col)
+        col_name = order_col.name if hasattr(order_col, "name") else str(order_col)
 
         # Get values for ranking
         values = []
@@ -268,10 +286,8 @@ class MockWindowFunction:
 
         for row in data:
             if col_name in row and row[col_name] is not None:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     running_sum += float(row[col_name])
-                except (ValueError, TypeError):
-                    pass
             result.append(running_sum)
 
         return result
@@ -305,3 +321,45 @@ class MockWindowFunction:
                 result.append(None)
 
         return result
+
+    def _evaluate_first_value(self, data: List[Dict[str, Any]]) -> List[Any]:
+        """Evaluate first_value() window function."""
+        if not data:
+            return []
+
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+
+        # Get the first value in the window (respecting ordering if present)
+        # For simplicity, we'll use the first non-null value in the window
+        first_value = None
+        for row in data:
+            if col_name in row and row[col_name] is not None:
+                first_value = row[col_name]
+                break
+
+        # Return the first value for all rows in the window
+        return [first_value] * len(data)
+
+    def _evaluate_last_value(self, data: List[Dict[str, Any]]) -> List[Any]:
+        """Evaluate last_value() window function."""
+        if not data:
+            return []
+
+        # Get the column name from the function
+        col_name = self.column_name
+        if not col_name:
+            return [None] * len(data)
+
+        # Get the last value in the window (respecting ordering if present)
+        # For simplicity, we'll use the last non-null value in the window
+        last_value = None
+        for row in reversed(data):
+            if col_name in row and row[col_name] is not None:
+                last_value = row[col_name]
+                break
+
+        # Return the last value for all rows in the window
+        return [last_value] * len(data)

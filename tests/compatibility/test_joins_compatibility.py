@@ -45,9 +45,6 @@ class TestJoinsCompatibility:
         expected = load_expected_output("joins", "inner_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="left join: Returns 0 rows instead of expected rows - needs investigation"
-    )
     def test_left_join(self, mock_spark_session):
         """Test left join against expected output."""
         employees_data = [
@@ -67,13 +64,12 @@ class TestJoinsCompatibility:
         dept_df = mock_spark_session.createDataFrame(departments_data)
 
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "left")
+        # Sort by id for consistent comparison (joins don't guarantee order)
+        result = result.orderBy("id")
 
         expected = load_expected_output("joins", "left_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="right join: Returns 0 rows instead of expected rows - needs investigation"
-    )
     def test_right_join(self, mock_spark_session):
         """Test right join against expected output."""
         employees_data = [
@@ -93,13 +89,12 @@ class TestJoinsCompatibility:
         dept_df = mock_spark_session.createDataFrame(departments_data)
 
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "right")
+        # Sort by id for consistent comparison (joins don't guarantee order)
+        result = result.orderBy("id")
 
         expected = load_expected_output("joins", "right_join")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="outer join: Returns 0 rows instead of expected rows - needs investigation"
-    )
     def test_outer_join(self, mock_spark_session):
         """Test outer join against expected output."""
         employees_data = [
@@ -119,6 +114,8 @@ class TestJoinsCompatibility:
         dept_df = mock_spark_session.createDataFrame(departments_data)
 
         result = emp_df.join(dept_df, emp_df.dept_id == dept_df.dept_id, "outer")
+        # Sort by id for consistent comparison (joins don't guarantee order)
+        result = result.orderBy("id")
 
         expected = load_expected_output("joins", "outer_join")
         assert_dataframes_equal(result, expected)

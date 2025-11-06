@@ -7,7 +7,7 @@ replacing SQL-based materialization with Polars DataFrame operations.
 
 from typing import List, Dict, Any, Tuple
 import polars as pl
-from mock_spark.spark_types import MockStructType, MockRow
+from mock_spark.spark_types import StructType, Row
 from .expression_translator import PolarsExpressionTranslator
 from .operation_executor import PolarsOperationExecutor
 
@@ -23,9 +23,9 @@ class PolarsMaterializer:
     def materialize(
         self,
         data: List[Dict[str, Any]],
-        schema: MockStructType,
+        schema: StructType,
         operations: List[Tuple[str, Any]],
-    ) -> List[MockRow]:
+    ) -> List[Row]:
         """Materialize lazy operations into actual data.
 
         Args:
@@ -54,12 +54,20 @@ class PolarsMaterializer:
             elif op_name == "select":
                 # Select operation - need to collect first for window functions
                 df_collected = lazy_df.collect()
-                lazy_df = self.operation_executor.apply_select(df_collected, payload).lazy()
+                lazy_df = self.operation_executor.apply_select(
+                    df_collected, payload
+                ).lazy()
             elif op_name == "withColumn":
-                # WithColumn operation
+                # WithColumn operation - need to collect first for window functions
+                df_collected = lazy_df.collect()
                 column_name, expression = payload
-                expr = self.translator.translate(expression)
-                lazy_df = lazy_df.with_columns(expr.alias(column_name))
+                result_df = self.operation_executor.apply_with_column(
+                    df_collected, column_name, expression
+                )
+
+                # Convert result back to lazy
+                # Window functions are already fully materialized in apply_with_column
+                lazy_df = result_df.lazy()
             elif op_name == "join":
                 # Join operation - need to handle separately
                 other_df, on, how = payload
@@ -70,10 +78,13 @@ class PolarsMaterializer:
                         # Empty DataFrame - create from schema if available
                         if hasattr(other_df, "schema"):
                             from .type_mapper import mock_type_to_polars_dtype
+
                             schema_dict = {}
                             for field in other_df.schema.fields:
                                 polars_dtype = mock_type_to_polars_dtype(field.dataType)
-                                schema_dict[field.name] = pl.Series(field.name, [], dtype=polars_dtype)
+                                schema_dict[field.name] = pl.Series(
+                                    field.name, [], dtype=polars_dtype
+                                )
                             other_df = pl.DataFrame(schema_dict)
                         else:
                             other_df = pl.DataFrame()
@@ -81,7 +92,9 @@ class PolarsMaterializer:
                         other_df = pl.DataFrame(other_data)
                 # Collect lazy_df before joining
                 df_collected = lazy_df.collect()
-                result_df = self.operation_executor.apply_join(df_collected, other_df, on=on, how=how)
+                result_df = self.operation_executor.apply_join(
+                    df_collected, other_df, on=on, how=how
+                )
                 lazy_df = result_df.lazy()
             elif op_name == "union":
                 # Union operation - need to collect first
@@ -93,10 +106,13 @@ class PolarsMaterializer:
                         # Empty DataFrame - create from schema if available
                         if hasattr(other_df, "schema"):
                             from .type_mapper import mock_type_to_polars_dtype
+
                             schema_dict = {}
                             for field in other_df.schema.fields:
                                 polars_dtype = mock_type_to_polars_dtype(field.dataType)
-                                schema_dict[field.name] = pl.Series(field.name, [], dtype=polars_dtype)
+                                schema_dict[field.name] = pl.Series(
+                                    field.name, [], dtype=polars_dtype
+                                )
                             other_df = pl.DataFrame(schema_dict)
                         else:
                             other_df = pl.DataFrame()
@@ -107,13 +123,19 @@ class PolarsMaterializer:
             elif op_name == "orderBy":
                 # OrderBy operation - can be done lazily
                 # Payload can be just columns (tuple) or (columns, ascending)
-                if isinstance(payload, tuple) and len(payload) == 2 and isinstance(payload[1], bool):
+                if (
+                    isinstance(payload, tuple)
+                    and len(payload) == 2
+                    and isinstance(payload[1], bool)
+                ):
                     columns, ascending = payload
                 else:
                     # Payload is just columns, default to ascending=True
-                    columns = payload if isinstance(payload, (tuple, list)) else (payload,)
+                    columns = (
+                        payload if isinstance(payload, (tuple, list)) else (payload,)
+                    )
                     ascending = True
-                
+
                 # Build sort expressions with descending flags
                 # Polars doesn't have .desc() on Expr, use sort() with descending parameter
                 sort_by = []
@@ -125,18 +147,20 @@ class PolarsMaterializer:
                         col_expr = pl.col(col)
                         is_desc = not ascending
                     elif hasattr(col, "operation") and col.operation == "desc":
-                        col_name = col.column.name if hasattr(col, "column") else col.name
+                        col_name = (
+                            col.column.name if hasattr(col, "column") else col.name
+                        )
                         col_expr = pl.col(col_name)
                         is_desc = True
                     else:
                         col_name = col.name if hasattr(col, "name") else str(col)
                         col_expr = pl.col(col_name)
                         is_desc = not ascending
-                    
+
                     if col_expr is not None:
                         sort_by.append(col_expr)
                         descending_flags.append(is_desc)
-                
+
                 if sort_by:
                     # Polars sort() accepts by (list of expressions) and descending (list of bools)
                     lazy_df = lazy_df.sort(sort_by, descending=descending_flags)
@@ -144,11 +168,17 @@ class PolarsMaterializer:
                 # Limit operation
                 n = payload
                 lazy_df = lazy_df.head(n)
+            elif op_name == "offset":
+                # Offset operation (skip first n rows)
+                n = payload
+                lazy_df = lazy_df.slice(n)
             elif op_name == "groupBy":
                 # GroupBy operation - need to collect first
                 df_collected = lazy_df.collect()
                 group_by, aggs = payload
-                result_df = self.operation_executor.apply_group_by_agg(df_collected, group_by, aggs)
+                result_df = self.operation_executor.apply_group_by_agg(
+                    df_collected, group_by, aggs
+                )
                 lazy_df = result_df.lazy()
             elif op_name == "distinct":
                 # Distinct operation
@@ -167,13 +197,17 @@ class PolarsMaterializer:
         # Materialize (collect) the lazy DataFrame
         result_df = lazy_df.collect()
 
-        # Convert to List[MockRow]
-        # Note: Don't pass schema here - MockRow will handle dict correctly
-        # The schema will be applied later in _convert_materialized_rows if needed
-        return [MockRow(row, schema=None) for row in result_df.to_dicts()]
+        # Convert to List[Row]
+        # For joins with duplicate columns, Polars uses _right suffix
+        # We need to convert these to match PySpark's duplicate column handling
+        rows = []
+        for row_dict in result_df.to_dicts():
+            # Create Row from dict - Row will handle the conversion
+            # The schema will be applied later in _convert_materialized_rows
+            rows.append(Row(row_dict, schema=None))
+        return rows
 
     def close(self) -> None:
         """Close the materializer and clean up resources."""
         # Polars doesn't require explicit cleanup
         pass
-

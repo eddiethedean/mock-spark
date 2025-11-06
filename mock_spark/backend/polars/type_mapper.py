@@ -5,10 +5,9 @@ This module provides functions to convert MockSpark data types
 to Polars data types for DataFrame operations.
 """
 
-from typing import Any
 import polars as pl
 from mock_spark.spark_types import (
-    MockDataType,
+    DataType,
     StringType,
     IntegerType,
     LongType,
@@ -29,7 +28,7 @@ from mock_spark.spark_types import (
 )
 
 
-def mock_type_to_polars_dtype(mock_type: MockDataType) -> pl.DataType:
+def mock_type_to_polars_dtype(mock_type: DataType) -> pl.DataType:
     """Convert MockSpark type to Polars dtype.
 
     Args:
@@ -65,11 +64,11 @@ def mock_type_to_polars_dtype(mock_type: MockDataType) -> pl.DataType:
     elif isinstance(mock_type, BinaryType):
         return pl.Binary
     elif isinstance(mock_type, ArrayType):
-        element_type = mock_type_to_polars_dtype(mock_type.elementType)
+        element_type = mock_type_to_polars_dtype(mock_type.element_type)
         return pl.List(element_type)
     elif isinstance(mock_type, MapType):
-        key_type = mock_type_to_polars_dtype(mock_type.keyType)
-        value_type = mock_type_to_polars_dtype(mock_type.valueType)
+        key_type = mock_type_to_polars_dtype(mock_type.key_type)
+        value_type = mock_type_to_polars_dtype(mock_type.value_type)
         return pl.Struct(
             [
                 pl.Field("key", key_type),
@@ -93,7 +92,7 @@ def mock_type_to_polars_dtype(mock_type: MockDataType) -> pl.DataType:
         raise ValueError(f"Unsupported MockSpark type: {type(mock_type)}")
 
 
-def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> MockDataType:
+def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> DataType:
     """Convert Polars dtype to MockSpark type.
 
     Args:
@@ -127,15 +126,15 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> MockDataType:
         return BinaryType()
     elif isinstance(polars_dtype, pl.List):
         element_type = polars_dtype_to_mock_type(polars_dtype.inner)
-        return ArrayType(elementType=element_type)
+        return ArrayType(element_type=element_type)
     elif isinstance(polars_dtype, pl.Struct):
         # Convert struct to StructType
-        from mock_spark.spark_types import MockStructType, MockStructField
+        from mock_spark.spark_types import StructField
 
         fields = []
         for field in polars_dtype.fields:
             field_type = polars_dtype_to_mock_type(field.dtype)
-            fields.append(MockStructField(field.name, field_type))
+            fields.append(StructField(field.name, field_type))
         return StructType(fields)
     elif polars_dtype == pl.Int16:
         return ShortType()
@@ -145,4 +144,3 @@ def polars_dtype_to_mock_type(polars_dtype: pl.DataType) -> MockDataType:
         return NullType()
     else:
         raise ValueError(f"Unsupported Polars dtype: {polars_dtype}")
-

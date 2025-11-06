@@ -15,10 +15,10 @@ class TestArrayFunctionsExtendedCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("array_functions_test")
+        session = SparkSession("array_functions_test")
         yield session
         session.stop()
 
@@ -125,15 +125,6 @@ class TestArrayFunctionsExtendedCompatibility:
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.sequence(F.lit(1), F.lit(5)))
         assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="Shuffle produces non-deterministic results")
-    def test_shuffle(self, spark):
-        """Test shuffle function."""
-        expected = load_expected_output("arrays", "shuffle")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.shuffle(df.arr1))
-        # Cannot compare shuffled arrays - just check structure
-        assert len(result.collect()) == expected["expected_output"]["row_count"]
 
     def test_slice(self, spark):
         """Test slice function."""

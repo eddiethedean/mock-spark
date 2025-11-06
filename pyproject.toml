@@ -36,7 +36,6 @@ requires-python = ">=3.8"
 dependencies = [
     "spark-ddl-parser>=0.1.0",
     "polars>=0.20.0",
-    "sqlglot>=20.0.0",
     "psutil>=5.8.0",
 ]
 
@@ -71,19 +70,6 @@ generate-outputs = [
     "pyspark>=3.2.0,<3.6.0",  # PySpark for generating expected outputs
     "delta-spark>=2.0.0,<2.2.0",  # Delta Lake for generating expected outputs
 ]
-# PySpark version compatibility modes
-# Note: These extras are markers for documentation purposes.
-# To enable version-specific APIs, set the environment variable:
-#   export MOCK_SPARK_PYSPARK_VERSION=3.0
-# Or in Python before importing:
-#   from mock_spark._version_compat import set_pyspark_version
-#   set_pyspark_version('3.0')
-pyspark-3-0 = []  # PySpark 3.0 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.0)
-pyspark-3-1 = []  # PySpark 3.1 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.1)
-pyspark-3-2 = []  # PySpark 3.2 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.2)
-pyspark-3-3 = []  # PySpark 3.3 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.3)
-pyspark-3-4 = []  # PySpark 3.4 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.4)
-pyspark-3-5 = []  # PySpark 3.5 API compatibility (use MOCK_SPARK_PYSPARK_VERSION=3.5)
 
 [project.urls]
 Homepage = "https://github.com/eddiethedean/mock-spark"
@@ -184,3 +170,9 @@ markers = [
     "delta: marks tests that require Delta Lake JARs (run serially for isolation)",
     "performance: marks tests that measure performance (run serially for stable timing)",
 ]
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+extend-select = ["C4", "SIM", "TCH", "UP"]

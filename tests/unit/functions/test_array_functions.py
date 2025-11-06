@@ -3,7 +3,7 @@ Unit tests for array functions.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 from mock_spark.functions.array import ArrayFunctions
 
 
@@ -13,8 +13,8 @@ class TestArrayFunctions:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+        """Create a SparkSession for testing."""
+        return SparkSession("test")
 
     @pytest.fixture
     def array_data(self):
@@ -26,7 +26,7 @@ class TestArrayFunctions:
         ]
 
     def test_array_distinct_with_column(self):
-        """Test array_distinct with MockColumn."""
+        """Test array_distinct with Column."""
         col = F.col("tags")
         result = ArrayFunctions.array_distinct(col)
         assert result.operation == "array_distinct"

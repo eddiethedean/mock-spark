@@ -1,5 +1,5 @@
 """
-Adapter to convert spark-ddl-parser output to MockStructType.
+Adapter to convert spark-ddl-parser output to StructType.
 
 This module provides an adapter layer between the standalone spark-ddl-parser
 package and mock-spark's internal type system.
@@ -7,19 +7,19 @@ package and mock-spark's internal type system.
 
 from spark_ddl_parser import parse_ddl_schema as parse_ddl
 from spark_ddl_parser.types import (
-    StructType,
-    StructField,
+    StructType as DDLStructType,
+    StructField as DDLStructField,
     SimpleType,
     DecimalType,
     ArrayType,
     MapType,
-    DataType,
+    DataType as DDLDataType,
 )
 
 from ..spark_types import (
-    MockStructType,
-    MockStructField,
-    MockDataType,
+    StructType,
+    StructField,
+    DataType,
     StringType,
     IntegerType,
     LongType,
@@ -37,14 +37,14 @@ from ..spark_types import (
 )
 
 
-def parse_ddl_schema(ddl_string: str) -> MockStructType:
-    """Parse DDL and convert to MockStructType.
+def parse_ddl_schema(ddl_string: str) -> StructType:
+    """Parse DDL and convert to StructType.
 
     Args:
         ddl_string: DDL schema string (e.g., "id long, name string")
 
     Returns:
-        MockStructType with parsed fields
+        StructType with parsed fields
 
     Raises:
         ValueError: If DDL string is invalid
@@ -53,40 +53,40 @@ def parse_ddl_schema(ddl_string: str) -> MockStructType:
     return _convert_struct_type(parsed)
 
 
-def _convert_struct_type(struct: StructType) -> MockStructType:
-    """Convert StructType to MockStructType.
+def _convert_struct_type(struct: DDLStructType) -> StructType:
+    """Convert StructType to StructType.
 
     Args:
         struct: Parsed StructType from spark-ddl-parser
 
     Returns:
-        MockStructType
+        StructType
     """
     fields = [_convert_field(f) for f in struct.fields]
-    return MockStructType(fields)
+    return StructType(fields)
 
 
-def _convert_field(field: StructField) -> MockStructField:
-    """Convert StructField to MockStructField.
+def _convert_field(field: DDLStructField) -> StructField:
+    """Convert StructField to StructField.
 
     Args:
         field: Parsed StructField from spark-ddl-parser
 
     Returns:
-        MockStructField
+        StructField
     """
     data_type = _convert_data_type(field.data_type)
-    return MockStructField(name=field.name, dataType=data_type, nullable=field.nullable)
+    return StructField(name=field.name, dataType=data_type, nullable=field.nullable)
 
 
-def _convert_data_type(data_type: DataType) -> MockDataType:
-    """Convert DataType to MockDataType.
+def _convert_data_type(data_type: DDLDataType) -> DataType:
+    """Convert DataType to DataType.
 
     Args:
         data_type: Parsed DataType from spark-ddl-parser
 
     Returns:
-        MockDataType
+        DataType
     """
     if isinstance(data_type, SimpleType):
         return _convert_simple_type(data_type)
@@ -99,21 +99,21 @@ def _convert_data_type(data_type: DataType) -> MockDataType:
         key_type = _convert_data_type(data_type.key_type)
         value_type = _convert_data_type(data_type.value_type)
         return MockMapType(key_type, value_type)
-    elif isinstance(data_type, StructType):
+    elif isinstance(data_type, DDLStructType):
         return _convert_struct_type(data_type)
     else:
         # Default to string for unknown types
         return StringType()
 
 
-def _convert_simple_type(simple_type: SimpleType) -> MockDataType:
-    """Convert SimpleType to appropriate MockDataType.
+def _convert_simple_type(simple_type: SimpleType) -> DataType:
+    """Convert SimpleType to appropriate DataType.
 
     Args:
         simple_type: SimpleType from spark-ddl-parser
 
     Returns:
-        MockDataType instance
+        DataType instance
     """
     type_mapping = {
         "string": StringType,

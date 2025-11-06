@@ -18,9 +18,9 @@ With Polars backend, optimization is automatic:
 ### How It Works
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
-spark = MockSparkSession("MyApp")  # Uses Polars by default
+spark = SparkSession("MyApp")  # Uses Polars by default
 df = spark.createDataFrame(data)
 
 # Polars automatically optimizes this entire chain
@@ -194,9 +194,9 @@ Example operations: `filter → select → withColumn → orderBy → limit`
 Optimization is **automatic** - no configuration needed:
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
-spark = MockSparkSession("MyApp")  # Uses Polars by default
+spark = SparkSession("MyApp")  # Uses Polars by default
 # All operations are automatically optimized
 ```
 
@@ -204,9 +204,9 @@ spark = MockSparkSession("MyApp")  # Uses Polars by default
 The CTE optimization is **automatically applied** when using lazy evaluation:
 
 ```python
-from mock_spark import MockSparkSession, functions as F
+from mock_spark.sql import SparkSession, functions as F
 
-spark = MockSparkSession.builder.appName("app").getOrCreate()
+spark = SparkSession.builder.appName("app").getOrCreate()
 
 # Create DataFrame with lazy evaluation enabled
 df = spark.createDataFrame(data).withLazy(True)

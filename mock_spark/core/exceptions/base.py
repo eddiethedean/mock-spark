@@ -31,7 +31,7 @@ class MockException(Exception):
         return f"{self.__class__.__name__}({self.message!r})"
 
 
-class MockSparkException(MockException):
+class SparkException(MockException):
     """Base exception for all Spark-related errors.
 
     This is the root exception for all Spark-specific errors in Mock Spark.
@@ -46,7 +46,7 @@ class MockSparkException(MockException):
         super().__init__(message, stackTrace)
 
 
-class MockDataException(MockException):
+class DataException(MockException):
     """Base exception for data-related errors.
 
     This exception is used for errors related to data processing,
@@ -61,8 +61,8 @@ class MockDataException(MockException):
         super().__init__(message, stackTrace)
 
 
-class MockConfigurationException(MockException):
-    """Base exception for configuration-related errors.
+class ConfigurationExceptionBase(MockException):
+    """Base exception for configuration-related errors (legacy - use ConfigurationException from runtime instead).
 
     This exception is used for errors related to configuration
     management and validation.
@@ -76,7 +76,7 @@ class MockConfigurationException(MockException):
         super().__init__(message, stackTrace)
 
 
-class MockStorageException(MockException):
+class StorageException(MockException):
     """Base exception for storage-related errors.
 
     This exception is used for errors related to data storage,

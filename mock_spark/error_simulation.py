@@ -13,10 +13,10 @@ Key Features:
     - Comprehensive error simulation examples
 
 Example:
-    >>> from mock_spark import MockSparkSession
+    >>> from mock_spark.sql import SparkSession
     >>> from mock_spark.error_simulation import MockErrorSimulator
     >>>
-    >>> spark = MockSparkSession("test")
+    >>> spark = SparkSession("test")
     >>> error_sim = MockErrorSimulator(spark)
     >>>
     >>> # Simulate table not found error
@@ -37,7 +37,7 @@ class MockErrorSimulator:
     by raising specific exceptions when certain conditions are met.
 
     Attributes:
-        spark_session: The MockSparkSession instance to simulate errors on.
+        spark_session: The SparkSession instance to simulate errors on.
         error_rules: Dictionary mapping method names to lists of (condition, exception) tuples.
 
     Example:
@@ -50,7 +50,7 @@ class MockErrorSimulator:
         """Initialize MockErrorSimulator.
 
         Args:
-            spark_session: MockSparkSession instance to simulate errors on.
+            spark_session: SparkSession instance to simulate errors on.
         """
         self.spark_session = spark_session
         self.error_rules: Dict[str, List[Tuple[Callable[..., bool], Exception]]] = {}
@@ -207,7 +207,7 @@ class MockErrorSimulatorBuilder:
         """Initialize MockErrorSimulatorBuilder.
 
         Args:
-            spark_session: MockSparkSession instance to build error simulation for.
+            spark_session: SparkSession instance to build error simulation for.
         """
         self.spark_session = spark_session
         self.error_sim = MockErrorSimulator(spark_session)
@@ -295,7 +295,7 @@ def create_table_not_found_simulator(
     """Create a simulator that raises table not found errors.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         table_pattern: Pattern for table names that should raise errors.
 
     Returns:
@@ -312,7 +312,7 @@ def create_data_too_large_simulator(
     """Create a simulator that raises data too large errors.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         max_rows: Maximum number of rows allowed.
 
     Returns:
@@ -327,7 +327,7 @@ def create_sql_error_simulator(
     """Create a simulator that raises SQL syntax errors.
 
     Args:
-        spark_session: MockSparkSession instance.
+        spark_session: SparkSession instance.
         error_pattern: Pattern for SQL queries that should raise errors.
 
     Returns:

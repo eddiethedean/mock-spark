@@ -1,36 +1,39 @@
 """
 Core session implementation for Mock Spark.
 
-This module provides the core MockSparkSession class for session management,
+This module provides the core SparkSession class for session management,
 maintaining compatibility with PySpark's SparkSession interface.
 """
 
-from typing import Any, Dict, List, Optional, Union, Tuple, cast
-from ...core.interfaces.session import ISession
+from typing import Any, Dict, List, Optional, Union, Tuple, cast, TYPE_CHECKING
 from ...core.interfaces.dataframe import IDataFrame
-from ..context import MockSparkContext
-from ..catalog import MockCatalog
-from ..config import MockConfiguration, MockSparkConfig
-from ..sql.executor import MockSQLExecutor
+from ..context import SparkContext
+from ..catalog import Catalog
+from ..config import Configuration, SparkConfig
+from ..sql.executor import SQLExecutor
 from mock_spark.backend.factory import BackendFactory
 from mock_spark.backend.protocols import StorageBackend
-from mock_spark.dataframe import MockDataFrame, MockDataFrameReader
+from mock_spark.dataframe import DataFrame, DataFrameReader
 from ...spark_types import (
-    MockStructType,
-)
-from ..services.protocols import (
-    IDataFrameFactory,
-    ISQLParameterBinder,
-    ISessionLifecycleManager,
-    IMockingCoordinator,
+    StructType,
 )
 from ..services.dataframe_factory import DataFrameFactory
 from ..services.sql_parameter_binder import SQLParameterBinder
 from ..services.lifecycle_manager import SessionLifecycleManager
 from ..services.mocking_coordinator import MockingCoordinator
+import contextlib
+
+if TYPE_CHECKING:
+    from ..services.protocols import (
+        IDataFrameFactory,
+        ISQLParameterBinder,
+        ISessionLifecycleManager,
+        IMockingCoordinator,
+    )
+    from ...core.interfaces.session import ISession
 
 
-class MockSparkSession:
+class SparkSession:
     """Mock SparkSession providing complete PySpark API compatibility.
 
     Provides a comprehensive mock implementation of PySpark's SparkSession
@@ -39,13 +42,13 @@ class MockSparkSession:
 
     Attributes:
         app_name: Application name for the Spark session.
-        sparkContext: MockSparkContext instance for session context.
-        catalog: MockCatalog instance for database and table operations.
+        sparkContext: SparkContext instance for session context.
+        catalog: Catalog instance for database and table operations.
         conf: Configuration object for session settings.
         storage: MemoryStorageManager for data persistence.
 
     Example:
-        >>> spark = MockSparkSession("MyApp")
+        >>> spark = SparkSession("MyApp")
         >>> df = spark.createDataFrame([{"name": "Alice", "age": 25}])
         >>> df.select("name").show()
         >>> spark.sql("CREATE DATABASE test")
@@ -53,8 +56,8 @@ class MockSparkSession:
     """
 
     # Class attribute for builder pattern
-    builder: Optional["MockSparkSessionBuilder"] = None
-    _singleton_session: Optional["MockSparkSession"] = None
+    builder: Optional["SparkSessionBuilder"] = None
+    _singleton_session: Optional["SparkSession"] = None
 
     def __init__(
         self,
@@ -68,7 +71,7 @@ class MockSparkSession:
         backend_type: str = "polars",
         db_path: Optional[str] = None,
     ):
-        """Initialize MockSparkSession.
+        """Initialize SparkSession.
 
         Args:
             app_name: Application name for the Spark session.
@@ -80,7 +83,7 @@ class MockSparkSession:
             allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
             storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
-            backend_type: Type of backend to use ("polars", "duckdb", "sqlite", etc.). Default is "polars".
+            backend_type: Type of backend to use ("polars", "memory", "file"). Default is "polars".
             db_path: Optional path to persistent database file. If provided, tables will persist across sessions.
                     If None (default), uses in-memory storage and tables don't persist.
                     For test scenarios requiring table persistence across multiple pipeline runs,
@@ -102,13 +105,12 @@ class MockSparkSession:
             self.storage = storage_backend
         from typing import cast
 
-        self._catalog = MockCatalog(self.storage)
-        self.sparkContext = MockSparkContext(app_name)
-        self._conf = MockConfiguration()
+        self._catalog = Catalog(self.storage)
+        self.sparkContext = SparkContext(app_name)
+        self._conf = Configuration()
         self._version = "3.4.0"  # Mock version
-        from ...core.interfaces.session import ISession
 
-        self._sql_executor = MockSQLExecutor(cast(ISession, self))
+        self._sql_executor = SQLExecutor(cast("ISession", self))
 
         # Mockable method implementations
         self._createDataFrame_impl = self._real_createDataFrame
@@ -123,7 +125,7 @@ class MockSparkSession:
         # Error simulation
 
         # Validation settings (Phase 2 plumbing)
-        self._engine_config = MockSparkConfig(
+        self._engine_config = SparkConfig(
             validation_mode=validation_mode,
             enable_type_coercion=enable_type_coercion,
             enable_lazy_evaluation=enable_lazy_evaluation,
@@ -151,25 +153,25 @@ class MockSparkSession:
         return self._version
 
     @property
-    def catalog(self) -> MockCatalog:
+    def catalog(self) -> Catalog:
         """Get the catalog."""
         return self._catalog
 
     @property
-    def conf(self) -> MockConfiguration:
+    def conf(self) -> Configuration:
         """Get configuration."""
         return self._conf
 
     @property
-    def read(self) -> MockDataFrameReader:
+    def read(self) -> DataFrameReader:
         """Get DataFrame reader."""
-        return MockDataFrameReader(cast(ISession, self))
+        return DataFrameReader(cast("ISession", self))
 
     def createDataFrame(
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[MockStructType, List[str]]] = None,
-    ) -> "MockDataFrame":
+        schema: Optional[Union[StructType, List[str]]] = None,
+    ) -> "DataFrame":
         """Create a DataFrame from data (mockable version)."""
         # Use the mock implementation if set, otherwise use the real implementation
         return self._createDataFrame_impl(data, schema)
@@ -177,16 +179,16 @@ class MockSparkSession:
     def _real_createDataFrame(
         self,
         data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[MockStructType, List[str], str]] = None,
-    ) -> "MockDataFrame":
+        schema: Optional[Union[StructType, List[str], str]] = None,
+    ) -> "DataFrame":
         """Create a DataFrame from data.
 
         Args:
             data: List of dictionaries or tuples representing rows.
-            schema: Optional schema definition (MockStructType or list of column names).
+            schema: Optional schema definition (StructType or list of column names).
 
         Returns:
-            MockDataFrame instance with the specified data and schema.
+            DataFrame instance with the specified data and schema.
 
         Raises:
             IllegalArgumentException: If data is not in the expected format.
@@ -199,10 +201,8 @@ class MockSparkSession:
         # Plugin hook: before_create_dataframe
         for plugin in getattr(self, "_plugins", []):
             if hasattr(plugin, "before_create_dataframe"):
-                try:
+                with contextlib.suppress(Exception):
                     data, schema = plugin.before_create_dataframe(self, data, schema)
-                except Exception:
-                    pass
 
         # Delegate to DataFrameFactory service
         df = self._dataframe_factory.create_dataframe(
@@ -222,19 +222,15 @@ class MockSparkSession:
         # Plugin hook: after_create_dataframe
         for plugin in getattr(self, "_plugins", []):
             if hasattr(plugin, "after_create_dataframe"):
-                try:
+                with contextlib.suppress(Exception):
                     df = plugin.after_create_dataframe(self, df)
-                except Exception:
-                    pass
 
         # Track memory usage for newly created DataFrame
-        try:
+        with contextlib.suppress(Exception):
             self._track_dataframe(df)
-        except Exception:
-            pass
         return df
 
-    def _track_dataframe(self, df: MockDataFrame) -> None:
+    def _track_dataframe(self, df: DataFrame) -> None:
         """Track DataFrame for approximate memory accounting."""
         self._performance_tracker.track_dataframe(df)
 
@@ -395,26 +391,26 @@ class MockSparkSession:
 
         # Ensure schema is not None
         if table_schema is None:
-            from ...spark_types import MockStructType
+            from ...spark_types import StructType
 
-            table_schema = MockStructType([])
+            table_schema = StructType([])
         else:
             # When reading from a table, reset all fields to nullable=True to match PySpark behavior
             # Storage formats (Parquet/Delta) typically make columns nullable by default
-            from ...spark_types import MockStructField, MockStructType
+            from ...spark_types import StructField, StructType
             from ...spark_types import (
                 BooleanType,
                 IntegerType,
                 LongType,
                 DoubleType,
                 StringType,
-                MockDataType,
+                DataType,
             )
 
             updated_fields = []
             for field in table_schema.fields:
                 # Create new data type with nullable=True
-                data_type: MockDataType
+                data_type: DataType
                 field_type = getattr(field, "dataType", None) or getattr(
                     field, "data_type", None
                 )
@@ -436,16 +432,16 @@ class MockSparkSession:
                         data_type = field_type.__class__(nullable=True)
 
                 # Create new field with nullable=True
-                updated_field = MockStructField(field.name, data_type, nullable=True)
+                updated_field = StructField(field.name, data_type, nullable=True)
                 updated_fields.append(updated_field)
 
-            table_schema = MockStructType(updated_fields)
+            table_schema = StructType(updated_fields)
 
-        return MockDataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
+        return DataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
 
     def range(
         self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
-    ) -> "MockDataFrame":
+    ) -> "DataFrame":
         """Create DataFrame with range of numbers.
 
         Args:
@@ -468,7 +464,7 @@ class MockSparkSession:
         # Delegate to SessionLifecycleManager service
         self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
 
-    def __enter__(self) -> "MockSparkSession":
+    def __enter__(self) -> "SparkSession":
         """Context manager entry."""
         return self
 
@@ -477,13 +473,13 @@ class MockSparkSession:
         # Delegate to SessionLifecycleManager service
         self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
 
-    def newSession(self) -> "MockSparkSession":
+    def newSession(self) -> "SparkSession":
         """Create new session.
 
         Returns:
-            New MockSparkSession instance.
+            New SparkSession instance.
         """
-        return MockSparkSession(self.app_name)
+        return SparkSession(self.app_name)
 
     # Mockable methods for testing
     def mock_createDataFrame(
@@ -566,7 +562,7 @@ class MockSparkSession:
         return self._mocking_coordinator.check_error_rules(method_name, *args, **kwargs)
 
 
-# Set the builder attribute on MockSparkSession
-from .builder import MockSparkSessionBuilder  # noqa: E402
+# Set the builder attribute on SparkSession
+from .builder import SparkSessionBuilder  # noqa: E402
 
-MockSparkSession.builder = MockSparkSessionBuilder()
+SparkSession.builder = SparkSessionBuilder()

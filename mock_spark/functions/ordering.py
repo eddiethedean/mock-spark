@@ -5,91 +5,91 @@ This module provides functions for specifying sort order with null handling.
 """
 
 from typing import Union
-from mock_spark.functions.base import MockColumn, MockColumnOperation
+from mock_spark.functions.base import Column, ColumnOperation
 
 
 class OrderingFunctions:
     """Collection of column ordering functions."""
 
     @staticmethod
-    def asc(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def asc(column: Union[Column, str]) -> ColumnOperation:
         """Sort in ascending order.
 
         Args:
             column: Column to sort
 
         Returns:
-            MockColumnOperation representing ascending order
+            ColumnOperation representing ascending order
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "asc", name=f"{column.name} ASC")
+        return ColumnOperation(column, "asc", name=f"{column.name} ASC")
 
     @staticmethod
-    def asc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def asc_nulls_first(column: Union[Column, str]) -> ColumnOperation:
         """Sort ascending with nulls first.
 
         Args:
             column: Column to sort
 
         Returns:
-            MockColumnOperation representing ascending nulls first
+            ColumnOperation representing ascending nulls first
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "asc_nulls_first", name=f"{column.name} ASC NULLS FIRST"
         )
 
     @staticmethod
-    def asc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def asc_nulls_last(column: Union[Column, str]) -> ColumnOperation:
         """Sort ascending with nulls last.
 
         Args:
             column: Column to sort
 
         Returns:
-            MockColumnOperation representing ascending nulls last
+            ColumnOperation representing ascending nulls last
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "asc_nulls_last", name=f"{column.name} ASC NULLS LAST"
         )
 
     @staticmethod
-    def desc_nulls_first(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def desc_nulls_first(column: Union[Column, str]) -> ColumnOperation:
         """Sort descending with nulls first.
 
         Args:
             column: Column to sort
 
         Returns:
-            MockColumnOperation representing descending nulls first
+            ColumnOperation representing descending nulls first
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "desc_nulls_first", name=f"{column.name} DESC NULLS FIRST"
         )
 
     @staticmethod
-    def desc_nulls_last(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def desc_nulls_last(column: Union[Column, str]) -> ColumnOperation:
         """Sort descending with nulls last.
 
         Args:
             column: Column to sort
 
         Returns:
-            MockColumnOperation representing descending nulls last
+            ColumnOperation representing descending nulls last
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "desc_nulls_last", name=f"{column.name} DESC NULLS LAST"
         )

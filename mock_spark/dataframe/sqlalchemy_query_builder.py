@@ -10,19 +10,19 @@ from sqlalchemy import select, Table, and_, or_, func, literal, cast as sa_cast
 from sqlalchemy.sql import Select
 from sqlalchemy.types import Integer, Float, String, Boolean, BigInteger, Date, DateTime
 
-from ..functions import MockColumn, MockColumnOperation, MockLiteral
-from ..spark_types import MockStructType
+from ..functions import Column, ColumnOperation, Literal
+from ..spark_types import StructType
 
 
 class SQLAlchemyQueryBuilder:
     """Builds SQLAlchemy queries from DataFrame operations."""
 
-    def __init__(self, table: Table, schema: Optional[MockStructType] = None):
+    def __init__(self, table: Table, schema: Optional[StructType] = None):
         """Initialize with a SQLAlchemy Table object.
 
         Args:
             table: SQLAlchemy Table to query from
-            schema: Optional MockStructType for type information
+            schema: Optional StructType for type information
         """
         self.table = table
         self.schema = schema
@@ -32,7 +32,7 @@ class SQLAlchemyQueryBuilder:
         self._with_columns: Dict[str, Any] = {}
         self._join_tables: List[Tuple[Table, Any, str]] = []
 
-    def add_filter(self, condition: MockColumnOperation) -> None:
+    def add_filter(self, condition: ColumnOperation) -> None:
         """Add a WHERE condition using SQLAlchemy expressions."""
         sql_condition = self._column_to_sqlalchemy(condition)
         self.select_stmt = self.select_stmt.where(sql_condition)
@@ -46,7 +46,7 @@ class SQLAlchemyQueryBuilder:
                     sql_columns.extend(self.table.c)
                 else:
                     sql_columns.append(self.table.c[col])
-            elif isinstance(col, MockColumn):
+            elif isinstance(col, Column):
                 if col.name == "*":
                     sql_columns.extend(self.table.c)
                 else:
@@ -59,7 +59,7 @@ class SQLAlchemyQueryBuilder:
             self.select_stmt = select(*sql_columns).select_from(self.table)
 
     def add_with_column(
-        self, col_name: str, col: Union[MockColumn, MockColumnOperation, MockLiteral]
+        self, col_name: str, col: Union[Column, ColumnOperation, Literal]
     ) -> None:
         """Add a computed column using SQLAlchemy expressions."""
         sql_expression = self._column_to_sqlalchemy(col)
@@ -71,7 +71,7 @@ class SQLAlchemyQueryBuilder:
         for col in columns:
             if isinstance(col, str):
                 group_cols.append(self.table.c[col])
-            elif isinstance(col, MockColumn):
+            elif isinstance(col, Column):
                 group_cols.append(self.table.c[col.name])
 
         if group_cols:
@@ -83,9 +83,9 @@ class SQLAlchemyQueryBuilder:
         for col in columns:
             if isinstance(col, str):
                 order_cols.append(self.table.c[col])
-            elif isinstance(col, MockColumn):
+            elif isinstance(col, Column):
                 order_cols.append(self.table.c[col.name])
-            elif isinstance(col, MockColumnOperation):
+            elif isinstance(col, ColumnOperation):
                 # Handle desc() operations
                 if hasattr(col, "operation") and col.operation == "desc":
                     order_cols.append(self.table.c[col.column.name].desc())
@@ -125,11 +125,11 @@ class SQLAlchemyQueryBuilder:
 
     def _column_to_sqlalchemy(self, col: Any) -> Any:
         """Convert a MockSpark column/expression to SQLAlchemy expression."""
-        if isinstance(col, MockColumn):
+        if isinstance(col, Column):
             return self.table.c[col.name]
-        elif isinstance(col, MockColumnOperation):
+        elif isinstance(col, ColumnOperation):
             return self._operation_to_sqlalchemy(col)
-        elif isinstance(col, MockLiteral):
+        elif isinstance(col, Literal):
             return literal(col.value)
         elif hasattr(col, "function_name") and hasattr(col, "window_spec"):
             # Handle window functions
@@ -137,8 +137,8 @@ class SQLAlchemyQueryBuilder:
         else:
             return literal(col)
 
-    def _operation_to_sqlalchemy(self, op: MockColumnOperation) -> Any:
-        """Convert a MockColumnOperation to SQLAlchemy expression."""
+    def _operation_to_sqlalchemy(self, op: ColumnOperation) -> Any:
+        """Convert a ColumnOperation to SQLAlchemy expression."""
         if not hasattr(op, "operation") or not hasattr(op, "column"):
             return literal(str(op))
 
@@ -197,7 +197,7 @@ class SQLAlchemyQueryBuilder:
 
     def _value_to_sqlalchemy(self, value: Any) -> Any:
         """Convert a value to SQLAlchemy literal or expression."""
-        if isinstance(value, (MockColumn, MockColumnOperation, MockLiteral)):
+        if isinstance(value, (Column, ColumnOperation, Literal)):
             return self._column_to_sqlalchemy(value)
         else:
             return literal(value)
@@ -225,7 +225,7 @@ class SQLAlchemyQueryBuilder:
             for col in window_spec._partition_by:
                 if isinstance(col, str):
                     partition_cols.append(self.table.c[col])
-                elif isinstance(col, MockColumn):
+                elif isinstance(col, Column):
                     partition_cols.append(self.table.c[col.name])
                 else:
                     partition_cols.append(self._column_to_sqlalchemy(col))
@@ -237,13 +237,13 @@ class SQLAlchemyQueryBuilder:
             for col in window_spec._order_by:
                 if isinstance(col, str):
                     order_cols.append(self.table.c[col])
-                elif isinstance(col, MockColumnOperation):
+                elif isinstance(col, ColumnOperation):
                     # Handle desc() operations in window specs
                     if hasattr(col, "operation") and col.operation == "desc":
                         order_cols.append(self.table.c[col.column.name].desc())
                     else:
                         order_cols.append(self.table.c[col.column.name])
-                elif isinstance(col, MockColumn):
+                elif isinstance(col, Column):
                     order_cols.append(self.table.c[col.name])
                 else:
                     order_cols.append(self._column_to_sqlalchemy(col))

@@ -6,11 +6,11 @@ Most classes are imported from core/ modules to avoid duplication.
 """
 
 from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
-from mock_spark.spark_types import MockDataType, StringType
+from mock_spark.spark_types import DataType, StringType
 
 # Import core classes from their canonical locations
-from .core.column import MockColumn, MockColumnOperation
-from .core.literals import MockLiteral
+from .core.column import Column, ColumnOperation
+from .core.literals import Literal
 from .core.lambda_parser import (
     MockLambdaExpression,
     LambdaParser,
@@ -18,21 +18,21 @@ from .core.lambda_parser import (
 )
 
 if TYPE_CHECKING:
-    from .window_execution import MockWindowFunction
+    from .window_execution import WindowFunction
 
 # Re-export for backward compatibility
 __all__ = [
-    "MockColumn",
-    "MockColumnOperation",
-    "MockLiteral",
-    "MockAggregateFunction",
+    "Column",
+    "ColumnOperation",
+    "Literal",
+    "AggregateFunction",
     "MockLambdaExpression",
     "LambdaParser",
     "LambdaTranslationError",
 ]
 
 
-class MockAggregateFunction:
+class AggregateFunction:
     """Base class for aggregate functions.
 
     This class provides the base functionality for all aggregate functions
@@ -41,11 +41,11 @@ class MockAggregateFunction:
 
     def __init__(
         self,
-        column: Union[MockColumn, str, None],
+        column: Union[Column, ColumnOperation, str, None],
         function_name: str,
-        data_type: Optional[MockDataType] = None,
+        data_type: Optional[DataType] = None,
     ):
-        """Initialize MockAggregateFunction.
+        """Initialize AggregateFunction.
 
         Args:
             column: The column to aggregate (None for count(*)).
@@ -57,9 +57,9 @@ class MockAggregateFunction:
         self.data_type = self._configure_data_type(data_type)
         self.name = self._generate_name()
         # Optional attributes for specific functions
-        self.ord_column: Optional[Union[MockColumn, str]] = None  # For max_by, min_by
+        self.ord_column: Optional[Union[Column, str]] = None  # For max_by, min_by
 
-    def _configure_data_type(self, data_type: Optional[MockDataType]) -> MockDataType:
+    def _configure_data_type(self, data_type: Optional[DataType]) -> DataType:
         """Configure data type with appropriate nullability based on function type."""
         if not data_type:
             return StringType()
@@ -93,25 +93,30 @@ class MockAggregateFunction:
 
     def _generate_name(self) -> str:
         """Generate a name for this aggregate function."""
+        # PySpark uses 'avg' as column name even when using mean()
+        display_name = "avg" if self.function_name == "mean" else self.function_name
+
         if self.column is None:
             # For count(*), PySpark generates just "count", not "count(*)"
             if self.function_name == "count":
                 return "count"
             else:
-                return f"{self.function_name}(*)"
+                return f"{display_name}(*)"
         elif isinstance(self.column, str):
             # For count("*"), PySpark generates "count(1)", not "count(*)"
             if self.function_name == "count" and self.column == "*":
                 return "count(1)"
             elif self.function_name == "countDistinct":
-                return f"count(DISTINCT {self.column})"
+                # PySpark uses "count(column)" not "count(DISTINCT column)" for column names
+                return f"count({self.column})"
             else:
-                return f"{self.function_name}({self.column})"
+                return f"{display_name}({self.column})"
         else:
             if self.function_name == "countDistinct":
-                return f"count(DISTINCT {self.column.name})"
+                # PySpark uses "count(column)" not "count(DISTINCT column)" for column names
+                return f"count({self.column.name})"
             else:
-                return f"{self.function_name}({self.column.name})"
+                return f"{display_name}({self.column.name})"
 
     def evaluate(self, data: List[Dict[str, Any]]) -> Any:
         """Evaluate the aggregate function on the given data.
@@ -201,13 +206,13 @@ class MockAggregateFunction:
         else:
             return None
 
-    def over(self, window_spec: Any) -> "MockWindowFunction":
+    def over(self, window_spec: Any) -> "WindowFunction":
         """Apply window function over window specification."""
-        from .window_execution import MockWindowFunction
+        from .window_execution import WindowFunction
 
-        return MockWindowFunction(self, window_spec)
+        return WindowFunction(self, window_spec)
 
-    def alias(self, name: str) -> "MockAggregateFunction":
+    def alias(self, name: str) -> "AggregateFunction":
         """Create an alias for this aggregate function.
 
         Args:

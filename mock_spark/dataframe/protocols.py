@@ -1,14 +1,14 @@
 """
-Protocol interfaces for MockDataFrame handlers.
+Protocol interfaces for DataFrame handlers.
 
 This module defines type-safe protocols for the specialized handler classes
-that implement the Single Responsibility Principle for MockDataFrame operations.
+that implement the Single Responsibility Principle for DataFrame operations.
 """
 
 from typing import Protocol, List, Dict, Any, Tuple, Iterator, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..spark_types import MockRow, MockStructType
+    from ..spark_types import Row, StructType
 
 
 class WindowFunctionHandler(Protocol):
@@ -83,36 +83,30 @@ class WindowFunctionHandler(Protocol):
 class CollectionHandler(Protocol):
     """Protocol for collection operations."""
 
-    def collect(
-        self, data: List[Dict[str, Any]], schema: "MockStructType"
-    ) -> List["MockRow"]:
-        """Convert data to MockRow objects."""
+    def collect(self, data: List[Dict[str, Any]], schema: "StructType") -> List["Row"]:
+        """Convert data to Row objects."""
         ...
 
     def take(
-        self, data: List[Dict[str, Any]], schema: "MockStructType", n: int
-    ) -> List["MockRow"]:
+        self, data: List[Dict[str, Any]], schema: "StructType", n: int
+    ) -> List["Row"]:
         """Take first n rows."""
         ...
 
-    def head(
-        self, data: List[Dict[str, Any]], schema: "MockStructType", n: int = 1
-    ) -> Any:
+    def head(self, data: List[Dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
         """Get first row(s)."""
         ...
 
-    def tail(
-        self, data: List[Dict[str, Any]], schema: "MockStructType", n: int = 1
-    ) -> Any:
+    def tail(self, data: List[Dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
         """Get last n rows."""
         ...
 
     def to_local_iterator(
         self,
         data: List[Dict[str, Any]],
-        schema: "MockStructType",
+        schema: "StructType",
         prefetch: bool = False,
-    ) -> Iterator["MockRow"]:
+    ) -> Iterator["Row"]:
         """Return iterator over rows."""
         ...
 
@@ -121,20 +115,20 @@ class ValidationHandler(Protocol):
     """Protocol for data validation."""
 
     def validate_column_exists(
-        self, schema: "MockStructType", column_name: str, operation: str
+        self, schema: "StructType", column_name: str, operation: str
     ) -> None:
         """Validate single column exists."""
         ...
 
     def validate_columns_exist(
-        self, schema: "MockStructType", column_names: List[str], operation: str
+        self, schema: "StructType", column_names: List[str], operation: str
     ) -> None:
         """Validate multiple columns exist."""
         ...
 
     def validate_filter_expression(
         self,
-        schema: "MockStructType",
+        schema: "StructType",
         condition: Any,
         operation: str,
         has_pending_joins: bool = False,
@@ -144,7 +138,7 @@ class ValidationHandler(Protocol):
 
     def validate_expression_columns(
         self,
-        schema: "MockStructType",
+        schema: "StructType",
         expression: Any,
         operation: str,
         in_lazy_materialization: bool = False,

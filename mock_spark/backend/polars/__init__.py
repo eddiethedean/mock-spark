@@ -7,7 +7,7 @@ query execution, materialization, and export operations.
 Components:
     - storage: Polars storage backend
     - materializer: Polars-based lazy operation materialization
-    - expression_translator: Translate MockColumn expressions to Polars
+    - expression_translator: Translate Column expressions to Polars
     - operation_executor: Execute DataFrame operations using Polars
     - export: DataFrame export to various formats using Polars
 
@@ -27,4 +27,3 @@ __all__ = [
     "PolarsMaterializer",
     "PolarsExporter",
 ]
-

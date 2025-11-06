@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from mock_spark import MockSparkSession, F as MockF  # noqa: F401
+    from mock_spark import SparkSession, F as MockF  # noqa: F401
 
     MOCK_SPARK_AVAILABLE = True
 except ImportError:
@@ -36,10 +36,10 @@ except ImportError:
 
 @pytest.fixture(scope="session")
 def mock_spark():
-    """Create MockSparkSession for testing."""
+    """Create SparkSession for testing."""
     if not MOCK_SPARK_AVAILABLE:
         pytest.skip("MockSpark not available")
-    return MockSparkSession("parity_test")
+    return SparkSession("parity_test")
 
 
 @pytest.fixture(scope="session")
@@ -235,7 +235,9 @@ def compare_aggregations(mock_result, pyspark_result, tolerance: float = 1e-6):
                 # For lists (e.g., collect_list, collect_set), compare as sets if order doesn't matter
                 # For collect_set, order doesn't matter, so compare as sets
                 # Check if this is a collect_set result by comparing as sets first
-                if set(mock_val) == set(pyspark_val) and len(mock_val) == len(set(mock_val)):
+                if set(mock_val) == set(pyspark_val) and len(mock_val) == len(
+                    set(mock_val)
+                ):
                     # This looks like a collect_set (unique values) - order doesn't matter
                     assert set(mock_val) == set(pyspark_val), (
                         f"Column {col}: {sorted(mock_val)} vs {sorted(pyspark_val)}"

@@ -11,10 +11,8 @@ from datetime import datetime, timezone
 import polars as pl
 
 from mock_spark.core.interfaces.storage import IStorageManager, ITable
-from mock_spark.spark_types import MockStructType, MockStructField
-from mock_spark.storage.models import StorageMode, StorageOperationResult
+from mock_spark.spark_types import StructType, StructField
 from .schema_registry import SchemaRegistry
-from .parquet_storage import ParquetStorage
 from .type_mapper import mock_type_to_polars_dtype
 
 
@@ -24,7 +22,7 @@ class PolarsTable(ITable):
     def __init__(
         self,
         name: str,
-        schema: MockStructType,
+        schema: StructType,
         schema_name: str = "default",
         db_path: Optional[str] = None,
     ):
@@ -32,7 +30,7 @@ class PolarsTable(ITable):
 
         Args:
             name: Table name
-            schema: MockStructType schema
+            schema: StructType schema
             schema_name: Schema name (default: "default")
             db_path: Optional database path for persistence
         """
@@ -68,7 +66,7 @@ class PolarsTable(ITable):
             # Empty schema - create empty DataFrame
             self._df = pl.DataFrame()
             return
-        
+
         schema_dict = {}
         for field in self._schema.fields:
             polars_dtype = mock_type_to_polars_dtype(field.dataType)
@@ -109,7 +107,7 @@ class PolarsTable(ITable):
         return self._name
 
     @property
-    def schema(self) -> MockStructType:
+    def schema(self) -> StructType:
         """Get table schema."""
         return self._schema
 
@@ -233,27 +231,24 @@ class PolarsSchema:
         self.db_path = db_path
         self.tables: Dict[str, PolarsTable] = {}
 
-        # Create schema directory if db_path is provided
-        if db_path:
+        # Create schema directory if db_path is provided and not in-memory
+        if db_path and db_path != ":memory:":
             schema_dir = os.path.join(db_path, name)
             os.makedirs(schema_dir, exist_ok=True)
 
     def create_table(
-        self, table: str, columns: Union[List[MockStructField], MockStructType]
+        self, table: str, columns: Union[List[StructField], StructType]
     ) -> Optional[PolarsTable]:
         """Create a new table in this schema.
 
         Args:
             table: Table name
-            columns: Table schema (MockStructType or list of MockStructField)
+            columns: Table schema (StructType or list of StructField)
 
         Returns:
             PolarsTable instance
         """
-        if isinstance(columns, list):
-            schema = MockStructType(columns)
-        else:
-            schema = columns
+        schema = StructType(columns) if isinstance(columns, list) else columns
 
         polars_table = PolarsTable(
             table, schema, schema_name=self.name, db_path=self.db_path
@@ -274,7 +269,10 @@ class PolarsStorageManager(IStorageManager):
         """
         self.db_path = db_path or ":memory:"
         self.schemas: Dict[str, PolarsSchema] = {}
-        self.schema_registry = SchemaRegistry(self.db_path if db_path != ":memory:" else "mock_spark_storage")
+        # Use ":memory:" for schema registry when using in-memory storage
+        # The schema registry already handles ":memory:" by skipping file operations
+        schema_storage_path = self.db_path
+        self.schema_registry = SchemaRegistry(schema_storage_path)
 
         # Create default schema
         if self.db_path != ":memory:":
@@ -316,6 +314,7 @@ class PolarsStorageManager(IStorageManager):
             schema_dir = os.path.join(self.db_path, schema_name)
             if os.path.exists(schema_dir):
                 import shutil
+
                 shutil.rmtree(schema_dir)
 
         del self.schemas[schema_name]
@@ -360,7 +359,7 @@ class PolarsStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[List[MockStructField], MockStructType],
+        fields: Union[List[StructField], StructType],
     ) -> Optional[PolarsTable]:
         """Create a new table.
 
@@ -382,10 +381,7 @@ class PolarsStorageManager(IStorageManager):
         table = schema.create_table(table_name, fields)
 
         # Save schema to registry
-        if isinstance(fields, list):
-            mock_schema = MockStructType(fields)
-        else:
-            mock_schema = fields
+        mock_schema = StructType(fields) if isinstance(fields, list) else fields
         self.schema_registry.save_schema(schema_name, table_name, mock_schema)
 
         return table
@@ -482,25 +478,22 @@ class PolarsStorageManager(IStorageManager):
         all_tables = []
         for schema in self.schemas.values():
             all_tables.extend(schema.tables.keys())
-        
+
         # Also discover from persistent storage
-        if self.db_path != ":memory:":
-            if os.path.exists(self.db_path):
-                for schema_dir_name in os.listdir(self.db_path):
-                    schema_path = os.path.join(self.db_path, schema_dir_name)
-                    if os.path.isdir(schema_path):
-                        for file in os.listdir(schema_path):
-                            if file.endswith(".parquet"):
-                                table_name = file[:-8]
-                                qualified_name = f"{schema_dir_name}.{table_name}"
-                                if qualified_name not in all_tables:
-                                    all_tables.append(qualified_name)
-        
+        if self.db_path != ":memory:" and os.path.exists(self.db_path):
+            for schema_dir_name in os.listdir(self.db_path):
+                schema_path = os.path.join(self.db_path, schema_dir_name)
+                if os.path.isdir(schema_path):
+                    for file in os.listdir(schema_path):
+                        if file.endswith(".parquet"):
+                            table_name = file[:-8]
+                            qualified_name = f"{schema_dir_name}.{table_name}"
+                            if qualified_name not in all_tables:
+                                all_tables.append(qualified_name)
+
         return all_tables
 
-    def get_table_schema(
-        self, schema_name: str, table_name: str
-    ) -> MockStructType:
+    def get_table_schema(self, schema_name: str, table_name: str) -> StructType:
         """Get table schema.
 
         Args:
@@ -508,7 +501,7 @@ class PolarsStorageManager(IStorageManager):
             table_name: Table name
 
         Returns:
-            MockStructType schema
+            StructType schema
         """
         # Try to load from registry
         schema = self.schema_registry.load_schema(schema_name, table_name)
@@ -566,9 +559,7 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         return table.query(**filters)
 
-    def get_table_metadata(
-        self, schema_name: str, table_name: str
-    ) -> Dict[str, Any]:
+    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
         """Get table metadata.
 
         Args:
@@ -608,13 +599,19 @@ class PolarsStorageManager(IStorageManager):
         Args:
             schema_name: Schema name
             table_name: Table name
-            filter_expr: Optional filter expression (not yet implemented for Polars)
+            filter_expr: Optional filter expression (ignored for Polars backend)
 
         Returns:
             List of dictionaries representing rows
+
+        Note:
+            Filter expressions are not supported at the storage level for Polars backend.
+            Filtering should be done at the DataFrame level using DataFrame.filter() or
+            by loading data into a DataFrame and applying filters there. This method
+            returns all data from the table regardless of filter_expr parameter.
         """
-        # For now, ignore filter_expr and return all data
-        # TODO: Implement filter expression parsing for Polars
+        # Polars backend handles filtering at DataFrame level, not storage level
+        # Filter expressions are ignored here - use DataFrame.filter() instead
         return self.query_data(schema_name, table_name)
 
     def update_table_metadata(
@@ -637,4 +634,3 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         table._metadata.update(metadata_updates)
         table._metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
-

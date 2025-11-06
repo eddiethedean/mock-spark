@@ -8,18 +8,18 @@ grouping operations, maintaining compatibility with PySpark's GroupedData interf
 from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
 import itertools
 
-from ...functions import MockColumn, MockColumnOperation, MockAggregateFunction
-from .base import MockGroupedData
+from ...functions import Column, ColumnOperation, AggregateFunction
+from .base import GroupedData
 
 if TYPE_CHECKING:
-    from ..dataframe import MockDataFrame
+    from ..dataframe import DataFrame
 
 
-class MockCubeGroupedData(MockGroupedData):
+class CubeGroupedData(GroupedData):
     """Mock cube grouped data for multi-dimensional grouping operations."""
 
-    def __init__(self, df: "MockDataFrame", cube_columns: List[str]):
-        """Initialize MockCubeGroupedData.
+    def __init__(self, df: "DataFrame", cube_columns: List[str]):
+        """Initialize CubeGroupedData.
 
         Args:
             df: The DataFrame being grouped.
@@ -29,8 +29,8 @@ class MockCubeGroupedData(MockGroupedData):
         self.cube_columns = cube_columns
 
     def agg(
-        self, *exprs: Union[str, MockColumn, MockColumnOperation, MockAggregateFunction]
-    ) -> "MockDataFrame":
+        self, *exprs: Union[str, Column, ColumnOperation, AggregateFunction]
+    ) -> "DataFrame":
         """Aggregate cube grouped data with multi-dimensional grouping.
 
         Creates all possible combinations of cube columns (2^n combinations).
@@ -39,7 +39,7 @@ class MockCubeGroupedData(MockGroupedData):
             *exprs: Aggregation expressions.
 
         Returns:
-            New MockDataFrame with cube aggregated results.
+            New DataFrame with cube aggregated results.
         """
         result_data = []
 
@@ -57,7 +57,7 @@ class MockCubeGroupedData(MockGroupedData):
                 if not active_columns:
                     # Grand total - all nulls
                     filtered_rows = self.df.data
-                    result_row = {col: None for col in self.cube_columns}
+                    result_row = dict.fromkeys(self.cube_columns)
 
                     # Apply aggregations
                     for expr in exprs:
@@ -71,11 +71,10 @@ class MockCubeGroupedData(MockGroupedData):
                             result_row[result_key] = result_value
                         elif hasattr(expr, "function_name"):
                             from typing import cast
-                            from ...functions import MockAggregateFunction
 
                             result_key, result_value = (
                                 self._evaluate_aggregate_function(
-                                    cast(MockAggregateFunction, expr), filtered_rows
+                                    cast("AggregateFunction", expr), filtered_rows
                                 )
                             )
                             # Check if this is a count function
@@ -120,11 +119,10 @@ class MockCubeGroupedData(MockGroupedData):
                                 result_row[result_key] = result_value
                             elif hasattr(expr, "function_name"):
                                 from typing import cast
-                                from ...functions import MockAggregateFunction
 
                                 result_key, result_value = (
                                     self._evaluate_aggregate_function(
-                                        cast(MockAggregateFunction, expr), group_rows
+                                        cast("AggregateFunction", expr), group_rows
                                     )
                                 )
                                 # Check if this is a count function
@@ -140,22 +138,22 @@ class MockCubeGroupedData(MockGroupedData):
                         result_data.append(result_row)
 
         # Create result DataFrame with proper schema
-        from ..dataframe import MockDataFrame
+        from ..dataframe import DataFrame
         from ...spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             StringType,
             LongType,
             DoubleType,
         )
 
         if not result_data:
-            return MockDataFrame(result_data, MockStructType([]))
+            return DataFrame(result_data, StructType([]))
 
         fields = []
         for key, value in result_data[0].items():
             if key in self.cube_columns:
-                fields.append(MockStructField(key, StringType()))
+                fields.append(StructField(key, StringType()))
             else:
                 # Count functions, window ranking functions, and boolean functions are non-nullable in PySpark
                 is_count_function = key in non_nullable_keys or any(
@@ -183,22 +181,20 @@ class MockCubeGroupedData(MockGroupedData):
 
                 if isinstance(value, int):
                     fields.append(
-                        MockStructField(
-                            key, LongType(nullable=nullable), nullable=nullable
-                        )
+                        StructField(key, LongType(nullable=nullable), nullable=nullable)
                     )
                 elif isinstance(value, float):
                     fields.append(
-                        MockStructField(
+                        StructField(
                             key, DoubleType(nullable=nullable), nullable=nullable
                         )
                     )
                 else:
                     # Fallback for any other type
                     fields.append(
-                        MockStructField(
+                        StructField(
                             key, StringType(nullable=nullable), nullable=nullable
                         )
                     )
-        schema = MockStructType(fields)
-        return MockDataFrame(result_data, schema)
+        schema = StructType(fields)
+        return DataFrame(result_data, schema)

@@ -1,8 +1,8 @@
 """
-Session services for MockSparkSession.
+Session services for SparkSession.
 
 This module provides service classes that handle specific responsibilities
-for the MockSparkSession, following the Single Responsibility Principle.
+for the SparkSession, following the Single Responsibility Principle.
 """
 
 from .protocols import (

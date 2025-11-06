@@ -46,7 +46,7 @@ class ExpectedOutputLoader:
             raise FileNotFoundError(f"Expected output file not found: {file_path}")
 
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 data = json.load(f)
 
             # Validate expected output schema
@@ -144,7 +144,7 @@ class ExpectedOutputLoader:
             return {}
 
         try:
-            with open(metadata_file, "r") as f:
+            with open(metadata_file) as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return {}

@@ -3,7 +3,7 @@
 Register plugins to hook into DataFrame creation and operations.
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 class AuditPlugin:
     def before_create_dataframe(self, session, data, schema):
@@ -14,7 +14,7 @@ class AuditPlugin:
         # inspect or wrap df
         return df
 
-spark = MockSparkSession()
+spark = SparkSession()
 spark.register_plugin(AuditPlugin())
 
 _ = spark.createDataFrame([{"id": 1}], ["id"])  # hooks will run

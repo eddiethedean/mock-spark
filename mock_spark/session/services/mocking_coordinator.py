@@ -13,7 +13,7 @@ class MockingCoordinator:
     Coordinates mocking and error simulation for testing.
 
     Handles method mocking, error rule management, and test coordination
-    to provide a clean testing interface for MockSparkSession.
+    to provide a clean testing interface for SparkSession.
     """
 
     def __init__(self) -> None:
@@ -98,7 +98,7 @@ class MockingCoordinator:
         if method_name in self._error_rules:
             for condition, exception in self._error_rules[method_name]:
                 if condition(*args, **kwargs):
-                    return cast(Optional[Exception], exception)
+                    return cast("Optional[Exception]", exception)
         return None
 
     def clear_error_rules(self) -> None:

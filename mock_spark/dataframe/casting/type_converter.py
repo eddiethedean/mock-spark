@@ -1,11 +1,11 @@
-"""Type conversion utilities for MockDataFrame operations."""
+"""Type conversion utilities for DataFrame operations."""
 
 from typing import Any
 
 from ...spark_types import (
     ArrayType,
     BooleanType,
-    MockDataType,
+    DataType,
     DateType,
     DecimalType,
     DoubleType,
@@ -19,23 +19,19 @@ from ...spark_types import (
 
 
 class TypeConverter:
-    """Handles type conversion operations for MockDataFrame."""
+    """Handles type conversion operations for DataFrame."""
 
     @staticmethod
-    def cast_to_type(value: Any, target_type: MockDataType) -> Any:
+    def cast_to_type(value: Any, target_type: DataType) -> Any:
         """Cast a value to the specified target type."""
         if value is None:
             return None
 
         if isinstance(target_type, StringType):
             return str(value)
-        elif isinstance(target_type, IntegerType):
+        elif isinstance(target_type, (IntegerType, LongType)):
             return int(value)
-        elif isinstance(target_type, LongType):
-            return int(value)
-        elif isinstance(target_type, FloatType):
-            return float(value)
-        elif isinstance(target_type, DoubleType):
+        elif isinstance(target_type, (FloatType, DoubleType)):
             return float(value)
         elif isinstance(target_type, BooleanType):
             return bool(value)
@@ -76,7 +72,7 @@ class TypeConverter:
             return value
 
     @staticmethod
-    def infer_type(value: Any) -> MockDataType:
+    def infer_type(value: Any) -> DataType:
         """Infer the data type of a value."""
         if value is None:
             return StringType()

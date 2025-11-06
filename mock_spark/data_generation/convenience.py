@@ -6,17 +6,17 @@ scenarios without requiring manual class instantiation.
 """
 
 from typing import List, Dict, Any
-from ..spark_types import MockStructType
+from ..spark_types import StructType
 from .generator import MockDataGenerator
 
 
 def create_test_data(
-    schema: MockStructType, num_rows: int = 100, seed: int = 42
+    schema: StructType, num_rows: int = 100, seed: int = 42
 ) -> List[Dict[str, Any]]:
     """Create test data based on schema.
 
     Args:
-        schema: MockStructType defining the data structure.
+        schema: StructType defining the data structure.
         num_rows: Number of rows to generate.
         seed: Random seed for reproducible data.
 
@@ -27,7 +27,7 @@ def create_test_data(
 
 
 def create_corrupted_data(
-    schema: MockStructType,
+    schema: StructType,
     corruption_rate: float = 0.1,
     num_rows: int = 100,
     seed: int = 42,
@@ -35,7 +35,7 @@ def create_corrupted_data(
     """Create corrupted data for error testing.
 
     Args:
-        schema: MockStructType defining the data structure.
+        schema: StructType defining the data structure.
         corruption_rate: Fraction of data to corrupt.
         num_rows: Number of rows to generate.
         seed: Random seed for reproducible data.
@@ -49,12 +49,12 @@ def create_corrupted_data(
 
 
 def create_realistic_data(
-    schema: MockStructType, num_rows: int = 100, seed: int = 42
+    schema: StructType, num_rows: int = 100, seed: int = 42
 ) -> List[Dict[str, Any]]:
     """Create realistic data with proper distributions.
 
     Args:
-        schema: MockStructType defining the data structure.
+        schema: StructType defining the data structure.
         num_rows: Number of rows to generate.
         seed: Random seed for reproducible data.
 

@@ -5,10 +5,10 @@ Tests that table creation with Spark StructType properly validates and converts 
 """
 
 import pytest
-from mock_spark import MockSparkSession
+from mock_spark import SparkSession
 from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     StringType,
     IntegerType,
     DoubleType,
@@ -23,13 +23,13 @@ class TestSchemaConversionRegression:
 
     def test_create_table_with_valid_schema(self):
         """Test that table creation works with a valid schema."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
-                MockStructField("score", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+                StructField("score", DoubleType()),
             ]
         )
 
@@ -50,7 +50,7 @@ class TestSchemaConversionRegression:
         """Test that creating a table with empty schema raises meaningful error."""
         metadata = MetaData()
 
-        empty_schema = MockStructType([])
+        empty_schema = StructType([])
 
         with pytest.raises(ValueError) as exc_info:
             create_table_from_mock_schema("test_table", empty_schema, metadata)
@@ -103,11 +103,11 @@ class TestSchemaConversionRegression:
 
     def test_create_table_with_single_field_schema(self):
         """Test that table creation works with single field schema."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
+                StructField("id", IntegerType()),
             ]
         )
 
@@ -121,14 +121,14 @@ class TestSchemaConversionRegression:
 
     def test_create_table_with_complex_schema(self):
         """Test that table creation works with complex schema types."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
-                MockStructField("active", BooleanType()),
-                MockStructField("score", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+                StructField("active", BooleanType()),
+                StructField("score", DoubleType()),
             ]
         )
 
@@ -152,15 +152,15 @@ class TestSchemaConversionRegression:
 
         This is the specific use case mentioned in the regression report.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
         # Simulate the schema that LogWriter would use
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("execution_id", StringType()),
-                MockStructField("status", StringType()),
-                MockStructField("duration_ms", IntegerType()),
-                MockStructField("metadata", StringType(), nullable=True),
+                StructField("execution_id", StringType()),
+                StructField("status", StringType()),
+                StructField("duration_ms", IntegerType()),
+                StructField("metadata", StringType(), nullable=True),
             ]
         )
 

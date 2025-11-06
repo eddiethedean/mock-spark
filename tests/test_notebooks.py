@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test script to verify notebook code works."""
 
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 import random
 from datetime import datetime, timedelta
 import time
@@ -12,7 +12,7 @@ def test_quickstart():
     print("Testing Quickstart Tutorial...")
 
     # Step 1: Create session
-    spark = MockSparkSession("QuickstartTutorial")
+    spark = SparkSession("QuickstartTutorial")
     print(f"✅ Session created: {spark.app_name}")
 
     # Step 2: Create DataFrame
@@ -137,7 +137,7 @@ def test_dataframe_operations():
     """Test dataframe operations notebook code."""
     print("Testing DataFrame Operations Tutorial...")
 
-    spark = MockSparkSession("DataFrameOps")
+    spark = SparkSession("DataFrameOps")
 
     # Create test data
     employees = [

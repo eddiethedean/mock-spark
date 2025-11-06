@@ -7,7 +7,7 @@ This module tests that SQL generation uses correct DuckDB syntax:
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.unit
@@ -16,8 +16,8 @@ class TestSQLSyntaxCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("sql_syntax_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("sql_syntax_test")
         yield session
         session.stop()
 

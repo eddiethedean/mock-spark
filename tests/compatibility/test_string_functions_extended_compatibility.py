@@ -15,10 +15,10 @@ class TestStringFunctionsExtendedCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("string_functions_test")
+        session = SparkSession("string_functions_test")
         yield session
         session.stop()
 
@@ -35,22 +35,6 @@ class TestStringFunctionsExtendedCompatibility:
         expected = load_expected_output("functions", "ascii")
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.ascii(df.name))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="char_length not available in PySpark 3.2.4")
-    def test_char_length(self, spark):
-        """Test char_length function."""
-        expected = load_expected_output("functions", "char_length")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.char_length(df.text))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="character_length not available in PySpark 3.2.4")
-    def test_character_length(self, spark):
-        """Test character_length function."""
-        expected = load_expected_output("functions", "character_length")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.character_length(df.text))
         assert_dataframes_equal(result, expected)
 
     @pytest.mark.skip(
@@ -80,27 +64,11 @@ class TestStringFunctionsExtendedCompatibility:
         result = df.select(F.hex(df.name))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="Unhex may produce different results")
-    def test_unhex(self, spark):
-        """Test unhex function."""
-        expected = load_expected_output("functions", "unhex")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.unhex(expected["input_data"][0].get("hex_str")))
-        assert_dataframes_equal(result, expected)
-
     def test_base64(self, spark):
         """Test base64 function."""
         expected = load_expected_output("functions", "base64")
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.base64(df.name))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="Unbase64 may produce different results")
-    def test_unbase64(self, spark):
-        """Test unbase64 function."""
-        expected = load_expected_output("functions", "unbase64")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.unbase64(expected["input_data"][0].get("base64_str")))
         assert_dataframes_equal(result, expected)
 
     @pytest.mark.skip(reason="initcap not yet implemented correctly")
@@ -184,22 +152,6 @@ class TestStringFunctionsExtendedCompatibility:
         expected = load_expected_output("functions", "xxhash64")
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.xxhash64(df.text))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="URL encoding may differ")
-    def test_url_encode(self, spark):
-        """Test url_encode function."""
-        expected = load_expected_output("functions", "url_encode")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.url_encode(df.text))
-        assert_dataframes_equal(result, expected)
-
-    @pytest.mark.skip(reason="URL decoding may differ")
-    def test_url_decode(self, spark):
-        """Test url_decode function."""
-        expected = load_expected_output("functions", "url_decode")
-        df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.url_decode(df.text))
         assert_dataframes_equal(result, expected)
 
     @pytest.mark.skip(reason="regexp_replace not yet implemented correctly")

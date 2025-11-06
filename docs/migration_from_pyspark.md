@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mock-Spark is a drop-in replacement for PySpark designed for testing and development. It provides 100% API compatibility with PySpark while using DuckDB as the backend for fast, in-memory processing.
+Mock-Spark is a drop-in replacement for PySpark designed for testing and development. It provides 100% API compatibility with PySpark while using Polars as the default backend for fast, in-memory processing.
 
 ## Drop-in Replacement
 
@@ -16,8 +16,8 @@ from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import *
 
 # After  
-from mock_spark import MockSparkSession as SparkSession, functions as F
-from mock_spark.types import *
+from mock_spark.sql import SparkSession, functions as F
+from mock_spark.sql.types import *
 ```
 
 ### Session Creation
@@ -124,7 +124,7 @@ Mock-Spark is significantly faster than PySpark for most operations:
 
 ### Memory Usage
 
-- **Lower Memory Footprint**: Uses DuckDB's efficient columnar storage
+- **Lower Memory Footprint**: Uses Polars' efficient columnar storage
 - **No JVM Overhead**: Pure Python implementation
 - **Automatic Cleanup**: Temporary tables are automatically cleaned up
 
@@ -182,11 +182,11 @@ When debug mode is enabled, you'll see generated SQL:
 
 ```python
 import pytest
-from mock_spark import MockSparkSession, functions as F
+from mock_spark.sql import SparkSession, functions as F
 
 @pytest.fixture
 def spark():
-    return MockSparkSession("test")
+    return SparkSession("test")
 
 def test_data_processing(spark):
     df = spark.createDataFrame([
@@ -263,16 +263,15 @@ def test_performance(spark):
 
 ```python
 # If you get import errors
-from mock_spark import MockSparkSession
-from mock_spark import functions as F
-from mock_spark.types import *
+from mock_spark.sql import SparkSession, functions as F
+from mock_spark.sql.types import *
 ```
 
 ### Session Issues
 
 ```python
 # If session creation fails
-spark = MockSparkSession("my_app")
+spark = SparkSession("my_app")
 # Instead of
 spark = SparkSession.builder.appName("my_app").getOrCreate()
 ```
@@ -281,7 +280,7 @@ spark = SparkSession.builder.appName("my_app").getOrCreate()
 
 ```python
 # If you get type errors, check your data types
-from mock_spark.types import StringType, IntegerType, StructType, StructField
+from mock_spark.sql.types import StringType, IntegerType, StructType, StructField
 
 schema = StructType([
     StructField("id", IntegerType(), True),
@@ -318,10 +317,10 @@ For issues specific to Mock-Spark:
 ### Basic Data Processing
 
 ```python
-from mock_spark import MockSparkSession, functions as F
+from mock_spark.sql import SparkSession, functions as F
 
 # Create session
-spark = MockSparkSession("data_processing")
+spark = SparkSession("data_processing")
 
 # Create DataFrame
 df = spark.createDataFrame([
@@ -343,7 +342,7 @@ print(result)
 ### Window Functions
 
 ```python
-from mock_spark.window import Window
+from mock_spark.sql import Window
 
 # Define window
 window = Window.partitionBy("department").orderBy("salary")

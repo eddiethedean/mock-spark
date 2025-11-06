@@ -1,20 +1,23 @@
 """
 Lambda Expression Parser for Mock Spark.
 
-This module provides AST parsing and translation of Python lambda expressions
-to DuckDB-compatible lambda syntax for use in higher-order functions.
+This module provides AST parsing and translation of Python lambda expressions.
+The parser is used by Polars backend for lambda evaluation. The `to_duckdb_lambda()`
+method is DuckDB-specific and used only for DuckDB/SQL backends (legacy).
 
 Key Features:
     - Parse Python lambda expressions using AST module
-    - Translate to DuckDB lambda syntax: `x -> expression`
+    - Translate to DuckDB lambda syntax: `x -> expression` (DuckDB backend only)
     - Support 1-arg and 2-arg lambdas
     - Handle arithmetic, comparison, and logical operators
     - Type-safe with comprehensive error handling
 
+Note: `to_duckdb_lambda()` is for DuckDB backend only. Polars backend uses `parse()`.
+
 Example:
     >>> from mock_spark.functions.core.lambda_parser import LambdaParser
     >>> parser = LambdaParser(lambda x: x * 2)
-    >>> parser.to_duckdb_lambda()
+    >>> parser.to_duckdb_lambda()  # DuckDB backend only
     'x -> (x * 2)'
 """
 
@@ -146,6 +149,9 @@ class LambdaParser:
 
     def to_duckdb_lambda(self) -> str:
         """Translate the Python lambda to DuckDB lambda syntax.
+
+        NOTE: This method is DuckDB-backend specific (legacy).
+        Polars backend uses parse() method instead.
 
         Returns:
             DuckDB lambda expression as a string.

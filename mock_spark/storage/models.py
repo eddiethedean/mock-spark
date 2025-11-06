@@ -7,7 +7,7 @@ ensuring type safety for all database operations.
 
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -36,7 +36,7 @@ class MockTableMetadata:
     table_name: str
     schema_name: str = "default"
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     row_count: int = 0
     schema_version: str = "1.0"
@@ -52,7 +52,7 @@ class MockTableMetadata:
 
 
 @dataclass
-class MockColumnDefinition:
+class ColumnDefinition:
     """Type-safe column definition model for DuckDB tables."""
 
     column_name: str

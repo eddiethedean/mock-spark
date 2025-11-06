@@ -17,7 +17,7 @@ from mock_spark.core.exceptions.operation import (
     MockSparkOperationError,
     MockSparkSQLGenerationError,
     MockSparkQueryExecutionError,
-    MockSparkColumnNotFoundError,
+    SparkColumnNotFoundError,
     MockSparkTypeMismatchError,
 )
 
@@ -47,7 +47,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkColumnNotFoundError)
+        assert isinstance(result, SparkColumnNotFoundError)
         assert "missing_col" in str(result).lower() or "missing" in str(result).lower()
 
     def test_translate_type_mismatch_error(self):
@@ -134,7 +134,7 @@ class TestDuckDBErrorTranslator:
         assert isinstance(
             result,
             (
-                MockSparkColumnNotFoundError,
+                SparkColumnNotFoundError,
                 MockSparkOperationError,
                 MockSparkQueryExecutionError,
             ),
@@ -146,7 +146,7 @@ class TestDuckDBErrorTranslator:
             (Exception("syntax error near line 10"), "MockSparkOperationError"),
             (
                 Exception("Column 'test' not found in schema"),
-                "MockSparkColumnNotFoundError",
+                "SparkColumnNotFoundError",
             ),
             (Exception("type mismatch error"), "MockSparkTypeMismatchError"),
             (Exception("function not found error"), "MockSparkSQLGenerationError"),

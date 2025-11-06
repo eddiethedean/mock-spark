@@ -13,7 +13,6 @@ Core Features (PySpark API):
     - 15+ data types including complex types (Array, Map, Struct)
     - Type-safe operations with automatic schema inference
     - Edge case handling (null values, unicode, large numbers)
-    - 432 passing tests with 100% PySpark compatibility
 
 Testing Utilities (Optional):
     Additional utilities to make testing easier:
@@ -29,12 +28,13 @@ Testing Utilities (Optional):
     See docs/testing_utilities_guide.md for details.
 
 Quick Start:
-    >>> from mock_spark import MockSparkSession, F
-    >>> spark = MockSparkSession("MyApp")
+    >>> from mock_spark.sql import SparkSession, functions as F
+    >>> spark = SparkSession("MyApp")
     >>> data = [{"name": "Alice", "age": 25}, {"name": "Bob", "age": 30}]
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.upper(F.col("name"))).show()
-    MockDataFrame[2 rows, 1 columns]
+    DataFrame[2 rows, 1 columns]
+
     upper(name)
     ALICE
     BOB
@@ -45,21 +45,14 @@ Author: Odos Matthews
 import sys
 from types import ModuleType
 
-# Initialize PySpark version compatibility
-from mock_spark._version_compat import check_version_from_env, check_version_from_marker
-
-# Check for version compatibility settings
-check_version_from_env()
-check_version_from_marker()
-
-from .session import MockSparkSession  # noqa: E402
-from .session.context import MockSparkContext, MockJVMContext  # noqa: E402
-from .dataframe import MockDataFrame, MockDataFrameWriter, MockGroupedData  # noqa: E402
-from .functions import MockFunctions, MockColumn, MockColumnOperation, F  # noqa: E402
-from .window import MockWindow, MockWindowSpec  # noqa: E402
+from .session import SparkSession  # noqa: E402
+from .session.context import SparkContext, JVMContext  # noqa: E402
+from .dataframe import DataFrame, DataFrameWriter, GroupedData  # noqa: E402
+from .functions import Functions, Column, ColumnOperation, F  # noqa: E402
+from .window import Window, WindowSpec  # noqa: E402
 from .delta import DeltaTable, DeltaMergeBuilder  # noqa: E402
 from .spark_types import (  # noqa: E402
-    MockDataType,
+    DataType,
     StringType,
     IntegerType,
     LongType,
@@ -75,8 +68,8 @@ from .spark_types import (  # noqa: E402
     FloatType,
     ShortType,
     ByteType,
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
 )
 from mock_spark.storage import MemoryStorageManager  # noqa: E402
 from .errors import (  # noqa: E402
@@ -104,7 +97,7 @@ from .errors import (  # noqa: E402
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "2.16.1"
+__version__ = "3.0.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -118,27 +111,27 @@ __all__ = [
     # -------------------------------------------------------------------------
     # Session & Context (Core PySpark API)
     # -------------------------------------------------------------------------
-    "MockSparkSession",  # Main entry point - like pyspark.sql.SparkSession
-    "MockSparkContext",  # Spark context - like pyspark.SparkContext
-    "MockJVMContext",  # JVM context compatibility
+    "SparkSession",  # Main entry point - like pyspark.sql.SparkSession
+    "SparkContext",  # Spark context - like pyspark.SparkContext
+    "JVMContext",  # JVM context compatibility
     # -------------------------------------------------------------------------
     # DataFrame & Operations (Core PySpark API)
     # -------------------------------------------------------------------------
-    "MockDataFrame",  # DataFrame - like pyspark.sql.DataFrame
-    "MockDataFrameWriter",  # Writer - like pyspark.sql.DataFrameWriter
-    "MockGroupedData",  # Grouped data - like pyspark.sql.GroupedData
+    "DataFrame",  # DataFrame - like pyspark.sql.DataFrame
+    "DataFrameWriter",  # Writer - like pyspark.sql.DataFrameWriter
+    "GroupedData",  # Grouped data - like pyspark.sql.GroupedData
     # -------------------------------------------------------------------------
     # Functions & Columns (Core PySpark API)
     # -------------------------------------------------------------------------
-    "MockFunctions",  # Functions module
-    "MockColumn",  # Column - like pyspark.sql.Column
-    "MockColumnOperation",  # Column operations
+    "Functions",  # Functions module
+    "Column",  # Column - like pyspark.sql.Column
+    "ColumnOperation",  # Column operations
     "F",  # Functions shorthand - like pyspark.sql.functions
     # -------------------------------------------------------------------------
     # Window Functions (Core PySpark API)
     # -------------------------------------------------------------------------
-    "MockWindow",  # Window - like pyspark.sql.Window
-    "MockWindowSpec",  # Window spec - like pyspark.sql.WindowSpec
+    "Window",  # Window - like pyspark.sql.Window
+    "WindowSpec",  # Window spec - like pyspark.sql.WindowSpec
     # -------------------------------------------------------------------------
     # Delta Lake (Simple Support - Mock Operations)
     # -------------------------------------------------------------------------
@@ -147,7 +140,7 @@ __all__ = [
     # -------------------------------------------------------------------------
     # Data Types (Core PySpark API)
     # -------------------------------------------------------------------------
-    "MockDataType",  # Base data type
+    "DataType",  # Base data type
     "StringType",  # String type
     "IntegerType",  # Integer type
     "LongType",  # Long type
@@ -159,10 +152,8 @@ __all__ = [
     "DecimalType",  # Decimal type
     "ArrayType",  # Array type
     "MapType",  # Map type
-    "StructType",  # Struct type (alias for MockStructType)
-    "StructField",  # Struct field (alias for MockStructField)
-    "MockStructType",  # Struct type
-    "MockStructField",  # Struct field
+    "StructType",  # Struct type
+    "StructField",  # Struct field
     "BinaryType",  # Binary type
     "NullType",  # Null type
     "ShortType",  # Short type
@@ -180,14 +171,7 @@ __all__ = [
     "PySparkTypeError",  # Type error
     "PySparkRuntimeError",  # Runtime error
     "IllegalArgumentException",  # Illegal argument exception
-    "Window",  # Window alias for PySpark compatibility
 ]
-
-
-# Add type aliases for PySpark compatibility
-StructType = MockStructType
-StructField = MockStructField
-Window = MockWindow  # Alias for PySpark compatibility
 
 # ==============================================================================
 # DELTA MODULE ALIASING - Support "from delta.tables import DeltaTable"
@@ -208,3 +192,14 @@ delta_module.tables = delta_tables_module  # type: ignore[attr-defined]
 # Register modules in sys.modules
 sys.modules["delta"] = delta_module
 sys.modules["delta.tables"] = delta_tables_module
+
+# ==============================================================================
+# SQL MODULE - Support "from mock_spark.sql import ..."
+# ==============================================================================
+# This allows mock-spark to be used as a drop-in replacement for pyspark
+# in tests that import from pyspark.sql
+
+from . import sql  # noqa: E402
+
+# Register sql module in sys.modules
+sys.modules["mock_spark.sql"] = sql

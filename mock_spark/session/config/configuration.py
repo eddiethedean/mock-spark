@@ -13,8 +13,8 @@ Key Features:
     - Runtime configuration updates
 
 Example:
-    >>> from mock_spark.session.config import MockConfiguration
-    >>> conf = MockConfiguration()
+    >>> from mock_spark.session.config import Configuration
+    >>> conf = Configuration()
     >>> conf.set("spark.app.name", "MyApp")
     >>> conf.get("spark.app.name")
     'MyApp'
@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
 
-class MockConfiguration:
+class Configuration:
     """Mock SparkConf for configuration management.
 
     Provides a comprehensive mock implementation of PySpark's SparkConf
@@ -35,14 +35,14 @@ class MockConfiguration:
         _config: Internal configuration dictionary.
 
     Example:
-        >>> conf = MockConfiguration()
+        >>> conf = Configuration()
         >>> conf.set("spark.app.name", "MyApp")
         >>> conf.get("spark.app.name")
         'MyApp'
     """
 
     def __init__(self) -> None:
-        """Initialize MockConfiguration with default settings."""
+        """Initialize Configuration with default settings."""
         self._config = {
             "spark.app.name": "MockSparkApp",
             "spark.master": "local[*]",
@@ -130,7 +130,7 @@ class MockConfiguration:
 
     def __str__(self) -> str:
         """String representation."""
-        return f"MockConfiguration({len(self._config)} settings)"
+        return f"Configuration({len(self._config)} settings)"
 
     def __repr__(self) -> str:
         """Representation."""
@@ -138,10 +138,10 @@ class MockConfiguration:
 
 
 @dataclass
-class MockSparkConfig:
+class SparkConfig:
     """High-level session configuration for validation and behavior flags.
 
-    This complements `MockConfiguration` (SparkConf-like key/value) with
+    This complements `Configuration` (SparkConf-like key/value) with
     strongly-typed knobs used by the mock engine.
 
     Attributes:
@@ -155,14 +155,14 @@ class MockSparkConfig:
     enable_lazy_evaluation: bool = True  # Changed default to True for lazy-by-default
 
 
-class MockConfigBuilder:
+class ConfigBuilder:
     """Configuration builder for Mock Spark.
 
-    Provides a builder pattern for creating MockConfiguration instances
+    Provides a builder pattern for creating Configuration instances
     with fluent API for setting multiple configuration values.
 
     Example:
-        >>> builder = MockConfigBuilder()
+        >>> builder = ConfigBuilder()
         >>> conf = (builder
         ...     .appName("MyApp")
         ...     .master("local[*]")
@@ -171,10 +171,10 @@ class MockConfigBuilder:
     """
 
     def __init__(self) -> None:
-        """Initialize MockConfigBuilder."""
-        self._config = MockConfiguration()
+        """Initialize ConfigBuilder."""
+        self._config = Configuration()
 
-    def appName(self, name: str) -> "MockConfigBuilder":
+    def appName(self, name: str) -> "ConfigBuilder":
         """Set application name.
 
         Args:
@@ -186,7 +186,7 @@ class MockConfigBuilder:
         self._config.setAppName(name)
         return self
 
-    def master(self, master: str) -> "MockConfigBuilder":
+    def master(self, master: str) -> "ConfigBuilder":
         """Set master URL.
 
         Args:
@@ -198,7 +198,7 @@ class MockConfigBuilder:
         self._config.setMaster(master)
         return self
 
-    def set(self, key: str, value: Any) -> "MockConfigBuilder":
+    def set(self, key: str, value: Any) -> "ConfigBuilder":
         """Set configuration value.
 
         Args:
@@ -211,7 +211,7 @@ class MockConfigBuilder:
         self._config.set(key, value)
         return self
 
-    def setAll(self, pairs: Dict[str, Any]) -> "MockConfigBuilder":
+    def setAll(self, pairs: Dict[str, Any]) -> "ConfigBuilder":
         """Set multiple configuration values.
 
         Args:
@@ -223,10 +223,10 @@ class MockConfigBuilder:
         self._config.setAll(pairs)
         return self
 
-    def build(self) -> MockConfiguration:
+    def build(self) -> Configuration:
         """Build the configuration.
 
         Returns:
-            MockConfiguration instance.
+            Configuration instance.
         """
         return self._config

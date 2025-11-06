@@ -6,7 +6,7 @@ available in later transforms, especially in multi-step pipelines.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -15,8 +15,8 @@ class TestColumnLifecycleCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("column_lifecycle_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("column_lifecycle_test")
         yield session
         session.stop()
 

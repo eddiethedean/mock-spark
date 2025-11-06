@@ -5,11 +5,11 @@ Built-in patterns for using Mock-Spark in pytest suites.
 ```python
 # conftest.py
 import pytest
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 @pytest.fixture
 def spark():
-    return MockSparkSession(validation_mode="relaxed")
+    return SparkSession(validation_mode="relaxed")
 ```
 
 ```python

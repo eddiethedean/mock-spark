@@ -1,17 +1,17 @@
-"""Aggregation operations for MockDataFrame."""
+"""Aggregation operations for DataFrame."""
 
 from typing import Any, Dict, List, Union
 import statistics
-from ...spark_types import MockStructType, MockStructField, StringType
+from ...spark_types import StructType, StructField, StringType
 
 
-class AggregationOperations:
-    """Handles aggregation operations for MockDataFrame."""
+class AggregationOperationsStatic:
+    """Static utility methods for aggregation operations (legacy - use AggregationOperations mixin instead)."""
 
     @staticmethod
     def describe(
-        data: List[Dict[str, Any]], schema: MockStructType, cols: List[str]
-    ) -> tuple[List[Dict[str, Any]], MockStructType]:
+        data: List[Dict[str, Any]], schema: StructType, cols: List[str]
+    ) -> tuple[List[Dict[str, Any]], StructType]:
         """Compute basic statistics for numeric columns.
 
         Args:
@@ -87,14 +87,14 @@ class AggregationOperations:
             result_data.append(stats_row)
 
         # Create result schema
-        result_schema = MockStructType(
+        result_schema = StructType(
             [
-                MockStructField("summary", StringType()),
-                MockStructField("count", StringType()),
-                MockStructField("mean", StringType()),
-                MockStructField("stddev", StringType()),
-                MockStructField("min", StringType()),
-                MockStructField("max", StringType()),
+                StructField("summary", StringType()),
+                StructField("count", StringType()),
+                StructField("mean", StringType()),
+                StructField("stddev", StringType()),
+                StructField("min", StringType()),
+                StructField("max", StringType()),
             ]
         )
 
@@ -102,8 +102,8 @@ class AggregationOperations:
 
     @staticmethod
     def summary(
-        data: List[Dict[str, Any]], schema: MockStructType, stats: List[str]
-    ) -> tuple[List[Dict[str, Any]], MockStructType]:
+        data: List[Dict[str, Any]], schema: StructType, stats: List[str]
+    ) -> tuple[List[Dict[str, Any]], StructType]:
         """Compute extended statistics for numeric columns.
 
         Args:
@@ -187,11 +187,11 @@ class AggregationOperations:
             result_data.append(stats_row)
 
         # Create result schema
-        schema_fields = [MockStructField("summary", StringType())]
+        schema_fields = [StructField("summary", StringType())]
         for stat in stats:
-            schema_fields.append(MockStructField(stat, StringType()))
+            schema_fields.append(StructField(stat, StringType()))
 
-        result_schema = MockStructType(schema_fields)
+        result_schema = StructType(schema_fields)
 
         return result_data, result_schema
 
@@ -269,7 +269,7 @@ class AggregationOperations:
         return result
 
     @staticmethod
-    def get_numeric_columns(schema: MockStructType) -> List[str]:
+    def get_numeric_columns(schema: StructType) -> List[str]:
         """Get list of numeric column names from schema.
 
         Args:

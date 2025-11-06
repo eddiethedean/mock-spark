@@ -13,21 +13,25 @@ Key Features:
     - Support for both column references and array literals
 
 Example:
-    >>> from mock_spark import MockSparkSession, F
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession, functions as F
+    >>> spark = SparkSession("test")
     >>> data = [{"tags": ["a", "b", "c", "a"]}, {"tags": ["d", "e", "f"]}]
     >>> df = spark.createDataFrame(data)
     >>> df.select(F.array_distinct(F.col("tags"))).show()
+    DataFrame[2 rows, 1 columns]
+    array_distinct(tags)
+    ['a', 'c', 'b']
+    ['e', 'f', 'd']
 """
 
 from typing import Any, Union, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mock_spark.functions.base import MockAggregateFunction
+    from mock_spark.functions.base import AggregateFunction
 
 from mock_spark.functions.base import (
-    MockColumn,
-    MockColumnOperation,
+    Column,
+    ColumnOperation,
     MockLambdaExpression,
 )
 
@@ -36,29 +40,29 @@ class ArrayFunctions:
     """Collection of array manipulation functions."""
 
     @staticmethod
-    def array_distinct(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_distinct(column: Union[Column, str]) -> ColumnOperation:
         """Remove duplicate elements from an array.
 
         Args:
             column: The array column to process.
 
         Returns:
-            MockColumnOperation representing the array_distinct function.
+            ColumnOperation representing the array_distinct function.
 
         Example:
             >>> df.select(F.array_distinct(F.col("tags")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "array_distinct", name=f"array_distinct({column.name})"
         )
 
     @staticmethod
     def array_intersect(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockColumnOperation:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> ColumnOperation:
         """Return the intersection of two arrays.
 
         Args:
@@ -66,17 +70,17 @@ class ArrayFunctions:
             column2: Second array column.
 
         Returns:
-            MockColumnOperation representing the array_intersect function.
+            ColumnOperation representing the array_intersect function.
 
         Example:
             >>> df.select(F.array_intersect(F.col("tags1"), F.col("tags2")))
         """
         if isinstance(column1, str):
-            column1 = MockColumn(column1)
+            column1 = Column(column1)
         if isinstance(column2, str):
-            column2 = MockColumn(column2)
+            column2 = Column(column2)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column1,
             "array_intersect",
             column2,
@@ -85,8 +89,8 @@ class ArrayFunctions:
 
     @staticmethod
     def array_union(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockColumnOperation:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> ColumnOperation:
         """Return the union of two arrays (with duplicates removed).
 
         Args:
@@ -94,17 +98,17 @@ class ArrayFunctions:
             column2: Second array column.
 
         Returns:
-            MockColumnOperation representing the array_union function.
+            ColumnOperation representing the array_union function.
 
         Example:
             >>> df.select(F.array_union(F.col("tags1"), F.col("tags2")))
         """
         if isinstance(column1, str):
-            column1 = MockColumn(column1)
+            column1 = Column(column1)
         if isinstance(column2, str):
-            column2 = MockColumn(column2)
+            column2 = Column(column2)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column1,
             "array_union",
             column2,
@@ -113,8 +117,8 @@ class ArrayFunctions:
 
     @staticmethod
     def array_except(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockColumnOperation:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> ColumnOperation:
         """Return elements in first array but not in second.
 
         Args:
@@ -122,17 +126,17 @@ class ArrayFunctions:
             column2: Second array column.
 
         Returns:
-            MockColumnOperation representing the array_except function.
+            ColumnOperation representing the array_except function.
 
         Example:
             >>> df.select(F.array_except(F.col("tags1"), F.col("tags2")))
         """
         if isinstance(column1, str):
-            column1 = MockColumn(column1)
+            column1 = Column(column1)
         if isinstance(column2, str):
-            column2 = MockColumn(column2)
+            column2 = Column(column2)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column1,
             "array_except",
             column2,
@@ -140,9 +144,7 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_position(
-        column: Union[MockColumn, str], value: Any
-    ) -> MockColumnOperation:
+    def array_position(column: Union[Column, str], value: Any) -> ColumnOperation:
         """Return the (1-based) index of the first occurrence of value in the array.
 
         Args:
@@ -150,15 +152,15 @@ class ArrayFunctions:
             value: The value to find.
 
         Returns:
-            MockColumnOperation representing the array_position function.
+            ColumnOperation representing the array_position function.
 
         Example:
             >>> df.select(F.array_position(F.col("tags"), "target"))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_position",
             value,
@@ -166,7 +168,7 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_remove(column: Union[MockColumn, str], value: Any) -> MockColumnOperation:
+    def array_remove(column: Union[Column, str], value: Any) -> ColumnOperation:
         """Remove all occurrences of a value from the array.
 
         Args:
@@ -174,15 +176,15 @@ class ArrayFunctions:
             value: The value to remove.
 
         Returns:
-            MockColumnOperation representing the array_remove function.
+            ColumnOperation representing the array_remove function.
 
         Example:
             >>> df.select(F.array_remove(F.col("tags"), "unwanted"))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_remove",
             value,
@@ -191,8 +193,8 @@ class ArrayFunctions:
 
     @staticmethod
     def transform(
-        column: Union[MockColumn, str], function: Callable[[Any], Any]
-    ) -> MockColumnOperation:
+        column: Union[Column, str], function: Callable[[Any], Any]
+    ) -> ColumnOperation:
         """Apply a function to each element in the array.
 
         This is a higher-order function that transforms each element of an array
@@ -203,18 +205,18 @@ class ArrayFunctions:
             function: Lambda function to apply to each element.
 
         Returns:
-            MockColumnOperation representing the transform function.
+            ColumnOperation representing the transform function.
 
         Example:
             >>> df.select(F.transform(F.col("numbers"), lambda x: x * 2))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # Wrap the lambda function
         lambda_expr = MockLambdaExpression(function)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "transform",
             lambda_expr,
@@ -223,8 +225,8 @@ class ArrayFunctions:
 
     @staticmethod
     def filter(
-        column: Union[MockColumn, str], function: Callable[[Any], bool]
-    ) -> MockColumnOperation:
+        column: Union[Column, str], function: Callable[[Any], bool]
+    ) -> ColumnOperation:
         """Filter array elements based on a predicate function.
 
         This is a higher-order function that filters array elements using
@@ -235,18 +237,18 @@ class ArrayFunctions:
             function: Lambda function that returns True for elements to keep.
 
         Returns:
-            MockColumnOperation representing the filter function.
+            ColumnOperation representing the filter function.
 
         Example:
             >>> df.select(F.filter(F.col("numbers"), lambda x: x > 10))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # Wrap the lambda function
         lambda_expr = MockLambdaExpression(function)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "filter",
             lambda_expr,
@@ -255,8 +257,8 @@ class ArrayFunctions:
 
     @staticmethod
     def exists(
-        column: Union[MockColumn, str], function: Callable[[Any], bool]
-    ) -> MockColumnOperation:
+        column: Union[Column, str], function: Callable[[Any], bool]
+    ) -> ColumnOperation:
         """Check if any element in the array satisfies the predicate.
 
         This is a higher-order function that returns True if at least one
@@ -267,18 +269,18 @@ class ArrayFunctions:
             function: Lambda function predicate.
 
         Returns:
-            MockColumnOperation representing the exists function.
+            ColumnOperation representing the exists function.
 
         Example:
             >>> df.select(F.exists(F.col("numbers"), lambda x: x > 100))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # Wrap the lambda function
         lambda_expr = MockLambdaExpression(function)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "exists",
             lambda_expr,
@@ -287,8 +289,8 @@ class ArrayFunctions:
 
     @staticmethod
     def forall(
-        column: Union[MockColumn, str], function: Callable[[Any], bool]
-    ) -> MockColumnOperation:
+        column: Union[Column, str], function: Callable[[Any], bool]
+    ) -> ColumnOperation:
         """Check if all elements in the array satisfy the predicate.
 
         This is a higher-order function that returns True only if all
@@ -299,18 +301,18 @@ class ArrayFunctions:
             function: Lambda function predicate.
 
         Returns:
-            MockColumnOperation representing the forall function.
+            ColumnOperation representing the forall function.
 
         Example:
             >>> df.select(F.forall(F.col("numbers"), lambda x: x > 0))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # Wrap the lambda function
         lambda_expr = MockLambdaExpression(function)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "forall",
             lambda_expr,
@@ -319,11 +321,11 @@ class ArrayFunctions:
 
     @staticmethod
     def aggregate(
-        column: Union[MockColumn, str],
+        column: Union[Column, str],
         initial_value: Any,
         merge: Callable[[Any, Any], Any],
         finish: Optional[Callable[[Any], Any]] = None,
-    ) -> MockColumnOperation:
+    ) -> ColumnOperation:
         """Reduce array elements to a single value.
 
         This is a higher-order function that aggregates array elements
@@ -336,13 +338,13 @@ class ArrayFunctions:
             finish: Optional lambda to transform final accumulator value.
 
         Returns:
-            MockColumnOperation representing the aggregate function.
+            ColumnOperation representing the aggregate function.
 
         Example:
             >>> df.select(F.aggregate(F.col("nums"), F.lit(0), lambda acc, x: acc + x))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # Wrap the lambda function
         merge_expr = MockLambdaExpression(merge)
@@ -351,7 +353,7 @@ class ArrayFunctions:
         lambda_data = {"merge": merge_expr, "finish": finish}
         value_tuple = (initial_value, lambda_data)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "aggregate",
             value=value_tuple,
@@ -360,10 +362,10 @@ class ArrayFunctions:
 
     @staticmethod
     def zip_with(
-        left: Union[MockColumn, str],
-        right: Union[MockColumn, str],
+        left: Union[Column, str],
+        right: Union[Column, str],
         function: Callable[[Any, Any], Any],
-    ) -> MockColumnOperation:
+    ) -> ColumnOperation:
         """Merge two arrays element-wise using a function.
 
         This is a higher-order function that combines elements from two arrays
@@ -375,15 +377,15 @@ class ArrayFunctions:
             function: Lambda function (x, y) -> result for combining elements.
 
         Returns:
-            MockColumnOperation representing the zip_with function.
+            ColumnOperation representing the zip_with function.
 
         Example:
             >>> df.select(F.zip_with(F.col("arr1"), F.col("arr2"), lambda x, y: x + y))
         """
         if isinstance(left, str):
-            left = MockColumn(left)
+            left = Column(left)
         if isinstance(right, str):
-            right = MockColumn(right)
+            right = Column(right)
 
         # Wrap the lambda function
         lambda_expr = MockLambdaExpression(function)
@@ -391,7 +393,7 @@ class ArrayFunctions:
         # Store right array and lambda as tuple in value
         value_tuple = (right, lambda_expr)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             left,
             "zip_with",
             value=value_tuple,
@@ -401,29 +403,27 @@ class ArrayFunctions:
     # Basic Array Functions (PySpark 3.2+)
 
     @staticmethod
-    def array_compact(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_compact(column: Union[Column, str]) -> ColumnOperation:
         """Remove null values from an array.
 
         Args:
             column: The array column to compact.
 
         Returns:
-            MockColumnOperation representing the array_compact function.
+            ColumnOperation representing the array_compact function.
 
         Example:
             >>> df.select(F.array_compact(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "array_compact", name=f"array_compact({column.name})"
         )
 
     @staticmethod
-    def slice(
-        column: Union[MockColumn, str], start: int, length: int
-    ) -> MockColumnOperation:
+    def slice(column: Union[Column, str], start: int, length: int) -> ColumnOperation:
         """Extract array slice starting at position for given length.
 
         Args:
@@ -432,15 +432,15 @@ class ArrayFunctions:
             length: Number of elements to extract.
 
         Returns:
-            MockColumnOperation representing the slice function.
+            ColumnOperation representing the slice function.
 
         Example:
             >>> df.select(F.slice(F.col("nums"), 2, 3))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "slice",
             (start, length),
@@ -448,7 +448,7 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def element_at(column: Union[MockColumn, str], index: int) -> MockColumnOperation:
+    def element_at(column: Union[Column, str], index: int) -> ColumnOperation:
         """Get element at index (1-based, negative for reverse indexing).
 
         Args:
@@ -456,23 +456,21 @@ class ArrayFunctions:
             index: Position to extract (1-based, negative counts from end).
 
         Returns:
-            MockColumnOperation representing the element_at function.
+            ColumnOperation representing the element_at function.
 
         Example:
             >>> df.select(F.element_at(F.col("nums"), 1))  # First element
             >>> df.select(F.element_at(F.col("nums"), -1))  # Last element
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "element_at", index, name=f"element_at({column.name}, {index})"
         )
 
     @staticmethod
-    def array_append(
-        column: Union[MockColumn, str], element: Any
-    ) -> MockColumnOperation:
+    def array_append(column: Union[Column, str], element: Any) -> ColumnOperation:
         """Append element to end of array.
 
         Args:
@@ -480,16 +478,16 @@ class ArrayFunctions:
             element: Element to append.
 
         Returns:
-            MockColumnOperation representing the array_append function.
+            ColumnOperation representing the array_append function.
 
         Example:
             >>> df.select(F.array_append(F.col("nums"), 10))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
         # PySpark's array_append is implemented as array_union(array, array(element))
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_append",
             element,
@@ -497,9 +495,7 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_prepend(
-        column: Union[MockColumn, str], element: Any
-    ) -> MockColumnOperation:
+    def array_prepend(column: Union[Column, str], element: Any) -> ColumnOperation:
         """Prepend element to start of array.
 
         Args:
@@ -507,15 +503,15 @@ class ArrayFunctions:
             element: Element to prepend.
 
         Returns:
-            MockColumnOperation representing the array_prepend function.
+            ColumnOperation representing the array_prepend function.
 
         Example:
             >>> df.select(F.array_prepend(F.col("nums"), 0))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_prepend",
             element,
@@ -524,8 +520,8 @@ class ArrayFunctions:
 
     @staticmethod
     def array_insert(
-        column: Union[MockColumn, str], pos: int, value: Any
-    ) -> MockColumnOperation:
+        column: Union[Column, str], pos: int, value: Any
+    ) -> ColumnOperation:
         """Insert element at position in array.
 
         Args:
@@ -534,15 +530,15 @@ class ArrayFunctions:
             value: Value to insert.
 
         Returns:
-            MockColumnOperation representing the array_insert function.
+            ColumnOperation representing the array_insert function.
 
         Example:
             >>> df.select(F.array_insert(F.col("nums"), 2, 99))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_insert",
             (pos, value),
@@ -550,49 +546,43 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_size(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_size(column: Union[Column, str]) -> ColumnOperation:
         """Get array length.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the array_size function.
+            ColumnOperation representing the array_size function.
 
         Example:
             >>> df.select(F.array_size(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
-            column, "array_size", name=f"array_size({column.name})"
-        )
+        return ColumnOperation(column, "array_size", name=f"array_size({column.name})")
 
     @staticmethod
-    def array_sort(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_sort(column: Union[Column, str]) -> ColumnOperation:
         """Sort array elements in ascending order.
 
         Args:
             column: The array column to sort.
 
         Returns:
-            MockColumnOperation representing the array_sort function.
+            ColumnOperation representing the array_sort function.
 
         Example:
             >>> df.select(F.array_sort(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
-            column, "array_sort", name=f"array_sort({column.name})"
-        )
+        return ColumnOperation(column, "array_sort", name=f"array_sort({column.name})")
 
     @staticmethod
-    def array_contains(
-        column: Union[MockColumn, str], value: Any
-    ) -> MockColumnOperation:
+    def array_contains(column: Union[Column, str], value: Any) -> ColumnOperation:
         """Check if array contains a specific value.
 
         Args:
@@ -600,15 +590,15 @@ class ArrayFunctions:
             value: The value to search for.
 
         Returns:
-            MockColumnOperation representing the array_contains function.
+            ColumnOperation representing the array_contains function.
 
         Example:
             >>> df.select(F.array_contains(F.col("tags"), "spark"))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column,
             "array_contains",
             value=value,
@@ -616,121 +606,117 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_max(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_max(column: Union[Column, str]) -> ColumnOperation:
         """Return maximum value from array.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the array_max function.
+            ColumnOperation representing the array_max function.
 
         Example:
             >>> df.select(F.array_max(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
-            column, "array_max", name=f"array_max({column.name})"
-        )
+        return ColumnOperation(column, "array_max", name=f"array_max({column.name})")
 
     @staticmethod
-    def array_min(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def array_min(column: Union[Column, str]) -> ColumnOperation:
         """Return minimum value from array.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the array_min function.
+            ColumnOperation representing the array_min function.
 
         Example:
             >>> df.select(F.array_min(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
-            column, "array_min", name=f"array_min({column.name})"
-        )
+        return ColumnOperation(column, "array_min", name=f"array_min({column.name})")
 
     @staticmethod
-    def explode(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def explode(column: Union[Column, str]) -> ColumnOperation:
         """Returns a new row for each element in the given array or map.
 
         Args:
             column: The array or map column.
 
         Returns:
-            MockColumnOperation representing the explode function.
+            ColumnOperation representing the explode function.
 
         Example:
             >>> df.select(F.explode(F.col("tags")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "explode", name=f"explode({column.name})")
+        return ColumnOperation(column, "explode", name=f"explode({column.name})")
 
     @staticmethod
-    def size(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def size(column: Union[Column, str]) -> ColumnOperation:
         """Return the size (length) of an array or map.
 
         Args:
             column: The array or map column.
 
         Returns:
-            MockColumnOperation representing the size function.
+            ColumnOperation representing the size function.
 
         Example:
             >>> df.select(F.size(F.col("tags")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "size", name=f"size({column.name})")
+        return ColumnOperation(column, "size", name=f"size({column.name})")
 
     @staticmethod
-    def flatten(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def flatten(column: Union[Column, str]) -> ColumnOperation:
         """Flatten array of arrays into a single array.
 
         Args:
             column: The array column containing nested arrays.
 
         Returns:
-            MockColumnOperation representing the flatten function.
+            ColumnOperation representing the flatten function.
 
         Example:
             >>> df.select(F.flatten(F.col("nested_arrays")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "flatten", name=f"flatten({column.name})")
+        return ColumnOperation(column, "flatten", name=f"flatten({column.name})")
 
     @staticmethod
-    def reverse(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def reverse(column: Union[Column, str]) -> ColumnOperation:
         """Reverse the elements of an array.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the reverse function.
+            ColumnOperation representing the reverse function.
 
         Example:
             >>> df.select(F.reverse(F.col("nums")))
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "reverse", name=f"reverse({column.name})")
+        return ColumnOperation(column, "reverse", name=f"reverse({column.name})")
 
     @staticmethod
     def arrays_overlap(
-        column1: Union[MockColumn, str], column2: Union[MockColumn, str]
-    ) -> MockColumnOperation:
+        column1: Union[Column, str], column2: Union[Column, str]
+    ) -> ColumnOperation:
         """Check if two arrays have any common elements.
 
         Args:
@@ -738,17 +724,17 @@ class ArrayFunctions:
             column2: Second array column.
 
         Returns:
-            MockColumnOperation representing the arrays_overlap function.
+            ColumnOperation representing the arrays_overlap function.
 
         Example:
             >>> df.select(F.arrays_overlap(F.col("arr1"), F.col("arr2")))
         """
         if isinstance(column1, str):
-            column1 = MockColumn(column1)
+            column1 = Column(column1)
         if isinstance(column2, str):
-            column2 = MockColumn(column2)
+            column2 = Column(column2)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column1,
             "arrays_overlap",
             column2,
@@ -756,78 +742,76 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def explode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def explode_outer(column: Union[Column, str]) -> ColumnOperation:
         """Returns a new row for each element, including rows with null/empty arrays.
 
         Args:
             column: The array or map column.
 
         Returns:
-            MockColumnOperation representing the explode_outer function.
+            ColumnOperation representing the explode_outer function.
 
-        Note: This feature is not yet fully implemented. Array row expansion
-        requires complex implementation that is still in progress.
+        Example:
+            >>> df.select(F.explode_outer(F.col("tags")))
         """
-        from ...core.exceptions.operation import MockSparkNotImplementedError
+        if isinstance(column, str):
+            column = Column(column)
 
-        raise MockSparkNotImplementedError(
-            "explode_outer is not yet fully implemented. "
-            "This feature requires array row expansion which is still in progress."
+        return ColumnOperation(
+            column, "explode_outer", name=f"explode_outer({column.name})"
         )
 
     @staticmethod
-    def posexplode(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def posexplode(column: Union[Column, str]) -> ColumnOperation:
         """Returns a new row for each element with position in array.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the posexplode function.
+            ColumnOperation representing the posexplode function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
-            column, "posexplode", name=f"posexplode({column.name})"
-        )
+        return ColumnOperation(column, "posexplode", name=f"posexplode({column.name})")
 
     @staticmethod
-    def posexplode_outer(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def posexplode_outer(column: Union[Column, str]) -> ColumnOperation:
         """Returns a new row for each element with position, including null/empty arrays.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the posexplode_outer function.
+            ColumnOperation representing the posexplode_outer function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             column, "posexplode_outer", name=f"posexplode_outer({column.name})"
         )
 
     @staticmethod
-    def arrays_zip(*columns: Union[MockColumn, str]) -> MockColumnOperation:
+    def arrays_zip(*columns: Union[Column, str]) -> ColumnOperation:
         """Merge arrays into array of structs (alias for array_zip).
 
         Args:
             *columns: Array columns to zip together.
 
         Returns:
-            MockColumnOperation representing the arrays_zip function.
+            ColumnOperation representing the arrays_zip function.
         """
         cols = []
         for col in columns:
             if isinstance(col, str):
-                cols.append(MockColumn(col))
+                cols.append(Column(col))
             else:
                 cols.append(col)
 
-        return MockColumnOperation(
-            cols[0] if cols else MockColumn(""),
+        return ColumnOperation(
+            cols[0] if cols else Column(""),
             "arrays_zip",
             value=cols[1:] if len(cols) > 1 else [],
             name="arrays_zip(...)",
@@ -835,10 +819,10 @@ class ArrayFunctions:
 
     @staticmethod
     def sequence(
-        start: Union[MockColumn, str, int],
-        stop: Union[MockColumn, str, int],
-        step: Union[MockColumn, str, int] = 1,
-    ) -> MockColumnOperation:
+        start: Union[Column, str, int],
+        stop: Union[Column, str, int],
+        step: Union[Column, str, int] = 1,
+    ) -> ColumnOperation:
         """Generate array of integers from start to stop by step.
 
         Args:
@@ -847,16 +831,16 @@ class ArrayFunctions:
             step: Step size (default 1)
 
         Returns:
-            MockColumnOperation representing the sequence function.
+            ColumnOperation representing the sequence function.
         """
         if isinstance(start, str):
-            start = MockColumn(start)
+            start = Column(start)
         elif isinstance(start, int):
-            from mock_spark.functions.core.literals import MockLiteral
+            from mock_spark.functions.core.literals import Literal
 
-            start = MockLiteral(start)  # type: ignore[assignment]
+            start = Literal(start)  # type: ignore[assignment]
 
-        return MockColumnOperation(
+        return ColumnOperation(
             start,
             "sequence",
             value=(stop, step),
@@ -864,29 +848,29 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def shuffle(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def shuffle(column: Union[Column, str]) -> ColumnOperation:
         """Randomly shuffle array elements.
 
         Args:
             column: The array column.
 
         Returns:
-            MockColumnOperation representing the shuffle function.
+            ColumnOperation representing the shuffle function.
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "shuffle", name=f"shuffle({column.name})")
+        return ColumnOperation(column, "shuffle", name=f"shuffle({column.name})")
 
     @staticmethod
-    def array(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+    def array(*cols: Union[Column, str]) -> ColumnOperation:
         """Create array from multiple columns (PySpark 3.0+).
 
         Args:
             *cols: Variable number of columns to combine into array
 
         Returns:
-            MockColumnOperation representing the array function.
+            ColumnOperation representing the array function.
 
         Example:
             >>> df.select(F.array(F.col("a"), F.col("b"), F.col("c")))
@@ -898,21 +882,18 @@ class ArrayFunctions:
         converted_cols = []
         for c in cols:
             if isinstance(c, str):
-                converted_cols.append(MockColumn(c))
+                converted_cols.append(Column(c))
             else:
                 converted_cols.append(c)
 
         # First column is the main column, rest are in value as tuple
         first_col = converted_cols[0]
-        if len(converted_cols) > 1:
-            rest_cols = tuple(converted_cols[1:])
-        else:
-            rest_cols = ()
+        rest_cols = tuple(converted_cols[1:]) if len(converted_cols) > 1 else ()
 
         col_names = ", ".join(
             c.name if hasattr(c, "name") else str(c) for c in converted_cols
         )
-        return MockColumnOperation(
+        return ColumnOperation(
             first_col,
             "array",
             value=rest_cols if rest_cols else None,
@@ -920,7 +901,7 @@ class ArrayFunctions:
         )
 
     @staticmethod
-    def array_repeat(col: Union[MockColumn, str], count: int) -> MockColumnOperation:
+    def array_repeat(col: Union[Column, str], count: int) -> ColumnOperation:
         """Create array by repeating value N times (PySpark 3.0+).
 
         Args:
@@ -928,22 +909,20 @@ class ArrayFunctions:
             count: Number of repetitions
 
         Returns:
-            MockColumnOperation representing the array_repeat function.
+            ColumnOperation representing the array_repeat function.
 
         Example:
             >>> df.select(F.array_repeat(F.col("value"), 3))
         """
         if isinstance(col, str):
-            col = MockColumn(col)
+            col = Column(col)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             col, "array_repeat", value=count, name=f"array_repeat({col.name}, {count})"
         )
 
     @staticmethod
-    def sort_array(
-        col: Union[MockColumn, str], asc: bool = True
-    ) -> MockColumnOperation:
+    def sort_array(col: Union[Column, str], asc: bool = True) -> ColumnOperation:
         """Sort array elements (PySpark 3.0+).
 
         Args:
@@ -951,50 +930,107 @@ class ArrayFunctions:
             asc: Sort ascending if True, descending if False
 
         Returns:
-            MockColumnOperation representing the sort_array function.
+            ColumnOperation representing the sort_array function.
 
         Example:
             >>> df.select(F.sort_array(F.col("values"), asc=False))
         """
         if isinstance(col, str):
-            col = MockColumn(col)
+            col = Column(col)
 
         # Use array_sort as internal function name (reuse existing handlers)
-        return MockColumnOperation(
+        return ColumnOperation(
             col, "array_sort", value=asc, name=f"sort_array({col.name}, {asc})"
         )
 
     # Priority 2: Additional Array Functions
     @staticmethod
-    def array_agg(col: Union[MockColumn, str]) -> "MockAggregateFunction":
+    def array_agg(col: Union[Column, str]) -> "AggregateFunction":
         """Aggregate function to collect values into an array (PySpark 3.5+).
 
         Args:
             col: Column to aggregate into an array
 
         Returns:
-            MockAggregateFunction representing the array_agg function.
+            AggregateFunction representing the array_agg function.
 
         Example:
             >>> df.groupBy("dept").agg(F.array_agg("name"))
         """
-        from mock_spark.functions.base import MockAggregateFunction
+        from mock_spark.functions.base import AggregateFunction
         from mock_spark.spark_types import ArrayType, StringType
 
-        return MockAggregateFunction(col, "array_agg", ArrayType(StringType()))
+        return AggregateFunction(col, "array_agg", ArrayType(StringType()))
 
     @staticmethod
-    def cardinality(col: Union[MockColumn, str]) -> MockColumnOperation:
+    def cardinality(col: Union[Column, str]) -> ColumnOperation:
         """Return the size of an array or map (PySpark 3.5+).
 
         Args:
             col: Array or map column
 
         Returns:
-            MockColumnOperation representing the cardinality function.
+            ColumnOperation representing the cardinality function.
 
         Example:
             >>> df.select(F.cardinality(F.col("array_col")))
         """
-        column = MockColumn(col) if isinstance(col, str) else col
-        return MockColumnOperation(column, "size", name=f"cardinality({column.name})")
+        column = Column(col) if isinstance(col, str) else col
+        return ColumnOperation(column, "size", name=f"cardinality({column.name})")
+
+    @staticmethod
+    def get(
+        col: Union[Column, str], key: Union[Column, str, int, Any]
+    ) -> ColumnOperation:
+        """Get element from array by index or map by key.
+
+        Args:
+            col: Array or map column.
+            key: Index (for arrays) or key (for maps).
+
+        Returns:
+            ColumnOperation representing the get function.
+        """
+        from mock_spark.functions.base import Column
+
+        column = Column(col) if isinstance(col, str) else col
+        if isinstance(key, (str, int)):
+            key = Column(str(key)) if isinstance(key, int) else Column(key)
+
+        operation = ColumnOperation(
+            column,
+            "get",
+            key,
+            name=f"get({column.name}, {key.name if hasattr(key, 'name') else key})",
+        )
+        return operation
+
+    @staticmethod
+    def inline(col: Union[Column, str]) -> ColumnOperation:
+        """Explode array of structs into rows.
+
+        Args:
+            col: Array of structs column.
+
+        Returns:
+            ColumnOperation representing the inline function.
+        """
+        column = Column(col) if isinstance(col, str) else col
+        operation = ColumnOperation(column, "inline", name=f"inline({column.name})")
+        return operation
+
+    @staticmethod
+    def inline_outer(col: Union[Column, str]) -> ColumnOperation:
+        """Explode array of structs into rows (outer join style - preserves nulls).
+
+        Args:
+            col: Array of structs column.
+
+        Returns:
+            ColumnOperation representing the inline_outer function.
+        """
+        column = Column(col) if isinstance(col, str) else col
+        operation = ColumnOperation(
+            column, "inline_outer", name=f"inline_outer({column.name})"
+        )
+        return operation

@@ -15,20 +15,15 @@ Key Features:
     - Session lifecycle management
 
 Example:
-    >>> from mock_spark.session import MockSparkSession
-    >>> spark = MockSparkSession("MyApp")
+    >>> from mock_spark.sql import SparkSession
+    >>> spark = SparkSession("MyApp")
     >>> data = [{"name": "Alice", "age": 25}]
     >>> df = spark.createDataFrame(data)
     >>> df.show()
-    +--- MockDataFrame: 1 rows ---+
-             age |         name
-    ---------------------------
-              25 |        Alice
+    DataFrame[1 rows, 2 columns]
+    age name
+    25    Alice
     >>> spark.sql("CREATE DATABASE test")
 """
 
 # Import from the new modular structure
-from .core import MockSparkSession, MockSparkSessionBuilder
-
-# Set the builder attribute on MockSparkSession
-MockSparkSession.builder = MockSparkSessionBuilder()

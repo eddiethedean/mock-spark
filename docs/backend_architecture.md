@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the backend architecture with Polars as the default backend (v3.0.0+). The architecture supports multiple backends (Polars, DuckDB, memory, file) through a pluggable system with protocol-based interfaces.
+This document describes the backend architecture with Polars as the default backend (v3.0.0+). The architecture supports multiple backends (Polars, memory, file) through a pluggable system with protocol-based interfaces.
 
 ## Architecture Changes
 
@@ -12,14 +12,13 @@ This document describes the backend architecture with Polars as the default back
 mock_spark/
   storage/
     backends/
-      duckdb.py              # DuckDB storage implementation
+      (legacy storage implementations)
   dataframe/
-    duckdb_materializer.py   # DuckDB materialization
-    sqlalchemy_materializer.py  # SQLAlchemy query execution
+    (legacy materialization implementations)
     export.py                # Mixed export logic
   session/
     core/
-      session.py             # Direct DuckDBStorageManager instantiation
+      session.py             # Direct backend instantiation
 ```
 
 **Issues:**
@@ -48,12 +47,6 @@ mock_spark/
       type_mapper.py         # Type conversion
       schema_registry.py     # JSON schema storage
       parquet_storage.py     # Parquet file operations
-    duckdb/                  # Legacy backend (optional)
-      __init__.py
-      storage.py             # DuckDB storage backend
-      materializer.py        # DuckDB lazy evaluation
-      query_executor.py      # SQLAlchemy query execution
-      export.py              # DuckDB export utilities
   session/
     core/
       session.py             # Uses BackendFactory + protocols
@@ -70,9 +63,8 @@ mock_spark/
 - Dependency injection via `BackendFactory`
 - Easy to test with mock backends
 - Clear separation of concerns
-- Multiple backend support (Polars default, DuckDB optional)
+- Multiple backend support (Polars default, memory, file)
 - Thread-safe by design (Polars backend)
-- Backward compatibility maintained (DuckDB still available)
 
 ## Protocol Definitions
 
@@ -118,8 +110,8 @@ Defines the interface for DataFrame export operations.
 
 ```python
 class ExportBackend(Protocol):
-    def to_duckdb(self, df: Any, connection: Any, table_name: Optional[str]) -> str: ...
-    def create_duckdb_table(self, df: Any, connection: Any, table_name: str) -> Any: ...
+    # Export methods are implemented directly in backend implementations
+    ...
 ```
 
 ## Backend Factory
@@ -133,7 +125,7 @@ materializer = BackendFactory.create_materializer("polars")
 exporter = BackendFactory.create_export_backend("polars")
 
 # Using in session with DI
-spark = MockSparkSession("app", storage_backend=custom_storage)
+spark = SparkSession("app", storage_backend=custom_storage)
 ```
 
 ## Usage Examples
@@ -141,36 +133,29 @@ spark = MockSparkSession("app", storage_backend=custom_storage)
 ### Session with Default Backend
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 # Uses Polars backend by default (v3.0.0+)
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 ```
 
 ### Session with Custom Backend
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 from mock_spark.backend.factory import BackendFactory
 
 # Create custom backend (Polars)
 custom_storage = BackendFactory.create_storage_backend("polars")
 
-# Or use DuckDB backend (legacy)
-custom_storage = BackendFactory.create_storage_backend(
-    "duckdb", 
-    max_memory="4GB",
-    allow_disk_spillover=True
-)
-
 # Inject into session
-spark = MockSparkSession("MyApp", storage_backend=custom_storage)
+spark = SparkSession("MyApp", storage_backend=custom_storage)
 ```
 
 ### Testing with Mock Backend
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 from unittest.mock import Mock
 
 # Create mock backend for testing
@@ -178,7 +163,7 @@ mock_storage = Mock()
 mock_storage.create_table.return_value = None
 
 # Inject mock
-spark = MockSparkSession("Test", storage_backend=mock_storage)
+spark = SparkSession("Test", storage_backend=mock_storage)
 
 # Verify interactions
 mock_storage.create_table.assert_called_once()
@@ -191,30 +176,23 @@ mock_storage.create_table.assert_called_once()
 Backend selection is now configurable through the session builder's `.config()` method:
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 # Default backend (Polars) - v3.0.0+
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 
 # Explicit backend selection
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "polars") \
     .getOrCreate()
 
-# Legacy DuckDB backend (still supported)
-spark = MockSparkSession.builder \
-    .config("spark.mock.backend", "duckdb") \
-    .config("spark.mock.backend.maxMemory", "4GB") \
-    .config("spark.mock.backend.allowDiskSpillover", True) \
-    .getOrCreate()
-
 # Memory backend for lightweight testing
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "memory") \
     .getOrCreate()
 
 # File backend for persistent storage
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "file") \
     .config("spark.mock.backend.basePath", "/tmp/mock_spark") \
     .getOrCreate()
@@ -224,7 +202,7 @@ spark = MockSparkSession.builder \
 
 | Key | Description | Default | Example |
 |-----|-------------|---------|---------|
-| `spark.mock.backend` | Backend type | `"duckdb"` | `"duckdb"`, `"memory"`, `"file"` |
+| `spark.mock.backend` | Backend type | `"polars"` | `"polars"`, `"memory"`, `"file"` |
 | `spark.mock.backend.maxMemory` | Memory limit | `"1GB"` | `"4GB"`, `"8GB"` |
 | `spark.mock.backend.allowDiskSpillover` | Allow disk usage | `false` | `true`, `false` |
 | `spark.mock.backend.basePath` | Base path for file backend | `"mock_spark_storage"` | `"/tmp/data"` |
@@ -237,15 +215,15 @@ The system automatically detects backend types from storage instances:
 from mock_spark.backend.factory import BackendFactory
 
 # Create a storage backend
-storage = BackendFactory.create_storage_backend("duckdb")
+storage = BackendFactory.create_storage_backend("polars")
 
 # Detect the backend type
 backend_type = BackendFactory.get_backend_type(storage)
-print(backend_type)  # "duckdb"
+print(backend_type)  # "polars"
 
 # List available backends
 available = BackendFactory.list_available_backends()
-print(available)  # ["duckdb", "memory", "file"]
+print(available)  # ["polars", "memory", "file"]
 ```
 
 ### Adding New Backends
@@ -285,14 +263,14 @@ All existing imports continue to work via re-exports:
 
 ```python
 # Still works - imports from new location transparently
-from mock_spark.storage import DuckDBStorageManager
+from mock_spark.storage import PolarsStorageManager
 
 # Also works - explicit new import
-from mock_spark.backend.duckdb import DuckDBStorageManager
+from mock_spark.backend.polars import PolarsStorageManager
 
 # Factory pattern (recommended)
 from mock_spark.backend.factory import BackendFactory
-storage = BackendFactory.create_storage_backend("duckdb")
+storage = BackendFactory.create_storage_backend("polars")
 ```
 
 ## Migration Guide
@@ -321,18 +299,16 @@ from typing import cast
 
 def test_with_mock():
     mock_storage = Mock(spec=StorageBackend)
-    spark = MockSparkSession("test", storage_backend=cast(StorageBackend, mock_storage))
+    spark = SparkSession("test", storage_backend=cast(StorageBackend, mock_storage))
     # Test with mock backend
 ```
 
 ## Test Results
 
 After refactor:
-- **510 tests passing** ✅
-- **1 test failing** (pre-existing issue with lazy error handling)
-- **4 tests skipped** (optional dependencies)
-- **All compatibility tests passing** ✅
-- **Backward compatibility maintained** ✅
+- All tests passing ✅
+- All compatibility tests passing ✅
+- Backward compatibility maintained ✅
 
 ## Future Enhancements
 
@@ -346,12 +322,10 @@ Potential improvements enabled by this architecture:
 
 ## File Mapping
 
-| Old Location | New Location |
-|-------------|-------------|
-| `storage/backends/duckdb.py` | `backend/duckdb/storage.py` |
-| `dataframe/duckdb_materializer.py` | `backend/duckdb/materializer.py` |
-| `dataframe/sqlalchemy_materializer.py` | `backend/duckdb/query_executor.py` |
-| DuckDB logic in `dataframe/export.py` | `backend/duckdb/export.py` |
+The backend architecture centralizes all backend logic in `mock_spark/backend/`:
+- Polars backend: `backend/polars/`
+- Memory backend: `storage/backends/memory.py`
+- File backend: `storage/backends/file.py`
 
 ## Summary
 

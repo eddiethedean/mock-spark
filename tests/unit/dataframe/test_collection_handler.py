@@ -13,8 +13,8 @@ except ImportError:
         allow_module_level=True,
     )
 from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     LongType,
     StringType,
 )
@@ -32,10 +32,10 @@ class TestCollectionHandler:
     @pytest.fixture
     def schema(self):
         """Create a schema for testing."""
-        return MockStructType(
+        return StructType(
             [
-                MockStructField("id", LongType()),
-                MockStructField("name", StringType()),
+                StructField("id", LongType()),
+                StructField("name", StringType()),
             ]
         )
 

@@ -1,15 +1,15 @@
 """XML functions for PySpark 3.2+ compatibility."""
 
 from typing import Union
-from mock_spark.functions.core.column import MockColumn
-from mock_spark.functions.base import MockColumnOperation
+from mock_spark.functions.core.column import Column
+from mock_spark.functions.base import ColumnOperation
 
 
 class XMLFunctions:
     """XML parsing and manipulation functions."""
 
     @staticmethod
-    def from_xml(col: Union[MockColumn, str], schema: str) -> MockColumnOperation:
+    def from_xml(col: Union[Column, str], schema: str) -> ColumnOperation:
         """Parse XML string to struct based on schema.
 
         Args:
@@ -17,15 +17,15 @@ class XMLFunctions:
             schema: Schema definition string.
 
         Returns:
-            MockColumnOperation representing the from_xml function.
+            ColumnOperation representing the from_xml function.
 
         Example:
             >>> df.select(F.from_xml(F.col("xml"), "name STRING, age INT"))
         """
         if isinstance(col, str):
-            col = MockColumn(col)
+            col = Column(col)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             col,
             "from_xml",
             schema,
@@ -33,52 +33,52 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def to_xml(col: Union[MockColumn, MockColumnOperation]) -> MockColumnOperation:
+    def to_xml(col: Union[Column, ColumnOperation]) -> ColumnOperation:
         """Convert struct column to XML string.
 
         Args:
             col: Struct column to convert.
 
         Returns:
-            MockColumnOperation representing the to_xml function.
+            ColumnOperation representing the to_xml function.
 
         Example:
             >>> df.select(F.to_xml(F.struct(F.col("name"), F.col("age"))))
         """
         if isinstance(col, str):
-            col = MockColumn(col)
+            col = Column(col)
 
-        return MockColumnOperation(
-            col if isinstance(col, MockColumn) else col.column,
+        return ColumnOperation(
+            col if isinstance(col, Column) else col.column,
             "to_xml",
-            col if isinstance(col, MockColumnOperation) else None,
+            col if isinstance(col, ColumnOperation) else None,
             name=f"to_xml({getattr(col, 'name', 'struct')})",
         )
 
     @staticmethod
-    def schema_of_xml(col: Union[MockColumn, str]) -> MockColumnOperation:
+    def schema_of_xml(col: Union[Column, str]) -> ColumnOperation:
         """Infer schema from XML string.
 
         Args:
             col: Column containing XML strings.
 
         Returns:
-            MockColumnOperation representing the schema_of_xml function.
+            ColumnOperation representing the schema_of_xml function.
 
         Example:
             >>> df.select(F.schema_of_xml(F.col("xml")))
         """
         if isinstance(col, str):
-            col = MockColumn(col)
+            col = Column(col)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             col,
             "schema_of_xml",
             name=f"schema_of_xml({col.name})",
         )
 
     @staticmethod
-    def xpath(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract array of values from XML using XPath.
 
         Args:
@@ -86,15 +86,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath function.
+            ColumnOperation representing the xpath function.
 
         Example:
             >>> df.select(F.xpath(F.col("xml"), "/root/item"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath",
             path,
@@ -102,7 +102,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_boolean(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_boolean(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Evaluate XPath expression to boolean.
 
         Args:
@@ -110,15 +110,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_boolean function.
+            ColumnOperation representing the xpath_boolean function.
 
         Example:
             >>> df.select(F.xpath_boolean(F.col("xml"), "/root/active='true'"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_boolean",
             path,
@@ -126,7 +126,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_double(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_double(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract double value from XML using XPath.
 
         Args:
@@ -134,15 +134,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_double function.
+            ColumnOperation representing the xpath_double function.
 
         Example:
             >>> df.select(F.xpath_double(F.col("xml"), "/root/value"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_double",
             path,
@@ -150,7 +150,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_float(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_float(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract float value from XML using XPath.
 
         Args:
@@ -158,15 +158,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_float function.
+            ColumnOperation representing the xpath_float function.
 
         Example:
             >>> df.select(F.xpath_float(F.col("xml"), "/root/price"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_float",
             path,
@@ -174,7 +174,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_int(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_int(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract integer value from XML using XPath.
 
         Args:
@@ -182,15 +182,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_int function.
+            ColumnOperation representing the xpath_int function.
 
         Example:
             >>> df.select(F.xpath_int(F.col("xml"), "/root/age"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_int",
             path,
@@ -198,7 +198,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_long(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_long(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract long value from XML using XPath.
 
         Args:
@@ -206,15 +206,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_long function.
+            ColumnOperation representing the xpath_long function.
 
         Example:
             >>> df.select(F.xpath_long(F.col("xml"), "/root/value"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_long",
             path,
@@ -222,7 +222,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_short(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_short(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract short value from XML using XPath.
 
         Args:
@@ -230,15 +230,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_short function.
+            ColumnOperation representing the xpath_short function.
 
         Example:
             >>> df.select(F.xpath_short(F.col("xml"), "/root/count"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_short",
             path,
@@ -246,7 +246,7 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def xpath_string(xml: Union[MockColumn, str], path: str) -> MockColumnOperation:
+    def xpath_string(xml: Union[Column, str], path: str) -> ColumnOperation:
         """Extract string value from XML using XPath.
 
         Args:
@@ -254,15 +254,15 @@ class XMLFunctions:
             path: XPath expression.
 
         Returns:
-            MockColumnOperation representing the xpath_string function.
+            ColumnOperation representing the xpath_string function.
 
         Example:
             >>> df.select(F.xpath_string(F.col("xml"), "/root/name"))
         """
         if isinstance(xml, str):
-            xml = MockColumn(xml)
+            xml = Column(xml)
 
-        return MockColumnOperation(
+        return ColumnOperation(
             xml,
             "xpath_string",
             path,

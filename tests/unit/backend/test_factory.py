@@ -5,6 +5,7 @@ Unit tests for backend factory.
 import os
 import pytest
 import tempfile
+import contextlib
 
 # Skip if factory module doesn't exist
 try:
@@ -19,41 +20,28 @@ except ImportError:
 class TestBackendFactory:
     """Test BackendFactory operations."""
 
-    def test_create_storage_backend_duckdb_default(self):
-        """Test creating DuckDB storage backend with defaults."""
-        backend = BackendFactory.create_storage_backend("duckdb")
+    def test_create_storage_backend_polars_default(self):
+        """Test creating Polars storage backend with defaults."""
+        backend = BackendFactory.create_storage_backend("polars")
         assert backend is not None
-        from mock_spark.backend.duckdb.storage import DuckDBStorageManager
+        from mock_spark.backend.polars.storage import PolarsStorageManager
 
-        assert isinstance(backend, DuckDBStorageManager)
+        assert isinstance(backend, PolarsStorageManager)
 
-    def test_create_storage_backend_duckdb_with_path(self):
-        """Test creating DuckDB backend with custom path."""
-        # Use a temporary file to avoid leaving test.db in the repo
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
-            db_path = tmp_file.name
-        
-        try:
-            backend = BackendFactory.create_storage_backend("duckdb", db_path=db_path)
+    def test_create_storage_backend_polars_with_path(self):
+        """Test creating Polars backend with custom path."""
+        # Use a temporary directory to avoid leaving test files in the repo
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test_storage")
+            backend = BackendFactory.create_storage_backend("polars", db_path=db_path)
             assert backend is not None
             # Clean up the backend to close connections
-            try:
+            with contextlib.suppress(AttributeError):
                 backend.close()
-            except AttributeError:
-                pass
-        finally:
-            # Clean up the database file
-            if os.path.exists(db_path):
-                os.remove(db_path)
-            # Also remove any .wal or .tmp files DuckDB might create
-            for suffix in [".wal", ".tmp"]:
-                wal_path = db_path + suffix
-                if os.path.exists(wal_path):
-                    os.remove(wal_path)
 
-    def test_create_storage_backend_duckdb_with_memory(self):
-        """Test creating DuckDB backend with memory limit."""
-        backend = BackendFactory.create_storage_backend("duckdb", max_memory="512MB")
+    def test_create_storage_backend_polars_with_memory(self):
+        """Test creating Polars backend with memory limit (ignored but accepted for compatibility)."""
+        backend = BackendFactory.create_storage_backend("polars", max_memory="512MB")
         assert backend is not None
 
     def test_create_storage_backend_memory(self):
@@ -66,41 +54,38 @@ class TestBackendFactory:
 
     def test_create_storage_backend_file(self):
         """Test creating file storage backend."""
-        backend = BackendFactory.create_storage_backend(
-            "file", base_path="test_storage"
-        )
-        assert backend is not None
-        from mock_spark.storage.backends.file import FileStorageManager
+        # Use a temporary directory to avoid leaving test files in the repo
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = os.path.join(tmp_dir, "test_storage")
+            backend = BackendFactory.create_storage_backend("file", base_path=base_path)
+            assert backend is not None
+            from mock_spark.storage.backends.file import FileStorageManager
 
-        assert isinstance(backend, FileStorageManager)
+            assert isinstance(backend, FileStorageManager)
+            # Explicitly clean up the backend
+            with contextlib.suppress(AttributeError):
+                backend.close()
+            # Verify the directory was created in the temp location, not repo root
+            assert os.path.exists(base_path)
+            assert not os.path.exists("test_storage")  # Should not exist in repo root
 
     def test_create_storage_backend_unsupported(self):
         """Test creating unsupported backend raises ValueError."""
         with pytest.raises(ValueError, match="Unsupported backend type"):
             BackendFactory.create_storage_backend("unsupported_type")
 
-    def test_create_materializer_duckdb_default(self):
-        """Test creating DuckDB materializer with defaults."""
-        materializer = BackendFactory.create_materializer("duckdb")
+    def test_create_materializer_polars_default(self):
+        """Test creating Polars materializer with defaults."""
+        materializer = BackendFactory.create_materializer("polars")
         assert materializer is not None
-        from mock_spark.backend.duckdb.materializer import DuckDBMaterializer
+        from mock_spark.backend.polars.materializer import PolarsMaterializer
 
-        assert isinstance(materializer, DuckDBMaterializer)
+        assert isinstance(materializer, PolarsMaterializer)
 
-    def test_create_materializer_duckdb_with_memory(self):
-        """Test creating DuckDB materializer with memory limit."""
-        materializer = BackendFactory.create_materializer("duckdb", max_memory="512MB")
+    def test_create_materializer_polars_with_memory(self):
+        """Test creating Polars materializer with memory limit (ignored but accepted for compatibility)."""
+        materializer = BackendFactory.create_materializer("polars", max_memory="512MB")
         assert materializer is not None
-
-    def test_create_materializer_sqlalchemy(self):
-        """Test creating SQLAlchemy materializer."""
-        materializer = BackendFactory.create_materializer(
-            "sqlalchemy", engine_url="duckdb:///:memory:"
-        )
-        assert materializer is not None
-        from mock_spark.backend.duckdb.query_executor import SQLAlchemyMaterializer
-
-        assert isinstance(materializer, SQLAlchemyMaterializer)
 
     def test_create_materializer_unsupported(self):
         """Test creating unsupported materializer raises ValueError."""
@@ -109,16 +94,25 @@ class TestBackendFactory:
 
     def test_create_storage_backend_file_custom_path(self):
         """Test creating file storage with custom base path."""
-        backend = BackendFactory.create_storage_backend("file", base_path="custom_path")
-        assert backend is not None
+        # Use a temporary directory to avoid leaving test files in the repo
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = os.path.join(tmp_dir, "custom_path")
+            backend = BackendFactory.create_storage_backend("file", base_path=base_path)
+            assert backend is not None
+            # Explicitly clean up the backend
+            with contextlib.suppress(AttributeError):
+                backend.close()
+            # Verify the directory was created in the temp location, not repo root
+            assert os.path.exists(base_path)
+            assert not os.path.exists("custom_path")  # Should not exist in repo root
 
-    def test_create_export_backend_duckdb(self):
-        """Test creating export backend."""
-        export_backend = BackendFactory.create_export_backend("duckdb")
+    def test_create_export_backend_polars(self):
+        """Test creating Polars export backend."""
+        export_backend = BackendFactory.create_export_backend("polars")
         assert export_backend is not None
-        from mock_spark.backend.duckdb.export import DuckDBExporter
+        from mock_spark.backend.polars.export import PolarsExporter
 
-        assert isinstance(export_backend, DuckDBExporter)
+        assert isinstance(export_backend, PolarsExporter)
 
     def test_create_export_backend_unsupported(self):
         """Test creating unsupported export backend raises ValueError."""
@@ -126,52 +120,53 @@ class TestBackendFactory:
             BackendFactory.create_export_backend("unsupported_type")
 
     def test_create_export_backend_memory(self):
-        """Test creating memory export backend."""
+        """Test creating memory export backend uses Polars."""
         export_backend = BackendFactory.create_export_backend("memory")
         assert export_backend is not None
-        from mock_spark.backend.duckdb.export import DuckDBExporter
+        from mock_spark.backend.polars.export import PolarsExporter
 
-        assert isinstance(export_backend, DuckDBExporter)
+        assert isinstance(export_backend, PolarsExporter)
 
     def test_create_export_backend_file(self):
-        """Test creating file export backend."""
+        """Test creating file export backend uses Polars."""
         export_backend = BackendFactory.create_export_backend("file")
         assert export_backend is not None
-        from mock_spark.backend.duckdb.export import DuckDBExporter
+        from mock_spark.backend.polars.export import PolarsExporter
 
-        assert isinstance(export_backend, DuckDBExporter)
+        assert isinstance(export_backend, PolarsExporter)
 
     def test_storage_backend_kwargs(self):
         """Test passing kwargs to storage backend."""
-        backend = BackendFactory.create_storage_backend("duckdb", test_param="value")
+        backend = BackendFactory.create_storage_backend("polars", test_param="value")
         assert backend is not None
 
     def test_materializer_kwargs(self):
         """Test passing kwargs to materializer."""
-        materializer = BackendFactory.create_materializer("duckdb", test_param="value")
+        materializer = BackendFactory.create_materializer("polars", test_param="value")
         assert materializer is not None
 
     def test_list_available_backends(self):
         """Test list_available_backends."""
         backends = BackendFactory.list_available_backends()
-        assert "duckdb" in backends
+        assert "polars" in backends
         assert "memory" in backends
         assert "file" in backends
+        assert "duckdb" not in backends
 
     def test_validate_backend_type_valid(self):
         """Test validate_backend_type with valid backend."""
-        BackendFactory.validate_backend_type("duckdb")  # Should not raise
+        BackendFactory.validate_backend_type("polars")  # Should not raise
 
     def test_validate_backend_type_invalid(self):
         """Test validate_backend_type with invalid backend."""
         with pytest.raises(ValueError, match="Unsupported backend type"):
             BackendFactory.validate_backend_type("invalid")
 
-    def test_get_backend_type_duckdb(self):
-        """Test get_backend_type detects DuckDB."""
-        backend = BackendFactory.create_storage_backend("duckdb")
+    def test_get_backend_type_polars(self):
+        """Test get_backend_type detects Polars."""
+        backend = BackendFactory.create_storage_backend("polars")
         backend_type = BackendFactory.get_backend_type(backend)
-        assert backend_type == "duckdb"
+        assert backend_type == "polars"
 
     def test_get_backend_type_memory(self):
         """Test get_backend_type detects memory."""
@@ -181,20 +176,29 @@ class TestBackendFactory:
 
     def test_get_backend_type_file(self):
         """Test get_backend_type detects file."""
-        backend = BackendFactory.create_storage_backend("file", base_path="test")
-        backend_type = BackendFactory.get_backend_type(backend)
-        assert backend_type == "file"
+        # Use a temporary directory to avoid leaving test files in the repo
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            base_path = os.path.join(tmp_dir, "test")
+            backend = BackendFactory.create_storage_backend("file", base_path=base_path)
+            backend_type = BackendFactory.get_backend_type(backend)
+            assert backend_type == "file"
+            # Explicitly clean up the backend
+            with contextlib.suppress(AttributeError):
+                backend.close()
+            # Verify the directory was created in the temp location, not repo root
+            assert os.path.exists(base_path)
+            assert not os.path.exists("test")  # Should not exist in repo root
 
     def test_storage_backend_with_disk_spillover(self):
-        """Test creating storage backend with disk spillover."""
+        """Test creating storage backend with disk spillover (ignored but accepted for compatibility)."""
         backend = BackendFactory.create_storage_backend(
-            "duckdb", allow_disk_spillover=True
+            "polars", allow_disk_spillover=True
         )
         assert backend is not None
 
     def test_materializer_with_disk_spillover(self):
-        """Test creating materializer with disk spillover."""
+        """Test creating materializer with disk spillover (ignored but accepted for compatibility)."""
         materializer = BackendFactory.create_materializer(
-            "duckdb", allow_disk_spillover=True
+            "polars", allow_disk_spillover=True
         )
         assert materializer is not None

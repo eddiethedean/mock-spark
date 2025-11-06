@@ -1,5 +1,5 @@
 """
-SQL parameter binder service for MockSparkSession.
+SQL parameter binder service for SparkSession.
 
 This service handles SQL parameter binding and formatting
 following the Single Responsibility Principle.

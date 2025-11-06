@@ -13,8 +13,8 @@ Key Features:
     - Support for common SQL operations
 
 Example:
-    >>> from mock_spark.session.sql import MockSQLParser
-    >>> parser = MockSQLParser()
+    >>> from mock_spark.session.sql import SQLParser
+    >>> parser = SQLParser()
     >>> ast = parser.parse("SELECT * FROM users WHERE age > 18")
     >>> print(ast.query_type)
     'SELECT'
@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Union
 from ...core.exceptions.analysis import ParseException
 
 
-class MockSQLAST:
+class SQLAST:
     """Abstract Syntax Tree for SQL queries."""
 
     def __init__(self, query_type: str, components: Dict[str, Any], query: str = ""):
@@ -41,16 +41,14 @@ class MockSQLAST:
 
     def __str__(self) -> str:
         """String representation."""
-        return (
-            f"MockSQLAST(type='{self.query_type}', components={len(self.components)})"
-        )
+        return f"SQLAST(type='{self.query_type}', components={len(self.components)})"
 
     def __repr__(self) -> str:
         """Representation."""
         return self.__str__()
 
 
-class MockSQLParser:
+class SQLParser:
     """SQL Parser for Mock Spark.
 
     Provides SQL parsing functionality that converts SQL queries
@@ -59,14 +57,14 @@ class MockSQLParser:
     DROP, and other DDL/DML operations.
 
     Example:
-        >>> parser = MockSQLParser()
+        >>> parser = SQLParser()
         >>> ast = parser.parse("SELECT name, age FROM users WHERE age > 18")
         >>> print(ast.query_type)
         'SELECT'
     """
 
     def __init__(self) -> None:
-        """Initialize MockSQLParser."""
+        """Initialize SQLParser."""
         self._keywords = {
             "SELECT",
             "FROM",
@@ -247,14 +245,14 @@ class MockSQLParser:
             "CURTIME",
         }
 
-    def parse(self, query: str) -> MockSQLAST:
+    def parse(self, query: str) -> SQLAST:
         """Parse SQL query into AST.
 
         Args:
             query: SQL query string.
 
         Returns:
-            MockSQLAST object representing the parsed query.
+            SQLAST object representing the parsed query.
 
         Raises:
             ParseException: If query parsing fails.
@@ -267,7 +265,7 @@ class MockSQLParser:
 
         try:
             components = self._parse_components(query, query_type)
-            return MockSQLAST(query_type, components, query)
+            return SQLAST(query_type, components, query)
         except Exception as e:
             raise ParseException(f"Failed to parse query: {str(e)}")
 

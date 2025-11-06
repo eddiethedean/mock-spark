@@ -3,9 +3,9 @@
 Track and clear session memory for large test suites.
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
-spark = MockSparkSession()
+spark = SparkSession()
 
 # after creating multiple DataFrames
 print(spark.get_memory_usage())

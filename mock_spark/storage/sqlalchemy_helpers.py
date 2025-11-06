@@ -135,7 +135,7 @@ def create_table_from_mock_schema(
 
     Args:
         table_name: Name for the table
-        mock_schema: MockStructType instance with fields
+        mock_schema: StructType instance with fields
         metadata: SQLAlchemy MetaData instance
         **kwargs: Additional arguments for Table() (e.g., prefixes=['TEMPORARY'])
 
@@ -149,14 +149,14 @@ def create_table_from_mock_schema(
     if mock_schema is None:
         raise ValueError(
             f"Cannot create table '{table_name}' with None schema. "
-            "Schema must be a MockStructType instance with fields."
+            "Schema must be a StructType instance with fields."
         )
 
     # Validate schema has fields attribute
     if not hasattr(mock_schema, "fields"):
         raise ValueError(
             f"Cannot create table '{table_name}': schema object does not have 'fields' attribute. "
-            f"Expected MockStructType, got {type(mock_schema).__name__}"
+            f"Expected StructType, got {type(mock_schema).__name__}"
         )
 
     # Validate fields is not None and is iterable

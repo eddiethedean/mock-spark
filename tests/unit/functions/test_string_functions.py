@@ -3,7 +3,7 @@ Unit tests for string functions.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.unit
@@ -12,8 +12,8 @@ class TestStringFunctions:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+        """Create a SparkSession for testing."""
+        return SparkSession("test")
 
     @pytest.fixture
     def sample_data(self):
@@ -86,3 +86,69 @@ class TestStringFunctions:
         assert result.count() == 3
         assert len(result.columns) == 1
         assert "domain" in result.columns
+
+    def test_contains_function(self, spark, sample_data):
+        """Test contains function."""
+        df = spark.createDataFrame(sample_data)
+        result = df.select(F.contains("name", "li").alias("contains_li"))
+
+        assert result.count() == 3
+        assert len(result.columns) == 1
+        assert "contains_li" in result.columns
+        rows = result.collect()
+        assert rows[0]["contains_li"] is True  # "Alice" contains "li"
+        assert rows[1]["contains_li"] is False  # "Bob" does not contain "li"
+
+    def test_left_function(self, spark, sample_data):
+        """Test left function."""
+        df = spark.createDataFrame(sample_data)
+        result = df.select(F.left("name", 2).alias("name_left"))
+
+        assert result.count() == 3
+        assert len(result.columns) == 1
+        assert "name_left" in result.columns
+        rows = result.collect()
+        assert rows[0]["name_left"] == "Al"  # First 2 chars of "Alice"
+
+    def test_right_function(self, spark, sample_data):
+        """Test right function."""
+        df = spark.createDataFrame(sample_data)
+        result = df.select(F.right("name", 2).alias("name_right"))
+
+        assert result.count() == 3
+        assert len(result.columns) == 1
+        assert "name_right" in result.columns
+        rows = result.collect()
+        assert rows[0]["name_right"] == "ce"  # Last 2 chars of "Alice"
+
+    def test_btrim_function(self, spark, sample_data):
+        """Test btrim function."""
+        df = spark.createDataFrame([{"text": "  hello  "}, {"text": "world"}])
+        result = df.select(F.btrim("text").alias("text_trimmed"))
+
+        assert result.count() == 2
+        assert len(result.columns) == 1
+        assert "text_trimmed" in result.columns
+        rows = result.collect()
+        assert rows[0]["text_trimmed"] == "hello"  # Trimmed whitespace
+
+    def test_btrim_with_chars_function(self, spark):
+        """Test btrim function with specific characters."""
+        df = spark.createDataFrame([{"text": "xxxhelloxxx"}])
+        result = df.select(F.btrim("text", "x").alias("text_trimmed"))
+
+        assert result.count() == 1
+        rows = result.collect()
+        assert rows[0]["text_trimmed"] == "hello"  # Trimmed 'x' characters
+
+    def test_bit_length_function(self, spark, sample_data):
+        """Test bit_length function."""
+        df = spark.createDataFrame(sample_data)
+        result = df.select(F.bit_length("name").alias("name_bit_length"))
+
+        assert result.count() == 3
+        assert len(result.columns) == 1
+        assert "name_bit_length" in result.columns
+        rows = result.collect()
+        # "Alice" is 5 characters, UTF-8 encoded = 5 bytes = 40 bits
+        assert rows[0]["name_bit_length"] == 40

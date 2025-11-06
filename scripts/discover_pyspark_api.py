@@ -244,12 +244,12 @@ def save_markdown(matrix: Dict, output_path: Path, versions: List[str]) -> None:
     # Mock-spark coverage
     mock_func_count = sum(
         1
-        for func in matrix["functions"].keys()
+        for func in matrix["functions"]
         if check_mock_spark_availability(func, "function")
     )
     mock_method_count = sum(
         1
-        for method in matrix["dataframe_methods"].keys()
+        for method in matrix["dataframe_methods"]
         if check_mock_spark_availability(method, "dataframe_method")
     )
     lines.append(

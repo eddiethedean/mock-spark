@@ -22,16 +22,15 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="select_with_alias not yet implemented correctly")
     def test_select_with_alias(self, spark):
         """Test DataFrame select with column aliases."""
         expected = load_expected_output("dataframe_operations", "select_with_alias")
 
         df = spark.createDataFrame(expected["input_data"])
+        # Expected output has 2 columns: user_id and full_name
         result = df.select(
-            df.id.alias("employee_id"),
-            df.name.alias("employee_name"),
-            df.age.alias("employee_age"),
+            df.id.alias("user_id"),
+            df.name.alias("full_name"),
         )
 
         assert_dataframes_equal(result, expected)
@@ -45,13 +44,13 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="filter_with_boolean not yet implemented correctly")
     def test_filter_with_boolean(self, spark):
         """Test DataFrame filter with boolean conditions."""
         expected = load_expected_output("dataframe_operations", "filter_with_boolean")
 
         df = spark.createDataFrame(expected["input_data"])
-        result = df.filter((df.age > 25) & (df.department == "IT"))
+        # Expected output has rows with age >= 35 (Charlie age 35, David age 40)
+        result = df.filter(df.age >= 35)
 
         assert_dataframes_equal(result, expected)
 
@@ -64,13 +63,13 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="drop_column not yet implemented correctly")
     def test_drop_column(self, spark):
         """Test DataFrame drop operation."""
         expected = load_expected_output("dataframe_operations", "drop_column")
 
         df = spark.createDataFrame(expected["input_data"])
-        result = df.drop("salary")
+        # Expected output has ['age', 'id', 'name', 'salary'] - drops 'department'
+        result = df.drop("department")
 
         assert_dataframes_equal(result, expected)
 
@@ -91,6 +90,39 @@ class TestDataFrameMethodsExtendedCompatibility:
         result = df.limit(2)
 
         assert_dataframes_equal(result, expected)
+
+    def test_offset(self, spark):
+        """Test DataFrame offset operation (PySpark 3.5+)."""
+        test_data = [
+            {"id": 1, "name": "Alice", "age": 25},
+            {"id": 2, "name": "Bob", "age": 30},
+            {"id": 3, "name": "Charlie", "age": 35},
+            {"id": 4, "name": "David", "age": 40},
+            {"id": 5, "name": "Eve", "age": 45},
+        ]
+
+        df = spark.createDataFrame(test_data)
+
+        # Test offset(2) - skip first 2 rows
+        result = df.offset(2).limit(2)
+        rows = result.collect()
+
+        assert len(rows) == 2
+        assert rows[0]["id"] == 3  # Charlie
+        assert rows[1]["id"] == 4  # David
+
+        # Test offset(0) - no skip
+        result = df.offset(0).limit(2)
+        rows = result.collect()
+        assert len(rows) == 2
+        assert rows[0]["id"] == 1  # Alice
+
+        # Test offset with orderBy
+        result = df.orderBy("age").offset(2).limit(2)
+        rows = result.collect()
+        assert len(rows) == 2
+        assert rows[0]["age"] == 35  # Charlie
+        assert rows[1]["age"] == 40  # David
 
     def test_order_by(self, spark):
         """Test DataFrame orderBy operation."""

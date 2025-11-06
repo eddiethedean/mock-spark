@@ -1,16 +1,16 @@
 """
 Session builder implementation for Mock Spark.
 
-This module provides the MockSparkSessionBuilder class for creating
+This module provides the SparkSessionBuilder class for creating
 SparkSession instances using the builder pattern, maintaining compatibility
 with PySpark's SparkSession.builder interface.
 """
 
 from typing import Any, Dict, Union
-from .session import MockSparkSession
+from .session import SparkSession
 
 
-class MockSparkSessionBuilder:
+class SparkSessionBuilder:
     """Mock SparkSession builder."""
 
     def __init__(self) -> None:
@@ -18,7 +18,7 @@ class MockSparkSessionBuilder:
         self._app_name = "MockSparkApp"
         self._config: Dict[str, Any] = {}
 
-    def appName(self, name: str) -> "MockSparkSessionBuilder":
+    def appName(self, name: str) -> "SparkSessionBuilder":
         """Set app name.
 
         Args:
@@ -30,7 +30,7 @@ class MockSparkSessionBuilder:
         self._app_name = name
         return self
 
-    def master(self, master: str) -> "MockSparkSessionBuilder":
+    def master(self, master: str) -> "SparkSessionBuilder":
         """Set master URL.
 
         Args:
@@ -43,7 +43,7 @@ class MockSparkSessionBuilder:
 
     def config(
         self, key_or_pairs: Union[str, Dict[str, Any]], value: Any = None
-    ) -> "MockSparkSessionBuilder":
+    ) -> "SparkSessionBuilder":
         """Set configuration.
 
         Args:
@@ -59,14 +59,14 @@ class MockSparkSessionBuilder:
             self._config.update(key_or_pairs)
         return self
 
-    def getOrCreate(self) -> MockSparkSession:
+    def getOrCreate(self) -> SparkSession:
         """Get or create session.
 
         Returns:
-            MockSparkSession instance.
+            SparkSession instance.
         """
         # Return existing singleton if present; otherwise create and cache
-        if MockSparkSession._singleton_session is None:
+        if SparkSession._singleton_session is None:
             # Extract backend configuration
             backend_type = self._config.get("spark.mock.backend", "polars")
             max_memory = self._config.get("spark.mock.backend.maxMemory", "1GB")
@@ -74,7 +74,7 @@ class MockSparkSessionBuilder:
                 "spark.mock.backend.allowDiskSpillover", False
             )
 
-            session = MockSparkSession(
+            session = SparkSession(
                 self._app_name,
                 backend_type=backend_type,
                 max_memory=max_memory,
@@ -82,5 +82,5 @@ class MockSparkSessionBuilder:
             )
             for key, value in self._config.items():
                 session.conf.set(key, value)
-            MockSparkSession._singleton_session = session
-        return MockSparkSession._singleton_session
+            SparkSession._singleton_session = session
+        return SparkSession._singleton_session

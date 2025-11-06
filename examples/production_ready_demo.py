@@ -13,9 +13,12 @@ This example showcases Mock Spark's production-ready capabilities with:
 Run this file to see Mock Spark's full capabilities in action.
 """
 
-from mock_spark import (
-    MockSparkSession,
-    F,
+from mock_spark.sql import (
+    SparkSession,
+    functions as F,
+    Window,
+)
+from mock_spark.sql.types import (
     StringType,
     IntegerType,
     DoubleType,
@@ -30,10 +33,9 @@ from mock_spark import (
     FloatType,
     ShortType,
     ByteType,
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
 )
-from mock_spark.window import MockWindow as Window
 from mock_spark.error_simulation import MockErrorSimulator
 from mock_spark.performance_simulation import MockPerformanceSimulator
 from mock_spark.data_generation import MockDataGenerator
@@ -67,7 +69,7 @@ def main() -> None:
 
     # Create Mock Spark Session
     print_section("Creating Mock Spark Session")
-    spark = MockSparkSession("ProductionDemo")
+    spark = SparkSession("ProductionDemo")
     print(f"✓ Created session: {spark.app_name}")
     print(f"✓ Version: {spark.version}")
 
@@ -75,23 +77,23 @@ def main() -> None:
     print_section("Comprehensive Data Types Support")
 
     # Create complex schema with all supported data types
-    complex_schema = MockStructType(
+    complex_schema = StructType(
         [
-            MockStructField("id", IntegerType()),
-            MockStructField("name", StringType()),
-            MockStructField("age", IntegerType()),
-            MockStructField("salary", DoubleType()),
-            MockStructField("is_active", BooleanType()),
-            MockStructField("birth_date", DateType()),
-            MockStructField("created_at", TimestampType()),
-            MockStructField("balance", DecimalType(10, 2)),
-            MockStructField("tags", ArrayType(StringType())),
-            MockStructField("metadata", MapType(StringType(), StringType())),
-            MockStructField("avatar", BinaryType()),
-            MockStructField("optional_field", NullType()),
-            MockStructField("score", FloatType()),
-            MockStructField("category_id", ShortType()),
-            MockStructField("status_code", ByteType()),
+            StructField("id", IntegerType()),
+            StructField("name", StringType()),
+            StructField("age", IntegerType()),
+            StructField("salary", DoubleType()),
+            StructField("is_active", BooleanType()),
+            StructField("birth_date", DateType()),
+            StructField("created_at", TimestampType()),
+            StructField("balance", DecimalType(10, 2)),
+            StructField("tags", ArrayType(StringType())),
+            StructField("metadata", MapType(StringType(), StringType())),
+            StructField("avatar", BinaryType()),
+            StructField("optional_field", NullType()),
+            StructField("score", FloatType()),
+            StructField("category_id", ShortType()),
+            StructField("status_code", ByteType()),
         ]
     )
 
@@ -100,8 +102,7 @@ def main() -> None:
 
     # Generate realistic test data
     print_subsection("Data Generation")
-    data_generator = MockDataGenerator()
-    sample_data = data_generator.create_realistic_data(
+    sample_data = MockDataGenerator.create_realistic_data(
         complex_schema, num_rows=100, seed=42
     )
     print(f"✓ Generated {len(sample_data)} realistic records")
@@ -116,7 +117,9 @@ def main() -> None:
 
     # Complex filtering and selection
     print_subsection("Complex Filtering and Selection")
-    filtered_df = df.select(
+    filtered_df = df.filter(
+        (F.col("age") > 20) & (F.col("is_active")) & (F.col("salary") > 50000)
+    ).select(
         F.col("id"),
         F.col("name"),
         F.col("age"),
@@ -128,7 +131,7 @@ def main() -> None:
         .otherwise(F.lit("Junior"))
         .alias("level"),
         F.coalesce(F.col("salary"), F.lit(0.0)).alias("safe_salary"),
-    ).filter((F.col("age") > 20) & (F.col("is_active")) & (F.col("salary") > 50000))
+    )
 
     print("✓ Complex filtering applied")
     print(f"✓ Filtered rows: {filtered_df.count()}")
@@ -137,14 +140,13 @@ def main() -> None:
     print_subsection("Window Functions")
     window_spec = Window.partitionBy("level").orderBy(F.desc("salary"))
 
-    windowed_df = filtered_df.select(
-        F.col("*"),
-        F.row_number().over(window_spec).alias("row_num"),
-        F.rank().over(window_spec).alias("rank"),
-        F.dense_rank().over(window_spec).alias("dense_rank"),
-        F.avg("salary").over(window_spec).alias("avg_salary_by_level"),
-        F.lag("salary", 1).over(window_spec).alias("prev_salary"),
-        F.lead("salary", 1).over(window_spec).alias("next_salary"),
+    windowed_df = (
+        filtered_df.withColumn("row_num", F.row_number().over(window_spec))
+        .withColumn("rank", F.rank().over(window_spec))
+        .withColumn("dense_rank", F.dense_rank().over(window_spec))
+        .withColumn("avg_salary_by_level", F.avg("salary").over(window_spec))
+        .withColumn("prev_salary", F.lag("salary", 1).over(window_spec))
+        .withColumn("next_salary", F.lead("salary", 1).over(window_spec))
     )
 
     print("✓ Window functions applied")
@@ -298,7 +300,7 @@ def main() -> None:
     print(f"✓ Created test DataFrame: {test_df.count()} rows")
 
     # Create another test session
-    test_session = MockSparkSession("TestSession")
+    test_session = SparkSession("TestSession")
     print(f"✓ Created test session: {test_session.app_name}")
 
     # Final statistics

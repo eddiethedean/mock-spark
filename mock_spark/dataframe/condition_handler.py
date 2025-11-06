@@ -1,5 +1,5 @@
 """
-Condition Handler for MockDataFrame operations.
+Condition Handler for DataFrame operations.
 
 This module provides a centralized handler for all condition evaluation logic,
 ensuring consistency and adherence to the Single Responsibility Principle.
@@ -8,21 +8,21 @@ ensuring consistency and adherence to the Single Responsibility Principle.
 from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...functions import MockColumn, MockColumnOperation
+    from ...functions import Column, ColumnOperation
     from .evaluation.expression_evaluator import ExpressionEvaluator
 
 
 class ConditionHandler:
-    """Handles condition evaluation for MockDataFrame operations.
+    """Handles condition evaluation for DataFrame operations.
 
     This class consolidates all condition evaluation logic that was previously
-    scattered throughout MockDataFrame, providing a single point of
+    scattered throughout DataFrame, providing a single point of
     responsibility for condition evaluation operations.
     """
 
     def __init__(self) -> None:
         """Initialize the ConditionHandler."""
-        self._expression_evaluator: Optional["ExpressionEvaluator"] = None
+        self._expression_evaluator: Optional[ExpressionEvaluator] = None
 
     def _get_expression_evaluator(self) -> "ExpressionEvaluator":
         """Lazy initialization of ExpressionEvaluator."""
@@ -33,7 +33,7 @@ class ConditionHandler:
         return self._expression_evaluator
 
     def apply_condition(
-        self, data: List[Dict[str, Any]], condition: "MockColumnOperation"
+        self, data: List[Dict[str, Any]], condition: "ColumnOperation"
     ) -> List[Dict[str, Any]]:
         """Apply condition to filter data.
 
@@ -53,7 +53,7 @@ class ConditionHandler:
         return filtered_data
 
     def evaluate_condition(
-        self, row: Dict[str, Any], condition: Union["MockColumnOperation", "MockColumn"]
+        self, row: Dict[str, Any], condition: Union["ColumnOperation", "Column"]
     ) -> bool:
         """Evaluate condition for a single row.
 
@@ -94,7 +94,7 @@ class ConditionHandler:
         Returns:
             Result of the CASE WHEN evaluation.
         """
-        # Use the MockCaseWhen's own evaluate method
+        # Use the CaseWhen's own evaluate method
         if hasattr(case_when_obj, "evaluate"):
             return case_when_obj.evaluate(row)
 
@@ -123,7 +123,7 @@ class ConditionHandler:
             Boolean result of the condition evaluation.
         """
         if hasattr(condition, "operation") and hasattr(condition, "column"):
-            # Handle MockColumnOperation conditions
+            # Handle ColumnOperation conditions
             if condition.operation == ">":
                 col_value = (
                     row.get(condition.column.name)

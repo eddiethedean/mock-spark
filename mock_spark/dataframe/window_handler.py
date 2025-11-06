@@ -1,14 +1,11 @@
 """
-Window function handler for MockDataFrame.
+Window function handler for DataFrame.
 
 This module handles window function evaluation (row_number, rank, lag, lead, etc.)
 following the Single Responsibility Principle.
 """
 
-from typing import List, Dict, Any, Tuple, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
+from typing import List, Dict, Any, Tuple
 
 
 class WindowFunctionHandler:
@@ -18,7 +15,7 @@ class WindowFunctionHandler:
         """Initialize window function handler.
 
         Args:
-            dataframe: The MockDataFrame instance this handler belongs to
+            dataframe: The DataFrame instance this handler belongs to
         """
         self.dataframe = dataframe
 
@@ -104,6 +101,16 @@ class WindowFunctionHandler:
                 # Handle lead function - get next row value
                 self._evaluate_lag_lead(
                     result_data, window_func, col_name, is_lead=True
+                )
+            elif window_func.function_name == "first_value":
+                # Handle first_value function - get first value in window
+                self._evaluate_first_last_value(
+                    result_data, window_func, col_name, is_last=False
+                )
+            elif window_func.function_name == "last_value":
+                # Handle last_value function - get last value in window
+                self._evaluate_first_last_value(
+                    result_data, window_func, col_name, is_last=True
                 )
             elif window_func.function_name in ["rank", "dense_rank"]:
                 # Handle rank and dense_rank functions
@@ -212,7 +219,7 @@ class WindowFunctionHandler:
             row = data[idx]
             key_values = []
             for col in order_by_cols:
-                # Handle MockColumnOperation objects (like col("salary").desc())
+                # Handle ColumnOperation objects (like col("salary").desc())
                 if hasattr(col, "column") and hasattr(col.column, "name"):
                     col_name = col.column.name
                 elif hasattr(col, "name"):
@@ -265,6 +272,97 @@ class WindowFunctionHandler:
                     data[idx][target_col] = data[actual_idx].get(source_col)
                 else:
                     data[idx][target_col] = default_value
+
+    def _evaluate_first_last_value(
+        self, data: List[Dict[str, Any]], window_func: Any, col_name: str, is_last: bool
+    ) -> None:
+        """Evaluate first_value or last_value window function."""
+        if not window_func.column_name:
+            # No column specified, set to None
+            for row in data:
+                row[col_name] = None
+            return
+
+        source_col = window_func.column_name
+
+        # Handle window specification if present
+        if hasattr(window_func, "window_spec") and window_func.window_spec:
+            window_spec = window_func.window_spec
+            partition_by_cols = getattr(window_spec, "_partition_by", [])
+            order_by_cols = getattr(window_spec, "_order_by", [])
+
+            if partition_by_cols:
+                # Handle partitioning
+                partition_groups: Dict[Any, List[int]] = {}
+                for i, row in enumerate(data):
+                    partition_key = tuple(
+                        row.get(col.name) if hasattr(col, "name") else row.get(str(col))
+                        for col in partition_by_cols
+                    )
+                    if partition_key not in partition_groups:
+                        partition_groups[partition_key] = []
+                    partition_groups[partition_key].append(i)
+
+                # Process each partition
+                for partition_indices in partition_groups.values():
+                    self._apply_first_last_to_partition(
+                        data,
+                        partition_indices,
+                        source_col,
+                        col_name,
+                        order_by_cols,
+                        is_last,
+                    )
+            else:
+                # No partitioning, apply to entire dataset
+                self._apply_first_last_to_partition(
+                    data,
+                    list(range(len(data))),
+                    source_col,
+                    col_name,
+                    order_by_cols,
+                    is_last,
+                )
+        else:
+            # No window spec, get first/last value from entire dataset
+            self._apply_first_last_to_partition(
+                data, list(range(len(data))), source_col, col_name, [], is_last
+            )
+
+    def _apply_first_last_to_partition(
+        self,
+        data: List[Dict[str, Any]],
+        indices: List[int],
+        source_col: str,
+        target_col: str,
+        order_by_cols: List[Any],
+        is_last: bool,
+    ) -> None:
+        """Apply first_value or last_value to a specific partition."""
+        if not indices:
+            return
+
+        # If there's ordering, sort the partition
+        if order_by_cols:
+            sorted_indices = self._apply_ordering_to_indices(
+                data, indices, order_by_cols
+            )
+        else:
+            sorted_indices = indices
+
+        # Get first or last value based on sorted order
+        if is_last:
+            # Get last value
+            target_idx = sorted_indices[-1]
+            value = data[target_idx].get(source_col)
+        else:
+            # Get first value
+            target_idx = sorted_indices[0]
+            value = data[target_idx].get(source_col)
+
+        # Assign the value to all rows in the partition
+        for idx in indices:
+            data[idx][target_col] = value
 
     def _evaluate_rank_functions(
         self, data: List[Dict[str, Any]], window_func: Any, col_name: str
@@ -333,7 +431,7 @@ class WindowFunctionHandler:
                 row = data[idx]
                 current_values = []
                 for col in order_by_cols:
-                    # Handle MockColumnOperation objects (like col("salary").desc())
+                    # Handle ColumnOperation objects (like col("salary").desc())
                     if hasattr(col, "column") and hasattr(col.column, "name"):
                         order_col_name = col.column.name
                     elif hasattr(col, "name"):
@@ -362,7 +460,7 @@ class WindowFunctionHandler:
                     current_values = []
                     prev_values = []
                     for col in order_by_cols:
-                        # Handle MockColumnOperation objects (like col("salary").desc())
+                        # Handle ColumnOperation objects (like col("salary").desc())
                         if hasattr(col, "column") and hasattr(col.column, "name"):
                             order_col_name = col.column.name
                         elif hasattr(col, "name"):

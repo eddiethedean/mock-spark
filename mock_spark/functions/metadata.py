@@ -6,46 +6,44 @@ and special utilities like broadcast hints.
 """
 
 from typing import Union, Any
-from mock_spark.functions.base import MockColumn, MockColumnOperation
-from mock_spark.functions.core.literals import MockLiteral
+from mock_spark.functions.base import Column, ColumnOperation
+from mock_spark.functions.core.literals import Literal
 
 
 class MetadataFunctions:
     """Collection of metadata and utility functions."""
 
     @staticmethod
-    def input_file_name() -> MockColumnOperation:
+    def input_file_name() -> ColumnOperation:
         """Returns the name of the file being read (returns empty string in mock).
 
         Returns:
-            MockColumnOperation representing input_file_name
+            ColumnOperation representing input_file_name
         """
-        return MockColumnOperation(
-            MockLiteral(""), "input_file_name", name="input_file_name()"
-        )
+        return ColumnOperation(Literal(""), "input_file_name", name="input_file_name()")
 
     @staticmethod
-    def monotonically_increasing_id() -> MockColumnOperation:
+    def monotonically_increasing_id() -> ColumnOperation:
         """Generate monotonically increasing 64-bit integers.
 
         Returns:
-            MockColumnOperation representing monotonically_increasing_id
+            ColumnOperation representing monotonically_increasing_id
         """
-        return MockColumnOperation(
-            MockLiteral(0),
+        return ColumnOperation(
+            Literal(0),
             "monotonically_increasing_id",
             name="monotonically_increasing_id()",
         )
 
     @staticmethod
-    def spark_partition_id() -> MockColumnOperation:
+    def spark_partition_id() -> ColumnOperation:
         """Returns the partition ID (returns 0 in mock).
 
         Returns:
-            MockColumnOperation representing spark_partition_id
+            ColumnOperation representing spark_partition_id
         """
-        return MockColumnOperation(
-            MockLiteral(0), "spark_partition_id", name="spark_partition_id()"
+        return ColumnOperation(
+            Literal(0), "spark_partition_id", name="spark_partition_id()"
         )
 
     @staticmethod
@@ -61,55 +59,55 @@ class MetadataFunctions:
         return df
 
     @staticmethod
-    def column(col_name: str) -> MockColumn:
+    def column(col_name: str) -> Column:
         """Create a column reference (alias for col).
 
         Args:
             col_name: Column name
 
         Returns:
-            MockColumn reference
+            Column reference
         """
-        return MockColumn(col_name)
+        return Column(col_name)
 
 
 class GroupingFunctions:
     """Grouping indicator functions."""
 
     @staticmethod
-    def grouping(column: Union[MockColumn, str]) -> MockColumnOperation:
+    def grouping(column: Union[Column, str]) -> ColumnOperation:
         """Indicates whether a column is aggregated (for CUBE/ROLLUP).
 
         Args:
             column: Column name
 
         Returns:
-            MockColumnOperation representing grouping
+            ColumnOperation representing grouping
         """
         if isinstance(column, str):
-            column = MockColumn(column)
+            column = Column(column)
 
-        return MockColumnOperation(column, "grouping", name=f"grouping({column.name})")
+        return ColumnOperation(column, "grouping", name=f"grouping({column.name})")
 
     @staticmethod
-    def grouping_id(*cols: Union[MockColumn, str]) -> MockColumnOperation:
+    def grouping_id(*cols: Union[Column, str]) -> ColumnOperation:
         """Computes grouping ID for CUBE/ROLLUP.
 
         Args:
             *cols: Columns to compute grouping ID
 
         Returns:
-            MockColumnOperation representing grouping_id
+            ColumnOperation representing grouping_id
         """
         columns = []
         for col in cols:
             if isinstance(col, str):
-                columns.append(MockColumn(col))
+                columns.append(Column(col))
             else:
                 columns.append(col)
 
-        return MockColumnOperation(
-            columns[0] if columns else MockColumn(""),
+        return ColumnOperation(
+            columns[0] if columns else Column(""),
             "grouping_id",
             value=columns[1:] if len(columns) > 1 else [],
             name="grouping_id(...)",

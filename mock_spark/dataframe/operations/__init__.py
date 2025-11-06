@@ -1,7 +1,10 @@
-"""Operations module for MockDataFrame operations."""
+"""
+Miscellaneous operations for DataFrame.
 
-from .set_operations import SetOperations
-from .join_operations import JoinOperations
-from .aggregation_operations import AggregationOperations
+This module provides various miscellaneous operations that can be mixed into
+the DataFrame class.
+"""
 
-__all__ = ["SetOperations", "JoinOperations", "AggregationOperations"]
+from .misc import MiscellaneousOperations
+
+__all__ = ["MiscellaneousOperations"]

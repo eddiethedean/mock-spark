@@ -12,7 +12,7 @@ class TestMathFunctions:
     """Test mathematical functions."""
 
     def test_abs_with_column(self):
-        """Test abs with MockColumn."""
+        """Test abs with Column."""
         result = MathFunctions.abs(F.col("value"))
         assert result.operation == "abs"
         assert result.name == "abs(value)"
@@ -38,6 +38,12 @@ class TestMathFunctions:
         """Test ceil function."""
         result = MathFunctions.ceil(F.col("value"))
         assert result.operation == "ceil"
+        assert result.name.lower() == "ceil(value)"
+
+    def test_ceiling(self):
+        """Test ceiling function (alias for ceil)."""
+        result = MathFunctions.ceiling(F.col("value"))
+        assert result.operation == "ceil"  # Should call ceil internally
         assert result.name.lower() == "ceil(value)"
 
     def test_floor(self):

@@ -2,7 +2,6 @@
 
 This guide provides comprehensive documentation for Mock Spark's storage serialization capabilities, including CSV, JSON, and other format support.
 
-**Current Status**: 535 tests passing (100% pass rate) | Production Ready | Version 2.4.0
 
 ## Overview
 
@@ -23,10 +22,10 @@ The `CSVSerializer` class provides CSV serialization and deserialization capabil
 
 ```python
 from mock_spark.storage.serialization.csv import CSVSerializer
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
 # Create Spark session
-spark = MockSparkSession("CSVExample")
+spark = SparkSession("CSVExample")
 
 # Create sample data
 data = [
@@ -206,10 +205,13 @@ df_read = spark.read.format("json").load("/path/to/json")
 ### Storage Backend Integration
 
 ```python
-from mock_spark.storage.backends.duckdb import DuckDBStorageManager
+# Note: Polars is the default backend (v3.0.0+)
+# DuckDB backend is available as optional/legacy backend
+
+from mock_spark.storage.backends.memory import MemoryStorageManager
 
 # Create storage manager (in-memory by default)
-storage = DuckDBStorageManager()
+storage = MemoryStorageManager()
 
 # Store serialized data
 csv_data = csv_serializer.serialize(df.collect())

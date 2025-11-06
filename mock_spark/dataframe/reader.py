@@ -14,8 +14,8 @@ Key Features:
     - Error handling for missing data sources
 
 Example:
-    >>> from mock_spark import MockSparkSession
-    >>> spark = MockSparkSession("test")
+    >>> from mock_spark.sql import SparkSession
+    >>> spark = SparkSession("test")
     >>> # Read from table
     >>> df = spark.read.table("my_table")
     >>> # Read with format and options
@@ -25,10 +25,10 @@ Example:
 from typing import Any, Dict, Optional, Union
 from ..core.interfaces.dataframe import IDataFrame
 from ..core.interfaces.session import ISession
-from ..spark_types import MockStructType
+from ..spark_types import StructType
 
 
-class MockDataFrameReader:
+class DataFrameReader:
     """Mock DataFrameReader for reading data from various sources.
 
     Provides a PySpark-compatible interface for reading DataFrames from storage
@@ -45,7 +45,7 @@ class MockDataFrameReader:
     """
 
     def __init__(self, session: ISession):
-        """Initialize MockDataFrameReader.
+        """Initialize DataFrameReader.
 
         Args:
             session: Mock Spark session instance.
@@ -54,7 +54,7 @@ class MockDataFrameReader:
         self._format = "parquet"
         self._options: Dict[str, str] = {}
 
-    def format(self, source: str) -> "MockDataFrameReader":
+    def format(self, source: str) -> "DataFrameReader":
         """Set input format.
 
         Args:
@@ -69,7 +69,7 @@ class MockDataFrameReader:
         self._format = source
         return self
 
-    def option(self, key: str, value: Any) -> "MockDataFrameReader":
+    def option(self, key: str, value: Any) -> "DataFrameReader":
         """Set option.
 
         Args:
@@ -85,7 +85,7 @@ class MockDataFrameReader:
         self._options[key] = value
         return self
 
-    def options(self, **options: Any) -> "MockDataFrameReader":
+    def options(self, **options: Any) -> "DataFrameReader":
         """Set multiple options.
 
         Args:
@@ -100,7 +100,7 @@ class MockDataFrameReader:
         self._options.update(options)
         return self
 
-    def schema(self, schema: Union[MockStructType, str]) -> "MockDataFrameReader":
+    def schema(self, schema: Union[StructType, str]) -> "DataFrameReader":
         """Set schema.
 
         Args:
@@ -134,11 +134,10 @@ class MockDataFrameReader:
             >>> spark.read.format("parquet").load("/path/to/file")
         """
         # Mock implementation - return empty DataFrame
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def table(self, table_name: str) -> IDataFrame:
         """Load table.
@@ -219,11 +218,10 @@ class MockDataFrameReader:
             >>> spark.read.json("/path/to/file.json")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def csv(self, path: str, **options: Any) -> IDataFrame:
         """Load CSV data.
@@ -239,11 +237,10 @@ class MockDataFrameReader:
             >>> spark.read.csv("/path/to/file.csv")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def parquet(self, path: str, **options: Any) -> IDataFrame:
         """Load Parquet data.
@@ -259,11 +256,10 @@ class MockDataFrameReader:
             >>> spark.read.parquet("/path/to/file.parquet")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def orc(self, path: str, **options: Any) -> IDataFrame:
         """Load ORC data.
@@ -279,11 +275,10 @@ class MockDataFrameReader:
             >>> spark.read.orc("/path/to/file.orc")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def text(self, path: str, **options: Any) -> IDataFrame:
         """Load text data.
@@ -299,11 +294,10 @@ class MockDataFrameReader:
             >>> spark.read.text("/path/to/file.txt")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def jdbc(self, url: str, table: str, **options: Any) -> IDataFrame:
         """Load data from JDBC source.
@@ -320,8 +314,7 @@ class MockDataFrameReader:
             >>> spark.read.jdbc("jdbc:postgresql://localhost:5432/db", "table")
         """
         # Mock implementation
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
         from typing import cast
-        from ..core.interfaces.dataframe import IDataFrame
 
-        return cast(IDataFrame, MockDataFrame([], MockStructType([])))
+        return cast("IDataFrame", DataFrame([], StructType([])))

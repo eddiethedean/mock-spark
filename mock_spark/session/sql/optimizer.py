@@ -13,22 +13,22 @@ Key Features:
     - Projection elimination
 
 Example:
-    >>> from mock_spark.session.sql import MockQueryOptimizer
-    >>> optimizer = MockQueryOptimizer()
+    >>> from mock_spark.session.sql import SQLQueryOptimizer
+    >>> optimizer = SQLQueryOptimizer()
     >>> optimized_ast = optimizer.optimize(ast)
 """
 
 from typing import Any, Dict, List, Optional
-from .parser import MockSQLAST
+from .parser import SQLAST
 
 
-class MockQueryPlan:
+class QueryPlan:
     """Query execution plan for Mock Spark."""
 
     def __init__(
         self,
         plan_type: str,
-        children: Optional[List["MockQueryPlan"]] = None,
+        children: Optional[List["QueryPlan"]] = None,
         properties: Optional[Dict[str, Any]] = None,
     ):
         """Initialize query plan.
@@ -44,27 +44,27 @@ class MockQueryPlan:
 
     def __str__(self) -> str:
         """String representation."""
-        return f"MockQueryPlan(type='{self.plan_type}', children={len(self.children)})"
+        return f"QueryPlan(type='{self.plan_type}', children={len(self.children)})"
 
     def __repr__(self) -> str:
         """Representation."""
         return self.__str__()
 
 
-class MockQueryOptimizer:
-    """Query Optimizer for Mock Spark.
+class SQLQueryOptimizer:
+    """SQL Query Optimizer for Mock Spark.
 
     Provides query optimization functionality that analyzes SQL queries
     and generates optimized execution plans. Includes rule-based optimization,
     cost estimation, and various optimization techniques.
 
     Example:
-        >>> optimizer = MockQueryOptimizer()
+        >>> optimizer = SQLQueryOptimizer()
         >>> optimized_ast = optimizer.optimize(ast)
     """
 
     def __init__(self) -> None:
-        """Initialize MockQueryOptimizer."""
+        """Initialize SQLQueryOptimizer."""
         self._optimization_rules = [
             self._rule_predicate_pushdown,
             self._rule_projection_elimination,
@@ -73,7 +73,7 @@ class MockQueryOptimizer:
             self._rule_redundant_operations,
         ]
 
-    def optimize(self, ast: MockSQLAST) -> MockSQLAST:
+    def optimize(self, ast: SQLAST) -> SQLAST:
         """Optimize SQL AST.
 
         Args:
@@ -95,11 +95,11 @@ class MockQueryOptimizer:
         optimized_components["original_query"] = ast.components.get(
             "original_query", ""
         )
-        optimized_ast = MockSQLAST(ast.query_type, optimized_components)
+        optimized_ast = SQLAST(ast.query_type, optimized_components)
 
         return optimized_ast
 
-    def generate_execution_plan(self, ast: MockSQLAST) -> MockQueryPlan:
+    def generate_execution_plan(self, ast: SQLAST) -> QueryPlan:
         """Generate execution plan for SQL AST.
 
         Args:
@@ -111,7 +111,7 @@ class MockQueryOptimizer:
         if ast.query_type == "SELECT":
             return self._generate_select_plan(ast)
         else:
-            return MockQueryPlan("UNKNOWN", properties={"query_type": ast.query_type})
+            return QueryPlan("UNKNOWN", properties={"query_type": ast.query_type})
 
     def _rule_predicate_pushdown(self, components: Dict[str, Any]) -> Dict[str, Any]:
         """Apply predicate pushdown optimization.
@@ -180,7 +180,7 @@ class MockQueryOptimizer:
         # redundant operations
         return components
 
-    def _generate_select_plan(self, ast: MockSQLAST) -> MockQueryPlan:
+    def _generate_select_plan(self, ast: SQLAST) -> QueryPlan:
         """Generate execution plan for SELECT query.
 
         Args:
@@ -192,7 +192,7 @@ class MockQueryOptimizer:
         components = ast.components
 
         # Create a simple execution plan
-        plan = MockQueryPlan(
+        plan = QueryPlan(
             "SELECT",
             properties={
                 "columns": components.get("select_columns", ["*"]),
@@ -206,34 +206,34 @@ class MockQueryOptimizer:
 
         # Add child plans for different operations
         if components.get("where_conditions"):
-            filter_plan = MockQueryPlan(
+            filter_plan = QueryPlan(
                 "FILTER",
                 properties={"conditions": components.get("where_conditions", [])},
             )
             plan.children.append(filter_plan)
 
         if components.get("group_by_columns"):
-            group_plan = MockQueryPlan(
+            group_plan = QueryPlan(
                 "GROUP_BY",
                 properties={"columns": components.get("group_by_columns", [])},
             )
             plan.children.append(group_plan)
 
         if components.get("order_by_columns"):
-            sort_plan = MockQueryPlan(
+            sort_plan = QueryPlan(
                 "SORT", properties={"columns": components.get("order_by_columns", [])}
             )
             plan.children.append(sort_plan)
 
         if components.get("limit_value"):
-            limit_plan = MockQueryPlan(
+            limit_plan = QueryPlan(
                 "LIMIT", properties={"limit": components.get("limit_value")}
             )
             plan.children.append(limit_plan)
 
         return plan
 
-    def estimate_cost(self, plan: MockQueryPlan) -> float:
+    def estimate_cost(self, plan: QueryPlan) -> float:
         """Estimate cost of execution plan.
 
         Args:

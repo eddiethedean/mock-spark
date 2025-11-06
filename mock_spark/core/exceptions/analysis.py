@@ -6,10 +6,10 @@ including SQL parsing, query analysis, and schema validation errors.
 """
 
 from typing import Any, Dict, List, Optional
-from .base import MockSparkException
+from .base import SparkException
 
 
-class AnalysisException(MockSparkException):
+class AnalysisException(SparkException):
     """Exception raised for SQL analysis errors.
 
     Raised when SQL queries or DataFrame operations fail due to analysis

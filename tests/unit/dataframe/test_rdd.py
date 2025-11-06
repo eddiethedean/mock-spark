@@ -79,8 +79,10 @@ class TestMockRDD:
 
     def test_reduce_with_empty_rdd(self):
         """Test reduce with empty RDD raises error."""
+        from mock_spark.core.exceptions import PySparkValueError
+
         rdd = MockRDD([])
-        with pytest.raises(ValueError, match="Cannot reduce empty RDD"):
+        with pytest.raises(PySparkValueError, match="Cannot reduce empty RDD"):
             rdd.reduce(lambda x, y: x + y)
 
     def test_groupBy(self, sample_rdd):
@@ -134,9 +136,9 @@ class TestMockRDD:
 
     def test_toDF(self, sample_rdd):
         """Test toDF operation."""
-        from mock_spark import MockSparkSession
+        from mock_spark import SparkSession
 
-        _ = MockSparkSession("test")
+        _ = SparkSession("test")
         _ = sample_rdd.toDF()
         # Should return None or a dataframe - implementation dependent
         assert True

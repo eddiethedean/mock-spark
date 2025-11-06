@@ -8,13 +8,13 @@ table management, and data persistence.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 from ..types.schema import ISchema
-from ...spark_types import MockStructType
+from ...spark_types import StructType
 
 __all__ = [
     "ISchema",
     "IStorageManager",
     "ITable",
-    "ITableMetadata",
+    "ITableMetadataLegacy",
     "IDataSerializer",
     "IDataDeserializer",
 ]
@@ -48,7 +48,7 @@ class IStorageManager(ABC):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[List[Any], MockStructType],
+        fields: Union[List[Any], StructType],
     ) -> Optional[Any]:
         """Create a new table."""
         pass
@@ -71,7 +71,7 @@ class IStorageManager(ABC):
     @abstractmethod
     def get_table_schema(
         self, schema_name: str, table_name: str
-    ) -> Union[ISchema, MockStructType]:
+    ) -> Union[ISchema, StructType]:
         """Get table schema."""
         pass
 
@@ -92,7 +92,7 @@ class IStorageManager(ABC):
     @abstractmethod
     def get_table_metadata(
         self, schema_name: str, table_name: str
-    ) -> Union["ITableMetadata", Dict[str, Any]]:
+    ) -> Union["ITableMetadataLegacy", Dict[str, Any]]:
         """Get table metadata."""
         pass
 
@@ -137,13 +137,13 @@ class ITable(ABC):
 
     @property
     @abstractmethod
-    def schema(self) -> Union[ISchema, MockStructType]:
+    def schema(self) -> Union[ISchema, StructType]:
         """Get table schema."""
         pass
 
     @property
     @abstractmethod
-    def metadata(self) -> Union["ITableMetadata", Dict[str, Any]]:
+    def metadata(self) -> Union["ITableMetadataLegacy", Dict[str, Any]]:
         """Get table metadata."""
         pass
 
@@ -176,8 +176,8 @@ class ITable(ABC):
 # ISchema and IStructField are imported from ..types.schema
 
 
-class ITableMetadata(ABC):
-    """Abstract interface for table metadata."""
+class ITableMetadataLegacy(ABC):
+    """Abstract interface for table metadata (legacy - use ITableMetadata from types.metadata instead)."""
 
     @property
     @abstractmethod

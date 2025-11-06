@@ -6,7 +6,6 @@ including support for append mode and schema evolution.
 """
 
 import os
-from typing import Optional
 import polars as pl
 
 
@@ -15,7 +14,10 @@ class ParquetStorage:
 
     @staticmethod
     def write_parquet(
-        df: pl.DataFrame, path: str, mode: str = "overwrite", compression: str = "snappy"
+        df: pl.DataFrame,
+        path: str,
+        mode: str = "overwrite",
+        compression: str = "snappy",
     ) -> None:
         """Write DataFrame to Parquet file.
 
@@ -82,14 +84,20 @@ class ParquetStorage:
         new_columns = set(new_df.columns)
 
         # Add missing columns to old DataFrame with null values
+        # Use proper null type that matches the new column type
         missing_in_old = new_columns - old_columns
         for col in missing_in_old:
-            old_df = old_df.with_columns(pl.lit(None).alias(col))
+            # Get the type from new_df and create null column of that type
+            col_type = new_df[col].dtype
+            old_df = old_df.with_columns(pl.lit(None, dtype=col_type).alias(col))
 
         # Add missing columns to new DataFrame with null values
+        # Use proper null type that matches the old column type
         missing_in_new = old_columns - new_columns
         for col in missing_in_new:
-            new_df = new_df.with_columns(pl.lit(None).alias(col))
+            # Get the type from old_df and create null column of that type
+            col_type = old_df[col].dtype
+            new_df = new_df.with_columns(pl.lit(None, dtype=col_type).alias(col))
 
         # Ensure column order matches old DataFrame
         column_order = old_df.columns
@@ -109,4 +117,3 @@ class ParquetStorage:
             True if file exists, False otherwise
         """
         return os.path.exists(path)
-

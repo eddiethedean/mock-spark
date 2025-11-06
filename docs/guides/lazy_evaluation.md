@@ -3,9 +3,9 @@
 Enable lazy mode and queue operations until an action is called.
 
 ```python
-from mock_spark import MockSparkSession, functions as F
+from mock_spark.sql import SparkSession, functions as F
 
-spark = MockSparkSession()
+spark = SparkSession()
 df = spark.createDataFrame([{ "x": i } for i in range(5)])
 
 lazy_df = df.withLazy(True).filter(F.col("x") > 1).withColumn("y", F.lit(1))

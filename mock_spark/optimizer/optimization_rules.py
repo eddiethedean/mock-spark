@@ -179,7 +179,7 @@ class JoinOptimizationRule(OptimizationRule):
 
         # Simple heuristic: sort by estimated size (metadata)
         def get_estimated_size(op: Operation) -> int:
-            return cast(int, op.metadata.get("estimated_size", 1000))  # Default size
+            return cast("int", op.metadata.get("estimated_size", 1000))  # Default size
 
         return sorted(join_ops, key=get_estimated_size)
 
@@ -289,9 +289,12 @@ class LimitPushdownRule(OptimizationRule):
         # Find the smallest LIMIT
         min_limit = None
         for op in operations:
-            if op.type == OperationType.LIMIT and op.limit_count is not None:
-                if min_limit is None or op.limit_count < min_limit:
-                    min_limit = op.limit_count
+            if (
+                op.type == OperationType.LIMIT
+                and op.limit_count is not None
+                and (min_limit is None or op.limit_count < min_limit)
+            ):
+                min_limit = op.limit_count
 
         if min_limit is None:
             return operations

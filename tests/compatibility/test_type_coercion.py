@@ -6,7 +6,7 @@ ensuring proper implicit type conversions in various operations.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -15,8 +15,8 @@ class TestTypeCoercionCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        session = MockSparkSession("type_coercion_test")
+        """Create a SparkSession for testing."""
+        session = SparkSession("type_coercion_test")
         yield session
         session.stop()
 

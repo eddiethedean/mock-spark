@@ -6,10 +6,10 @@ SQL generation, and query execution failures.
 """
 
 from typing import Any, Dict, List, Optional
-from .base import MockSparkException
+from .base import SparkException
 
 
-class MockSparkOperationError(MockSparkException):
+class SparkOperationError(SparkException):
     """Raised when DataFrame operation fails."""
 
     def __init__(self, operation: str, column: str, issue: str, suggestion: str = ""):
@@ -34,7 +34,7 @@ class MockSparkOperationError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkValidationError(MockSparkException):
+class SparkValidationError(SparkException):
     """Raised when data validation fails."""
 
     def __init__(self, column: str, value: str, expected_type: str, actual_type: str):
@@ -58,7 +58,7 @@ class MockSparkValidationError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkCompatibilityError(MockSparkException):
+class SparkCompatibilityError(SparkException):
     """Raised when PySpark compatibility issue is detected."""
 
     def __init__(self, feature: str, pyspark_version: str, mock_version: str):
@@ -82,7 +82,7 @@ class MockSparkCompatibilityError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkSQLGenerationError(MockSparkException):
+class SparkSQLGenerationError(SparkException):
     """Raised when SQL generation fails."""
 
     def __init__(self, operation: str, sql_fragment: str, error: str):
@@ -101,12 +101,12 @@ class MockSparkSQLGenerationError(MockSparkException):
         msg += f"SQL fragment: {sql_fragment}\n"
         msg += f"Error: {error}\n"
         msg += (
-            "This may be due to unsupported SQL syntax or DuckDB compatibility issues."
+            "This may be due to unsupported SQL syntax or backend compatibility issues."
         )
         super().__init__(msg)
 
 
-class MockSparkQueryExecutionError(MockSparkException):
+class SparkQueryExecutionError(SparkException):
     """Raised when query execution fails."""
 
     def __init__(self, sql: str, error: str, context: Optional[Dict[str, Any]] = None):
@@ -129,7 +129,7 @@ class MockSparkQueryExecutionError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkColumnNotFoundError(MockSparkException, AttributeError):
+class SparkColumnNotFoundError(SparkException, AttributeError):
     """Raised when a column is not found."""
 
     def __init__(self, column_name: str, available_columns: List[str]):
@@ -142,11 +142,11 @@ class MockSparkColumnNotFoundError(MockSparkException, AttributeError):
         self.column_name = column_name
         self.available_columns = available_columns
 
-        msg = f"'MockDataFrame' object has no attribute '{column_name}'. Available columns: {', '.join(available_columns)}"
+        msg = f"'DataFrame' object has no attribute '{column_name}'. Available columns: {', '.join(available_columns)}"
         super().__init__(msg)
 
 
-class MockSparkTypeMismatchError(MockSparkException):
+class SparkTypeMismatchError(SparkException):
     """Raised when there's a type mismatch in operations."""
 
     def __init__(
@@ -173,7 +173,7 @@ class MockSparkTypeMismatchError(MockSparkException):
         super().__init__(msg)
 
 
-class MockSparkUnsupportedOperationError(MockSparkException):
+class SparkUnsupportedOperationError(SparkException):
     """Raised when an operation is not supported."""
 
     def __init__(self, operation: str, reason: str = "", alternative: str = ""):

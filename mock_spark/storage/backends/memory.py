@@ -6,13 +6,13 @@ This module provides an in-memory storage implementation.
 
 from typing import List, Dict, Any, Optional, Union
 from ...core.interfaces.storage import IStorageManager, ITable
-from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.spark_types import StructType, StructField
 
 
 class MemoryTable(ITable):
     """In-memory table implementation."""
 
-    def __init__(self, name: str, schema: MockStructType):
+    def __init__(self, name: str, schema: StructType):
         """Initialize memory table.
 
         Args:
@@ -34,7 +34,7 @@ class MemoryTable(ITable):
         return self._name
 
     @property
-    def schema(self) -> MockStructType:
+    def schema(self) -> StructType:
         """Get table schema."""
         return self._schema
 
@@ -54,10 +54,9 @@ class MemoryTable(ITable):
             self.data = data.copy()
         elif mode == "append":
             self.data.extend(data)
-        elif mode == "ignore":
+        elif mode == "ignore" and not self.data:
             # Only insert if table is empty
-            if not self.data:
-                self.data.extend(data)
+            self.data.extend(data)
 
         self._metadata["row_count"] = len(self.data)
 
@@ -77,7 +76,7 @@ class MemoryTable(ITable):
         # In a real implementation, this would parse and evaluate the filter expression
         return self.data.copy()
 
-    def get_schema(self) -> MockStructType:
+    def get_schema(self) -> StructType:
         """Get table schema.
 
         Returns:
@@ -129,7 +128,7 @@ class MemorySchema:
         self.tables: Dict[str, MemoryTable] = {}
 
     def create_table(
-        self, table: str, columns: Union[List[MockStructField], MockStructType]
+        self, table: str, columns: Union[List[StructField], StructType]
     ) -> None:
         """Create a new table in this schema.
 
@@ -137,10 +136,7 @@ class MemorySchema:
             table: Name of the table.
             columns: Table columns definition.
         """
-        if isinstance(columns, list):
-            schema = MockStructType(columns)
-        else:
-            schema = columns
+        schema = StructType(columns) if isinstance(columns, list) else columns
 
         self.tables[table] = MemoryTable(table, schema)
 
@@ -238,7 +234,7 @@ class MemoryStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[List[Any], MockStructType],
+        fields: Union[List[Any], StructType],
     ) -> None:
         """Create a new table.
 
@@ -315,7 +311,7 @@ class MemoryStorageManager(IStorageManager):
             return self.schemas[schema].tables[table].query_data(filter_expr)
         return []
 
-    def get_table_schema(self, schema_name: str, table_name: str) -> MockStructType:
+    def get_table_schema(self, schema_name: str, table_name: str) -> StructType:
         """Get table schema.
 
         Args:
@@ -331,7 +327,7 @@ class MemoryStorageManager(IStorageManager):
         ):
             return self.schemas[schema_name].tables[table_name].get_schema()
         # Return empty schema if table doesn't exist
-        return MockStructType([])
+        return StructType([])
 
     def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.

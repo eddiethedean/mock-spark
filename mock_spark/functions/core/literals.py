@@ -1,28 +1,28 @@
 """
 Literal values for Mock Spark.
 
-This module provides MockLiteral class for representing literal values
+This module provides Literal class for representing literal values
 in column expressions and transformations.
 """
 
 from typing import Any, List, Optional, TYPE_CHECKING, cast
 import math
-from ...spark_types import MockDataType
+from ...spark_types import DataType
 from ...core.interfaces.functions import IColumn
 
 if TYPE_CHECKING:
-    from .operations import MockColumnOperation
+    from .operations import ColumnOperation
 
 
-class MockLiteral(IColumn):
-    """Mock literal value for DataFrame operations.
+class Literal(IColumn):
+    """Literal value for DataFrame operations.
 
     Represents a literal value that can be used in column expressions
     and transformations, maintaining compatibility with PySpark's lit function.
     """
 
-    def __init__(self, value: Any, data_type: Optional[MockDataType] = None):
-        """Initialize MockLiteral.
+    def __init__(self, value: Any, data_type: Optional[DataType] = None):
+        """Initialize Literal.
 
         Args:
             value: The literal value.
@@ -51,7 +51,7 @@ class MockLiteral(IColumn):
         """Set literal name."""
         self._name = value
 
-    def _infer_type(self, value: Any) -> MockDataType:
+    def _infer_type(self, value: Any) -> DataType:
         """Infer data type from value.
 
         Delegates to SchemaInferenceEngine for consistency.
@@ -60,190 +60,190 @@ class MockLiteral(IColumn):
             value: The value to infer type for.
 
         Returns:
-            Inferred MockDataType.
+            Inferred DataType.
         """
         from ...core.schema_inference import SchemaInferenceEngine
 
-        return cast(MockDataType, SchemaInferenceEngine._infer_type(value))
+        return cast("DataType", SchemaInferenceEngine._infer_type(value))
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+    def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Equality comparison.
 
-        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        Note: Returns ColumnOperation instead of bool for PySpark compatibility.
         """
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "==", other)
+        return ColumnOperation(self, "==", other)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+    def __ne__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Inequality comparison.
 
-        Note: Returns MockColumnOperation instead of bool for PySpark compatibility.
+        Note: Returns ColumnOperation instead of bool for PySpark compatibility.
         """
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "!=", other)
+        return ColumnOperation(self, "!=", other)
 
     def __lt__(self, other: Any) -> "IColumn":
         """Less than comparison."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "<", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<", other)  # type: ignore[return-value]
 
     def __le__(self, other: Any) -> "IColumn":
         """Less than or equal comparison."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "<=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "<=", other)  # type: ignore[return-value]
 
     def __gt__(self, other: Any) -> "IColumn":
         """Greater than comparison."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, ">", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">", other)  # type: ignore[return-value]
 
     def __ge__(self, other: Any) -> "IColumn":
         """Greater than or equal comparison."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, ">=", other)  # type: ignore[return-value]
+        return ColumnOperation(self, ">=", other)  # type: ignore[return-value]
 
     def __add__(self, other: Any) -> "IColumn":
         """Addition operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "+", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "+", other)  # type: ignore[return-value]
 
     def __sub__(self, other: Any) -> "IColumn":
         """Subtraction operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "-", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "-", other)  # type: ignore[return-value]
 
     def __mul__(self, other: Any) -> "IColumn":
         """Multiplication operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "*", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "*", other)  # type: ignore[return-value]
 
     def __truediv__(self, other: Any) -> "IColumn":
         """Division operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "/", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "/", other)  # type: ignore[return-value]
 
     def __mod__(self, other: Any) -> "IColumn":
         """Modulo operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "%", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "%", other)  # type: ignore[return-value]
 
     def __and__(self, other: Any) -> "IColumn":
         """Logical AND operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "&", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "&", other)  # type: ignore[return-value]
 
     def __or__(self, other: Any) -> "IColumn":
         """Logical OR operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "|", other)  # type: ignore[return-value]
+        return ColumnOperation(self, "|", other)  # type: ignore[return-value]
 
     def __invert__(self) -> "IColumn":
         """Logical NOT operation."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "!", None)  # type: ignore[return-value]
+        return ColumnOperation(self, "!", None)  # type: ignore[return-value]
 
-    def __neg__(self) -> "MockColumnOperation":
+    def __neg__(self) -> "ColumnOperation":
         """Unary minus operation (-literal)."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "-", None)
+        return ColumnOperation(self, "-", None)
 
-    def isnull(self) -> "MockColumnOperation":
+    def isnull(self) -> "ColumnOperation":
         """Check if literal value is null."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "isnull", None)
+        return ColumnOperation(self, "isnull", None)
 
-    def isnotnull(self) -> "MockColumnOperation":
+    def isnotnull(self) -> "ColumnOperation":
         """Check if literal value is not null."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "isnotnull", None)
+        return ColumnOperation(self, "isnotnull", None)
 
-    def isNull(self) -> "MockColumnOperation":
+    def isNull(self) -> "ColumnOperation":
         """Check if literal value is null (PySpark compatibility)."""
         return self.isnull()
 
-    def isNotNull(self) -> "MockColumnOperation":
+    def isNotNull(self) -> "ColumnOperation":
         """Check if literal value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> "MockColumnOperation":
+    def isin(self, values: List[Any]) -> "ColumnOperation":
         """Check if literal value is in list of values."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "isin", values)
+        return ColumnOperation(self, "isin", values)
 
-    def between(self, lower: Any, upper: Any) -> "MockColumnOperation":
+    def between(self, lower: Any, upper: Any) -> "ColumnOperation":
         """Check if literal value is between lower and upper bounds."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "between", (lower, upper))
+        return ColumnOperation(self, "between", (lower, upper))
 
-    def like(self, pattern: str) -> "MockColumnOperation":
+    def like(self, pattern: str) -> "ColumnOperation":
         """SQL LIKE pattern matching."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "like", pattern)
+        return ColumnOperation(self, "like", pattern)
 
-    def rlike(self, pattern: str) -> "MockColumnOperation":
+    def rlike(self, pattern: str) -> "ColumnOperation":
         """Regular expression pattern matching."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "rlike", pattern)
+        return ColumnOperation(self, "rlike", pattern)
 
-    def alias(self, name: str) -> "MockLiteral":
+    def alias(self, name: str) -> "Literal":
         """Create an alias for the literal."""
-        aliased_literal = MockLiteral(self.value, self.data_type)
+        aliased_literal = Literal(self.value, self.data_type)
         aliased_literal._name = name
         return aliased_literal
 
-    def asc(self) -> "MockColumnOperation":
+    def asc(self) -> "ColumnOperation":
         """Ascending sort order."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "asc", None)
+        return ColumnOperation(self, "asc", None)
 
-    def desc(self) -> "MockColumnOperation":
+    def desc(self) -> "ColumnOperation":
         """Descending sort order."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "desc", None)
+        return ColumnOperation(self, "desc", None)
 
-    def cast(self, data_type: MockDataType) -> "MockColumnOperation":
+    def cast(self, data_type: DataType) -> "ColumnOperation":
         """Cast literal to different data type."""
-        from .column import MockColumnOperation
+        from .column import ColumnOperation
 
-        return MockColumnOperation(self, "cast", data_type)
+        return ColumnOperation(self, "cast", data_type)
 
-    def when(self, condition: "MockColumnOperation", value: Any) -> Any:
+    def when(self, condition: "ColumnOperation", value: Any) -> Any:
         """Start a CASE WHEN expression."""
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        return MockCaseWhen(self, condition, value)
+        return CaseWhen(self, condition, value)
 
     def otherwise(self, value: Any) -> Any:
         """End a CASE WHEN expression with default value."""
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        return MockCaseWhen(self, None, value)
+        return CaseWhen(self, None, value)
 
     def over(self, window_spec: Any) -> Any:
         """Apply window function over window specification."""
-        from ..window_execution import MockWindowFunction
+        from ..window_execution import WindowFunction
 
-        return MockWindowFunction(self, window_spec)
+        return WindowFunction(self, window_spec)

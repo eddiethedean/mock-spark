@@ -241,8 +241,8 @@ class CompatibilityTester:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Organize results by version
-        python_versions = sorted(set(r.python_version for r in self.results))
-        pyspark_versions = sorted(set(r.pyspark_version for r in self.results))
+        python_versions = sorted({r.python_version for r in self.results})
+        pyspark_versions = sorted({r.pyspark_version for r in self.results})
 
         # Create matrix
         lines = []

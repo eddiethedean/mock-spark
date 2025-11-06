@@ -5,7 +5,7 @@ This module provides the MockDataGeneratorBuilder class for creating
 common data generation scenarios using the builder pattern.
 """
 
-from ..spark_types import MockStructType
+from ..spark_types import StructType
 from .generator import MockDataGenerator
 
 
@@ -24,11 +24,11 @@ class MockDataGeneratorBuilder:
         ...     .build())
     """
 
-    def __init__(self, schema: MockStructType):
+    def __init__(self, schema: StructType):
         """Initialize MockDataGeneratorBuilder.
 
         Args:
-            schema: MockStructType defining the data structure.
+            schema: StructType defining the data structure.
         """
         self.schema = schema
         self.num_rows = 100

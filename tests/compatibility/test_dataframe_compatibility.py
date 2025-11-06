@@ -15,10 +15,10 @@ class TestDataFrameCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("compatibility_test")
+        session = SparkSession("compatibility_test")
         yield session
         session.stop()
 

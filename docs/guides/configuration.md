@@ -1,13 +1,13 @@
 # Configuration
 
-Mock-Spark configuration is managed via MockSparkSession constructor options and the session builder.
+Mock-Spark configuration is managed via SparkSession constructor options and the session builder.
 
 ## Basic Configuration
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 
-spark = MockSparkSession(
+spark = SparkSession(
     validation_mode="relaxed",           # strict | relaxed | minimal
     enable_type_coercion=True,
 )
@@ -23,26 +23,26 @@ Key settings:
 
 ```python
 # Polars is the default backend in v3.0.0+
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 ```
 
 ### Explicit Backend Selection
 
 ```python
 # Use Polars explicitly
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "polars") \
     .getOrCreate()
 
 # Use DuckDB backend (legacy, requires duckdb package)
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "duckdb") \
     .config("spark.mock.backend.maxMemory", "4GB") \
     .config("spark.mock.backend.allowDiskSpillover", True) \
     .getOrCreate()
 
 # Use memory backend
-spark = MockSparkSession.builder \
+spark = SparkSession.builder \
     .config("spark.mock.backend", "memory") \
     .getOrCreate()
 ```

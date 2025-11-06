@@ -1,152 +1,157 @@
 """
 Column implementation for Mock Spark.
 
-This module provides the MockColumn class for DataFrame column operations,
+This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
 from typing import Any, List, Optional, TYPE_CHECKING
-from ...spark_types import MockDataType, StringType
+from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
-    from ...window import MockWindowSpec
-    from ..conditional import MockCaseWhen
-    from ..window_execution import MockWindowFunction
+    from ...window import WindowSpec
+    from ..conditional import CaseWhen
+    from ..window_execution import WindowFunction
 
 
 class ColumnOperatorMixin:
-    """Mixin providing common operator methods for MockColumn and MockColumnOperation."""
+    """Mixin providing common operator methods for Column and ColumnOperation."""
 
-    def _create_operation(self, operation: str, other: Any) -> "MockColumnOperation":
-        """Create a MockColumnOperation with the given operation and other operand.
+    def _create_operation(self, operation: str, other: Any) -> "ColumnOperation":
+        """Create a ColumnOperation with the given operation and other operand.
 
         Args:
             operation: The operation to perform (e.g., "==", "+", etc.)
             other: The other operand
 
         Returns:
-            MockColumnOperation instance
+            ColumnOperation instance
         """
-        return MockColumnOperation(self, operation, other)
+        return ColumnOperation(self, operation, other)
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+    def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Equality comparison."""
         return self._create_operation("==", other)
 
-    def __ne__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+    def __ne__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Inequality comparison."""
         return self._create_operation("!=", other)
 
-    def __lt__(self, other: Any) -> "MockColumnOperation":
+    def __lt__(self, other: Any) -> "ColumnOperation":
         """Less than comparison."""
         return self._create_operation("<", other)
 
-    def __le__(self, other: Any) -> "MockColumnOperation":
+    def __le__(self, other: Any) -> "ColumnOperation":
         """Less than or equal comparison."""
         return self._create_operation("<=", other)
 
-    def __gt__(self, other: Any) -> "MockColumnOperation":
+    def __gt__(self, other: Any) -> "ColumnOperation":
         """Greater than comparison."""
         return self._create_operation(">", other)
 
-    def __ge__(self, other: Any) -> "MockColumnOperation":
+    def __ge__(self, other: Any) -> "ColumnOperation":
         """Greater than or equal comparison."""
         return self._create_operation(">=", other)
 
-    def __add__(self, other: Any) -> "MockColumnOperation":
+    def __add__(self, other: Any) -> "ColumnOperation":
         """Addition operation."""
         return self._create_operation("+", other)
 
-    def __sub__(self, other: Any) -> "MockColumnOperation":
+    def __sub__(self, other: Any) -> "ColumnOperation":
         """Subtraction operation."""
         return self._create_operation("-", other)
 
-    def __mul__(self, other: Any) -> "MockColumnOperation":
+    def __mul__(self, other: Any) -> "ColumnOperation":
         """Multiplication operation."""
         return self._create_operation("*", other)
 
-    def __truediv__(self, other: Any) -> "MockColumnOperation":
+    def __truediv__(self, other: Any) -> "ColumnOperation":
         """Division operation."""
         return self._create_operation("/", other)
 
-    def __mod__(self, other: Any) -> "MockColumnOperation":
+    def __mod__(self, other: Any) -> "ColumnOperation":
         """Modulo operation."""
         return self._create_operation("%", other)
 
-    def __and__(self, other: Any) -> "MockColumnOperation":
+    def __and__(self, other: Any) -> "ColumnOperation":
         """Logical AND operation."""
         return self._create_operation("&", other)
 
-    def __or__(self, other: Any) -> "MockColumnOperation":
+    def __or__(self, other: Any) -> "ColumnOperation":
         """Logical OR operation."""
         return self._create_operation("|", other)
 
-    def __invert__(self) -> "MockColumnOperation":
+    def __invert__(self) -> "ColumnOperation":
         """Logical NOT operation."""
         return self._create_operation("!", None)
 
-    def __neg__(self) -> "MockColumnOperation":
+    def __neg__(self) -> "ColumnOperation":
         """Unary minus operation (-column)."""
         return self._create_operation("-", None)
 
-    def isnull(self) -> "MockColumnOperation":
+    def isnull(self) -> "ColumnOperation":
         """Check if column value is null."""
         return self._create_operation("isnull", None)
 
-    def isnotnull(self) -> "MockColumnOperation":
+    def isnotnull(self) -> "ColumnOperation":
         """Check if column value is not null."""
         return self._create_operation("isnotnull", None)
 
-    def isNull(self) -> "MockColumnOperation":
+    def isNull(self) -> "ColumnOperation":
         """Check if column value is null (PySpark compatibility)."""
         return self.isnull()
 
-    def isNotNull(self) -> "MockColumnOperation":
+    def isNotNull(self) -> "ColumnOperation":
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> "MockColumnOperation":
+    def isin(self, values: List[Any]) -> "ColumnOperation":
         """Check if column value is in list of values."""
         return self._create_operation("isin", values)
 
-    def between(self, lower: Any, upper: Any) -> "MockColumnOperation":
+    def between(self, lower: Any, upper: Any) -> "ColumnOperation":
         """Check if column value is between lower and upper bounds."""
         return self._create_operation("between", (lower, upper))
 
-    def like(self, pattern: str) -> "MockColumnOperation":
+    def like(self, pattern: str) -> "ColumnOperation":
         """SQL LIKE pattern matching."""
         return self._create_operation("like", pattern)
 
-    def rlike(self, pattern: str) -> "MockColumnOperation":
+    def rlike(self, pattern: str) -> "ColumnOperation":
         """Regular expression pattern matching."""
-        return self._create_operation("rlike", pattern)
+        # Create operation with proper naming format: RLIKE(name, pattern)
+        # Note: Pattern is used as-is without quotes to match PySpark format
+        pattern_str = str(pattern) if not isinstance(pattern, str) else pattern
+        return ColumnOperation(
+            self, "rlike", pattern, name=f"RLIKE({self.name}, {pattern_str})"
+        )
 
-    def contains(self, literal: str) -> "MockColumnOperation":
+    def contains(self, literal: str) -> "ColumnOperation":
         """Check if column contains the literal string."""
         return self._create_operation("contains", literal)
 
-    def startswith(self, literal: str) -> "MockColumnOperation":
+    def startswith(self, literal: str) -> "ColumnOperation":
         """Check if column starts with the literal string."""
         return self._create_operation("startswith", literal)
 
-    def endswith(self, literal: str) -> "MockColumnOperation":
+    def endswith(self, literal: str) -> "ColumnOperation":
         """Check if column ends with the literal string."""
         return self._create_operation("endswith", literal)
 
-    def asc(self) -> "MockColumnOperation":
+    def asc(self) -> "ColumnOperation":
         """Ascending sort order."""
         return self._create_operation("asc", None)
 
-    def desc(self) -> "MockColumnOperation":
+    def desc(self) -> "ColumnOperation":
         """Descending sort order."""
         return self._create_operation("desc", None)
 
-    def cast(self, data_type: MockDataType) -> "MockColumnOperation":
+    def cast(self, data_type: DataType) -> "ColumnOperation":
         """Cast column to different data type."""
         return self._create_operation("cast", data_type)
 
 
-class MockColumn(ColumnOperatorMixin):
+class Column(ColumnOperatorMixin):
     """Mock column expression for DataFrame operations.
 
     Provides a PySpark-compatible column expression that supports all comparison
@@ -154,23 +159,23 @@ class MockColumn(ColumnOperatorMixin):
     and filtering conditions.
     """
 
-    def __init__(self, name: str, column_type: Optional[MockDataType] = None):
-        """Initialize MockColumn.
+    def __init__(self, name: str, column_type: Optional[DataType] = None):
+        """Initialize Column.
 
         Args:
             name: Column name.
             column_type: Optional data type. Defaults to StringType if not specified.
         """
         self._name = name
-        self._original_column: Optional["MockColumn"] = None
+        self._original_column: Optional[Column] = None
         self._alias_name: Optional[str] = None
         self.column_name = name
         self.column_type = column_type or StringType()
         self.operation = None
         self.operand = None
-        self._operations: List["MockColumnOperation"] = []
+        self._operations: List[ColumnOperation] = []
         # Add expr attribute for PySpark compatibility
-        self.expr = f"MockColumn('{name}')"
+        self.expr = f"Column('{name}')"
 
     @property
     def name(self) -> str:
@@ -180,59 +185,59 @@ class MockColumn(ColumnOperatorMixin):
         return self._name
 
     @property
-    def original_column(self) -> "MockColumn":
+    def original_column(self) -> "Column":
         """Get the original column (for aliased columns)."""
         return getattr(self, "_original_column", self)
 
-    def __eq__(self, other: Any) -> "MockColumnOperation":  # type: ignore[override]
+    def __eq__(self, other: Any) -> "ColumnOperation":  # type: ignore[override]
         """Equality comparison."""
-        if isinstance(other, MockColumn):
-            return MockColumnOperation(self, "==", other)
-        return MockColumnOperation(self, "==", other)
+        if isinstance(other, Column):
+            return ColumnOperation(self, "==", other)
+        return ColumnOperation(self, "==", other)
 
     def __hash__(self) -> int:
-        """Hash method to make MockColumn hashable."""
+        """Hash method to make Column hashable."""
         return hash((self.name, self.column_type))
 
     def __str__(self) -> str:
         """Return string representation of column for SQL generation."""
         return self.name
 
-    def alias(self, name: str) -> "MockColumn":
+    def alias(self, name: str) -> "Column":
         """Create an alias for the column."""
-        aliased_column = MockColumn(name, self.column_type)
+        aliased_column = Column(name, self.column_type)
         aliased_column._original_column = self
         aliased_column._alias_name = name
         return aliased_column
 
-    def when(self, condition: "MockColumnOperation", value: Any) -> "MockCaseWhen":
+    def when(self, condition: "ColumnOperation", value: Any) -> "CaseWhen":
         """Start a CASE WHEN expression."""
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        return MockCaseWhen(self, condition, value)
+        return CaseWhen(self, condition, value)
 
-    def otherwise(self, value: Any) -> "MockCaseWhen":
+    def otherwise(self, value: Any) -> "CaseWhen":
         """End a CASE WHEN expression with default value."""
-        from ..conditional import MockCaseWhen
+        from ..conditional import CaseWhen
 
-        return MockCaseWhen(self, None, value)
+        return CaseWhen(self, None, value)
 
-    def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
+    def over(self, window_spec: "WindowSpec") -> "WindowFunction":
         """Apply window function over window specification."""
-        from ..window_execution import MockWindowFunction
+        from ..window_execution import WindowFunction
 
-        return MockWindowFunction(self, window_spec)
+        return WindowFunction(self, window_spec)
 
-    def count(self) -> "MockColumnOperation":
+    def count(self) -> "ColumnOperation":
         """Count non-null values in this column.
 
         Returns:
-            MockColumnOperation representing the count operation.
+            ColumnOperation representing the count operation.
         """
-        return MockColumnOperation(self, "count", None)
+        return ColumnOperation(self, "count", None)
 
 
-class MockColumnOperation(ColumnOperatorMixin):
+class ColumnOperation(ColumnOperatorMixin):
     """Represents a column operation (comparison, arithmetic, etc.).
 
     This class encapsulates column operations and their operands for evaluation
@@ -241,12 +246,12 @@ class MockColumnOperation(ColumnOperatorMixin):
 
     def __init__(
         self,
-        column: Any,  # Can be MockColumn, MockColumnOperation, IColumn, mixin, or None
+        column: Any,  # Can be Column, ColumnOperation, IColumn, mixin, or None
         operation: str,
         value: Any = None,
         name: Optional[str] = None,
     ):
-        """Initialize MockColumnOperation.
+        """Initialize ColumnOperation.
 
         Args:
             column: The column being operated on (can be None for some operations).
@@ -319,7 +324,7 @@ class MockColumnOperation(ColumnOperatorMixin):
             part = part_map.get(self.operation, self.operation)
 
             # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
-            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6)
+            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6) - NOTE: DuckDB backend only
             # Add 1 to dayofweek to match PySpark
             if self.operation == "dayofweek":
                 return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) + 1 AS INTEGER)"
@@ -349,18 +354,18 @@ class MockColumnOperation(ColumnOperatorMixin):
 
     def _generate_name(self) -> str:
         """Generate a name for this operation."""
-        # Extract value from MockLiteral if needed
+        # Extract value from Literal if needed
         if hasattr(self.value, "value") and hasattr(self.value, "data_type"):
-            # This is a MockLiteral
+            # This is a Literal
             value_str = str(self.value.value)
         else:
             value_str = str(self.value)
 
-        # Handle column reference - use str() to get proper SQL for MockColumnOperation
+        # Handle column reference - use str() to get proper SQL for ColumnOperation
         if self.column is None:
             # For functions without column input (like current_date, current_timestamp)
             return self.operation + "()"
-        # Handle MockColumn objects properly
+        # Handle Column objects properly
         if hasattr(self.column, "name"):
             column_ref = self.column.name
         else:
@@ -392,9 +397,7 @@ class MockColumnOperation(ColumnOperatorMixin):
             return f"({self.column.name} & {value_str})"
         elif self.operation == "|":
             return f"({self.column.name} | {value_str})"
-        elif self.operation == "!":
-            return f"(CASE WHEN {self.column.name} THEN FALSE ELSE TRUE END)"
-        elif self.operation == "!":
+        elif self.operation == "!" or self.operation == "!":
             return f"(CASE WHEN {self.column.name} THEN FALSE ELSE TRUE END)"
         elif self.operation == "isnull":
             return f"{self.column.name} IS NULL"
@@ -403,6 +406,8 @@ class MockColumnOperation(ColumnOperatorMixin):
         elif self.operation == "isin":
             return f"{self.column.name} IN {self.value}"
         elif self.operation == "between":
+            if self.value is None:
+                return f"{self.column.name} BETWEEN NULL AND NULL"
             return f"{self.column.name} BETWEEN {self.value[0]} AND {self.value[1]}"
         elif self.operation == "like":
             return f"{self.column.name} LIKE {self.value}"
@@ -413,7 +418,7 @@ class MockColumnOperation(ColumnOperatorMixin):
         elif self.operation == "desc":
             return f"{self.column.name} DESC"
         elif self.operation == "cast":
-            # Map PySpark type names to DuckDB/SQL type names
+            # Map PySpark type names to DuckDB/SQL type names (DuckDB backend only)
             type_mapping = {
                 "int": "INTEGER",
                 "integer": "INTEGER",
@@ -431,7 +436,7 @@ class MockColumnOperation(ColumnOperatorMixin):
             if isinstance(self.value, str):
                 sql_type = type_mapping.get(self.value.lower(), self.value.upper())
             else:
-                # If value is a MockDataType, use its SQL representation
+                # If value is a DataType, use its SQL representation
                 sql_type = str(self.value)
             return f"CAST({self.column.name} AS {sql_type})"
         elif self.operation == "from_unixtime":
@@ -458,14 +463,14 @@ class MockColumnOperation(ColumnOperatorMixin):
         else:
             return f"{self.column.name} {self.operation} {self.value}"
 
-    def alias(self, name: str) -> "MockColumnOperation":
+    def alias(self, name: str) -> "ColumnOperation":
         """Create an alias for this operation."""
-        aliased_operation = MockColumnOperation(self.column, self.operation, self.value)
+        aliased_operation = ColumnOperation(self.column, self.operation, self.value)
         aliased_operation._alias_name = name
         return aliased_operation
 
-    def over(self, window_spec: "MockWindowSpec") -> "MockWindowFunction":
+    def over(self, window_spec: "WindowSpec") -> "WindowFunction":
         """Apply window function over window specification."""
-        from ..window_execution import MockWindowFunction
+        from ..window_execution import WindowFunction
 
-        return MockWindowFunction(self, window_spec)
+        return WindowFunction(self, window_spec)

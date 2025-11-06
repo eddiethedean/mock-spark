@@ -15,10 +15,10 @@ Polars backend provides native thread safety:
 All operations with Polars backend are thread-safe:
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 from concurrent.futures import ThreadPoolExecutor
 
-spark = MockSparkSession("MyApp")
+spark = SparkSession("MyApp")
 
 def create_table_in_thread(schema_name, table_name):
     """Create a table in a worker thread."""
@@ -56,7 +56,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 def process_data(schema_name, data):
     """Process data in a worker thread."""
-    spark = MockSparkSession("MyApp")
+    spark = SparkSession("MyApp")
     df = spark.createDataFrame(data)
     # No threading concerns - Polars handles it
     df.write.saveAsTable(f"{schema_name}.results")
@@ -110,12 +110,12 @@ Polars threading provides excellent performance:
 ## Example: Parallel Pipeline Execution
 
 ```python
-from mock_spark import MockSparkSession
+from mock_spark.sql import SparkSession
 from concurrent.futures import ThreadPoolExecutor
 
 def run_pipeline_step(step_id, input_data):
     """Run a pipeline step in a worker thread."""
-    spark = MockSparkSession("Pipeline")
+    spark = SparkSession("Pipeline")
     
     # Create input DataFrame
     df = spark.createDataFrame(input_data)

@@ -10,13 +10,13 @@ Mock-Spark is designed for testing PySpark applications with 100% API compatibil
 
 ```python
 import pytest
-from mock_spark import MockSparkSession, functions as F
-from mock_spark.types import StructType, StructField, StringType, IntegerType
+from mock_spark.sql import SparkSession, functions as F
+from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
 
 @pytest.fixture(scope="session")
 def spark():
-    """Create a MockSparkSession for testing."""
-    return MockSparkSession("test_app")
+    """Create a SparkSession for testing."""
+    return SparkSession("test_app")
 
 @pytest.fixture
 def sample_data():
@@ -43,8 +43,8 @@ def sample_schema():
 ```python
 @pytest.fixture(scope="session")
 def spark_with_config():
-    """Create MockSparkSession with specific configuration."""
-    return MockSparkSession("test_app", config={
+    """Create SparkSession with specific configuration."""
+    return SparkSession("test_app", config={
         "spark.sql.debug": "true",
         "spark.sql.adaptive.enabled": "true"
     })
@@ -592,7 +592,7 @@ def test_data_size():
 @pytest.fixture(scope="session")
 def spark_session():
     """Reuse Spark session across tests."""
-    return MockSparkSession("test_session")
+    return SparkSession("test_session")
 
 # Clean up resources
 @pytest.fixture(autouse=True)

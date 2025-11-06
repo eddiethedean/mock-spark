@@ -3,7 +3,7 @@ Unit tests for DataFrame filter operations.
 """
 
 import pytest
-from mock_spark import MockSparkSession, F
+from mock_spark import SparkSession, F
 
 
 @pytest.mark.unit
@@ -12,8 +12,8 @@ class TestFilterOperations:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        return MockSparkSession("test")
+        """Create a SparkSession for testing."""
+        return SparkSession("test")
 
     @pytest.fixture
     def sample_data(self):

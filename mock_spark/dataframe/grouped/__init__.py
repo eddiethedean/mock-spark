@@ -5,14 +5,14 @@ This module provides grouped data functionality for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from .base import MockGroupedData
-from .rollup import MockRollupGroupedData
-from .cube import MockCubeGroupedData
-from .pivot import MockPivotGroupedData
+from .base import GroupedData
+from .rollup import RollupGroupedData
+from .cube import CubeGroupedData
+from .pivot import PivotGroupedData
 
 __all__ = [
-    "MockGroupedData",
-    "MockRollupGroupedData",
-    "MockCubeGroupedData",
-    "MockPivotGroupedData",
+    "GroupedData",
+    "RollupGroupedData",
+    "CubeGroupedData",
+    "PivotGroupedData",
 ]

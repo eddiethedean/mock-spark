@@ -6,10 +6,10 @@ including system errors, attribute errors, and runtime failures.
 """
 
 from typing import Any, Optional
-from .base import MockSparkException
+from .base import SparkException
 
 
-class PySparkRuntimeError(MockSparkException):
+class PySparkRuntimeError(SparkException):
     """PySpark-compatible RuntimeError.
 
     Raised when a runtime error occurs during execution
@@ -27,7 +27,7 @@ class PySparkRuntimeError(MockSparkException):
         super().__init__(message, stackTrace)
 
 
-class PySparkAttributeError(MockSparkException):
+class PySparkAttributeError(SparkException):
     """PySpark-compatible AttributeError.
 
     Raised when an attribute reference or assignment fails

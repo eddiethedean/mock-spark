@@ -38,7 +38,7 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml setup.py ./
+COPY pyproject.toml ./
 COPY mock_spark ./mock_spark
 
 # Install mock-spark dependencies

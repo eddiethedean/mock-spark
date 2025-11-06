@@ -17,8 +17,8 @@ Key behaviors:
 from typing import Any, Dict, List, Set, Tuple
 
 from ..spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     LongType,
     DoubleType,
     StringType,
@@ -37,7 +37,7 @@ class SchemaInferenceEngine:
     @staticmethod
     def infer_from_data(
         data: List[Dict[str, Any]],
-    ) -> Tuple[MockStructType, List[Dict[str, Any]]]:
+    ) -> Tuple[StructType, List[Dict[str, Any]]]:
         """
         Infer schema from a list of dictionaries.
 
@@ -55,7 +55,7 @@ class SchemaInferenceEngine:
 
         Returns:
             Tuple of (inferred_schema, normalized_data)
-            - inferred_schema: MockStructType with inferred fields
+            - inferred_schema: StructType with inferred fields
             - normalized_data: Data with all keys present, alphabetically ordered
 
         Raises:
@@ -63,7 +63,7 @@ class SchemaInferenceEngine:
             TypeError: If type conflicts exist across rows
         """
         if not data:
-            return MockStructType([]), []
+            return StructType([]), []
 
         # Collect all unique keys from all rows (sparse data support)
         all_keys: Set[str] = set()
@@ -102,9 +102,9 @@ class SchemaInferenceEngine:
 
             # Use the nullable property from the field type if available, otherwise default to True
             nullable = getattr(field_type, "nullable", True)
-            fields.append(MockStructField(key, field_type, nullable=nullable))
+            fields.append(StructField(key, field_type, nullable=nullable))
 
-        schema = MockStructType(fields)
+        schema = StructType(fields)
 
         # Normalize data: fill missing keys with None and reorder alphabetically
         normalized_data = []
@@ -201,7 +201,7 @@ class SchemaInferenceEngine:
 
 
 # Convenience functions for external use
-def infer_schema_from_data(data: List[Dict[str, Any]]) -> MockStructType:
+def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
     """
     Infer schema from data (convenience function).
 
@@ -209,14 +209,14 @@ def infer_schema_from_data(data: List[Dict[str, Any]]) -> MockStructType:
         data: List of dictionaries
 
     Returns:
-        Inferred MockStructType schema
+        Inferred StructType schema
     """
     schema, _ = SchemaInferenceEngine.infer_from_data(data)
     return schema
 
 
 def normalize_data_for_schema(
-    data: List[Dict[str, Any]], schema: MockStructType
+    data: List[Dict[str, Any]], schema: StructType
 ) -> List[Dict[str, Any]]:
     """
     Normalize data to match schema (fill missing keys, reorder).

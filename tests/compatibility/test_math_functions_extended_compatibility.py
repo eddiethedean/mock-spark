@@ -15,10 +15,10 @@ class TestMathFunctionsExtendedCompatibility:
 
     @pytest.fixture
     def spark(self):
-        """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
 
-        session = MockSparkSession("math_functions_test")
+        session = SparkSession("math_functions_test")
         yield session
         session.stop()
 

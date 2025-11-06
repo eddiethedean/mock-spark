@@ -8,7 +8,7 @@ type coercion for better usability.
 
 from typing import Any, Dict, List
 
-from ..spark_types import MockStructType
+from ..spark_types import StructType
 from .exceptions.validation import IllegalArgumentException
 
 
@@ -24,7 +24,7 @@ class DataValidator:
 
     def __init__(
         self,
-        schema: MockStructType,
+        schema: StructType,
         validation_mode: str = "relaxed",
         enable_coercion: bool = True,
     ):
@@ -63,7 +63,7 @@ class DataValidator:
                 )
 
             # Ensure all schema fields present
-            for field_name in self._field_types.keys():
+            for field_name in self._field_types:
                 if field_name not in row:
                     raise IllegalArgumentException(
                         f"Missing required field '{field_name}' in row"
@@ -136,7 +136,7 @@ class DataValidator:
                 continue
 
             new_row: Dict[str, Any] = {}
-            for field_name in self._field_types.keys():
+            for field_name in self._field_types:
                 value = row.get(field_name)
                 expected_type = self._field_types[field_name]
                 new_row[field_name] = self._coerce_value(value, expected_type)
@@ -188,7 +188,7 @@ class DataValidator:
 
 # Convenience functions
 def validate_data(
-    data: List[Dict[str, Any]], schema: MockStructType, mode: str = "strict"
+    data: List[Dict[str, Any]], schema: StructType, mode: str = "strict"
 ) -> None:
     """
     Validate data against schema (convenience function).
@@ -205,9 +205,7 @@ def validate_data(
     validator.validate(data)
 
 
-def coerce_data(
-    data: List[Dict[str, Any]], schema: MockStructType
-) -> List[Dict[str, Any]]:
+def coerce_data(data: List[Dict[str, Any]], schema: StructType) -> List[Dict[str, Any]]:
     """
     Coerce data to match schema (convenience function).
 

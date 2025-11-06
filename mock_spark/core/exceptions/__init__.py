@@ -6,7 +6,7 @@ PySpark's exception structure for maximum compatibility. All exceptions
 are properly typed and provide clear error messages for debugging.
 
 Exception Categories:
-    - Base exceptions: MockException, MockSparkException
+    - Base exceptions: MockException, SparkException
     - Analysis exceptions: AnalysisException, ParseException
     - Execution exceptions: QueryExecutionException, SparkUpgradeException
     - Validation exceptions: IllegalArgumentException, PySparkValueError, PySparkTypeError
@@ -24,7 +24,7 @@ Example:
     AnalysisException: Column 'unknown' does not exist
 """
 
-from .base import MockException, MockSparkException
+from .base import MockException, SparkException
 from .analysis import AnalysisException, ParseException
 from .execution import QueryExecutionException, SparkUpgradeException
 from .validation import IllegalArgumentException, PySparkValueError, PySparkTypeError
@@ -32,7 +32,7 @@ from .runtime import PySparkRuntimeError, PySparkAttributeError
 
 __all__ = [
     "MockException",
-    "MockSparkException",
+    "SparkException",
     "AnalysisException",
     "ParseException",
     "QueryExecutionException",

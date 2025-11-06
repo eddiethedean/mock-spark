@@ -16,15 +16,15 @@ echo "=========================================="
 
 # Check if pytest-xdist is available for parallel execution
 if python3 -c "import pytest_xdist" 2>/dev/null; then
-    echo "✅ pytest-xdist available - using parallel execution"
-    PARALLEL_FLAGS="-n 8 --dist loadfile"
+    echo "✅ pytest-xdist available - using parallel execution (8 workers)"
+    PARALLEL_FLAGS="-n 8"
 else
     echo "⚠️  pytest-xdist not available - running serially"
     echo "   Install with: pip install pytest-xdist"
     PARALLEL_FLAGS=""
 fi
 
-# Step 1: Unit tests - run in parallel if available
+# Step 1: Unit tests - run in parallel
 echo "Running unit tests..."
 # Use timeout wrapper to prevent hangs (30 minutes max per test phase)
 "$SCRIPT_DIR/run_with_timeout.sh" 1800 python3 -m pytest tests/unit/ -v $PARALLEL_FLAGS --tb=short -m "not performance"
@@ -51,9 +51,9 @@ if [ $compatibility_exit -eq 124 ]; then
     echo "❌ Compatibility tests timed out after 30 minutes"
 fi
 
-# Step 3: Performance tests - run serially for stable timing
-echo "Running Performance tests (serial)..."
-"$SCRIPT_DIR/run_with_timeout.sh" 600 python3 -m pytest tests/unit/ -v -m performance --tb=short
+# Step 3: Performance tests - run in parallel
+echo "Running Performance tests (parallel)..."
+"$SCRIPT_DIR/run_with_timeout.sh" 600 python3 -m pytest tests/unit/ -v $PARALLEL_FLAGS -m performance --tb=short
 performance_exit=$?
 if [ $performance_exit -eq 124 ]; then
     echo "❌ Performance tests timed out after 10 minutes"
@@ -65,9 +65,9 @@ if [ $performance_exit -eq 5 ]; then
     performance_exit=0
 fi
 
-# Step 4: Documentation tests
+# Step 4: Documentation tests - run in parallel
 echo "Running documentation tests..."
-"$SCRIPT_DIR/run_with_timeout.sh" 300 python3 -m pytest tests/documentation/ -v --tb=short
+"$SCRIPT_DIR/run_with_timeout.sh" 300 python3 -m pytest tests/documentation/ -v $PARALLEL_FLAGS --tb=short
 doc_exit=$?
 if [ $doc_exit -eq 124 ]; then
     echo "❌ Documentation tests timed out after 5 minutes"

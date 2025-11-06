@@ -9,13 +9,13 @@ import os
 from typing import List, Dict, Any, Optional, Union
 from ...core.interfaces.storage import IStorageManager, ITable
 from ...core.types.schema import ISchema
-from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.spark_types import StructType, StructField
 
 
 class FileTable(ITable):
     """File-based table implementation."""
 
-    def __init__(self, name: str, schema: MockStructType, file_path: str):
+    def __init__(self, name: str, schema: StructType, file_path: str):
         """Initialize file table.
 
         Args:
@@ -39,7 +39,7 @@ class FileTable(ITable):
         return self._name
 
     @property
-    def schema(self) -> MockStructType:
+    def schema(self) -> StructType:
         """Get table schema."""
         return self._schema
 
@@ -62,7 +62,7 @@ class FileTable(ITable):
             List of data rows.
         """
         try:
-            with open(self.file_path, "r") as f:
+            with open(self.file_path) as f:
                 data = json.load(f)
                 return data if isinstance(data, list) else []
         except (FileNotFoundError, json.JSONDecodeError):
@@ -93,10 +93,9 @@ class FileTable(ITable):
             current_data = data
         elif mode == "append":
             current_data.extend(data)
-        elif mode == "ignore":
+        elif mode == "ignore" and not current_data:
             # Only insert if table is empty
-            if not current_data:
-                current_data = data
+            current_data = data
 
         self._save_data(current_data)
         self._metadata["row_count"] = len(current_data)
@@ -119,7 +118,7 @@ class FileTable(ITable):
         # In a real implementation, this would parse and evaluate the filter expression
         return data
 
-    def get_schema(self) -> MockStructType:
+    def get_schema(self) -> StructType:
         """Get table schema.
 
         Returns:
@@ -178,7 +177,7 @@ class FileSchema(ISchema):
         os.makedirs(self.base_path, exist_ok=True)
 
     def create_table(
-        self, table: str, columns: Union[List[MockStructField], MockStructType]
+        self, table: str, columns: Union[List[StructField], StructType]
     ) -> None:
         """Create a new table in this schema.
 
@@ -186,10 +185,7 @@ class FileSchema(ISchema):
             table: Name of the table.
             columns: Table columns definition.
         """
-        if isinstance(columns, list):
-            schema = MockStructType(columns)
-        else:
-            schema = columns
+        schema = StructType(columns) if isinstance(columns, list) else columns
 
         table_path = os.path.join(self.base_path, f"{table}.json")
         self.tables[table] = FileTable(table, schema, table_path)
@@ -356,7 +352,7 @@ class FileStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[List[MockStructField], MockStructType],
+        fields: Union[List[StructField], StructType],
     ) -> None:
         """Create a new table.
 
@@ -433,7 +429,7 @@ class FileStorageManager(IStorageManager):
             return self.schemas[schema].tables[table].query_data(filter_expr)
         return []
 
-    def get_table_schema(self, schema_name: str, table_name: str) -> MockStructType:
+    def get_table_schema(self, schema_name: str, table_name: str) -> StructType:
         """Get table schema.
 
         Args:
@@ -449,7 +445,7 @@ class FileStorageManager(IStorageManager):
         ):
             return self.schemas[schema_name].tables[table_name].get_schema()
         # Return empty schema if table doesn't exist
-        return MockStructType([])
+        return StructType([])
 
     def get_data(self, schema: str, table: str) -> List[Dict[str, Any]]:
         """Get all data from table.

@@ -1,7 +1,7 @@
 """
 Validation handler for DataFrame operations.
 
-This module provides centralized validation logic for MockDataFrame operations,
+This module provides centralized validation logic for DataFrame operations,
 following the Single Responsibility Principle by extracting validation concerns
 from the main DataFrame class.
 """
@@ -9,7 +9,7 @@ from the main DataFrame class.
 from typing import Any, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..spark_types import MockStructType
+    from ..spark_types import StructType
 
 from .validation.column_validator import ColumnValidator
 
@@ -18,13 +18,13 @@ class ValidationHandler:
     """Handles data validation for DataFrame operations.
 
     This class consolidates all validation logic that was previously
-    scattered throughout MockDataFrame, providing a single point of
+    scattered throughout DataFrame, providing a single point of
     validation for column existence, expression validation, and
     filter condition validation.
     """
 
     def validate_column_exists(
-        self, schema: "MockStructType", column_name: str, operation: str
+        self, schema: "StructType", column_name: str, operation: str
     ) -> None:
         """Validate that a single column exists in schema.
 
@@ -34,12 +34,12 @@ class ValidationHandler:
             operation: Name of the operation being performed (for error messages).
 
         Raises:
-            MockSparkColumnNotFoundError: If column doesn't exist in schema.
+            SparkColumnNotFoundError: If column doesn't exist in schema.
         """
         ColumnValidator.validate_column_exists(schema, column_name, operation)
 
     def validate_columns_exist(
-        self, schema: "MockStructType", column_names: List[str], operation: str
+        self, schema: "StructType", column_names: List[str], operation: str
     ) -> None:
         """Validate that multiple columns exist in schema.
 
@@ -49,13 +49,13 @@ class ValidationHandler:
             operation: Name of the operation being performed (for error messages).
 
         Raises:
-            MockSparkColumnNotFoundError: If any column doesn't exist in schema.
+            SparkColumnNotFoundError: If any column doesn't exist in schema.
         """
         ColumnValidator.validate_columns_exist(schema, column_names, operation)
 
     def validate_filter_expression(
         self,
-        schema: "MockStructType",
+        schema: "StructType",
         condition: Any,
         operation: str,
         has_pending_joins: bool = False,
@@ -74,7 +74,7 @@ class ValidationHandler:
 
     def validate_expression_columns(
         self,
-        schema: "MockStructType",
+        schema: "StructType",
         expression: Any,
         operation: str,
         in_lazy_materialization: bool = False,

@@ -13,12 +13,7 @@ from ..core.interfaces.storage import IStorageManager
 from .backends.memory import MemoryStorageManager
 from .backends.file import FileStorageManager
 from mock_spark.backend.polars import PolarsStorageManager
-# DuckDB is optional - wrap import in try/except
-try:
-    from mock_spark.backend.duckdb import DuckDBStorageManager
-except ImportError:
-    DuckDBStorageManager = None  # type: ignore
-from mock_spark.spark_types import MockStructType, MockStructField
+from mock_spark.spark_types import StructType, StructField
 
 
 class TableMetadata:
@@ -29,7 +24,7 @@ class TableMetadata:
         name: str,
         schema: str,
         created_at: datetime,
-        table_schema: MockStructType,
+        table_schema: StructType,
         properties: Dict[str, Any],
     ):
         """Initialize table metadata.
@@ -84,26 +79,6 @@ class StorageManagerFactory:
             Polars storage manager instance.
         """
         return PolarsStorageManager(db_path=db_path)
-
-    @staticmethod
-    def create_duckdb_manager(db_path: Optional[str] = None) -> IStorageManager:
-        """Create a DuckDB storage manager (legacy, for backward compatibility).
-
-        Args:
-            db_path: Optional path to DuckDB database file. If None, uses in-memory storage.
-
-        Returns:
-            DuckDB storage manager instance.
-
-        Raises:
-            ImportError: If DuckDB is not installed. Install with: pip install duckdb
-        """
-        if DuckDBStorageManager is None:
-            raise ImportError(
-                "DuckDB backend requires 'duckdb' package. "
-                "Install with: pip install duckdb"
-            )
-        return DuckDBStorageManager(db_path)
 
 
 class UnifiedStorageManager(IStorageManager):
@@ -170,7 +145,7 @@ class UnifiedStorageManager(IStorageManager):
         self,
         schema: str,
         table: str,
-        columns: Union[List[MockStructField], MockStructType],
+        columns: Union[List[StructField], StructType],
     ) -> None:
         """Create a new table.
 
@@ -220,7 +195,7 @@ class UnifiedStorageManager(IStorageManager):
 
     def get_table_schema(
         self, schema_name: str, table_name: str
-    ) -> Union[Any, MockStructType]:
+    ) -> Union[Any, StructType]:
         """Get table schema.
 
         Args:

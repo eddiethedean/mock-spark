@@ -6,10 +6,10 @@ including query execution, runtime errors, and system failures.
 """
 
 from typing import Any, Optional
-from .base import MockSparkException
+from .base import SparkException
 
 
-class QueryExecutionException(MockSparkException):
+class QueryExecutionException(SparkException):
     """Exception raised for query execution errors.
 
     Raised when SQL queries or DataFrame operations fail during
@@ -27,7 +27,7 @@ class QueryExecutionException(MockSparkException):
         super().__init__(message, stackTrace)
 
 
-class SparkUpgradeException(MockSparkException):
+class SparkUpgradeException(SparkException):
     """Exception raised for Spark upgrade issues.
 
     Raised when there are compatibility issues during Spark

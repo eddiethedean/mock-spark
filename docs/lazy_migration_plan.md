@@ -35,7 +35,7 @@
   - Add compatibility test(s): lazy chains equivalent after collect() (in progress)
 - [x] Add session flag to temporarily re-enable eager during migration (`spark.config.mock.eager=false` default)
   - Add `enable_lazy_evaluation` to `MockSparkConfig`
-  - Apply in `MockSparkSession.createDataFrame` via `withLazy(True)`
+  - Apply in `SparkSession.createDataFrame` via `withLazy(True)`
   - Expose conf key mapping and README docs
   - Add unit test(s): session flag enables/disables lazy correctly
   - Add compatibility test(s): flag-off behavior matches current PySpark-eager expectations in tests that rely on immediacy

@@ -20,10 +20,10 @@ For real Delta operations (MERGE, time travel, etc.), use real PySpark + delta-s
 """
 
 from __future__ import annotations
-from typing import Any, Optional, Dict, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from .dataframe import MockDataFrame
+    from .dataframe import DataFrame
 
 
 class DeltaTable:
@@ -57,10 +57,11 @@ class DeltaTable:
         else:
             schema, table = "default", table_name
 
-        # Check table exists (only for MockSparkSession)
-        if hasattr(spark_session, "storage"):
-            if not spark_session.storage.table_exists(schema, table):
-                raise AnalysisException(f"Table or view not found: {table_name}")
+        # Check table exists (only for SparkSession)
+        if hasattr(spark_session, "storage") and not spark_session.storage.table_exists(
+            schema, table
+        ):
+            raise AnalysisException(f"Table or view not found: {table_name}")
         # For real SparkSession, we'll just assume the table exists
         # and let it fail naturally if it doesn't
 
@@ -72,22 +73,21 @@ class DeltaTable:
         table_name = path.split("/")[-1] if "/" in path else path
         return cls(spark_session, f"default.{table_name}")
 
-    def toDF(self) -> "MockDataFrame":
+    def toDF(self) -> DataFrame:
         """Get DataFrame from Delta table."""
-        from .dataframe import MockDataFrame
 
-        return cast(MockDataFrame, self._spark.table(self._table_name))
+        return cast("DataFrame", self._spark.table(self._table_name))
 
     def alias(self, alias: str) -> DeltaTable:
         """Alias table (returns self for chaining)."""
         return self
 
     # Mock operations - don't actually execute
-    def delete(self, condition: Optional[str] = None) -> None:
+    def delete(self, condition: str | None = None) -> None:
         """Mock delete (no-op)."""
         pass
 
-    def update(self, condition: str, set_values: Dict[str, Any]) -> None:
+    def update(self, condition: str, set_values: dict[str, Any]) -> None:
         """Mock update (no-op)."""
         pass
 
@@ -95,7 +95,7 @@ class DeltaTable:
         """Mock merge (returns builder for chaining)."""
         return DeltaMergeBuilder(self)
 
-    def vacuum(self, retention_hours: Optional[float] = None) -> None:
+    def vacuum(self, retention_hours: float | None = None) -> None:
         """Mock vacuum (no-op)."""
         pass
 
@@ -111,27 +111,27 @@ class DeltaTable:
         """
         return self
 
-    def detail(self) -> MockDataFrame:
+    def detail(self) -> DataFrame:
         """
         Mock table detail information.
 
         Returns a DataFrame with table metadata.
 
         Returns:
-            MockDataFrame with table details
+            DataFrame with table details
         """
         from .spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             StringType,
             LongType,
             ArrayType,
             MapType,
         )
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
 
         # Create mock table details
-        details: list[Dict[str, Any]] = [
+        details: list[dict[str, Any]] = [
             {
                 "format": "delta",
                 "id": f"mock-table-{hash(self._table_name)}",
@@ -149,27 +149,27 @@ class DeltaTable:
             }
         ]
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("format", StringType()),
-                MockStructField("id", StringType()),
-                MockStructField("name", StringType()),
-                MockStructField("description", StringType()),
-                MockStructField("location", StringType()),
-                MockStructField("createdAt", StringType()),
-                MockStructField("lastModified", StringType()),
-                MockStructField("partitionColumns", ArrayType(StringType())),
-                MockStructField("numFiles", LongType()),
-                MockStructField("sizeInBytes", LongType()),
-                MockStructField("properties", MapType(StringType(), StringType())),
-                MockStructField("minReaderVersion", LongType()),
-                MockStructField("minWriterVersion", LongType()),
+                StructField("format", StringType()),
+                StructField("id", StringType()),
+                StructField("name", StringType()),
+                StructField("description", StringType()),
+                StructField("location", StringType()),
+                StructField("createdAt", StringType()),
+                StructField("lastModified", StringType()),
+                StructField("partitionColumns", ArrayType(StringType())),
+                StructField("numFiles", LongType()),
+                StructField("sizeInBytes", LongType()),
+                StructField("properties", MapType(StringType(), StringType())),
+                StructField("minReaderVersion", LongType()),
+                StructField("minWriterVersion", LongType()),
             ]
         )
 
-        return MockDataFrame(details, schema, self._spark.storage)
+        return DataFrame(details, schema, self._spark.storage)
 
-    def history(self, limit: Optional[int] = None) -> MockDataFrame:
+    def history(self, limit: int | None = None) -> DataFrame:
         """
         Mock table history.
 
@@ -179,16 +179,16 @@ class DeltaTable:
             limit: Optional limit on number of versions to return
 
         Returns:
-            MockDataFrame with version history
+            DataFrame with version history
         """
         from .spark_types import (
-            MockStructType,
-            MockStructField,
+            StructType,
+            StructField,
             StringType,
             LongType,
             MapType,
         )
-        from .dataframe import MockDataFrame
+        from .dataframe import DataFrame
 
         # Create mock history
         history = [
@@ -208,23 +208,21 @@ class DeltaTable:
         if limit and limit < len(history):
             history = history[:limit]
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("version", LongType()),
-                MockStructField("timestamp", StringType()),
-                MockStructField("userId", StringType()),
-                MockStructField("userName", StringType()),
-                MockStructField("operation", StringType()),
-                MockStructField(
-                    "operationParameters", MapType(StringType(), StringType())
-                ),
-                MockStructField("readVersion", LongType()),
-                MockStructField("isolationLevel", StringType()),
-                MockStructField("isBlindAppend", LongType()),
+                StructField("version", LongType()),
+                StructField("timestamp", StringType()),
+                StructField("userId", StringType()),
+                StructField("userName", StringType()),
+                StructField("operation", StringType()),
+                StructField("operationParameters", MapType(StringType(), StringType())),
+                StructField("readVersion", LongType()),
+                StructField("isolationLevel", StringType()),
+                StructField("isBlindAppend", LongType()),
             ]
         )
 
-        return MockDataFrame(history, schema, self._spark.storage)
+        return DataFrame(history, schema, self._spark.storage)
 
 
 class DeltaMergeBuilder:
@@ -233,16 +231,16 @@ class DeltaMergeBuilder:
     def __init__(self, delta_table: DeltaTable):
         self._table = delta_table
 
-    def whenMatchedUpdate(self, set_values: Dict[str, Any]) -> DeltaMergeBuilder:
+    def whenMatchedUpdate(self, set_values: dict[str, Any]) -> DeltaMergeBuilder:
         return self
 
     def whenMatchedUpdateAll(self) -> DeltaMergeBuilder:
         return self
 
-    def whenMatchedDelete(self, condition: Optional[str] = None) -> DeltaMergeBuilder:
+    def whenMatchedDelete(self, condition: str | None = None) -> DeltaMergeBuilder:
         return self
 
-    def whenNotMatchedInsert(self, values: Dict[str, Any]) -> DeltaMergeBuilder:
+    def whenNotMatchedInsert(self, values: dict[str, Any]) -> DeltaMergeBuilder:
         return self
 
     def whenNotMatchedInsertAll(self) -> DeltaMergeBuilder:

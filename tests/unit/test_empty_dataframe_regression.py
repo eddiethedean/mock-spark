@@ -4,10 +4,10 @@ Tests for Regression 2: Empty DataFrame Column Detection
 Tests that empty DataFrames created with explicit schemas preserve column information.
 """
 
-from mock_spark import MockSparkSession
+from mock_spark import SparkSession
 from mock_spark.spark_types import (
-    MockStructType,
-    MockStructField,
+    StructType,
+    StructField,
     StringType,
     IntegerType,
     DoubleType,
@@ -19,11 +19,11 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_with_explicit_schema_preserves_columns(self):
         """Test that empty DataFrame with explicit schema preserves column information."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("col1", StringType(), True),
+                StructField("col1", StringType(), True),
             ]
         )
 
@@ -35,13 +35,13 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_with_multiple_columns(self):
         """Test that empty DataFrame with multiple columns preserves all columns."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
-                MockStructField("score", DoubleType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
+                StructField("score", DoubleType()),
             ]
         )
 
@@ -54,11 +54,11 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_schema_access(self):
         """Test that empty DataFrame schema is accessible and correct."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("col1", StringType(), True),
+                StructField("col1", StringType(), True),
             ]
         )
 
@@ -72,12 +72,12 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_with_nullable_fields(self):
         """Test that empty DataFrame preserves nullable field information."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("required", StringType(), False),
-                MockStructField("optional", StringType(), True),
+                StructField("required", StringType(), False),
+                StructField("optional", StringType(), True),
             ]
         )
 
@@ -99,12 +99,12 @@ class TestEmptyDataFrameRegression:
 
         This is the specific use case mentioned in the regression report.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("name", StringType()),
+                StructField("id", IntegerType()),
+                StructField("name", StringType()),
             ]
         )
 
@@ -123,11 +123,11 @@ class TestEmptyDataFrameRegression:
 
         This is the specific use case mentioned in the regression report.
         """
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
+                StructField("id", IntegerType()),
             ]
         )
 
@@ -144,15 +144,15 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_with_complex_types(self):
         """Test that empty DataFrame preserves complex type information."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
         from mock_spark.spark_types import ArrayType, MapType
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("id", IntegerType()),
-                MockStructField("tags", ArrayType(StringType())),
-                MockStructField("metadata", MapType(StringType(), StringType())),
+                StructField("id", IntegerType()),
+                StructField("tags", ArrayType(StringType())),
+                StructField("metadata", MapType(StringType(), StringType())),
             ]
         )
 
@@ -165,12 +165,12 @@ class TestEmptyDataFrameRegression:
 
     def test_empty_dataframe_print_schema(self):
         """Test that printSchema works correctly for empty DataFrames."""
-        spark = MockSparkSession("test")
+        spark = SparkSession("test")
 
-        schema = MockStructType(
+        schema = StructType(
             [
-                MockStructField("col1", StringType()),
-                MockStructField("col2", IntegerType()),
+                StructField("col1", StringType()),
+                StructField("col2", IntegerType()),
             ]
         )
 

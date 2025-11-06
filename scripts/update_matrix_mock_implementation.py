@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Update the Mock-Spark column in PYSPARK_FUNCTION_MATRIX.md based on actual implementation.
+Update the Mock-Spark column in PYSPARK_FUNCTION_MATRIX.md and pyspark_api_matrix.json
+based on actual implementation.
 
-This script scans the mock_spark codebase to identify which functions are actually implemented
-and updates the matrix to reflect the actual implementation status.
+This script scans the mock_spark codebase to identify which functions and DataFrame methods
+are actually implemented and updates the matrix to reflect the actual implementation status.
 """
 
+import json
 import re
 import sys
 from pathlib import Path
 
+# Add parent directory to path to allow importing mock_spark
+repo_root = Path(__file__).parent.parent
+sys.path.insert(0, str(repo_root))
 
-# Get the list of implemented functions from __init__.py
+
 def get_implemented_functions():
     """Read the __all__ list from mock_spark/functions/__init__.py"""
     init_file = (
@@ -32,36 +37,107 @@ def get_implemented_functions():
     return set(functions)
 
 
-def update_matrix_file(functions, matrix_file):
-    """Update the matrix file with implementation status"""
-    with open(matrix_file, "r") as f:
+def get_implemented_dataframe_methods():
+    """Get all implemented DataFrame methods by checking MockDataFrame and its mixins."""
+    methods = set()
+
+    # Import MockDataFrame to check its methods
+    try:
+        from mock_spark.dataframe.dataframe import MockDataFrame
+
+        # Get all public methods from MockDataFrame
+        for attr_name in dir(MockDataFrame):
+            if not attr_name.startswith("_"):
+                attr = getattr(MockDataFrame, attr_name)
+                if callable(attr):
+                    methods.add(attr_name)
+
+        # Also check mixin classes
+        from mock_spark.dataframe.transformations import TransformationOperations
+        from mock_spark.dataframe.joins import JoinOperations
+        from mock_spark.dataframe.aggregations import AggregationOperations
+        from mock_spark.dataframe.display import DisplayOperations
+        from mock_spark.dataframe.schema import SchemaOperations
+        from mock_spark.dataframe.assertions import AssertionOperations
+        from mock_spark.dataframe.operations import MiscellaneousOperations
+
+        mixin_classes = [
+            TransformationOperations,
+            JoinOperations,
+            AggregationOperations,
+            DisplayOperations,
+            SchemaOperations,
+            AssertionOperations,
+            MiscellaneousOperations,
+        ]
+
+        for mixin in mixin_classes:
+            for attr_name in dir(mixin):
+                if not attr_name.startswith("_"):
+                    attr = getattr(mixin, attr_name)
+                    if callable(attr):
+                        methods.add(attr_name)
+    except Exception as e:
+        print(f"Warning: Could not check DataFrame methods: {e}", file=sys.stderr)
+
+    return methods
+
+
+def update_matrix_markdown(functions, df_methods, matrix_file):
+    """Update the markdown matrix file with implementation status"""
+    with open(matrix_file) as f:
         lines = f.readlines()
 
     # Track changes
     updated_count = 0
+    in_functions_section = False
+    in_methods_section = False
 
     # Iterate through each line
     for i, line in enumerate(lines):
-        # Check if this line is a function row
+        # Detect which section we're in
+        if "## Functions" in line:
+            in_functions_section = True
+            in_methods_section = False
+            continue
+        elif "## DataFrame Methods" in line:
+            in_functions_section = False
+            in_methods_section = True
+            continue
+        elif line.startswith("##"):
+            # Other section
+            in_functions_section = False
+            in_methods_section = False
+            continue
+
+        # Check if this line is a function/method row
         # Format: | `function_name` | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Mock-Spark |
         match = re.match(r"^\|\s+`([^`]+)`\s+\|.*$", line)
         if match:
-            func_name = match.group(1)
+            item_name = match.group(1)
+            implemented = False
 
-            # Check if this function is in our implemented list
-            if func_name in functions:
+            if in_functions_section:
+                implemented = item_name in functions
+            elif in_methods_section:
+                implemented = item_name in df_methods
+
+            if implemented:
                 # Parse the line to get the Mock-Spark column
                 parts = line.split("|")
                 if len(parts) >= 8:
                     # Mock-Spark column is index 7
                     current_status = parts[7].strip()
 
-                    # Only update if it's not already ✅
+                    # Update if it's not already ✅ or 🔷
                     if current_status != "✅" and current_status != "🔷":
                         parts[7] = " ✅ "
                         lines[i] = "|".join(parts)
                         updated_count += 1
-                        print(f"Updated: {func_name} (was: '{current_status}')")
+                        section = "function" if in_functions_section else "method"
+                        print(
+                            f"Updated {section}: {item_name} (was: '{current_status}')"
+                        )
 
     # Write back
     with open(matrix_file, "w") as f:
@@ -70,18 +146,62 @@ def update_matrix_file(functions, matrix_file):
     return updated_count
 
 
+def update_matrix_json(functions, df_methods, json_file):
+    """Update the JSON matrix file with implementation status"""
+    with open(json_file) as f:
+        matrix = json.load(f)
+
+    updated_count = 0
+
+    # Update functions
+    for func_name in matrix.get("functions", {}):
+        if func_name in functions and (
+            "mock_spark" not in matrix["functions"][func_name]
+            or not matrix["functions"][func_name].get("mock_spark", False)
+        ):
+            # Add mock_spark field if not present
+            matrix["functions"][func_name]["mock_spark"] = True
+            updated_count += 1
+            print(f"Updated JSON function: {func_name}")
+
+    # Update DataFrame methods
+    for method_name in matrix.get("dataframe_methods", {}):
+        if method_name in df_methods and (
+            "mock_spark" not in matrix["dataframe_methods"][method_name]
+            or not matrix["dataframe_methods"][method_name].get("mock_spark", False)
+        ):
+            # Add mock_spark field if not present
+            matrix["dataframe_methods"][method_name]["mock_spark"] = True
+            updated_count += 1
+            print(f"Updated JSON method: {method_name}")
+
+    # Write back
+    with open(json_file, "w") as f:
+        json.dump(matrix, f, indent=2)
+
+    return updated_count
+
+
 def main():
     """Main entry point"""
-    repo_root = Path(__file__).parent.parent
-    matrix_file = repo_root / "PYSPARK_FUNCTION_MATRIX.md"
+    matrix_md = repo_root / "PYSPARK_FUNCTION_MATRIX.md"
+    matrix_json = repo_root / "mock_spark" / "pyspark_api_matrix.json"
 
     print("Scanning mock_spark functions...")
-    implemented = get_implemented_functions()
-    print(f"Found {len(implemented)} implemented functions")
+    functions = get_implemented_functions()
+    print(f"Found {len(functions)} implemented functions")
 
-    print(f"Updating {matrix_file}...")
-    updated = update_matrix_file(implemented, matrix_file)
-    print(f"Updated {updated} entries")
+    print("Scanning mock_spark DataFrame methods...")
+    df_methods = get_implemented_dataframe_methods()
+    print(f"Found {len(df_methods)} implemented DataFrame methods")
+
+    print(f"\nUpdating {matrix_md}...")
+    updated_md = update_matrix_markdown(functions, df_methods, matrix_md)
+    print(f"Updated {updated_md} entries in markdown")
+
+    print(f"\nUpdating {matrix_json}...")
+    updated_json = update_matrix_json(functions, df_methods, matrix_json)
+    print(f"Updated {updated_json} entries in JSON")
 
     return 0
 
