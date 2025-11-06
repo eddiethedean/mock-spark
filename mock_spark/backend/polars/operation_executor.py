@@ -58,12 +58,12 @@ class PolarsOperationExecutor:
             map_op_name = None
             map_col_name = None
             if hasattr(col, 'operation'):
-                if col.operation in ['map_keys', 'map_values', 'map_entries']:
+                if col.operation in ['map_keys', 'map_values', 'map_entries', 'map_concat']:
                     is_map_op = True
                     map_op_name = col.operation
                     if hasattr(col, 'column') and hasattr(col.column, 'name'):
                         map_col_name = col.column.name
-            elif hasattr(col, 'function_name') and col.function_name in ['map_keys', 'map_values', 'map_entries']:
+            elif hasattr(col, 'function_name') and col.function_name in ['map_keys', 'map_values', 'map_entries', 'map_concat']:
                 is_map_op = True
                 map_op_name = col.function_name
                 if hasattr(col, 'column') and hasattr(col.column, 'name'):
@@ -132,6 +132,12 @@ class PolarsOperationExecutor:
                                     if col_str in df.columns:
                                         map_cols.append(col_str)
                             
+                            # Verify all map columns exist in DataFrame
+                            available_map_cols = [mc for mc in map_cols if mc in df.columns]
+                            if len(available_map_cols) < len(map_cols):
+                                # Some columns missing - this shouldn't happen but handle gracefully
+                                map_cols = available_map_cols
+                            
                             # Merge all struct columns - combine all fields from all maps
                             # Get all field names from all struct columns
                             all_field_names = set()
@@ -139,7 +145,8 @@ class PolarsOperationExecutor:
                                 if map_col in df.columns:
                                     struct_dtype = df[map_col].dtype
                                     if hasattr(struct_dtype, 'fields'):
-                                        all_field_names.update([f.name for f in struct_dtype.fields])
+                                        field_names = [f.name for f in struct_dtype.fields]
+                                        all_field_names.update(field_names)
                             all_field_names = sorted(list(all_field_names))
                             
                             # Build merged struct: for each field, take value from later maps first (they override)
