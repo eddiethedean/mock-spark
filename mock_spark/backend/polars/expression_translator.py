@@ -7,6 +7,7 @@ to Polars expressions (pl.Expr) for DataFrame operations.
 
 from typing import Any, Optional
 import polars as pl
+import math
 from mock_spark.functions import MockColumn, MockColumnOperation, MockLiteral
 from mock_spark.functions.base import MockAggregateFunction
 from mock_spark.functions.window_execution import MockWindowFunction
@@ -122,7 +123,7 @@ class PolarsExpressionTranslator:
             "substring", "regexp_replace", "regexp_extract", "split", "concat", "concat_ws",
             "like", "rlike", "round", "pow", "to_date", "to_timestamp", "date_format",
             "date_add", "date_sub", "datediff", "lpad", "rpad", "repeat", "instr", "locate",
-            "add_months", "last_day"
+            "add_months", "last_day", "bin", "bround", "conv", "factorial"
         ]:
             return self._translate_function_call(op)
 
@@ -142,7 +143,7 @@ class PolarsExpressionTranslator:
             elif hasattr(op, "function_name") or operation in [
                 "upper", "lower", "length", "trim", "ltrim", "rtrim",
                 "abs", "ceil", "floor", "sqrt", "exp", "log", "log10",
-                "sin", "cos", "tan", "round",
+                "sin", "cos", "tan", "round", "bin", "bround", "conv", "factorial",
                 "year", "month", "day", "dayofmonth", "hour", "minute", "second",
                 "dayofweek", "dayofyear", "weekofyear", "quarter",
                 "to_date", "current_timestamp", "current_date",
@@ -770,9 +771,20 @@ class PolarsExpressionTranslator:
             first_char = col_expr.str.slice(0, 1)
             return first_char.map_elements(lambda x: ord(x) if x else 0, return_dtype=pl.Int32).fill_null(0)
         elif function_name == "hex":
-            # hex(col) - convert to hexadecimal string (uppercase)
-            # Encode string to bytes, then convert to hex string (uppercase like PySpark)
-            return col_expr.map_elements(lambda x: x.encode('utf-8').hex().upper() if isinstance(x, str) else str(x).encode('utf-8').hex().upper() if x is not None else '', return_dtype=pl.Utf8)
+            # hex(col) - convert to hexadecimal string
+            # For numeric types: convert number to hex string (e.g., 10 -> "A", 255 -> "FF")
+            # For string types: encode string to bytes then hex (e.g., "Alice" -> "416C696365")
+            # We need to detect the type - if it's numeric, use numeric hex conversion
+            # For now, try numeric conversion first, fallback to string encoding
+            return col_expr.map_elements(
+                lambda x: (
+                    hex(int(x))[2:].upper() if isinstance(x, (int, float)) and not (isinstance(x, float) and math.isnan(x))
+                    else x.encode('utf-8').hex().upper() if isinstance(x, str)
+                    else str(x).encode('utf-8').hex().upper() if x is not None
+                    else ''
+                ),
+                return_dtype=pl.Utf8
+            )
         elif function_name == "base64":
             # base64(col) - encode to base64
             import base64
@@ -834,6 +846,10 @@ class PolarsExpressionTranslator:
             "quarter": lambda e: self._extract_datetime_part(e, "quarter"),
             "reverse": lambda e: self._reverse_expr(e, op),  # Handle both string and array reverse
             "isnan": lambda e: pl.when(e.is_null()).then(None).otherwise(e.is_nan()),
+            "bin": lambda e: e.map_elements(lambda x: bin(int(x))[2:] if isinstance(x, (int, float)) and not (isinstance(x, float) and math.isnan(x)) and x is not None else '', return_dtype=pl.Utf8),
+            "bround": lambda e: self._bround_expr(e, op),
+            "conv": lambda e: self._conv_expr(e, op),
+            "factorial": lambda e: e.map_elements(lambda x: math.factorial(int(x)) if isinstance(x, (int, float)) and x >= 0 and x == int(x) and x is not None else None, return_dtype=pl.Int64),
             "to_date": lambda e: e.str.strptime(pl.Date, strict=False),
             "isnull": lambda e: e.is_null(),
             "isNull": lambda e: e.is_null(),
@@ -1014,4 +1030,75 @@ class PolarsExpressionTranslator:
             return col_expr.last()
         else:
             raise ValueError(f"Unsupported aggregate function: {function_name}")
+
+    def _bround_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
+        """Banker's rounding (HALF_EVEN rounding mode).
+        
+        Args:
+            expr: Polars expression
+            op: MockColumnOperation with scale in op.value
+            
+        Returns:
+            Polars expression for banker's rounding
+        """
+        scale = op.value if op.value is not None else 0
+        if scale == 0:
+            # Round to nearest integer using HALF_EVEN
+            return expr.round(0)
+        else:
+            # Round to scale decimal places using HALF_EVEN
+            # Polars doesn't have direct HALF_EVEN, use round() which uses HALF_TO_EVEN
+            return expr.round(scale)
+    
+    def _conv_expr(self, expr: pl.Expr, op: Any) -> pl.Expr:
+        """Convert number from one base to another.
+        
+        Args:
+            expr: Polars expression (number as string or number)
+            op: MockColumnOperation with (from_base, to_base) in op.value
+            
+        Returns:
+            Polars expression for base conversion
+        """
+        if isinstance(op.value, (tuple, list)) and len(op.value) >= 2:
+            from_base = op.value[0]
+            to_base = op.value[1]
+        else:
+            raise ValueError("conv requires (from_base, to_base) tuple")
+        
+        # Convert number to string in from_base, then parse from that base, then convert to to_base
+        def convert_base(x, from_b, to_b):
+            if x is None:
+                return None
+            try:
+                # Parse as integer from source base
+                if isinstance(x, str):
+                    num = int(x, from_b)
+                else:
+                    num = int(x)
+                # Convert to target base
+                if to_b == 10:
+                    return str(num)
+                elif to_b == 2:
+                    return bin(num)[2:]
+                elif to_b == 16:
+                    return hex(num)[2:].upper()
+                else:
+                    # Generic base conversion
+                    if num == 0:
+                        return "0"
+                    digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    result = ""
+                    n = abs(num)
+                    while n > 0:
+                        result = digits[n % to_b] + result
+                        n //= to_b
+                    return ("-" if num < 0 else "") + result
+            except (ValueError, TypeError):
+                return None
+        
+        return expr.map_elements(
+            lambda x: convert_base(x, from_base, to_base),
+            return_dtype=pl.Utf8
+        )
 
