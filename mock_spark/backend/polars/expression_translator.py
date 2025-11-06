@@ -730,12 +730,19 @@ class PolarsExpressionTranslator:
             return pl.int_range(pl.len())
         elif function_name == "expr":
             # expr(sql_string) - parse and evaluate SQL expression
-            # For now, this should be handled at SQL executor level, not here
-            # But if it reaches here, try to evaluate the SQL string
+            # Implement minimal SQL parsing for common cases like CASE WHEN
             if op.value is not None and isinstance(op.value, str):
-                # This is a complex case - would need SQL parsing
-                # For now, raise a more helpful error
-                raise ValueError("F.expr() SQL expressions should be handled by SQL executor, not Polars backend")
+                sql_expr = op.value.strip()
+                # Try to parse simple CASE WHEN expressions
+                # Pattern: CASE WHEN condition THEN value1 ELSE value2 END
+                sql_lower = sql_expr.lower()
+                if sql_lower.startswith("case when") and sql_lower.endswith("end"):
+                    return self._parse_simple_case_when(sql_expr)
+                else:
+                    # For other SQL expressions, raise error (can be extended later)
+                    raise ValueError(f"F.expr() SQL expressions should be handled by SQL executor, not Polars backend. Unsupported expression: {sql_expr}")
+            else:
+                raise ValueError("F.expr() requires a SQL string")
         if function_name == "coalesce":
             # coalesce(*cols) - op.value should be list of columns
             if op.value is not None and isinstance(op.value, (list, tuple)):
