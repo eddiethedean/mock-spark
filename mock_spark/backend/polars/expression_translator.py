@@ -107,6 +107,10 @@ class PolarsExpressionTranslator:
             left = pl.lit(column)
         else:
             left = self.translate(column)
+        
+        # Special handling for cast operation - value should be a type name, not a column
+        if operation == "cast":
+            return self._translate_cast(left, value)
 
         # Check if this is a binary operator first (must be handled as binary operation, not function)
         binary_operators = ["==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "&", "|"]
@@ -860,6 +864,17 @@ class PolarsExpressionTranslator:
                 for col in op.value:
                     if isinstance(col, str):
                         all_cols.append(pl.col(col))
+                    elif isinstance(col, MockColumnOperation) and col.operation == "cast":
+                        # For cast operations nested in function calls, translate the column part
+                        # but keep the cast value (type name) as-is
+                        if isinstance(col.column, MockColumn):
+                            cast_col = pl.col(col.column.name)
+                        elif isinstance(col.column, MockColumnOperation):
+                            cast_col = self._translate_operation(col.column)
+                        else:
+                            cast_col = self.translate(col.column)
+                        # Translate cast with the type name directly
+                        all_cols.append(self._translate_cast(cast_col, col.value))
                     else:
                         all_cols.append(self.translate(col))
                 # Combine maps: merge all dicts together (later values override earlier ones)
@@ -996,13 +1011,20 @@ class PolarsExpressionTranslator:
         # Check if the column is an array type by inspecting the operation's column
         from mock_spark.spark_types import ArrayType
         is_array = False
+        
+        # First, check if column_type is explicitly ArrayType
         if hasattr(op, 'column'):
             col = op.column
             if hasattr(col, 'column_type'):
                 is_array = isinstance(col.column_type, ArrayType)
-            elif hasattr(col, 'name'):
-                # Could check schema, but for now default based on context
-                pass
+        
+        # If not determined yet, try to infer from the column name
+        # If column name suggests it's an array (e.g., "arr1", "arr2"), treat as array
+        if not is_array and hasattr(op, 'column') and hasattr(op.column, 'name'):
+            col_name = op.column.name
+            # Common array column name patterns
+            if col_name.startswith('arr') or col_name.endswith('_array') or 'array' in col_name.lower():
+                is_array = True
         
         if is_array:
             return expr.list.reverse()
