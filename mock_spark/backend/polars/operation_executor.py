@@ -136,6 +136,7 @@ class PolarsOperationExecutor:
                             
                             # Build merged struct: for each field, take value from later maps first (they override)
                             # Later maps override earlier ones (PySpark behavior)
+                            # Then filter out null fields per row (PySpark only includes non-null keys)
                             struct_field_exprs = []
                             for fname in all_field_names:
                                 # Check each map column in reverse order (later maps override earlier)
@@ -155,7 +156,17 @@ class PolarsOperationExecutor:
                             
                             # Create merged struct with all fields
                             merged_struct = pl.struct(struct_field_exprs)
-                            select_exprs.append(merged_struct.alias(alias_name))
+                            
+                            # Filter out null fields per row using map_elements
+                            # PySpark only includes keys that have non-null values
+                            filtered_merged = merged_struct.map_elements(
+                                lambda x: {k: v for k, v in x.items() if v is not None} if isinstance(x, dict) else (
+                                    {k: getattr(x, k) for k in dir(x) if not k.startswith('_') and getattr(x, k, None) is not None} if hasattr(x, '__dict__') else None
+                                ) if x is not None else None,
+                                return_dtype=pl.Object
+                            )
+                            
+                            select_exprs.append(filtered_merged.alias(alias_name))
                             select_names.append(alias_name)
                             map_op_indices.add(i)
 
