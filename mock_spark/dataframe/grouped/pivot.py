@@ -5,9 +5,10 @@ This module provides pivot grouped data functionality for pivot table
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Union
 
 from ...functions import Column, ColumnOperation, AggregateFunction
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -18,7 +19,7 @@ class PivotGroupedData:
 
     def __init__(
         self,
-        df: "DataFrame",
+        df: SupportsDataFrameOps,
         group_columns: List[str],
         pivot_col: str,
         pivot_values: List[Any],
@@ -96,7 +97,6 @@ class PivotGroupedData:
             result_data.append(result_row)
 
         # Create result DataFrame with proper schema
-        from ..dataframe import DataFrame
         from ...spark_types import (
             StructType,
             StructField,
@@ -104,6 +104,7 @@ class PivotGroupedData:
             LongType,
             DoubleType,
         )
+        from ..dataframe import DataFrame
 
         if result_data:
             fields = []

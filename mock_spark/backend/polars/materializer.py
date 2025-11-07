@@ -15,7 +15,7 @@ from .operation_executor import PolarsOperationExecutor
 class PolarsMaterializer:
     """Materializes lazy operations using Polars."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Polars materializer."""
         self.translator = PolarsExpressionTranslator()
         self.operation_executor = PolarsOperationExecutor(self.translator)

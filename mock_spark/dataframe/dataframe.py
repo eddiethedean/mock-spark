@@ -29,14 +29,21 @@ Example:
     +----+---+
 """
 
-from typing import Any, Dict, List, Optional, Union, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+
+from .protocols import SupportsDataFrameOps
+
+if TYPE_CHECKING:
+    from .collection_handler import CollectionHandler
+    from .condition_handler import ConditionHandler
+    from .validation_handler import ValidationHandler
+    from .window_handler import WindowFunctionHandler
+
+    def _ensure_dataframe_protocol(df: "DataFrame") -> "SupportsDataFrameOps":
+        return df
 
 if TYPE_CHECKING:
     from .lazy import LazyEvaluationEngine
-    from .window_handler import WindowFunctionHandler
-    from .collection_handler import CollectionHandler
-    from .validation_handler import ValidationHandler
-    from .condition_handler import ConditionHandler
     from ..backend.protocols import StorageBackend
 else:
     StorageBackend = Any
@@ -73,11 +80,11 @@ from .attribute_handler import DataFrameAttributeHandler
 
 
 class DataFrame(
-    TransformationOperations,
-    JoinOperations,
-    AggregationOperations,
+    TransformationOperations["DataFrame"],
+    JoinOperations["DataFrame"],
+    AggregationOperations["DataFrame"],
     DisplayOperations,
-    SchemaOperations,
+    SchemaOperations["DataFrame"],
     AssertionOperations,
     MiscellaneousOperations,
 ):
@@ -104,6 +111,14 @@ class DataFrame(
         | Bob|
         +----+
     """
+
+    data: List[Dict[str, Any]]
+    schema: StructType
+    storage: StorageBackend
+    _operations_queue: List[Tuple[str, Any]]
+    _cached_count: Optional[int]
+    _watermark_col: Optional[str]
+    _watermark_delay: Optional[str]
 
     def __init__(
         self,
@@ -182,7 +197,7 @@ class DataFrame(
             self._expression_evaluator = ExpressionEvaluator()
         return self._expression_evaluator
 
-    def _queue_op(self, op_name: str, payload: Any) -> "DataFrame":
+    def _queue_op(self, op_name: str, payload: Any) -> SupportsDataFrameOps:
         """Queue an operation for lazy evaluation.
 
         Args:
@@ -193,14 +208,17 @@ class DataFrame(
             New DataFrame with the operation queued.
         """
         new_ops: List[Tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
-        return DataFrame(
-            data=self.data,
-            schema=self.schema,
-            storage=self.storage,
-            operations=new_ops,
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(
+                data=self.data,
+                schema=self.schema,
+                storage=self.storage,
+                operations=new_ops,
+            ),
         )
 
-    def _materialize_if_lazy(self) -> "DataFrame":
+    def _materialize_if_lazy(self) -> SupportsDataFrameOps:
         """Materialize lazy operations if any are queued."""
         if self._operations_queue:
             lazy_engine = self._get_lazy_engine()
@@ -220,7 +238,12 @@ class DataFrame(
         """Enable df.column_name syntax for column access (PySpark compatibility)."""
         return DataFrameAttributeHandler.handle_getattr(self, name)
 
-    def _validate_column_exists(self, column_name: str, operation: str) -> None:
+    def _validate_column_exists(
+        self,
+        column_name: str,
+        operation: str,
+        allow_ambiguous: bool = False,
+    ) -> None:
         """Validate that a column exists in the DataFrame."""
         self._get_validation_handler().validate_column_exists(
             self.schema, column_name, operation
@@ -236,10 +259,12 @@ class DataFrame(
         self,
         condition: Union[Column, ColumnOperation, Literal],
         operation: str,
+        has_pending_joins: bool = False,
     ) -> None:
         """Validate filter expression before execution."""
-        # Check if there are pending joins (columns might come from other DF)
-        has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
+        if not has_pending_joins:
+            # Check if there are pending joins (columns might come from other DF)
+            has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
         self._get_validation_handler().validate_filter_expression(
             self.schema, condition, operation, has_pending_joins
         )
@@ -248,22 +273,23 @@ class DataFrame(
         self,
         expression: Union[Column, ColumnOperation, Literal],
         operation: str,
+        in_lazy_materialization: bool = False,
     ) -> None:
         """Validate column references in complex expressions."""
-        # Check if we're in lazy materialization mode by looking at the call stack
-        import inspect
+        if not in_lazy_materialization:
+            # Check if we're in lazy materialization mode by looking at the call stack
+            import inspect
 
-        frame = inspect.currentframe()
-        in_lazy_materialization = False
-        try:
-            # Walk up the call stack to see if we're in lazy materialization
-            while frame:
-                if frame.f_code.co_name == "_materialize_manual":
-                    in_lazy_materialization = True
-                    break
-                frame = frame.f_back
-        finally:
-            del frame
+            frame = inspect.currentframe()
+            try:
+                # Walk up the call stack to see if we're in lazy materialization
+                while frame:
+                    if frame.f_code.co_name == "_materialize_manual":
+                        in_lazy_materialization = True
+                        break
+                    frame = frame.f_back
+            finally:
+                del frame
 
         self._get_validation_handler().validate_expression_columns(
             self.schema, expression, operation, in_lazy_materialization
@@ -490,7 +516,7 @@ class DataFrame(
 
     def randomSplit(
         self, weights: List[float], seed: Optional[int] = None
-    ) -> List["DataFrame"]:
+    ) -> List[SupportsDataFrameOps]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -530,13 +556,14 @@ class DataFrame(
             split_points.append(int(len(self.data) * cumulative_weight))
 
         # Create splits
-        splits = []
+        splits: List[SupportsDataFrameOps] = []
         start_idx = 0
 
         for end_idx in split_points:
             split_indices = [idx for idx, _ in indexed_data[start_idx:end_idx]]
             split_data = [self.data[idx] for idx in split_indices]
-            splits.append(DataFrame(split_data, self.schema, self.storage))
+            split_df = DataFrame(split_data, self.schema, self.storage)
+            splits.append(cast("SupportsDataFrameOps", split_df))
             start_idx = end_idx
 
         return splits

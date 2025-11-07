@@ -4,12 +4,12 @@
 # Activate virtual environment if it exists
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-if [ -f "$PROJECT_ROOT/venv/bin/activate" ]; then
+if [ -z "$VIRTUAL_ENV" ] && [ -f "$PROJECT_ROOT/venv/bin/activate" ]; then
     source "$PROJECT_ROOT/venv/bin/activate"
 fi
 
-# Set PYTHONPATH to use installed package
-export PYTHONPATH="/Users/odosmatthews/.pyenv/versions/3.9.23/lib/python3.9/site-packages:$PYTHONPATH"
+# Ensure project root is the first entry on PYTHONPATH so the local package is exercised
+export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH}"
 
 echo "Running Mock Spark Test Suite (Overhauled)"
 echo "=========================================="

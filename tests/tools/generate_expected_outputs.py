@@ -17,7 +17,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 
 # Add project root to path
@@ -39,11 +39,15 @@ except ImportError:
 class ExpectedOutputGenerator:
     """Generates expected outputs from PySpark for test comparison."""
 
-    def __init__(self, output_dir: Optional[str] = None, pyspark_version: str = "3.5"):
+    def __init__(
+        self, output_dir: Union[Path, str, None] = None, pyspark_version: str = "3.5"
+    ):
         """Initialize the generator."""
         if output_dir is None:
-            output_dir = project_root / "tests" / "expected_outputs"
-        self.output_dir = Path(output_dir)
+            base_path = project_root / "tests" / "expected_outputs"
+        else:
+            base_path = Path(output_dir)
+        self.output_dir = base_path
         self.pyspark_version = pyspark_version
         self.spark: Optional[SparkSession] = None
 

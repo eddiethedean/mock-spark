@@ -245,7 +245,6 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
     # Handle duplicate column names by using positional access
     # If row is a Sequence (like Row), access by index to preserve all values
     if isinstance(row, Sequence) and not isinstance(row, (str, bytes, bytearray)):
-        result = {}
         # Get all values from the row by position
         try:
             row_values = (
@@ -255,10 +254,11 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
             )
             if row_values and len(row_values) >= len(columns):
                 # Use positional access for all columns (handles duplicates correctly)
-                for idx, col in enumerate(columns):
-                    if idx < len(row_values):
-                        result[col] = row_values[idx]
-                return result
+                return {
+                    col: row_values[idx]
+                    for idx, col in enumerate(columns)
+                    if idx < len(row_values)
+                }
         except (TypeError, AttributeError):
             pass
 

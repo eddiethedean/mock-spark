@@ -5,17 +5,16 @@ This module handles exporting DataFrame to different formats like Pandas.
 Extracted from dataframe.py to improve organization and maintainability.
 """
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
-if TYPE_CHECKING:
-    from mock_spark.dataframe import DataFrame
+from .protocols import SupportsDataFrameOps
 
 
 class DataFrameExporter:
     """Handles exporting DataFrame to various formats."""
 
     @staticmethod
-    def to_pandas(df: "DataFrame") -> Any:
+    def to_pandas(df: SupportsDataFrameOps) -> Any:
         """Convert DataFrame to pandas DataFrame.
 
         Args:

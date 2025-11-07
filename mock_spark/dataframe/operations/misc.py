@@ -5,20 +5,15 @@ This mixin provides various miscellaneous operations that can be mixed into
 the DataFrame class.
 """
 
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+
+from ...spark_types import ArrayType, DataType, LongType, StringType, StructField, StructType
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
     from ...functions import Column
     from ..dataframe import DataFrame
 
-from ...spark_types import (
-    StructType,
-    StructField,
-    StringType,
-    LongType,
-    ArrayType,
-    DataType,
-)
 from ...core.exceptions import IllegalArgumentException
 from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundException
 
@@ -26,13 +21,27 @@ from ...core.exceptions.analysis import AnalysisException, ColumnNotFoundExcepti
 class MiscellaneousOperations:
     """Mixin providing miscellaneous operations for DataFrame."""
 
+    if TYPE_CHECKING:
+        data: List[Dict[str, Any]]
+        schema: StructType
+        storage: Any
+        _operations_queue: List[Tuple[str, Any]]
+        _watermark_col: Optional[str]
+        _watermark_delay: Optional[str]
+
+        def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
+
+        def _materialize_if_lazy(self) -> SupportsDataFrameOps: ...
+
+        def _get_collection_handler(self) -> Any: ...
+
     # Data Cleaning Operations
     def dropna(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         how: str = "any",
         thresh: Optional[int] = None,
         subset: Optional[List[str]] = None,
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Drop rows with null values."""
         filtered_data = []
         for row in self.data:
@@ -55,9 +64,12 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(filtered_data, self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(filtered_data, self.schema, self.storage),
+        )
 
-    def fillna(self: "DataFrame", value: Union[Any, Dict[str, Any]]) -> "DataFrame":
+    def fillna(self: SupportsDataFrameOps, value: Union[Any, Dict[str, Any]]) -> SupportsDataFrameOps:
         """Fill null values."""
         new_data = []
         for row in self.data:
@@ -74,15 +86,18 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(new_data, self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(new_data, self.schema, self.storage),
+        )
 
     # Sampling Operations
     def sample(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         fraction: float,
         seed: Optional[int] = None,
         withReplacement: bool = False,
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Sample rows from DataFrame.
 
         Args:
@@ -110,11 +125,17 @@ class MiscellaneousOperations:
         if fraction == 0.0:
             from ..dataframe import DataFrame
 
-            return DataFrame([], self.schema, self.storage)
+            return cast(
+                "SupportsDataFrameOps",
+                DataFrame([], self.schema, self.storage),
+            )
         elif fraction == 1.0:
             from ..dataframe import DataFrame
 
-            return DataFrame(self.data.copy(), self.schema, self.storage)
+            return cast(
+                "SupportsDataFrameOps",
+                DataFrame(self.data.copy(), self.schema, self.storage),
+            )
 
         # Calculate number of rows to sample
         total_rows = len(self.data)
@@ -135,14 +156,17 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(sampled_data, self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(sampled_data, self.schema, self.storage),
+        )
 
     def sampleBy(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         col: str,
         fractions: Dict[Any, float],
         seed: Optional[int] = None,
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Stratified sampling (all PySpark versions).
 
         Args:
@@ -167,11 +191,14 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, self.schema, self.storage),
+        )
 
     def randomSplit(
-        self: "DataFrame", weights: List[float], seed: Optional[int] = None
-    ) -> List["DataFrame"]:
+        self: SupportsDataFrameOps, weights: List[float], seed: Optional[int] = None
+    ) -> List[SupportsDataFrameOps]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -211,21 +238,24 @@ class MiscellaneousOperations:
             split_points.append(int(len(self.data) * cumulative_weight))
 
         # Create splits
-        splits = []
+        splits: List[List[Dict[str, Any]]] = []
         start_idx = 0
-
-        from ..dataframe import DataFrame
 
         for end_idx in split_points:
             split_indices = [idx for idx, _ in indexed_data[start_idx:end_idx]]
             split_data = [self.data[idx] for idx in split_indices]
-            splits.append(DataFrame(split_data, self.schema, self.storage))
+            splits.append(split_data)
             start_idx = end_idx
 
-        return splits
+        from ..dataframe import DataFrame
+
+        return [
+            cast("SupportsDataFrameOps", DataFrame(data, self.schema, self.storage))
+            for data in splits
+        ]
 
     # Statistics Operations
-    def describe(self: "DataFrame", *cols: str) -> "DataFrame":
+    def describe(self: SupportsDataFrameOps, *cols: str) -> SupportsDataFrameOps:
         """Compute basic statistics for numeric columns.
 
         Args:
@@ -263,7 +293,10 @@ class MiscellaneousOperations:
             # No numeric columns found
             from ..dataframe import DataFrame
 
-            return DataFrame([], self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+                DataFrame([], self.schema, self.storage),
+            )
 
         # Calculate statistics for each column
         result_data = []
@@ -315,9 +348,12 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self.storage),
+        )
 
-    def summary(self: "DataFrame", *stats: str) -> "DataFrame":
+    def summary(self: SupportsDataFrameOps, *stats: str) -> SupportsDataFrameOps:
         """Compute extended statistics for numeric columns.
 
         Args:
@@ -343,7 +379,10 @@ class MiscellaneousOperations:
             # No numeric columns found
             from ..dataframe import DataFrame
 
-            return DataFrame([], self.schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+                DataFrame([], self.schema, self.storage),
+            )
 
         # Calculate statistics for each column
         result_data = []
@@ -403,9 +442,12 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self.storage),
+        )
 
-    def crosstab(self: "DataFrame", col1: str, col2: str) -> "DataFrame":
+    def crosstab(self: SupportsDataFrameOps, col1: str, col2: str) -> SupportsDataFrameOps:
         """Calculate cross-tabulation (all PySpark versions).
 
         Args:
@@ -446,11 +488,14 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self.storage),
+        )
 
     def freqItems(
-        self: "DataFrame", cols: List[str], support: Optional[float] = None
-    ) -> "DataFrame":
+        self: SupportsDataFrameOps, cols: List[str], support: Optional[float] = None
+    ) -> SupportsDataFrameOps:
         """Find frequent items (all PySpark versions).
 
         Args:
@@ -483,10 +528,13 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame([result_row], result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame([result_row], result_schema, self.storage),
+        )
 
     def approxQuantile(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         col: Union[str, List[str]],
         probabilities: List[float],
         relativeError: float,
@@ -518,7 +566,7 @@ class MiscellaneousOperations:
         else:
             return [calc_quantiles(c) for c in col]
 
-    def cov(self: "DataFrame", col1: str, col2: str) -> float:
+    def cov(self: SupportsDataFrameOps, col1: str, col2: str) -> float:
         """Calculate covariance between two columns (all PySpark versions).
 
         Args:
@@ -546,7 +594,7 @@ class MiscellaneousOperations:
         return float(np.cov(values1, values2)[0][1])
 
     # Transformation Operations
-    def transform(self: "DataFrame", func: Any) -> "DataFrame":
+    def transform(self: SupportsDataFrameOps, func: Any) -> SupportsDataFrameOps:
         """Apply a function to transform a DataFrame.
 
         This enables functional programming style transformations on DataFrames.
@@ -572,8 +620,8 @@ class MiscellaneousOperations:
         return result
 
     def mapPartitions(
-        self: "DataFrame", func: Any, preservesPartitioning: bool = False
-    ) -> "DataFrame":
+        self: SupportsDataFrameOps, func: Any, preservesPartitioning: bool = False
+    ) -> SupportsDataFrameOps:
         """Apply a function to each partition of the DataFrame.
 
         For mock-spark, we treat the entire DataFrame as a single partition.
@@ -627,9 +675,14 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self.storage),
+        )
 
-    def mapInPandas(self: "DataFrame", func: Any, schema: Any) -> "DataFrame":
+    def mapInPandas(
+        self: SupportsDataFrameOps, func: Any, schema: Any
+    ) -> SupportsDataFrameOps:
         """Map an iterator of pandas DataFrames to another iterator of pandas DataFrames.
 
         For mock-spark, we treat the entire DataFrame as a single partition.
@@ -714,15 +767,18 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, result_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, result_schema, self.storage),
+        )
 
     def unpivot(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         ids: Union[str, List[str]],
         values: Union[str, List[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Unpivot columns into rows (opposite of pivot).
 
         Args:
@@ -802,15 +858,18 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(unpivoted_data, unpivoted_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(unpivoted_data, unpivoted_schema, self.storage),
+        )
 
     def melt(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         ids: Optional[List[str]] = None,
         values: Optional[List[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Unpivot DataFrame from wide to long format (PySpark 3.4+).
 
         Args:
@@ -861,16 +920,19 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, new_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(result_data, new_schema, self.storage),
+        )
 
     # Utility Operations
-    def explain(self: "DataFrame") -> None:
+    def explain(self) -> None:
         """Explain execution plan."""
         print("DataFrame Execution Plan:")
         print("  DataFrame")
         print("    MockDataSource")
 
-    def toDF(self: "DataFrame", *cols: str) -> "DataFrame":
+    def toDF(self: SupportsDataFrameOps, *cols: str) -> SupportsDataFrameOps:
         """Rename columns of DataFrame (all PySpark versions).
 
         Args:
@@ -909,9 +971,12 @@ class MiscellaneousOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(new_data, new_schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(new_data, new_schema, self.storage),
+        )
 
-    def alias(self: "DataFrame", alias: str) -> "DataFrame":
+    def alias(self: SupportsDataFrameOps, alias: str) -> SupportsDataFrameOps:
         """Give DataFrame an alias for join operations (all PySpark versions).
 
         Args:
@@ -925,9 +990,12 @@ class MiscellaneousOperations:
 
         result = DataFrame(self.data, self.schema, self.storage)
         result._alias = alias  # type: ignore
-        return result
+        return cast(
+            "SupportsDataFrameOps",
+            result,
+        )
 
-    def hint(self: "DataFrame", name: str, *parameters: Any) -> "DataFrame":
+    def hint(self: SupportsDataFrameOps, name: str, *parameters: Any) -> SupportsDataFrameOps:
         """Provide query optimization hints (all PySpark versions).
 
         This is a no-op in mock-spark as there's no query optimizer.
@@ -943,8 +1011,8 @@ class MiscellaneousOperations:
         return self
 
     def withWatermark(
-        self: "DataFrame", eventTime: str, delayThreshold: str
-    ) -> "DataFrame":
+        self: SupportsDataFrameOps, eventTime: str, delayThreshold: str
+    ) -> SupportsDataFrameOps:
         """Define watermark for streaming (all PySpark versions).
 
         Args:
@@ -960,7 +1028,7 @@ class MiscellaneousOperations:
         self._watermark_delay = delayThreshold  # type: ignore
         return self
 
-    def sameSemantics(self: "DataFrame", other: "DataFrame") -> bool:
+    def sameSemantics(self: SupportsDataFrameOps, other: "DataFrame") -> bool:
         """Check if this DataFrame has the same semantics as another (PySpark 3.1+).
 
         Simplified implementation that checks schema and data equality.
@@ -981,7 +1049,7 @@ class MiscellaneousOperations:
 
         return True
 
-    def semanticHash(self: "DataFrame") -> int:
+    def semanticHash(self: SupportsDataFrameOps) -> int:
         """Return semantic hash of this DataFrame (PySpark 3.1+).
 
         Simplified implementation based on schema.
@@ -993,7 +1061,7 @@ class MiscellaneousOperations:
         schema_str = ",".join([f"{f.name}:{f.dataType}" for f in self.schema.fields])
         return hash(schema_str)
 
-    def inputFiles(self: "DataFrame") -> List[str]:
+    def inputFiles(self: SupportsDataFrameOps) -> List[str]:
         """Return list of input files for this DataFrame (PySpark 3.1+).
 
         Returns:
@@ -1004,10 +1072,10 @@ class MiscellaneousOperations:
 
     # Partition/Streaming Operations
     def repartitionByRange(
-        self: "DataFrame",
+        self: SupportsDataFrameOps,
         numPartitions: Union[int, str, "Column"],
         *cols: Union[str, "Column"],
-    ) -> "DataFrame":
+    ) -> SupportsDataFrameOps:
         """Repartition by range of column values (all PySpark versions).
 
         Args:
@@ -1025,8 +1093,8 @@ class MiscellaneousOperations:
             return self.orderBy(numPartitions, *cols)
 
     def sortWithinPartitions(
-        self: "DataFrame", *cols: Union[str, "Column"], **kwargs: Any
-    ) -> "DataFrame":
+        self: SupportsDataFrameOps, *cols: Union[str, "Column"], **kwargs: Any
+    ) -> SupportsDataFrameOps:
         """Sort within partitions (all PySpark versions).
 
         Args:
@@ -1039,7 +1107,7 @@ class MiscellaneousOperations:
         # For mock purposes, treat as regular sort since we have single partition
         return self.orderBy(*cols, **kwargs)
 
-    def toLocalIterator(self: "DataFrame", prefetchPartitions: bool = False) -> Any:
+    def toLocalIterator(self: SupportsDataFrameOps, prefetchPartitions: bool = False) -> Any:
         """Return iterator over rows (all PySpark versions).
 
         Args:
@@ -1057,11 +1125,11 @@ class MiscellaneousOperations:
             self.data, self.schema, prefetchPartitions
         )
 
-    def checkpoint(self: "DataFrame", eager: bool = False) -> "DataFrame":
+    def checkpoint(self: SupportsDataFrameOps, eager: bool = False) -> SupportsDataFrameOps:
         """Checkpoint the DataFrame (no-op in mock; returns self)."""
         return self
 
-    def localCheckpoint(self: "DataFrame", eager: bool = True) -> "DataFrame":
+    def localCheckpoint(self: SupportsDataFrameOps, eager: bool = True) -> SupportsDataFrameOps:
         """Local checkpoint to truncate lineage (all PySpark versions).
 
         Args:
@@ -1075,7 +1143,7 @@ class MiscellaneousOperations:
             _ = len(self.data)
         return self
 
-    def isLocal(self: "DataFrame") -> bool:
+    def isLocal(self: SupportsDataFrameOps) -> bool:
         """Check if running in local mode (all PySpark versions).
 
         Returns:
@@ -1084,12 +1152,12 @@ class MiscellaneousOperations:
         return True
 
     @property
-    def isStreaming(self: "DataFrame") -> bool:
+    def isStreaming(self: SupportsDataFrameOps) -> bool:
         """Whether this DataFrame is streaming (always False in mock)."""
         return False
 
     # RDD Operations
-    def foreach(self: "DataFrame", f: Any) -> None:
+    def foreach(self: SupportsDataFrameOps, f: Any) -> None:
         """Apply function to each row (action, all PySpark versions).
 
         Args:
@@ -1098,7 +1166,7 @@ class MiscellaneousOperations:
         for row in self.collect():
             f(row)
 
-    def foreachPartition(self: "DataFrame", f: Any) -> None:
+    def foreachPartition(self: SupportsDataFrameOps, f: Any) -> None:
         """Apply function to each partition (action, all PySpark versions).
 
         Args:
@@ -1107,7 +1175,7 @@ class MiscellaneousOperations:
         # Mock implementation: treat entire dataset as single partition
         f(iter(self.collect()))
 
-    def writeTo(self: "DataFrame", table: str) -> Any:
+    def writeTo(self: SupportsDataFrameOps, table: str) -> Any:
         """Write DataFrame to a table using the Table API (PySpark 3.1+).
 
         Args:
@@ -1128,7 +1196,7 @@ class MiscellaneousOperations:
             # Create a default storage manager if not available
             storage = MemoryStorageManager()
 
-        writer = DataFrameWriter(self, storage)
+        writer = DataFrameWriter(cast("DataFrame", self), storage)
         # Set table name for writeTo operation
         writer._table_name = table
         return writer

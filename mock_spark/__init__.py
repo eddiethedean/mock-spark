@@ -49,6 +49,7 @@ from .session import SparkSession  # noqa: E402
 from .session.context import SparkContext, JVMContext  # noqa: E402
 from .dataframe import DataFrame, DataFrameWriter, GroupedData  # noqa: E402
 from .functions import Functions, Column, ColumnOperation, F  # noqa: E402
+from . import compat  # noqa: E402
 from .window import Window, WindowSpec  # noqa: E402
 from .delta import DeltaTable, DeltaMergeBuilder  # noqa: E402
 from .spark_types import (  # noqa: E402
@@ -97,7 +98,7 @@ from .errors import (  # noqa: E402
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
@@ -171,6 +172,10 @@ __all__ = [
     "PySparkTypeError",  # Type error
     "PySparkRuntimeError",  # Runtime error
     "IllegalArgumentException",  # Illegal argument exception
+    # -------------------------------------------------------------------------
+    # Compatibility helpers
+    # -------------------------------------------------------------------------
+    "compat",
 ]
 
 # ==============================================================================

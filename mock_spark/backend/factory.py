@@ -5,6 +5,7 @@ This module provides a centralized factory for creating backend instances,
 enabling dependency injection and easier testing.
 """
 
+import importlib.util
 from typing import Optional, Any, List
 from .protocols import StorageBackend, DataMaterializer, ExportBackend
 
@@ -47,6 +48,20 @@ class BackendFactory:
             from .polars.storage import PolarsStorageManager
 
             return PolarsStorageManager(db_path=db_path)
+        elif backend_type == "duckdb":
+            if not BackendFactory._duckdb_available():
+                raise ValueError(
+                    "DuckDB backend is not available. Install optional DuckDB dependencies or "
+                    "use the Polars backend."
+                )
+
+            from mock_spark.backend.duckdb.storage import DuckDBStorageManager  # type: ignore
+
+            return DuckDBStorageManager(
+                db_path=db_path,
+                max_memory=max_memory,
+                allow_disk_spillover=allow_disk_spillover,
+            )
         elif backend_type == "memory":
             from mock_spark.storage.backends.memory import MemoryStorageManager
 
@@ -84,6 +99,16 @@ class BackendFactory:
             from .polars.materializer import PolarsMaterializer
 
             return PolarsMaterializer()
+        elif backend_type == "duckdb":
+            if not BackendFactory._duckdb_available():
+                raise ValueError(
+                    "DuckDB backend is not available. Install optional DuckDB dependencies or "
+                    "use the Polars backend."
+                )
+
+            from mock_spark.backend.duckdb.materializer import DuckDBMaterializer  # type: ignore
+
+            return DuckDBMaterializer()
         elif backend_type == "memory":
             # For memory backend, use Polars materializer
             from .polars.materializer import PolarsMaterializer
@@ -114,6 +139,16 @@ class BackendFactory:
             from .polars.export import PolarsExporter
 
             return PolarsExporter()
+        elif backend_type == "duckdb":
+            if not BackendFactory._duckdb_available():
+                raise ValueError(
+                    "DuckDB backend is not available. Install optional DuckDB dependencies or "
+                    "use the Polars backend."
+                )
+
+            from mock_spark.backend.duckdb.export import DuckDBExporter  # type: ignore
+
+            return DuckDBExporter()
         elif backend_type == "memory":
             # For memory backend, use Polars exporter
             from .polars.export import PolarsExporter
@@ -168,7 +203,10 @@ class BackendFactory:
         Returns:
             List of supported backend type strings
         """
-        return ["polars", "memory", "file"]
+        backends = ["polars", "memory", "file"]
+        if BackendFactory._duckdb_available():
+            backends.append("duckdb")
+        return backends
 
     @staticmethod
     def validate_backend_type(backend_type: str) -> None:
@@ -186,3 +224,10 @@ class BackendFactory:
                 f"Unsupported backend type: {backend_type}. "
                 f"Available backends: {', '.join(available_backends)}"
             )
+
+    @staticmethod
+    def _duckdb_available() -> bool:
+        """Check whether the optional DuckDB backend is available."""
+
+        spec = importlib.util.find_spec("mock_spark.backend.duckdb.storage")
+        return spec is not None

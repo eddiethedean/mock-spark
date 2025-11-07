@@ -6,6 +6,7 @@ Ensures documentation examples work correctly and produce expected outputs.
 
 import subprocess
 import os
+import sys
 from pathlib import Path
 
 
@@ -15,12 +16,13 @@ class TestExampleScripts:
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         env = os.environ.copy()
+        project_root = Path(__file__).parent.parent.parent
+        existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
-            "/Users/odosmatthews/.pyenv/versions/3.9.23/lib/python3.9/site-packages:"
-            + env.get("PYTHONPATH", "")
+            f"{project_root}:{existing_path}" if existing_path else str(project_root)
         )
         result = subprocess.run(
-            ["python3", "examples/basic_usage.py"],
+            [sys.executable, "examples/basic_usage.py"],
             capture_output=True,
             text=True,
             timeout=30,
@@ -34,12 +36,13 @@ class TestExampleScripts:
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
         env = os.environ.copy()
+        project_root = Path(__file__).parent.parent.parent
+        existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
-            "/Users/odosmatthews/.pyenv/versions/3.9.23/lib/python3.9/site-packages:"
-            + env.get("PYTHONPATH", "")
+            f"{project_root}:{existing_path}" if existing_path else str(project_root)
         )
         result = subprocess.run(
-            ["python3", "examples/comprehensive_usage.py"],
+            [sys.executable, "examples/comprehensive_usage.py"],
             capture_output=True,
             text=True,
             timeout=30,

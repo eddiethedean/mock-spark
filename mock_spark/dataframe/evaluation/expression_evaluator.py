@@ -856,7 +856,7 @@ class ExpressionEvaluator:
         """Trim function."""
         return str(value).strip()
 
-    def _func_btrim(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_btrim(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Btrim function - trim characters from both ends."""
         if value is None:
             return None
@@ -873,7 +873,7 @@ class ExpressionEvaluator:
             # Trim whitespace (same as trim)
             return s.strip()
 
-    def _func_contains(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_contains(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Contains function - check if string contains substring."""
         if value is None:
             return None
@@ -884,7 +884,7 @@ class ExpressionEvaluator:
         )
         return substring in str(value)
 
-    def _func_left(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_left(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Left function - extract left N characters."""
         if value is None:
             return None
@@ -898,7 +898,7 @@ class ExpressionEvaluator:
             return ""
         return s[:length]
 
-    def _func_right(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_right(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Right function - extract right N characters."""
         if value is None:
             return None
@@ -912,27 +912,27 @@ class ExpressionEvaluator:
             return ""
         return s[-length:] if length <= len(s) else s
 
-    def _func_bit_length(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_bit_length(self, value: Any, operation: ColumnOperation) -> Optional[int]:
         """Bit length function - get bit length of string."""
         if value is None:
             return None
         return len(str(value).encode("utf-8")) * 8
 
-    def _func_startswith(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_startswith(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Startswith function - check if string starts with substring."""
         if value is None:
             return None
         substring = operation.value
         return str(value).startswith(substring)
 
-    def _func_endswith(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_endswith(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Endswith function - check if string ends with substring."""
         if value is None:
             return None
         substring = operation.value
         return str(value).endswith(substring)
 
-    def _func_like(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_like(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Like function - SQL LIKE pattern matching."""
         if value is None:
             return None
@@ -943,7 +943,7 @@ class ExpressionEvaluator:
         regex_pattern = pattern.replace("%", ".*").replace("_", ".")
         return bool(re.match(regex_pattern, str(value)))
 
-    def _func_rlike(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_rlike(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Rlike function - regular expression pattern matching."""
         if value is None:
             return None
@@ -952,7 +952,7 @@ class ExpressionEvaluator:
 
         return bool(re.search(pattern, str(value)))
 
-    def _func_replace(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_replace(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Replace function - replace occurrences of substring."""
         if value is None:
             return None
@@ -961,7 +961,7 @@ class ExpressionEvaluator:
             return str(value).replace(old, new)
         return str(value)
 
-    def _func_substr(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_substr(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Substr function - alias for substring."""
         if value is None:
             return None
@@ -981,7 +981,7 @@ class ExpressionEvaluator:
         else:
             return s[start_idx:]
 
-    def _func_split_part(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_split_part(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Split_part function - extract part of string split by delimiter."""
         if value is None:
             return None
@@ -994,7 +994,7 @@ class ExpressionEvaluator:
             return None
         return None
 
-    def _func_position(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_position(self, value: Any, operation: ColumnOperation) -> Optional[int]:
         """Position function - find position of substring in string (1-indexed)."""
         if value is None:
             return None
@@ -1006,13 +1006,13 @@ class ExpressionEvaluator:
         pos = str(value).find(substring)
         return pos + 1 if pos >= 0 else 0
 
-    def _func_octet_length(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_octet_length(self, value: Any, operation: ColumnOperation) -> Optional[int]:
         """Octet_length function - get byte length of string."""
         if value is None:
             return None
         return len(str(value).encode("utf-8"))
 
-    def _func_char(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_char(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Char function - convert integer to character."""
         if value is None:
             return None
@@ -1021,13 +1021,13 @@ class ExpressionEvaluator:
         except (ValueError, TypeError, OverflowError):
             return None
 
-    def _func_ucase(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_ucase(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Ucase function - alias for upper."""
         if value is None:
             return None
         return str(value).upper()
 
-    def _func_lcase(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_lcase(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Lcase function - alias for lower."""
         if value is None:
             return None
@@ -1086,7 +1086,7 @@ class ExpressionEvaluator:
         """Months function - convert number to months interval."""
         return value  # Return as-is for date arithmetic
 
-    def _func_equal_null(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_equal_null(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Equal_null function - equality check that treats NULL as equal."""
         # This requires comparing two values, which is complex
         # For now, return None as this needs special handling
@@ -1365,7 +1365,7 @@ class ExpressionEvaluator:
             return None
 
     # New string function evaluations
-    def _func_ilike(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_ilike(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Ilike function - case-insensitive LIKE pattern matching."""
         if value is None:
             return None
@@ -1378,7 +1378,9 @@ class ExpressionEvaluator:
         regex_pattern = pattern.replace("%", ".*").replace("_", ".")
         return bool(re.match(regex_pattern, str(value), re.IGNORECASE))
 
-    def _func_find_in_set(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_find_in_set(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Find_in_set function - find position in comma-separated list."""
         if value is None:
             return None
@@ -1391,7 +1393,9 @@ class ExpressionEvaluator:
                 return 0
         return 0
 
-    def _func_regexp_count(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_regexp_count(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Regexp_count function - count regex matches."""
         if value is None:
             return None
@@ -1400,7 +1404,9 @@ class ExpressionEvaluator:
 
         return len(re.findall(pattern, str(value)))
 
-    def _func_regexp_like(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
+    def _func_regexp_like(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bool]:
         """Regexp_like function - regex pattern matching."""
         if value is None:
             return None
@@ -1409,7 +1415,9 @@ class ExpressionEvaluator:
 
         return bool(re.search(pattern, str(value)))
 
-    def _func_regexp_substr(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+    def _func_regexp_substr(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[str]:
         """Regexp_substr function - extract substring matching regex."""
         if value is None:
             return None
@@ -1421,7 +1429,9 @@ class ExpressionEvaluator:
             return match.group(0) if match else None
         return None
 
-    def _func_regexp_instr(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_regexp_instr(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Regexp_instr function - find position of regex match."""
         if value is None:
             return None
@@ -1433,7 +1443,7 @@ class ExpressionEvaluator:
             return match.start() + 1 if match else 0  # 1-indexed
         return 0
 
-    def _func_regexp(self, value: Any, operation: ColumnOperation) -> bool:
+    def _func_regexp(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
         """Regexp function - alias for rlike."""
         return self._func_rlike(value, operation)
 
@@ -1529,7 +1539,9 @@ class ExpressionEvaluator:
         except (TypeError, ValueError, OverflowError):
             return None
 
-    def _func_shiftrightunsigned(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_shiftrightunsigned(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Shiftrightunsigned function - bitwise unsigned right shift."""
         if value is None:
             return None
@@ -1665,7 +1677,9 @@ class ExpressionEvaluator:
         except (ValueError, TypeError):
             return None
 
-    def _func_to_binary(self, value: Any, operation: ColumnOperation) -> Optional[bytes]:
+    def _func_to_binary(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bytes]:
         """To_binary function - convert to binary format."""
         if value is None:
             return None
@@ -1676,7 +1690,9 @@ class ExpressionEvaluator:
         except (UnicodeEncodeError, TypeError):
             return None
 
-    def _func_to_unix_timestamp(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_to_unix_timestamp(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """To_unix_timestamp function - convert to unix timestamp."""
         if value is None:
             return None
@@ -1700,7 +1716,9 @@ class ExpressionEvaluator:
         except (ValueError, TypeError, OverflowError):
             return None
 
-    def _func_unix_seconds(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_unix_seconds(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Unix_seconds function - convert timestamp to unix seconds."""
         if value is None:
             return None
@@ -1711,7 +1729,9 @@ class ExpressionEvaluator:
 
         return int(time.mktime(dt.timetuple()))
 
-    def _func_unix_millis(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_unix_millis(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Unix_millis function - convert timestamp to unix milliseconds."""
         if value is None:
             return None
@@ -1722,7 +1742,9 @@ class ExpressionEvaluator:
 
         return int(time.mktime(dt.timetuple()) * 1000)
 
-    def _func_unix_micros(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_unix_micros(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Unix_micros function - convert timestamp to unix microseconds."""
         if value is None:
             return None
@@ -1796,7 +1818,9 @@ class ExpressionEvaluator:
         # Complex function - return None for now, needs special handling
         return None
 
-    def _func_str_to_map(self, value: Any, operation: ColumnOperation) -> Optional[dict]:
+    def _func_str_to_map(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[dict]:
         """Str_to_map function - convert string to map using delimiters."""
         if value is None:
             return None
@@ -1812,21 +1836,27 @@ class ExpressionEvaluator:
         return {}
 
     # New crypto function evaluations (PySpark 3.5+)
-    def _func_aes_encrypt(self, value: Any, operation: ColumnOperation) -> Optional[bytes]:
+    def _func_aes_encrypt(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bytes]:
         """Aes_encrypt function - encrypt data using AES."""
         if value is None:
             return None
         # Simplified: return None for now (encryption requires external library)
         return None
 
-    def _func_aes_decrypt(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+    def _func_aes_decrypt(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[str]:
         """Aes_decrypt function - decrypt data using AES."""
         if value is None:
             return None
         # Simplified: return None for now (decryption requires external library)
         return None
 
-    def _func_try_aes_decrypt(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+    def _func_try_aes_decrypt(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[str]:
         """Try_aes_decrypt function - null-safe AES decryption."""
         if value is None:
             return None
@@ -1836,7 +1866,7 @@ class ExpressionEvaluator:
             return None
 
     # New string function evaluations (PySpark 3.5+)
-    def _func_sha(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_sha(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Sha function - alias for sha1."""
         if value is None:
             return None
@@ -1844,7 +1874,7 @@ class ExpressionEvaluator:
 
         return hashlib.sha1(str(value).encode("utf-8")).hexdigest()
 
-    def _func_mask(self, value: Any, operation: ColumnOperation) -> str:
+    def _func_mask(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Mask function - mask sensitive data."""
         if value is None:
             return None
@@ -1865,7 +1895,9 @@ class ExpressionEvaluator:
                 result += other_char
         return result
 
-    def _func_json_array_length(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_json_array_length(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Json_array_length function - get length of JSON array."""
         if value is None:
             return None
@@ -1884,7 +1916,9 @@ class ExpressionEvaluator:
         except (json.JSONDecodeError, AttributeError, TypeError):
             return 0
 
-    def _func_json_object_keys(self, value: Any, operation: ColumnOperation) -> list:
+    def _func_json_object_keys(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[List[Any]]:
         """Json_object_keys function - get keys of JSON object."""
         if value is None:
             return None
@@ -1903,7 +1937,9 @@ class ExpressionEvaluator:
         except (json.JSONDecodeError, AttributeError, TypeError):
             return []
 
-    def _func_xpath_number(self, value: Any, operation: ColumnOperation) -> float:
+    def _func_xpath_number(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[float]:
         """Xpath_number function - extract number from XML using XPath."""
         if value is None:
             return None
@@ -1917,7 +1953,7 @@ class ExpressionEvaluator:
         return os.getenv("USER", os.getenv("USERNAME", "unknown"))
 
     # New math function evaluations (PySpark 3.5+)
-    def _func_getbit(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_getbit(self, value: Any, operation: ColumnOperation) -> Optional[int]:
         """Getbit function - get bit at position."""
         if value is None:
             return None
@@ -1929,7 +1965,7 @@ class ExpressionEvaluator:
         except (ValueError, TypeError):
             return None
 
-    def _func_width_bucket(self, value: Any, operation: ColumnOperation) -> int:
+    def _func_width_bucket(self, value: Any, operation: ColumnOperation) -> Optional[int]:
         """Width_bucket function - compute histogram bucket number."""
         if value is None:
             return None
@@ -2082,7 +2118,9 @@ class ExpressionEvaluator:
         except (IndexError, KeyError, TypeError):
             return None
 
-    def _func_try_to_binary(self, value: Any, operation: ColumnOperation) -> bytes:
+    def _func_try_to_binary(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bytes]:
         """Try_to_binary function - null-safe to_binary."""
         if value is None:
             return None

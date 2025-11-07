@@ -5,10 +5,11 @@ This module provides execution of DataFrame operations (filter, select, join, et
 using Polars DataFrame API.
 """
 
-from typing import Any, List, Tuple, Optional, Union
+from typing import Any, List, Optional, Set, Tuple, Union
 import polars as pl
 from .expression_translator import PolarsExpressionTranslator
 from .window_handler import PolarsWindowHandler
+from mock_spark.functions import ColumnOperation
 from mock_spark.functions.window_execution import WindowFunction
 
 
@@ -176,7 +177,7 @@ class PolarsOperationExecutor:
 
                             # Merge all struct columns - combine all fields from all maps
                             # Get all field names from all struct columns
-                            all_field_names = set()
+                            all_field_names: Set[str] = set()
                             for map_col in map_cols:
                                 if map_col in df.columns:
                                     struct_dtype = df[map_col].dtype
@@ -185,13 +186,13 @@ class PolarsOperationExecutor:
                                             f.name for f in struct_dtype.fields
                                         ]
                                         all_field_names.update(field_names)
-                            all_field_names = sorted(all_field_names)
+                            sorted_field_names = sorted(all_field_names)
 
                             # Build merged struct: for each field, take value from later maps first (they override)
                             # Later maps override earlier ones (PySpark behavior)
                             # Then filter out null fields per row (PySpark only includes non-null keys)
                             struct_field_exprs = []
-                            for fname in all_field_names:
+                            for fname in sorted_field_names:
                                 # Check each map column in reverse order (later maps override earlier)
                                 value_exprs = []
                                 for map_col in reversed(map_cols):
@@ -473,7 +474,7 @@ class PolarsOperationExecutor:
         self,
         df1: pl.DataFrame,
         df2: pl.DataFrame,
-        on: Optional[Union[str, List[str]]] = None,
+        on: Optional[Union[str, List[str], ColumnOperation]] = None,
         how: str = "inner",
     ) -> pl.DataFrame:
         """Apply a join operation.
@@ -488,31 +489,31 @@ class PolarsOperationExecutor:
             Joined DataFrame
         """
         # Extract column names from join condition if it's a ColumnOperation
-        if on is not None and hasattr(on, "operation") and on.operation == "==":
-            # Extract column names from == comparison
-            # Type narrowing: ensure on has column and value attributes
+        join_keys: List[str]
+        if isinstance(on, ColumnOperation) and getattr(on, "operation", None) == "==":
             if not hasattr(on, "column") or not hasattr(on, "value"):
                 raise ValueError("Join condition must have column and value attributes")
             left_col = on.column.name if hasattr(on.column, "name") else str(on.column)
             right_col = on.value.name if hasattr(on.value, "name") else str(on.value)
-            # Ensure both are strings
             left_col_str = str(left_col)
             right_col_str = str(right_col)
-            # Both columns should have the same name for == comparison
-            # Use left column name (both DataFrames should have this column)
             if left_col_str in df1.columns and left_col_str in df2.columns:
-                on = [left_col_str]
+                join_keys = [left_col_str]
             elif right_col_str in df1.columns and right_col_str in df2.columns:
-                on = [right_col_str]
+                join_keys = [right_col_str]
             else:
-                # Fallback: use left column name anyway
-                on = [left_col_str]
+                join_keys = [left_col_str]
         elif on is None:
-            # Natural join - use common columns
             common_cols = set(df1.columns) & set(df2.columns)
             if not common_cols:
                 raise ValueError("No common columns found for join")
-            on = list(common_cols)
+            join_keys = list(common_cols)
+        elif isinstance(on, str):
+            join_keys = [on]
+        elif isinstance(on, list):
+            join_keys = list(on)
+        else:
+            raise ValueError("Join keys must be column name(s) or a ColumnOperation")
 
         # Map join types
         join_type_map = {
@@ -527,21 +528,18 @@ class PolarsOperationExecutor:
 
         polars_how = join_type_map.get(how.lower(), "inner")
 
-        if isinstance(on, str):
-            on = [on]
-
         # Handle semi and anti joins (Polars doesn't support natively)
         if how.lower() in ("semi", "left_semi"):
             # Semi join: return rows from left where match exists in right
             # Do inner join, then select only left columns and distinct
-            joined = df1.join(df2, on=on, how="inner")
+            joined = df1.join(df2, on=join_keys, how="inner")
             # Select only columns from df1 (preserve original column order)
             left_cols = [col for col in df1.columns if col in joined.columns]
             return joined.select(left_cols).unique()
         elif how.lower() in ("anti", "left_anti"):
             # Anti join: return rows from left where no match exists in right
             # Do left join, then filter where right columns are null
-            joined = df1.join(df2, on=on, how="left")
+            joined = df1.join(df2, on=join_keys, how="left")
             # Find right-side columns (columns in df2 but not in df1)
             right_cols = [col for col in df2.columns if col not in df1.columns]
             if right_cols:
@@ -553,18 +551,15 @@ class PolarsOperationExecutor:
             else:
                 # If no right columns (all match left), check if join key exists
                 # This case shouldn't happen, but handle it
-                joined = joined.filter(pl.col(on[0]).is_null())
+                joined = joined.filter(pl.col(join_keys[0]).is_null())
             # Select only columns from df1
             left_cols = [col for col in joined.columns if col in df1.columns]
             return joined.select(left_cols)
         elif polars_how == "cross":
             return df1.join(df2, how="cross")
         else:
-            # Ensure on is a list of strings
-            if not isinstance(on, list):
-                on = [on] if isinstance(on, str) else list(on)
             # Verify columns exist in both DataFrames
-            for col in on:
+            for col in join_keys:
                 if col not in df1.columns:
                     raise ValueError(
                         f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
@@ -573,7 +568,7 @@ class PolarsOperationExecutor:
                     raise ValueError(
                         f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
                     )
-            return df1.join(df2, on=on, how=polars_how)
+            return df1.join(df2, on=join_keys, how=polars_how)
 
     def apply_union(self, df1: pl.DataFrame, df2: pl.DataFrame) -> pl.DataFrame:
         """Apply a union operation.

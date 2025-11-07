@@ -24,11 +24,13 @@ Example:
     >>> df.write.format("parquet").option("compression", "snappy").save("/path")
 """
 
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from ..storage import MemoryStorageManager
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+
+from mock_spark.backend.protocols import StorageBackend
 
 if TYPE_CHECKING:
     from .dataframe import DataFrame
+    from ..spark_types import StructType
 
 
 class DataFrameWriter:
@@ -48,7 +50,7 @@ class DataFrameWriter:
         >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
     """
 
-    def __init__(self, df: "DataFrame", storage: MemoryStorageManager):
+    def __init__(self, df: "DataFrame", storage: StorageBackend):
         """Initialize DataFrameWriter.
 
         Args:
@@ -60,6 +62,7 @@ class DataFrameWriter:
         self.format_name = "parquet"
         self.save_mode = "append"
         self._options: Dict[str, Any] = {}
+        self._table_name: Optional[str] = None
 
     def format(self, source: str) -> "DataFrameWriter":
         """Set the output format for the DataFrame writer.
@@ -219,7 +222,7 @@ class DataFrameWriter:
             preserved_history = []
             if table_exists and is_delta:
                 meta = self.storage.get_table_metadata(schema, table)
-                if meta and meta.get("format") == "delta":
+                if isinstance(meta, dict) and meta.get("format") == "delta":
                     # Increment version for next write
                     next_version = meta.get("version", 0) + 1
                     # Preserve version history
@@ -240,7 +243,7 @@ class DataFrameWriter:
             elif is_delta:
                 # For Delta append, increment version
                 meta = self.storage.get_table_metadata(schema, table)
-                if meta and meta.get("format") == "delta":
+                if isinstance(meta, dict) and meta.get("format") == "delta":
                     self._delta_next_version = meta.get("version", 0) + 1
                     self._delta_preserved_history = meta.get("version_history", [])
 
@@ -251,55 +254,55 @@ class DataFrameWriter:
                 )
                 existing_schema = self.storage.get_table_schema(schema, table)
 
-                if existing_schema and not existing_schema.has_same_columns(
-                    self.df.schema
-                ):
-                    # Schema mismatch detected
-                    if merge_schema:
-                        # Merge schemas: add new columns
-                        merged_schema = existing_schema.merge_with(self.df.schema)
+                if existing_schema:
+                    existing_struct = cast("StructType", existing_schema)
 
-                        # Get existing data
-                        existing_data = self.storage.get_data(schema, table)
+                    if not existing_struct.has_same_columns(self.df.schema):
+                        if merge_schema:
+                            # Merge schemas: add new columns
+                            merged_schema = existing_struct.merge_with(self.df.schema)
 
-                        # Fill null for new columns in existing data
-                        new_columns = set(self.df.schema.fieldNames()) - set(
-                            existing_schema.fieldNames()
-                        )
-                        for row in existing_data:
-                            for col_name in new_columns:
-                                row[col_name] = None
+                            # Get existing data
+                            existing_data = self.storage.get_data(schema, table)
 
-                        # Drop and recreate table with new schema
-                        self.storage.drop_table(schema, table)
-                        self.storage.create_table(schema, table, merged_schema.fields)
+                            # Fill null for new columns in existing data
+                            new_columns = set(self.df.schema.fieldNames()) - set(
+                                existing_struct.fieldNames()
+                            )
+                            for row in existing_data:
+                                for col_name in new_columns:
+                                    row[col_name] = None
 
-                        # Reinsert existing data with nulls
-                        if existing_data:
-                            self.storage.insert_data(schema, table, existing_data)
-                    else:
-                        # Schema mismatch without mergeSchema - raise error
+                            # Drop and recreate table with new schema
+                            self.storage.drop_table(schema, table)
+                            self.storage.create_table(schema, table, merged_schema.fields)
+
+                            # Reinsert existing data with nulls
+                            if existing_data:
+                                self.storage.insert_data(schema, table, existing_data)
+                        else:
+                            # Schema mismatch without mergeSchema - raise error
+                            from ..errors import AnalysisException
+
+                            raise AnalysisException(
+                                f"Cannot append to table {schema}.{table}: schema mismatch. "
+                                f"Existing columns: {existing_struct.fieldNames()}, "
+                                f"New columns: {self.df.schema.fieldNames()}. "
+                                f"Set option mergeSchema=true to allow schema evolution."
+                            )
+            else:
+                # Non-Delta append: check schema compatibility
+                existing_schema = self.storage.get_table_schema(schema, table)
+                if existing_schema:
+                    existing_struct = cast("StructType", existing_schema)
+                    if not existing_struct.has_same_columns(self.df.schema):
                         from ..errors import AnalysisException
 
                         raise AnalysisException(
                             f"Cannot append to table {schema}.{table}: schema mismatch. "
-                            f"Existing columns: {existing_schema.fieldNames()}, "
-                            f"New columns: {self.df.schema.fieldNames()}. "
-                            f"Set option mergeSchema=true to allow schema evolution."
+                            f"Existing columns: {existing_struct.fieldNames()}, "
+                            f"New columns: {self.df.schema.fieldNames()}."
                         )
-            else:
-                # Non-Delta append: check schema compatibility
-                existing_schema = self.storage.get_table_schema(schema, table)
-                if existing_schema and not existing_schema.has_same_columns(
-                    self.df.schema
-                ):
-                    from ..errors import AnalysisException
-
-                    raise AnalysisException(
-                        f"Cannot append to table {schema}.{table}: schema mismatch. "
-                        f"Existing columns: {existing_schema.fieldNames()}, "
-                        f"New columns: {self.df.schema.fieldNames()}."
-                    )
 
         # Insert data
         data = self.df.collect()
@@ -334,7 +337,7 @@ class DataFrameWriter:
                 version = self._delta_next_version
             else:
                 meta = self.storage.get_table_metadata(schema, table)
-                version = meta.get("version", 0) if meta else 0
+                version = meta.get("version", 0) if isinstance(meta, dict) else 0
 
             # Capture version snapshot for time travel
             from datetime import datetime, timezone
@@ -366,8 +369,9 @@ class DataFrameWriter:
             if hasattr(self, "_delta_preserved_history"):
                 version_history = self._delta_preserved_history
             else:
-                meta = self.storage.get_table_metadata(schema, table) or {}
-                version_history = meta.get("version_history", [])
+                meta = self.storage.get_table_metadata(schema, table)
+                meta_dict = meta if isinstance(meta, dict) else {}
+                version_history = meta_dict.get("version_history", [])
 
             # Add new version to history
             version_history.append(version_snapshot)

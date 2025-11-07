@@ -5,23 +5,31 @@ This mixin provides transformation operations that can be mixed into
 the DataFrame class to add transformation capabilities.
 """
 
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ...functions.core.column import ColumnOperation
-    from ..dataframe import DataFrame
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
 
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField
 from ...core.exceptions import PySparkValueError
+from ..protocols import SupportsDataFrameOps
+
+SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
 
-class TransformationOperations:
+class TransformationOperations(Generic[SupportsDF]):
     """Mixin providing transformation operations for DataFrame."""
 
+    if TYPE_CHECKING:
+        columns: List[str]
+        data: List[Dict[str, Any]]
+        schema: StructType
+        storage: Any
+        _operations_queue: List[Tuple[str, Any]]
+        _watermark_col: Optional[str]
+        _watermark_delay: Optional[str]
+
     def select(
-        self: "DataFrame", *columns: Union[str, Column, Literal, Any]
-    ) -> "DataFrame":
+        self: SupportsDF, *columns: Union[str, Column, Literal, Any]
+    ) -> SupportsDF:
         """Select columns from the DataFrame.
 
         Args:
@@ -77,12 +85,12 @@ class TransformationOperations:
                     self._validate_expression_columns(col, "select")
 
             # Always use lazy evaluation
-            return self._queue_op("select", columns)
+            return cast("SupportsDF", self._queue_op("select", columns))
 
         # If there are pending joins, skip validation and go directly to lazy evaluation
-        return self._queue_op("select", columns)
+        return cast("SupportsDF", self._queue_op("select", columns))
 
-    def selectExpr(self: "DataFrame", *exprs: str) -> "DataFrame":
+    def selectExpr(self: SupportsDF, *exprs: str) -> SupportsDF:
         """Select columns or expressions using SQL-like syntax.
 
         Supports:
@@ -205,19 +213,19 @@ class TransformationOperations:
         return self.select(*columns)
 
     def filter(
-        self: "DataFrame",
+        self: SupportsDF,
         condition: Union[ColumnOperation, Column, "Literal"],
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Filter rows based on condition."""
         # Pre-validation: validate filter expression
         self._validate_filter_expression(condition, "filter")
 
-        return self._queue_op("filter", condition)
+        return cast("SupportsDF", self._queue_op("filter", condition))
 
     def where(
-        self: "DataFrame",
+        self: SupportsDF,
         condition: Union[ColumnOperation, Column],
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Alias for filter() - Filter rows based on condition (all PySpark versions).
 
         Args:
@@ -229,10 +237,10 @@ class TransformationOperations:
         return self.filter(condition)
 
     def withColumn(
-        self: "DataFrame",
+        self: SupportsDF,
         col_name: str,
         col: Union[Column, ColumnOperation, Literal, Any],
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Add or replace column."""
         # Validate column references in expressions
         if isinstance(col, Column) and not hasattr(col, "operation"):
@@ -243,12 +251,12 @@ class TransformationOperations:
             self._validate_expression_columns(col, "withColumn")
         # For Literal and other cases, skip validation
 
-        return self._queue_op("withColumn", (col_name, col))
+        return cast("SupportsDF", self._queue_op("withColumn", (col_name, col)))
 
     def withColumns(
-        self: "DataFrame",
+        self: SupportsDF,
         colsMap: Dict[str, Union[Column, ColumnOperation, Literal, Any]],
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Add or replace multiple columns at once (PySpark 3.3+).
 
         Args:
@@ -262,7 +270,9 @@ class TransformationOperations:
             result = result.withColumn(col_name, col_expr)
         return result
 
-    def withColumnRenamed(self: "DataFrame", existing: str, new: str) -> "DataFrame":
+    def withColumnRenamed(
+        self: SupportsDF, existing: str, new: str
+    ) -> SupportsDF:
         """Rename a column."""
         new_data = []
         for row in self.data:
@@ -284,9 +294,11 @@ class TransformationOperations:
         new_schema = StructType(new_fields)
         from ..dataframe import DataFrame
 
-        return DataFrame(new_data, new_schema, self.storage)
+        return cast("SupportsDF", DataFrame(new_data, new_schema, self.storage))
 
-    def withColumnsRenamed(self: "DataFrame", colsMap: Dict[str, str]) -> "DataFrame":
+    def withColumnsRenamed(
+        self: SupportsDF, colsMap: Dict[str, str]
+    ) -> SupportsDF:
         """Rename multiple columns (PySpark 3.4+).
 
         Args:
@@ -300,7 +312,7 @@ class TransformationOperations:
             result = result.withColumnRenamed(old_name, new_name)
         return result
 
-    def drop(self: "DataFrame", *cols: str) -> "DataFrame":
+    def drop(self: SupportsDF, *cols: str) -> SupportsDF:
         """Drop columns."""
         new_data = []
         for row in self.data:
@@ -312,9 +324,9 @@ class TransformationOperations:
         new_schema = StructType(new_fields)
         from ..dataframe import DataFrame
 
-        return DataFrame(new_data, new_schema, self.storage)
+        return cast("SupportsDF", DataFrame(new_data, new_schema, self.storage))
 
-    def distinct(self: "DataFrame") -> "DataFrame":
+    def distinct(self: SupportsDF) -> SupportsDF:
         """Return distinct rows."""
         seen = set()
         distinct_data = []
@@ -331,11 +343,11 @@ class TransformationOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(distinct_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(distinct_data, self.schema, self.storage))
 
     def dropDuplicates(
-        self: "DataFrame", subset: Optional[List[str]] = None
-    ) -> "DataFrame":
+        self: SupportsDF, subset: Optional[List[str]] = None
+    ) -> SupportsDF:
         """Drop duplicate rows."""
         if subset is None:
             return self.distinct()
@@ -350,11 +362,11 @@ class TransformationOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(distinct_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(distinct_data, self.schema, self.storage))
 
     def drop_duplicates(
-        self: "DataFrame", subset: Optional[List[str]] = None
-    ) -> "DataFrame":
+        self: SupportsDF, subset: Optional[List[str]] = None
+    ) -> SupportsDF:
         """Alias for dropDuplicates() (all PySpark versions).
 
         Args:
@@ -365,13 +377,15 @@ class TransformationOperations:
         """
         return self.dropDuplicates(subset)
 
-    def orderBy(self: "DataFrame", *columns: Union[str, Column]) -> "DataFrame":
+    def orderBy(
+        self: SupportsDF, *columns: Union[str, Column]
+    ) -> SupportsDF:
         """Order by columns."""
-        return self._queue_op("orderBy", columns)
+        return cast("SupportsDF", self._queue_op("orderBy", columns))
 
     def sort(
-        self: "DataFrame", *columns: Union[str, Column], **kwargs: Any
-    ) -> "DataFrame":
+        self: SupportsDF, *columns: Union[str, Column], **kwargs: Any
+    ) -> SupportsDF:
         """Alias for orderBy() - Sort DataFrame by columns (all PySpark versions).
 
         Args:
@@ -383,11 +397,11 @@ class TransformationOperations:
         """
         return self.orderBy(*columns)
 
-    def limit(self: "DataFrame", n: int) -> "DataFrame":
+    def limit(self: SupportsDF, n: int) -> SupportsDF:
         """Limit number of rows."""
-        return self._queue_op("limit", n)
+        return cast("SupportsDF", self._queue_op("limit", n))
 
-    def offset(self: "DataFrame", n: int) -> "DataFrame":
+    def offset(self: SupportsDF, n: int) -> SupportsDF:
         """Skip first n rows (SQL OFFSET clause).
 
         Args:
@@ -403,22 +417,24 @@ class TransformationOperations:
             from ...core.exceptions import PySparkValueError
 
             raise PySparkValueError(f"OFFSET must be non-negative, got {n}")
-        return self._queue_op("offset", n)
+        return cast("SupportsDF", self._queue_op("offset", n))
 
-    def repartition(self: "DataFrame", numPartitions: int, *cols: Any) -> "DataFrame":
+    def repartition(
+        self: SupportsDF, numPartitions: int, *cols: Any
+    ) -> SupportsDF:
         """Repartition DataFrame (no-op in mock; returns self)."""
         return self
 
-    def coalesce(self: "DataFrame", numPartitions: int) -> "DataFrame":
+    def coalesce(self: SupportsDF, numPartitions: int) -> SupportsDF:
         """Coalesce partitions (no-op in mock; returns self)."""
         return self
 
     def replace(
-        self: "DataFrame",
+        self: SupportsDF,
         to_replace: Union[int, float, str, List[Any], Dict[Any, Any]],
         value: Optional[Union[int, float, str, List[Any]]] = None,
         subset: Optional[List[str]] = None,
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Replace values in DataFrame (all PySpark versions).
 
         Args:
@@ -482,9 +498,9 @@ class TransformationOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(new_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(new_data, self.schema, self.storage))
 
-    def colRegex(self: "DataFrame", colName: str) -> Column:
+    def colRegex(self, colName: str) -> Column:
         """Select columns matching a regex pattern (all PySpark versions).
 
         The regex pattern should be wrapped in backticks: `pattern`

@@ -3,6 +3,7 @@ Unit tests for backend factory.
 """
 
 import os
+import shutil
 import pytest
 import tempfile
 import contextlib
@@ -14,6 +15,12 @@ except ImportError:
     pytest.skip(
         "backend.factory module not available in this version", allow_module_level=True
     )
+
+
+def setup_module(module):
+    """Ensure stray storage directories from previous runs are removed."""
+    shutil.rmtree("test_storage", ignore_errors=True)
+    shutil.rmtree("custom_path", ignore_errors=True)
 
 
 @pytest.mark.unit
@@ -57,6 +64,7 @@ class TestBackendFactory:
         # Use a temporary directory to avoid leaving test files in the repo
         with tempfile.TemporaryDirectory() as tmp_dir:
             base_path = os.path.join(tmp_dir, "test_storage")
+            shutil.rmtree("test_storage", ignore_errors=True)
             backend = BackendFactory.create_storage_backend("file", base_path=base_path)
             assert backend is not None
             from mock_spark.storage.backends.file import FileStorageManager
@@ -97,6 +105,7 @@ class TestBackendFactory:
         # Use a temporary directory to avoid leaving test files in the repo
         with tempfile.TemporaryDirectory() as tmp_dir:
             base_path = os.path.join(tmp_dir, "custom_path")
+            shutil.rmtree("custom_path", ignore_errors=True)
             backend = BackendFactory.create_storage_backend("file", base_path=base_path)
             assert backend is not None
             # Explicitly clean up the backend
@@ -179,6 +188,7 @@ class TestBackendFactory:
         # Use a temporary directory to avoid leaving test files in the repo
         with tempfile.TemporaryDirectory() as tmp_dir:
             base_path = os.path.join(tmp_dir, "test")
+            shutil.rmtree("test", ignore_errors=True)
             backend = BackendFactory.create_storage_backend("file", base_path=base_path)
             backend_type = BackendFactory.get_backend_type(backend)
             assert backend_type == "file"

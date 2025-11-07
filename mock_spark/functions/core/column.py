@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 class ColumnOperatorMixin:
     """Mixin providing common operator methods for Column and ColumnOperation."""
 
+    if TYPE_CHECKING:
+        @property
+        def name(self) -> str: ...
+
     def _create_operation(self, operation: str, other: Any) -> "ColumnOperation":
         """Create a ColumnOperation with the given operation and other operand.
 

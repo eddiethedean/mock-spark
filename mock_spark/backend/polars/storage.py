@@ -14,6 +14,7 @@ from mock_spark.core.interfaces.storage import IStorageManager, ITable
 from mock_spark.spark_types import StructType, StructField
 from .schema_registry import SchemaRegistry
 from .type_mapper import mock_type_to_polars_dtype
+from .schema_utils import align_frame_to_schema
 
 
 class PolarsTable(ITable):
@@ -126,32 +127,18 @@ class PolarsTable(ITable):
             return
 
         try:
-            # Convert to Polars DataFrame
+            # Convert to Polars DataFrame and align to table schema
             new_df = pl.DataFrame(data)
+            new_df = align_frame_to_schema(new_df, self._schema)
 
-            # Ensure schema compatibility
-            if self._df is not None and len(self._df.columns) > 0 and len(self._df) > 0:
-                # Align columns
-                existing_columns = set(self._df.columns)
-                new_columns = set(new_df.columns)
-
-                # Add missing columns to new DataFrame
-                for col in existing_columns - new_columns:
-                    new_df = new_df.with_columns(pl.lit(None).alias(col))
-
-                # Add missing columns to existing DataFrame
-                for col in new_columns - existing_columns:
-                    self._df = self._df.with_columns(pl.lit(None).alias(col))
-
-                # Ensure column order matches
-                column_order = self._df.columns
-                new_df = new_df.select(column_order)
-
-                # Concatenate
-                self._df = pl.concat([self._df, new_df])
-            else:
-                # First insert
+            if self._df is None or self._df.height == 0:
                 self._df = new_df
+            else:
+                aligned_existing = align_frame_to_schema(self._df, self._schema)
+                self._df = pl.concat([aligned_existing, new_df], how="vertical")
+
+            # Ensure stored frame remains aligned to schema after concatenation
+            self._df = align_frame_to_schema(self._df, self._schema)
 
             # Update metadata
             self._metadata["row_count"] = len(self._df)
@@ -475,7 +462,7 @@ class PolarsStorageManager(IStorageManager):
             return tables
 
         # List all tables across all schemas
-        all_tables = []
+        all_tables: List[str] = []
         for schema in self.schemas.values():
             all_tables.extend(schema.tables.keys())
 

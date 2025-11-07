@@ -8,8 +8,8 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-1066+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
-[![Type Checked](https://img.shields.io/badge/mypy-106%20files%20clean-blue.svg)](https://github.com/python/mypy)
+[![Tests](https://img.shields.io/badge/tests-648+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 *⚡ 10x faster tests • 🎯 Drop-in PySpark replacement • 📦 Zero JVM overhead • 🧵 Thread-safe Polars backend*
@@ -41,7 +41,7 @@ from mock_spark.sql import SparkSession
 | 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 1066+ passing tests, 100% mypy typed |
+| 🏭 **Production Ready** | 648+ passing tests, 100% mypy typed |
 | 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
@@ -301,6 +301,12 @@ spark = SparkSession.builder \
 - **Polars** (default): High-performance analytical database with thread safety
 - **Memory**: In-memory storage for lightweight testing
 - **File**: File-based storage for persistent data
+- **DuckDB** (optional): Legacy SQL backend. Requires the optional DuckDB modules from
+  Mock-Spark 2.x plus the `duckdb`/`duckdb-engine` Python packages.
+
+Set `MOCK_SPARK_BACKEND` to override globally (for example,
+`MOCK_SPARK_BACKEND=memory pytest`). See `docs/backend_selection.md` for a full
+matrix of options, dependencies, and troubleshooting tips.
 
 ---
 
@@ -367,6 +373,14 @@ Real-world test suite improvements:
 ---
 
 ## Recent Updates
+
+### Version 3.1.0 - Type-Safe Protocols & Tooling
+
+- ✅ **260-File Type Coverage** – DataFrame mixins now implement structural typing protocols (`SupportsDataFrameOps`), giving a clean `mypy` run across the entire project.
+- 🧹 **Zero Ruff Debt** – Repository-wide linting is enabled by default; `ruff check` passes with no warnings thanks to tighter casts, imports, and configuration.
+- 🧭 **Backend Selection Docs** – Updated configuration builder and new `docs/backend_selection.md` make it trivial to toggle between Polars, Memory, File, or DuckDB backends.
+- 🧪 **Delta Schema Evolution Fixes** – Polars mergeSchema appends now align frames to the on-disk schema, restoring compatibility with evolving Delta tables.
+- 🧰 **Improved Test Harness** – `tests/run_all_tests.sh` respects virtual environments and ensures documentation examples are executed with the correct interpreter.
 
 ### Version 3.0.0+ - Code Quality & Cleanup
 

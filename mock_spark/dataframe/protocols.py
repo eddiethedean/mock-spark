@@ -5,10 +5,280 @@ This module defines type-safe protocols for the specialized handler classes
 that implement the Single Responsibility Principle for DataFrame operations.
 """
 
-from typing import Protocol, List, Dict, Any, Tuple, Iterator, TYPE_CHECKING
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    TYPE_CHECKING,
+    Union,
+)
+
+try:  # Python <3.11 compatibility
+    from typing import Self  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - fallback for older versions
+    from typing_extensions import Self
 
 if TYPE_CHECKING:
     from ..spark_types import Row, StructType
+
+
+class HasSchema(Protocol):
+    """Objects that expose a schema and can project pending operations."""
+
+    _schema: "StructType"
+
+    @property
+    def schema(self) -> "StructType": ...
+
+    @schema.setter
+    def schema(self, value: "StructType") -> None: ...
+
+    def _project_schema_with_operations(self) -> "StructType": ...
+
+
+class HasData(Protocol):
+    """Objects that carry in-memory row data."""
+
+    data: List[Dict[str, Any]]
+
+
+class HasStorage(Protocol):
+    """Objects that reference a storage backend."""
+
+    storage: Any
+
+
+class OperationQueueAware(Protocol):
+    """Objects that queue operations prior to materialisation."""
+
+    _operations_queue: List[Tuple[str, Any]]
+
+    def _queue_op(self, operation: str, payload: Any) -> Self: ...
+
+
+class LazyMaterializable(Protocol):
+    """Objects that can defer execution until explicitly materialised."""
+
+    _cached_count: Optional[int]
+
+    def _materialize_if_lazy(self) -> Self: ...
+
+
+class ColumnAware(Protocol):
+    """Objects that expose column metadata."""
+
+    @property
+    def columns(self) -> List[str]: ...
+
+
+class HandlerProvider(Protocol):
+    """Objects that vend auxiliary handlers used by mixins."""
+
+    def _get_collection_handler(self) -> "CollectionHandler": ...
+
+    def _get_validation_handler(self) -> "ValidationHandler": ...
+
+    def _get_condition_handler(self) -> "ConditionHandler": ...
+
+    def _get_lazy_engine(self) -> Any: ...
+
+
+class CollectionSupport(Protocol):
+    """Objects exposing collection-style helpers."""
+
+    def collect(self) -> List[Any]: ...
+
+    def orderBy(self, *columns: Any, **kwargs: Any) -> Self: ...
+
+    def count(self) -> int: ...
+
+
+class LogicalOpSupport(Protocol):
+    """Objects that provide logical dataframe operations used by mixins."""
+
+    def select(self, *columns: Any, **kwargs: Any) -> Self: ...
+
+    def filter(self, condition: Any) -> Self: ...
+
+    def distinct(self) -> Self: ...
+
+    def dropDuplicates(
+        self, subset: Optional[List[str]] = None
+    ) -> Self: ...
+
+    def drop_duplicates(
+        self, subset: Optional[List[str]] = None
+    ) -> Self: ...
+
+    def union(self, other: Any) -> Self: ...
+
+    def groupBy(self, *columns: Any, **kwargs: Any) -> Any: ...
+
+
+class MutationSupport(Protocol):
+    """Objects that provide mutation and advanced DataFrame operations."""
+
+    def withColumn(self, col_name: str, col: Any) -> Self: ...
+
+    def withColumns(self, cols_map: Dict[str, Any]) -> Self: ...
+
+    def withColumnRenamed(self, existing: str, new: str) -> Self: ...
+
+    def withColumnsRenamed(self, cols_map: Dict[str, str]) -> Self: ...
+
+    def drop(self, *cols: str) -> Self: ...
+
+    def replace(
+        self, to_replace: Any, value: Any = ..., subset: Optional[List[str]] = None
+    ) -> Self: ...
+
+    def sample(
+        self,
+        fraction: float,
+        seed: Optional[int] = None,
+        withReplacement: bool = False,
+    ) -> Self: ...
+
+    def sampleBy(
+        self, col: str, fractions: Dict[Any, float], seed: Optional[int] = None
+    ) -> Self: ...
+
+    def randomSplit(self, weights: List[float], seed: Optional[int] = None) -> List[Self]: ...
+
+    def describe(self, *cols: str) -> Self: ...
+
+    def summary(self, *stats: str) -> Self: ...
+
+    def crosstab(self, col1: str, col2: str) -> Self: ...
+
+    def freqItems(self, cols: List[str], support: Optional[float] = None) -> Self: ...
+
+    def approxQuantile(
+        self, col: Any, probabilities: List[float], relativeError: float
+    ) -> Any: ...
+
+    def cov(self, col1: str, col2: str) -> float: ...
+
+    def transform(self, func: Any) -> Self: ...
+
+    def mapPartitions(
+        self, func: Any, preservesPartitioning: bool = False
+    ) -> Self: ...
+
+    def mapInPandas(self, func: Any, schema: Any) -> Self: ...
+
+    def unpivot(
+        self,
+        ids: Union[str, List[str]],
+        values: Union[str, List[str]],
+        variableColumnName: str = "variable",
+        valueColumnName: str = "value",
+    ) -> Self: ...
+
+    def melt(
+        self,
+        ids: Optional[List[str]] = None,
+        values: Optional[List[str]] = None,
+        variableColumnName: str = "variable",
+        valueColumnName: str = "value",
+    ) -> Self: ...
+
+    def toDF(self, *cols: str) -> Self: ...
+
+    def alias(self, alias: str) -> Self: ...
+
+    def hint(self, name: str, *parameters: Any) -> Self: ...
+
+    def withWatermark(self, eventTime: str, delayThreshold: str) -> Self: ...
+
+    def toJSON(self) -> Self: ...
+
+    def checkpoint(self, eager: bool = False) -> Self: ...
+
+    def localCheckpoint(self, eager: bool = True) -> Self: ...
+
+    def limit(self, n: int) -> Self: ...
+
+    def offset(self, n: int) -> Self: ...
+
+    def repartition(self, numPartitions: int, *cols: Any) -> Self: ...
+
+    def coalesce(self, numPartitions: int) -> Self: ...
+
+    def repartitionByRange(self, numPartitions: Any, *cols: Any) -> Self: ...
+
+    def sortWithinPartitions(self, *cols: Any, **kwargs: Any) -> Self: ...
+
+    def toLocalIterator(self, prefetchPartitions: bool = False) -> Iterator["Row"]: ...
+
+    def foreach(self, f: Any) -> None: ...
+
+    def foreachPartition(self, f: Any) -> None: ...
+
+    def writeTo(self, table: str) -> Any: ...
+
+    def sameSemantics(self, other: Any) -> bool: ...
+
+    def semanticHash(self) -> int: ...
+
+    def inputFiles(self) -> List[str]: ...
+
+    def isLocal(self) -> bool: ...
+
+    @property
+    def isStreaming(self) -> bool: ...
+
+
+class WatermarkAware(Protocol):
+    """Objects that keep watermark metadata for streaming semantics."""
+
+    _watermark_col: Optional[str]
+    _watermark_delay: Optional[str]
+
+
+class SupportsDataFrameOps(
+    HasSchema,
+    HasData,
+    HasStorage,
+    OperationQueueAware,
+    LazyMaterializable,
+    ColumnAware,
+    HandlerProvider,
+    CollectionSupport,
+    LogicalOpSupport,
+    MutationSupport,
+    WatermarkAware,
+    Protocol,
+):
+    """Composite protocol satisfied by `mock_spark.dataframe.DataFrame`."""
+
+    def _validate_expression_columns(
+        self,
+        expression: Any,
+        operation: str,
+        in_lazy_materialization: bool = False,
+    ) -> None: ...
+
+    def _validate_filter_expression(
+        self,
+        condition: Any,
+        operation: str,
+        has_pending_joins: bool = False,
+    ) -> None: ...
+
+    def _validate_column_exists(
+        self, column_name: str, operation: str, allow_ambiguous: bool = False
+    ) -> None: ...
+
+    def _evaluate_column_expression(
+        self,
+        row: Dict[str, Any],
+        column_expression: Any,
+    ) -> Any: ...
 
 
 class WindowFunctionHandler(Protocol):

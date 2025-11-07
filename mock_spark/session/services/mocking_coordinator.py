@@ -5,7 +5,7 @@ This module provides the MockingCoordinator class, which handles
 mocking of methods, error simulation rules, and test coordination.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class MockingCoordinator:
@@ -18,12 +18,12 @@ class MockingCoordinator:
 
     def __init__(self) -> None:
         """Initialize the mocking coordinator."""
-        self._error_rules: Dict[str, List[Tuple[Any, Any]]] = {}
+        self._error_rules: Dict[str, List[Tuple[Any, Exception]]] = {}
 
     def setup_mock_impl(
         self,
         method_name: str,
-        side_effect: Optional[Any] = None,
+        side_effect: Optional[Exception] = None,
         return_value: Optional[Any] = None,
     ) -> Any:
         """Set up a mock implementation for a method.
@@ -36,13 +36,14 @@ class MockingCoordinator:
         Returns:
             Mock implementation function.
         """
-        if side_effect:
+        if side_effect is not None:
+            exception_to_raise = side_effect
 
             def mock_impl(*args: Any, **kwargs: Any) -> Any:
-                raise side_effect
+                raise exception_to_raise
 
             return mock_impl
-        elif return_value:
+        if return_value is not None:
 
             def mock_impl(*args: Any, **kwargs: Any) -> Any:
                 return return_value
@@ -70,7 +71,9 @@ class MockingCoordinator:
         # Return original implementations for reset
         return original_impls
 
-    def add_error_rule(self, method_name: str, condition: Any, exception: Any) -> None:
+    def add_error_rule(
+        self, method_name: str, condition: Any, exception: Exception
+    ) -> None:
         """Add an error simulation rule.
 
         Args:
@@ -98,7 +101,7 @@ class MockingCoordinator:
         if method_name in self._error_rules:
             for condition, exception in self._error_rules[method_name]:
                 if condition(*args, **kwargs):
-                    return cast("Optional[Exception]", exception)
+                    return exception
         return None
 
     def clear_error_rules(self) -> None:

@@ -7,8 +7,9 @@ Extracted from dataframe.py to improve organization and maintainability.
 
 from typing import Any, Dict, List, TYPE_CHECKING
 
+from ..protocols import SupportsDataFrameOps
+
 if TYPE_CHECKING:
-    from ..dataframe import DataFrame
     from ...spark_types import StructType
 
 
@@ -16,7 +17,9 @@ class DataFrameAssertions:
     """Provides assertion methods for DataFrame testing."""
 
     @staticmethod
-    def assert_has_columns(df: "DataFrame", expected_columns: List[str]) -> None:
+    def assert_has_columns(
+        df: SupportsDataFrameOps, expected_columns: List[str]
+    ) -> None:
         """Assert that DataFrame has the expected columns.
 
         Args:
@@ -32,7 +35,7 @@ class DataFrameAssertions:
             raise AssertionError(f"Missing columns: {sorted(missing)}")
 
     @staticmethod
-    def assert_row_count(df: "DataFrame", expected_count: int) -> None:
+    def assert_row_count(df: SupportsDataFrameOps, expected_count: int) -> None:
         """Assert that DataFrame has the expected row count.
 
         Args:
@@ -47,7 +50,9 @@ class DataFrameAssertions:
             raise AssertionError(f"Expected {expected_count} rows, got {actual_count}")
 
     @staticmethod
-    def assert_schema_matches(df: "DataFrame", expected_schema: "StructType") -> None:
+    def assert_schema_matches(
+        df: SupportsDataFrameOps, expected_schema: "StructType"
+    ) -> None:
         """Assert that DataFrame schema matches the expected schema.
 
         Args:
@@ -67,7 +72,7 @@ class DataFrameAssertions:
 
     @staticmethod
     def assert_data_equals(
-        df: "DataFrame", expected_data: List[Dict[str, Any]]
+        df: SupportsDataFrameOps, expected_data: List[Dict[str, Any]]
     ) -> None:
         """Assert that DataFrame data equals the expected data.
 

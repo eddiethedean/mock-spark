@@ -5,7 +5,7 @@ This module translates MockSpark column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any
+from typing import Any, Optional
 import polars as pl
 import math
 from mock_spark.functions import Column, ColumnOperation, Literal
@@ -1384,7 +1384,7 @@ class PolarsExpressionTranslator:
                     lambda x, fmt=format_str: (
                         x.encode(fmt)
                         if isinstance(x, str) and x
-                        else bytes(x)
+                        else str(x).encode(fmt)
                         if isinstance(x, (int, float))
                         else x
                         if isinstance(x, bytes)
@@ -1691,7 +1691,6 @@ class PolarsExpressionTranslator:
             "lower": lambda e: e.str.to_lowercase(),
             "length": lambda e: e.str.len_chars(),
             "char_length": lambda e: e.str.len_chars(),  # Alias for length
-            "character_length": lambda e: e.str.len_chars(),  # Alias for length
             "trim": lambda e: e.str.strip_chars(),
             "ltrim": lambda e: e.str.strip_chars_start(),
             "rtrim": lambda e: e.str.strip_chars_end(),
@@ -2213,7 +2212,7 @@ class PolarsExpressionTranslator:
             raise ValueError("conv requires (from_base, to_base) tuple")
 
         # Convert number to string in from_base, then parse from that base, then convert to to_base
-        def convert_base(x, from_b, to_b):
+        def convert_base(x: Any, from_b: int, to_b: int) -> Optional[str]:
             if x is None:
                 return None
             try:

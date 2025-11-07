@@ -5,18 +5,29 @@ This mixin provides display and collection operations that can be mixed into
 the DataFrame class to add display capabilities.
 """
 
-from typing import Any, List, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+
+from ...spark_types import Row, StringType, StructField, StructType
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
-    from ..dataframe import DataFrame
-
-from ...spark_types import Row, StructType, StructField, StringType
+    from ..protocols import CollectionHandler
 
 
 class DisplayOperations:
     """Mixin providing display and collection operations for DataFrame."""
 
-    def show(self: "DataFrame", n: int = 20, truncate: bool = True) -> None:
+    if TYPE_CHECKING:
+        data: List[Dict[str, Any]]
+        schema: StructType
+        _operations_queue: List[Tuple[str, Any]]
+        _cached_count: Optional[int]
+
+        def _materialize_if_lazy(self) -> SupportsDataFrameOps: ...
+
+        def _get_collection_handler(self) -> "CollectionHandler": ...
+
+    def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a clean table format.
 
         Args:
@@ -33,7 +44,7 @@ class DisplayOperations:
         """
         # Materialize lazy operations if needed
         if self._operations_queue:
-            materialized = self._materialize_if_lazy()
+            materialized = cast("DisplayOperations", self._materialize_if_lazy())
             return materialized.show(n, truncate)
 
         print(f"DataFrame[{len(self.data)} rows, {len(self.schema.fields)} columns]")
@@ -84,7 +95,7 @@ class DisplayOperations:
             print(f"\n... ({len(self.data) - n} more rows)")
 
     def to_markdown(
-        self: "DataFrame",
+        self,
         n: int = 20,
         truncate: bool = True,
         underline_headers: bool = True,
@@ -147,7 +158,7 @@ class DisplayOperations:
 
         return "\n".join(lines)
 
-    def printSchema(self: "DataFrame") -> None:
+    def printSchema(self) -> None:
         """Print DataFrame schema."""
         print("DataFrame Schema:")
         for field in self.schema.fields:
@@ -156,7 +167,7 @@ class DisplayOperations:
                 f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
             )
 
-    def collect(self: "DataFrame") -> List[Row]:
+    def collect(self) -> List[Row]:
         """Collect all data as list of Row objects."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -165,7 +176,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().collect(self.data, self.schema)
 
-    def take(self: "DataFrame", n: int) -> List[Row]:
+    def take(self, n: int) -> List[Row]:
         """Take first n rows as list of Row objects."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -174,7 +185,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().take(self.data, self.schema, n)
 
-    def head(self: "DataFrame", n: int = 1) -> Union[Row, List[Row], None]:
+    def head(self, n: int = 1) -> Union[Row, List[Row], None]:
         """Return first n rows."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -183,7 +194,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().head(self.data, self.schema, n)
 
-    def tail(self: "DataFrame", n: int = 1) -> Union[Row, List[Row], None]:
+    def tail(self, n: int = 1) -> Union[Row, List[Row], None]:
         """Return last n rows."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -192,24 +203,30 @@ class DisplayOperations:
             )
         return self._get_collection_handler().tail(self.data, self.schema, n)
 
-    def toPandas(self: "DataFrame") -> Any:
+    def toPandas(self) -> Any:
         """Convert to pandas DataFrame (requires pandas as optional dependency)."""
         from ..export import DataFrameExporter
 
-        return DataFrameExporter.to_pandas(self)
+        return DataFrameExporter.to_pandas(cast("SupportsDataFrameOps", self))
 
-    def toJSON(self: "DataFrame") -> "DataFrame":
+    def toJSON(self: SupportsDataFrameOps) -> SupportsDataFrameOps:
         """Return a single-column DataFrame of JSON strings."""
         import json
 
         json_rows = [{"value": json.dumps(row)} for row in self.data]
 
-        schema = StructType([StructField("value", StringType())])
         from ..dataframe import DataFrame
 
-        return DataFrame(json_rows, schema, self.storage)
+        return cast(
+            "SupportsDataFrameOps",
+            DataFrame(
+                json_rows,
+                StructType([StructField("value", StringType())]),
+                self.storage,
+            ),
+        )
 
-    def count(self: "DataFrame") -> int:
+    def count(self) -> int:
         """Count number of rows."""
         # Materialize lazy operations if needed
         if self._operations_queue:
@@ -221,7 +238,7 @@ class DisplayOperations:
             self._cached_count = len(self.data)
         return self._cached_count
 
-    def isEmpty(self: "DataFrame") -> bool:
+    def isEmpty(self) -> bool:
         """Check if DataFrame is empty (PySpark 3.3+).
 
         Returns:

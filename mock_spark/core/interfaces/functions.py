@@ -6,10 +6,14 @@ ensuring consistent behavior across all function implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+
+RowDict = Dict[str, Any]
+ArgT = TypeVar("ArgT")
+RetT = TypeVar("RetT")
 
 
-class IFunction(ABC):
+class IFunction(Generic[ArgT, RetT], ABC):
     """Abstract interface for all functions."""
 
     @property
@@ -19,17 +23,17 @@ class IFunction(ABC):
         pass
 
     @abstractmethod
-    def alias(self, name: str) -> "IFunction":
+    def alias(self, name: str) -> "IFunction[ArgT, RetT]":
         """Create function alias."""
         pass
 
     @abstractmethod
-    def evaluate(self, *args: Any) -> Any:
+    def evaluate(self, arg: ArgT) -> RetT:
         """Evaluate function with arguments."""
         pass
 
 
-class IColumnFunction(IFunction):
+class IColumnFunction(IFunction[RowDict, Any]):
     """Abstract interface for column functions."""
 
     @abstractmethod
@@ -43,7 +47,7 @@ class IColumnFunction(IFunction):
         pass
 
 
-class IAggregateFunction(IFunction):
+class IAggregateFunction(IFunction[List[Any], Any]):
     """Abstract interface for aggregate functions."""
 
     @abstractmethod
@@ -57,7 +61,7 @@ class IAggregateFunction(IFunction):
         pass
 
 
-class IWindowFunction(IFunction):
+class IWindowFunction(IFunction[List[Dict[str, Any]], List[Any]]):
     """Abstract interface for window functions."""
 
     @abstractmethod
@@ -237,7 +241,7 @@ class IConditionalFunction(IColumnFunction):
         pass
 
 
-class ICaseWhen(IFunction):
+class ICaseWhen(IFunction[RowDict, Any]):
     """Abstract interface for CASE WHEN expressions."""
 
     @abstractmethod
@@ -251,7 +255,7 @@ class ICaseWhen(IFunction):
         pass
 
     @abstractmethod
-    def evaluate(self, row: Dict[str, Any]) -> Any:
+    def evaluate(self, row: RowDict) -> Any:
         """Evaluate CASE WHEN for row.
 
         Note: More specific signature than parent IFunction for CASE WHEN evaluation.

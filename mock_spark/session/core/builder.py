@@ -7,6 +7,9 @@ with PySpark's SparkSession.builder interface.
 """
 
 from typing import Any, Dict, Union
+
+from mock_spark.config import resolve_backend_type
+
 from .session import SparkSession
 
 
@@ -68,7 +71,8 @@ class SparkSessionBuilder:
         # Return existing singleton if present; otherwise create and cache
         if SparkSession._singleton_session is None:
             # Extract backend configuration
-            backend_type = self._config.get("spark.mock.backend", "polars")
+            backend_override = self._config.get("spark.mock.backend")
+            backend_type = resolve_backend_type(backend_override)
             max_memory = self._config.get("spark.mock.backend.maxMemory", "1GB")
             allow_disk_spillover = self._config.get(
                 "spark.mock.backend.allowDiskSpillover", False

@@ -5,31 +5,41 @@ This mixin provides join and set operations that can be mixed into
 the DataFrame class to add join capabilities.
 """
 
-from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, TypeVar, Union, cast
+
+from ...spark_types import DataType, StringType, StructField, StructType
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
-    from ..dataframe import DataFrame
     from ...functions import ColumnOperation
 
-from ...spark_types import StructType, StructField, DataType, StringType
+SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
 
-class JoinOperations:
+class JoinOperations(Generic[SupportsDF]):
     """Mixin providing join and set operations for DataFrame."""
 
+    if TYPE_CHECKING:
+        schema: StructType
+        data: List[Dict[str, Any]]
+        storage: Any
+        _operations_queue: List[Tuple[str, Any]]
+
+        def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
+
     def join(
-        self: "DataFrame",
-        other: "DataFrame",
+        self: SupportsDF,
+        other: SupportsDataFrameOps,
         on: Union[str, List[str], "ColumnOperation"],
         how: str = "inner",
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Join with another DataFrame."""
         if isinstance(on, str):
             on = [on]
 
-        return self._queue_op("join", (other, on, how))
+        return cast("SupportsDF", self._queue_op("join", (other, on, how)))
 
-    def crossJoin(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def crossJoin(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Cross join (Cartesian product) with another DataFrame.
 
         Args:
@@ -77,17 +87,17 @@ class JoinOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, new_schema, self.storage)
+        return cast("SupportsDF", DataFrame(result_data, new_schema, self.storage))
 
-    def union(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def union(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Union with another DataFrame."""
-        return self._queue_op("union", other)
+        return cast("SupportsDF", self._queue_op("union", other))
 
     def unionByName(
-        self: "DataFrame",
-        other: "DataFrame",
+        self: SupportsDF,
+        other: SupportsDataFrameOps,
         allowMissingColumns: bool = False,
-    ) -> "DataFrame":
+    ) -> SupportsDF:
         """Union with another DataFrame by column names.
 
         Args:
@@ -160,9 +170,12 @@ class JoinOperations:
         new_schema = StructType(new_fields)
         from ..dataframe import DataFrame
 
-        return DataFrame(combined_data, new_schema, self.storage)
+        return cast(
+            "SupportsDF",
+            DataFrame(combined_data, new_schema, self.storage),
+        )
 
-    def unionAll(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def unionAll(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Deprecated alias for union() - Use union() instead (all PySpark versions).
 
         Args:
@@ -181,7 +194,7 @@ class JoinOperations:
         )
         return self.union(other)
 
-    def intersect(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def intersect(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Intersect with another DataFrame.
 
         Args:
@@ -215,9 +228,11 @@ class JoinOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))
 
-    def intersectAll(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def intersectAll(
+        self: SupportsDF, other: SupportsDataFrameOps
+    ) -> SupportsDF:
         """Return intersection with duplicates (PySpark 3.0+).
 
         Args:
@@ -248,9 +263,11 @@ class JoinOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))
 
-    def exceptAll(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def exceptAll(
+        self: SupportsDF, other: SupportsDataFrameOps
+    ) -> SupportsDF:
         """Except all with another DataFrame (set difference with duplicates).
 
         Args:
@@ -302,9 +319,9 @@ class JoinOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))
 
-    def subtract(self: "DataFrame", other: "DataFrame") -> "DataFrame":
+    def subtract(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Return rows in this DataFrame but not in another (all PySpark versions).
 
         Args:
@@ -334,4 +351,4 @@ class JoinOperations:
 
         from ..dataframe import DataFrame
 
-        return DataFrame(result_data, self.schema, self.storage)
+        return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))

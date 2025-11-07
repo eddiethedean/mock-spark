@@ -20,7 +20,7 @@ except ImportError:
     MOCK_SPARK_AVAILABLE = False
 
 try:
-    from pyspark.sql import SparkSession, functions as PySparkF  # noqa: F401
+    from pyspark.sql import SparkSession as PySparkSession, functions as PySparkF  # noqa: F401
     from pyspark.sql.types import (  # noqa: F401
         StructType,
         StructField,
@@ -50,7 +50,7 @@ def pyspark_spark():
 
     try:
         # Try to create a session to check if PySpark can actually run
-        session = SparkSession.builder.appName("parity_test").getOrCreate()
+        session = PySparkSession.builder.appName("parity_test").getOrCreate()
         # Test that the session actually works
         session.createDataFrame([{"test": 1}]).collect()
         return session

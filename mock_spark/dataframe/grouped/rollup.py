@@ -5,9 +5,10 @@ This module provides rollup grouped data functionality for hierarchical
 grouping operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Union
 
 from ...functions import Column, ColumnOperation, AggregateFunction
+from ..protocols import SupportsDataFrameOps
 from .base import GroupedData
 
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 class RollupGroupedData(GroupedData):
     """Mock rollup grouped data for hierarchical grouping operations."""
 
-    def __init__(self, df: "DataFrame", rollup_columns: List[str]):
+    def __init__(self, df: SupportsDataFrameOps, rollup_columns: List[str]):
         """Initialize RollupGroupedData.
 
         Args:
@@ -141,7 +142,6 @@ class RollupGroupedData(GroupedData):
                     result_data.append(result_row)
 
         # Create result DataFrame with proper schema
-        from ..dataframe import DataFrame
         from ...spark_types import (
             StructType,
             StructField,
@@ -149,6 +149,7 @@ class RollupGroupedData(GroupedData):
             LongType,
             DoubleType,
         )
+        from ..dataframe import DataFrame
 
         if not result_data:
             return DataFrame(result_data, StructType([]))

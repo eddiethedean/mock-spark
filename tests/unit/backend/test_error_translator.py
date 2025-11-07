@@ -14,11 +14,11 @@ except ImportError:
         "error_translator module not available in this version", allow_module_level=True
     )
 from mock_spark.core.exceptions.operation import (
-    MockSparkOperationError,
-    MockSparkSQLGenerationError,
-    MockSparkQueryExecutionError,
+    SparkOperationError,
+    SparkSQLGenerationError,
+    SparkQueryExecutionError,
     SparkColumnNotFoundError,
-    MockSparkTypeMismatchError,
+    SparkTypeMismatchError,
 )
 
 
@@ -33,7 +33,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkOperationError)
+        assert isinstance(result, SparkOperationError)
         assert "SQL syntax error" in str(result)
         assert "select" in str(result).lower()
 
@@ -62,7 +62,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkTypeMismatchError)
+        assert isinstance(result, SparkTypeMismatchError)
         assert "filter" in str(result).lower()
         assert "age" in str(result).lower()
 
@@ -73,7 +73,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkSQLGenerationError)
+        assert isinstance(result, SparkSQLGenerationError)
         assert "select" in str(result).lower()
 
     def test_translate_generic_error(self):
@@ -83,7 +83,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkQueryExecutionError)
+        assert isinstance(result, SparkQueryExecutionError)
         assert "Unknown DuckDB Error" in str(result)
 
     def test_translate_parser_error(self):
@@ -93,7 +93,7 @@ class TestDuckDBErrorTranslator:
 
         result = DuckDBErrorTranslator.translate_error(error, context)
 
-        assert isinstance(result, MockSparkOperationError)
+        assert isinstance(result, SparkOperationError)
         assert "syntax error" in str(result).lower()
 
     def test_translate_catalog_error(self):
@@ -104,9 +104,7 @@ class TestDuckDBErrorTranslator:
         result = DuckDBErrorTranslator.translate_error(error, context)
 
         # Should return a generic query execution error for unknown catalog errors
-        assert isinstance(
-            result, (MockSparkQueryExecutionError, MockSparkOperationError)
-        )
+        assert isinstance(result, (SparkQueryExecutionError, SparkOperationError))
 
     def test_translate_with_minimal_context(self):
         """Test error translation with minimal context."""
@@ -116,9 +114,7 @@ class TestDuckDBErrorTranslator:
         result = DuckDBErrorTranslator.translate_error(error, context)
 
         # Should handle minimal context gracefully
-        assert isinstance(
-            result, (MockSparkQueryExecutionError, MockSparkOperationError)
-        )
+        assert isinstance(result, (SparkQueryExecutionError, SparkOperationError))
 
     def test_translate_binder_error(self):
         """Test translating binder errors (column binding issues)."""
@@ -135,21 +131,21 @@ class TestDuckDBErrorTranslator:
             result,
             (
                 SparkColumnNotFoundError,
-                MockSparkOperationError,
-                MockSparkQueryExecutionError,
+                SparkOperationError,
+                SparkQueryExecutionError,
             ),
         )
 
     def test_translate_with_error_message_patterns(self):
         """Test that error translation handles various error message patterns."""
         test_cases = [
-            (Exception("syntax error near line 10"), "MockSparkOperationError"),
+            (Exception("syntax error near line 10"), "SparkOperationError"),
             (
                 Exception("Column 'test' not found in schema"),
                 "SparkColumnNotFoundError",
             ),
-            (Exception("type mismatch error"), "MockSparkTypeMismatchError"),
-            (Exception("function not found error"), "MockSparkSQLGenerationError"),
+            (Exception("type mismatch error"), "SparkTypeMismatchError"),
+            (Exception("function not found error"), "SparkSQLGenerationError"),
         ]
 
         for error, expected_error_type in test_cases:

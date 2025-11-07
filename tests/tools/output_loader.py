@@ -7,18 +7,20 @@ and provides utilities for caching and accessing them during tests.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from functools import lru_cache
 
 
 class ExpectedOutputLoader:
     """Loads and caches expected outputs from JSON files."""
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: Union[Path, str, None] = None):
         """Initialize the loader with the expected outputs directory."""
         if base_dir is None:
-            base_dir = Path(__file__).parent.parent / "expected_outputs"
-        self.base_dir = Path(base_dir)
+            base_path = Path(__file__).parent.parent / "expected_outputs"
+        else:
+            base_path = Path(base_dir)
+        self.base_dir = base_path
         self._cache: Dict[str, Any] = {}
 
     @lru_cache(maxsize=128)

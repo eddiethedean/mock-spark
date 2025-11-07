@@ -13,6 +13,7 @@ from ..config import Configuration, SparkConfig
 from ..sql.executor import SQLExecutor
 from mock_spark.backend.factory import BackendFactory
 from mock_spark.backend.protocols import StorageBackend
+from mock_spark.config import resolve_backend_type
 from mock_spark.dataframe import DataFrame, DataFrameReader
 from ...spark_types import (
     StructType,
@@ -68,7 +69,7 @@ class SparkSession:
         max_memory: str = "1GB",
         allow_disk_spillover: bool = False,
         storage_backend: Optional[StorageBackend] = None,
-        backend_type: str = "polars",
+        backend_type: Optional[str] = None,
         db_path: Optional[str] = None,
     ):
         """Initialize SparkSession.
@@ -83,7 +84,9 @@ class SparkSession:
             allow_disk_spillover: If True, allows backend to spill to disk when memory is full.
                                  If False (default), disables spillover for test isolation.
             storage_backend: Optional storage backend instance. If None, creates backend based on backend_type.
-            backend_type: Type of backend to use ("polars", "memory", "file"). Default is "polars".
+            backend_type: Type of backend to use ("polars", "memory", "file", optional "duckdb").
+                If omitted, resolves from the ``MOCK_SPARK_BACKEND`` environment variable or defaults
+                to "polars".
             db_path: Optional path to persistent database file. If provided, tables will persist across sessions.
                     If None (default), uses in-memory storage and tables don't persist.
                     For test scenarios requiring table persistence across multiple pipeline runs,
@@ -92,11 +95,12 @@ class SparkSession:
                     between session restarts. Use persistent storage for incremental pipeline testing.
         """
         self.app_name = app_name
-        self.backend_type = backend_type
+        resolved_backend_type = resolve_backend_type(backend_type)
+        self.backend_type = resolved_backend_type
         # Use dependency injection for storage backend
         if storage_backend is None:
             self.storage = BackendFactory.create_storage_backend(
-                backend_type=backend_type,
+                backend_type=resolved_backend_type,
                 db_path=db_path,
                 max_memory=max_memory,
                 allow_disk_spillover=allow_disk_spillover,

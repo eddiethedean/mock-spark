@@ -1,6 +1,6 @@
 """Aggregation operations for DataFrame."""
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 import statistics
 from ...spark_types import StructType, StructField, StringType
 
@@ -11,7 +11,7 @@ class AggregationOperationsStatic:
     @staticmethod
     def describe(
         data: List[Dict[str, Any]], schema: StructType, cols: List[str]
-    ) -> tuple[List[Dict[str, Any]], StructType]:
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Compute basic statistics for numeric columns.
 
         Args:
@@ -103,7 +103,7 @@ class AggregationOperationsStatic:
     @staticmethod
     def summary(
         data: List[Dict[str, Any]], schema: StructType, stats: List[str]
-    ) -> tuple[List[Dict[str, Any]], StructType]:
+    ) -> Tuple[List[Dict[str, Any]], StructType]:
         """Compute extended statistics for numeric columns.
 
         Args:

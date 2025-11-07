@@ -5,7 +5,7 @@ This module provides arithmetic, comparison, and logical operations
 for Column and ColumnOperation classes.
 """
 
-from typing import Any, List
+from typing import Any, List, TYPE_CHECKING
 from .column import Column, ColumnOperation
 
 __all__ = [
@@ -111,6 +111,10 @@ class ColumnOperations:
 
 class ComparisonOperations:
     """Mixin class for comparison operations."""
+
+    if TYPE_CHECKING:
+        @property
+        def name(self) -> str: ...
 
     def isnull(self) -> ColumnOperation:
         """Check if column value is null."""

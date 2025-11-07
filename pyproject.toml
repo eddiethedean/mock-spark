@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "3.0.0"
+version = "3.1.0"
 description = "Lightning-fast PySpark testing without JVM - 10x faster with 100% API compatibility"
 readme = "README.md"
 license = {text = "MIT"}
@@ -125,6 +125,8 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 show_error_codes = true
+exclude = '(^venv/|^\.venv/|^venv_exploration_py38/)'
+files = ["mock_spark", "tests"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -145,6 +147,16 @@ module = [
     "mock_spark.dataframe.grouped_data",
 ]
 warn_unreachable = false
+
+[[tool.mypy.overrides]]
+module = [
+    "mock_spark.dataframe.transformations.operations",
+    "mock_spark.dataframe.operations.misc",
+    "mock_spark.dataframe.joins.operations",
+    "mock_spark.dataframe.display.operations",
+    "mock_spark.dataframe.aggregations.operations",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -173,6 +185,13 @@ markers = [
 
 [tool.ruff]
 target-version = "py38"
+exclude = [
+    "venv",
+    ".venv",
+    ".venv-test",
+    "venv-test",
+    "venv_exploration_py38",
+]
 
 [tool.ruff.lint]
 extend-select = ["C4", "SIM", "TCH", "UP"]

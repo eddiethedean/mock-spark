@@ -974,10 +974,10 @@ class MathFunctions:
             >>> df.select(F.width_bucket(F.col("value"), 0.0, 100.0, 10))
         """
         from mock_spark.functions.base import Column
+
         if isinstance(value, str):
             value = Column(value)
         if isinstance(min_value, (str, float, int)):
-
             min_value = (
                 Column(str(min_value))
                 if isinstance(min_value, (int, float))

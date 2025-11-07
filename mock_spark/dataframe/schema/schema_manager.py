@@ -1,6 +1,6 @@
 """Schema management and inference for DataFrame operations."""
 
-from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from ...dataframe import DataFrame
@@ -102,7 +102,7 @@ class SchemaManager:
                     new_fields_map.update(fields_map)
                 elif col_name in fields_map:
                     new_fields_map[col_name] = fields_map[col_name]
-                elif hasattr(col, "value") and hasattr(col, "column_type"):
+                elif isinstance(col, Literal):
                     # For Literal objects - literals are never nullable
                     new_fields_map[col_name] = SchemaManager._create_literal_field(col)
                 else:
@@ -119,10 +119,13 @@ class SchemaManager:
         base_schema: StructType,
     ) -> Dict[str, StructField]:
         """Handle withColumn operation schema changes."""
-        if hasattr(col, "operation") and hasattr(col, "name"):
-            if getattr(col, "operation", None) == "cast":
+        col_any = cast("Any", col)
+        operation = getattr(col_any, "operation", None)
+
+        if operation is not None and hasattr(col_any, "name"):
+            if operation == "cast":
                 # Cast operation - use the target data type from col.value
-                cast_type = col.value
+                cast_type = getattr(col_any, "value", None)
                 if isinstance(cast_type, str):
                     fields_map[col_name] = StructField(
                         col_name, SchemaManager.parse_cast_type_string(cast_type)
@@ -152,26 +155,28 @@ class SchemaManager:
                         else:
                             new_type = cast_type
                         fields_map[col_name] = StructField(col_name, new_type)
-                    else:
+                    elif cast_type is not None:
                         fields_map[col_name] = StructField(col_name, cast_type)
-            elif getattr(col, "operation", None) in ["+", "-", "*", "/", "%"]:
+                    else:
+                        fields_map[col_name] = StructField(col_name, StringType())
+            elif operation in ["+", "-", "*", "/", "%"]:
                 # Arithmetic operations - infer type from operands
-                data_type = SchemaManager._infer_arithmetic_type(col, base_schema)
+                data_type = SchemaManager._infer_arithmetic_type(col_any, base_schema)
                 fields_map[col_name] = StructField(col_name, data_type)
-            elif getattr(col, "operation", None) in ["abs"]:
+            elif operation in ["abs"]:
                 fields_map[col_name] = StructField(col_name, LongType())
-            elif getattr(col, "operation", None) in ["length"]:
+            elif operation in ["length"]:
                 fields_map[col_name] = StructField(col_name, IntegerType())
-            elif getattr(col, "operation", None) in ["round"]:
-                data_type = SchemaManager._infer_round_type(col)
+            elif operation in ["round"]:
+                data_type = SchemaManager._infer_round_type(col_any)
                 fields_map[col_name] = StructField(col_name, data_type)
-            elif getattr(col, "operation", None) in ["upper", "lower"]:
+            elif operation in ["upper", "lower"]:
                 fields_map[col_name] = StructField(col_name, StringType())
-            elif getattr(col, "operation", None) == "datediff":
+            elif operation == "datediff":
                 fields_map[col_name] = StructField(col_name, IntegerType())
-            elif getattr(col, "operation", None) == "months_between":
+            elif operation == "months_between":
                 fields_map[col_name] = StructField(col_name, DoubleType())
-            elif getattr(col, "operation", None) in [
+            elif operation in [
                 "hour",
                 "minute",
                 "second",
@@ -187,13 +192,13 @@ class SchemaManager:
                 fields_map[col_name] = StructField(col_name, IntegerType())
             else:
                 fields_map[col_name] = StructField(col_name, StringType())
-        elif hasattr(col, "value") and hasattr(col, "column_type"):
+        elif isinstance(col, Literal):
             # For Literal objects - literals are never nullable
             field = SchemaManager._create_literal_field(col)
             fields_map[col_name] = StructField(col_name, field.dataType, field.nullable)
         else:
             # fallback literal inference
-            data_type = SchemaManager._infer_literal_type(col)
+            data_type = SchemaManager._infer_literal_type(col_any)
             fields_map[col_name] = StructField(col_name, data_type)
 
         return fields_map
@@ -321,13 +326,10 @@ class SchemaManager:
                     break
 
         # Get right operand type
-        if (
-            hasattr(col, "value")
-            and col.value is not None
-            and hasattr(col.value, "name")
-        ):
+        right_operand = getattr(col, "value", None)
+        if right_operand is not None and hasattr(right_operand, "name"):
             for field in base_schema.fields:
-                if field.name == col.value.name:
+                if field.name == right_operand.name:
                     right_type = field.dataType
                     break
 
@@ -345,9 +347,15 @@ class SchemaManager:
     ) -> DataType:
         """Infer type for round operation."""
         # round() should return the same type as its input
-        if hasattr(col.column, "operation") and col.column.operation == "cast":
+        col_any = cast("Any", col)
+        column_operand = getattr(col_any, "column", None)
+        if (
+            column_operand is not None
+            and hasattr(column_operand, "operation")
+            and getattr(column_operand, "operation") == "cast"
+        ):
             # If the input is a cast operation, check the target type
-            cast_type = getattr(col.column, "value", "string")
+            cast_type = getattr(column_operand, "value", "string")
             if isinstance(cast_type, str) and cast_type.lower() in ["int", "integer"]:
                 return LongType()
             else:

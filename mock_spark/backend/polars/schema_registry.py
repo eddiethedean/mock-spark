@@ -14,6 +14,7 @@ from mock_spark.spark_types import (
     ArrayType,
     MapType,
     DecimalType,
+    DataType,
 )
 
 
@@ -160,6 +161,7 @@ class SchemaRegistry:
                 raise ValueError(f"Unknown type: {type_name}")
 
             # Handle special types
+            data_type: DataType
             if type_name == "ArrayType":
                 element_type_name = field_data.get("elementType", "StringType")
                 element_type = type_map.get(element_type_name, StringType)()

@@ -5,20 +5,30 @@ This mixin provides aggregation operations that can be mixed into
 the DataFrame class to add aggregation capabilities.
 """
 
-from typing import Union, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, TypeVar, Union, cast
+
+from ...core.exceptions.operation import SparkColumnNotFoundError
+from ...functions import Column, ColumnOperation
+from ..grouped import GroupedData
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
-    from ..dataframe import DataFrame
+    from pyspark.sql.types import StructType
 
-from ...functions import Column, ColumnOperation
-from ...core.exceptions.operation import SparkColumnNotFoundError
-from ..grouped import GroupedData
+SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
 
-class AggregationOperations:
+class AggregationOperations(Generic[SupportsDF]):
     """Mixin providing aggregation operations for DataFrame."""
 
-    def groupBy(self: "DataFrame", *columns: Union[str, Column]) -> "GroupedData":
+    if TYPE_CHECKING:
+        schema: StructType
+        data: List[Dict[str, Any]]
+        _operations_queue: List[Tuple[str, Any]]
+
+        def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
+
+    def groupBy(self: SupportsDF, *columns: Union[str, Column]) -> GroupedData:
         """Group DataFrame by columns for aggregation operations.
 
         Args:
@@ -47,7 +57,7 @@ class AggregationOperations:
         return GroupedData(self, col_names)
 
     def groupby(
-        self: "DataFrame", *cols: Union[str, Column], **kwargs: Any
+        self: SupportsDF, *cols: Union[str, Column], **kwargs: Any
     ) -> GroupedData:
         """Lowercase alias for groupBy() (all PySpark versions).
 
@@ -60,9 +70,7 @@ class AggregationOperations:
         """
         return self.groupBy(*cols, **kwargs)
 
-    def rollup(
-        self: "DataFrame", *columns: Union[str, Column]
-    ) -> Any:  # Returns RollupGroupedData
+    def rollup(self: SupportsDF, *columns: Union[str, Column]) -> Any:  # Returns RollupGroupedData
         """Create rollup grouped data for hierarchical grouping.
 
         Args:
@@ -91,9 +99,7 @@ class AggregationOperations:
 
         return RollupGroupedData(self, col_names)
 
-    def cube(
-        self: "DataFrame", *columns: Union[str, Column]
-    ) -> Any:  # Returns CubeGroupedData
+    def cube(self: SupportsDF, *columns: Union[str, Column]) -> Any:  # Returns CubeGroupedData
         """Create cube grouped data for multi-dimensional grouping.
 
         Args:
@@ -123,8 +129,8 @@ class AggregationOperations:
         return CubeGroupedData(self, col_names)
 
     def agg(
-        self: "DataFrame", *exprs: Union[str, Column, ColumnOperation]
-    ) -> "DataFrame":
+        self: SupportsDF, *exprs: Union[str, Column, ColumnOperation]
+    ) -> SupportsDF:
         """Aggregate DataFrame without grouping (global aggregation).
 
         Args:
@@ -139,4 +145,4 @@ class AggregationOperations:
         """
         # Create a grouped data object with empty group columns for global aggregation
         grouped = GroupedData(self, [])
-        return grouped.agg(*exprs)
+        return cast("SupportsDF", grouped.agg(*exprs))

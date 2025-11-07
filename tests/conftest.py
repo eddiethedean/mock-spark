@@ -105,3 +105,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "unit: mark test as unit test (no external dependencies)"
     )
+    config.addinivalue_line(
+        "markers", "timeout: mark tests that rely on pytest-timeout"
+    )

@@ -6,7 +6,7 @@ for DataFrame. Extracted from dataframe.py to improve organization.
 """
 
 import contextlib
-from typing import Any, Dict, List, TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, cast
 from ..spark_types import (
     StringType,
     StructField,
@@ -22,6 +22,7 @@ from ..optimizer.query_optimizer import OperationType
 
 if TYPE_CHECKING:
     from mock_spark.dataframe import DataFrame
+    from .protocols import SupportsDataFrameOps
 
 
 class LazyEvaluationEngine:
@@ -347,7 +348,7 @@ class LazyEvaluationEngine:
             # Build dict matching schema field order, handling _right suffix columns
             schema_field_names = [f.name for f in schema.fields]
             converted_dict = {}
-            seen_field_names = {}  # Track how many times we've seen each field name
+            seen_field_names: Dict[str, int] = {}
 
             for field_name in schema_field_names:
                 # Count occurrences of this field name in schema
@@ -463,7 +464,8 @@ class LazyEvaluationEngine:
                     current = DataFrame(filtered_data, current.schema, current.storage)
                 elif op_name == "withColumn":
                     col_name, col = op_val
-                    current = current.withColumn(col_name, col)  # eager path
+                    current_ops = cast("SupportsDataFrameOps", current)
+                    current = cast("DataFrame", current_ops.withColumn(col_name, col))
                 elif op_name == "select":
                     # Manual select implementation
                     from ..core.schema_inference import SchemaInferenceEngine
@@ -501,8 +503,13 @@ class LazyEvaluationEngine:
                                 # Parse the lambda function
                                 try:
                                     parser = LambdaParser(lambda_func)
+                                    parser_any = cast("Any", parser)
                                     # Lambda parsing for transform operations
-                                    lambda_expr = parser.parse()
+                                    lambda_expr = (
+                                        parser_any.parse()
+                                        if hasattr(parser_any, "parse")
+                                        else None
+                                    )
                                 except Exception as e:
                                     print(
                                         f"Warning: Failed to parse lambda for transform: {e}"
@@ -741,11 +748,20 @@ class LazyEvaluationEngine:
                                 # Window function (lag, lead, rank, etc.)
                                 try:
                                     # The col is already a WindowFunction, just evaluate it
-                                    result = col.evaluate(current.data)
+                                    result_raw = col.evaluate(current.data)
+                                    result_seq: Optional[Sequence[Any]]
+                                    if result_raw is None:
+                                        result_seq = None
+                                    else:
+                                        result_seq = cast("Sequence[Any]", result_raw)
 
                                     # Get the result for this specific row using the row_index
-                                    if row_index < len(result) and i < len(new_fields):
-                                        new_row[new_fields[i].name] = result[row_index]
+                                    if (
+                                        result_seq is not None
+                                        and row_index < len(result_seq)
+                                        and i < len(new_fields)
+                                    ):
+                                        new_row[new_fields[i].name] = result_seq[row_index]
                                     elif i < len(new_fields):
                                         new_row[new_fields[i].name] = None
                                 except Exception:
@@ -760,7 +776,9 @@ class LazyEvaluationEngine:
 
                     current = DataFrame(new_data, new_schema, current.storage)
                 elif op_name == "groupBy":
-                    current = current.groupBy(*op_val)  # type: ignore[assignment] # Returns GroupedData
+                    current_ops = cast("SupportsDataFrameOps", current)
+                    grouped = current_ops.groupBy(*op_val)  # Returns GroupedData
+                    current = cast("DataFrame", grouped)  # type: ignore[assignment]
                 elif op_name == "join":
                     other_df, on, how = op_val
                     # Manual join implementation
@@ -821,11 +839,17 @@ class LazyEvaluationEngine:
                     if how.lower() in ["semi", "anti"]:
                         new_schema = current.schema
                     else:
-                        new_fields = list(current.schema.fields)
+                        merged_fields: List[StructField] = [
+                            existing_field
+                            for existing_field in current.schema.fields
+                            if existing_field is not None
+                        ]
                         for field in other_df.schema.fields:
+                            if field is None:
+                                continue
                             # Avoid duplicate field names
-                            if not any(f.name == field.name for f in new_fields):
-                                new_fields.append(field)
+                            if not any(f.name == field.name for f in merged_fields):
+                                merged_fields.append(field)
                             else:
                                 # Handle field name conflicts by prefixing
                                 new_field = StructField(
@@ -833,8 +857,8 @@ class LazyEvaluationEngine:
                                     field.dataType,
                                     field.nullable,
                                 )
-                                new_fields.append(new_field)
-                        new_schema = StructType(new_fields)
+                                merged_fields.append(new_field)
+                        new_schema = StructType(merged_fields)
                     current = DataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
                     other_df = op_val
@@ -850,7 +874,8 @@ class LazyEvaluationEngine:
                     )
                     current = DataFrame(result_data, result_schema, current.storage)
                 elif op_name == "orderBy":
-                    current = current.orderBy(*op_val)  # eager path
+                    current_ops = cast("SupportsDataFrameOps", current)
+                    current = cast("DataFrame", current_ops.orderBy(*op_val))
                 elif op_name == "transform":
                     # Manual transform implementation for higher-order array functions
                     from ..core.condition_evaluator import ConditionEvaluator
@@ -863,9 +888,12 @@ class LazyEvaluationEngine:
                         # Parse the lambda function
                         try:
                             parser = LambdaParser(lambda_func)
+                            parser_any = cast("Any", parser)
                             # Lambda parsing for transform operations
                             lambda_expr = (
-                                parser.parse() if hasattr(parser, "parse") else None
+                                parser_any.parse()
+                                if hasattr(parser_any, "parse")
+                                else None
                             )
                         except Exception as e:
                             # If lambda parsing fails, skip the transform

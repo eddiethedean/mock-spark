@@ -5,7 +5,16 @@ This module provides the core GroupedData class for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, List, Dict, Union, Tuple, TYPE_CHECKING, Optional, Set
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 import statistics
 
 from ...functions import (
@@ -14,6 +23,8 @@ from ...functions import (
     AggregateFunction,
 )
 from ...core.exceptions.analysis import AnalysisException
+
+from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
     from ..dataframe import DataFrame
@@ -29,14 +40,14 @@ class GroupedData:
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
-    def __init__(self, df: "DataFrame", group_columns: List[str]):
+    def __init__(self, df: SupportsDataFrameOps, group_columns: List[str]):
         """Initialize GroupedData.
 
         Args:
             df: The DataFrame being grouped.
             group_columns: List of column names to group by.
         """
-        self.df = df
+        self.df: SupportsDataFrameOps = df
         self.group_columns = group_columns
 
     def agg(
@@ -979,26 +990,40 @@ class GroupedData:
         ]:
             # Linear regression functions - require two columns (y, x)
             # The expr.column is a ColumnOperation with y as base and x as value
-            if (
-                hasattr(expr, "column")
-                and hasattr(expr.column, "operation")
-                and expr.column.operation == func_name
-            ):
+            column_expr = getattr(expr, "column", None)
+            column_operation = getattr(column_expr, "operation", None)
+            if column_operation == func_name:
                 # Extract y and x columns from the ColumnOperation
-                y_col = expr.column.column
-                x_col = expr.column.value
-                y_col_name = y_col.name if hasattr(y_col, "name") else str(y_col)
-                x_col_name = x_col.name if hasattr(x_col, "name") else str(x_col)
+                y_col = getattr(column_expr, "column", None)
+                x_col = getattr(column_expr, "value", None)
+                if y_col is None or x_col is None:
+                    result_key = (
+                        alias_name
+                        if alias_name
+                        else f"{func_name}({col_name})"
+                    )
+                    return result_key, None
+
+                y_col_name = (
+                    y_col.name if hasattr(y_col, "name") else str(y_col)
+                )
+                x_col_name = (
+                    x_col.name if hasattr(x_col, "name") else str(x_col)
+                )
 
                 # Get pairs of (y, x) values where both are not None
-                pairs = [
-                    (row.get(y_col_name), row.get(x_col_name))
-                    for row in group_rows
-                    if row.get(y_col_name) is not None
-                    and row.get(x_col_name) is not None
-                ]
+                cleaned_pairs: List[Tuple[float, float]] = []
+                for row in group_rows:
+                    y_raw = row.get(y_col_name)
+                    x_raw = row.get(x_col_name)
+                    if y_raw is None or x_raw is None:
+                        continue
+                    try:
+                        cleaned_pairs.append((float(y_raw), float(x_raw)))
+                    except (TypeError, ValueError):
+                        continue
 
-                if not pairs:
+                if not cleaned_pairs:
                     result_key = (
                         alias_name
                         if alias_name
@@ -1006,9 +1031,9 @@ class GroupedData:
                     )
                     return result_key, None
 
-                y_values = [p[0] for p in pairs]
-                x_values = [p[1] for p in pairs]
-                n = len(pairs)
+                y_values: List[float] = [pair[0] for pair in cleaned_pairs]
+                x_values: List[float] = [pair[1] for pair in cleaned_pairs]
+                n = len(cleaned_pairs)
 
                 # Calculate basic statistics
                 y_mean = statistics.mean(y_values) if y_values else 0.0
@@ -1065,15 +1090,14 @@ class GroupedData:
                 return result_key, None
         elif func_name == "approx_percentile":
             # approx_percentile(col, percentage, accuracy)
-            # Get values
-            values = []
-            for row in group_rows:
-                val = row.get(col_name)
-                if val is not None:
-                    try:
-                        values.append(float(val))
-                    except (ValueError, TypeError):
-                        continue
+            percentage = 0.5
+
+            # Values of the column
+            values = [
+                row.get(col_name)
+                for row in group_rows
+                if row.get(col_name) is not None
+            ]
 
             if not values:
                 result_key = (
@@ -1081,20 +1105,17 @@ class GroupedData:
                 )
                 return result_key, None
 
-            # Get percentage and accuracy from expr.column.operation
-            percentage = 0.5  # Default
+            # Optional additional parameters from ColumnOperation
+            column_expr = getattr(expr, "column", None)
+            column_operation = getattr(column_expr, "operation", None)
+            operation_value = getattr(column_operation, "value", None)
             if (
-                hasattr(expr, "column")
-                and hasattr(expr.column, "operation")
-                and hasattr(expr.column.operation, "value")
-                and isinstance(expr.column.operation.value, tuple)
-                and len(expr.column.operation.value) >= 1
+                isinstance(operation_value, tuple)
+                and len(operation_value) >= 1
             ):
-                percentage = (
-                    float(expr.column.operation.value[0])
-                    if isinstance(expr.column.operation.value[0], (int, float))
-                    else 0.5
-                )
+                first_arg = operation_value[0]
+                if isinstance(first_arg, (int, float)):
+                    percentage = float(first_arg)
 
             # Sort values for percentile calculation
             values.sort()
@@ -1121,6 +1142,8 @@ class GroupedData:
         else:
             result_key = alias_name if alias_name else f"{func_name}({col_name})"
             return result_key, None
+
+        return alias_name if alias_name else expr.name, None
 
     def _evaluate_column_expression(
         self,

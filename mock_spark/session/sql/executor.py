@@ -20,12 +20,16 @@ Example:
     >>> result.show()
 """
 
-from typing import Any, Dict, List
-from ...core.interfaces.session import ISession
-from ...core.interfaces.dataframe import IDataFrame
+from typing import TYPE_CHECKING, Any, Dict, List, cast
 from ...core.exceptions.execution import QueryExecutionException
+from ...core.interfaces.dataframe import IDataFrame
+from ...core.interfaces.session import ISession
+from ...dataframe import DataFrame
 from ...spark_types import StructType
 from .parser import SQLAST
+
+if TYPE_CHECKING:
+    from ...dataframe.protocols import SupportsDataFrameOps
 
 
 class SQLExecutor:
@@ -164,30 +168,34 @@ class SQLExecutor:
             # This is a mock implementation - real implementation would parse conditions
             pass
 
+        df_ops = cast("SupportsDataFrameOps", df)
+
         # Apply column selection
         select_columns = components.get("select_columns", ["*"])
         if select_columns != ["*"]:
-            df = df.select(*select_columns)
+            df = cast("DataFrame", df_ops.select(*select_columns))
+            df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply GROUP BY
         group_by_columns = components.get("group_by_columns", [])
         if group_by_columns:
-            df.groupBy(*group_by_columns)
+            df_ops.groupBy(*group_by_columns)
             # For now, convert grouped data back to DataFrame
             # In a real implementation, this would depend on the aggregation functions
             df = DataFrame([], StructType([]))
+            df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply ORDER BY
         order_by_columns = components.get("order_by_columns", [])
         if order_by_columns:
-            df = df.orderBy(*order_by_columns)
+            df = cast("DataFrame", df_ops.orderBy(*order_by_columns))
+            df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply LIMIT
         limit_value = components.get("limit_value")
         if limit_value:
-            df = df.limit(limit_value)
-
-        from typing import cast
+            df = cast("DataFrame", df_ops.limit(limit_value))
+            df_ops = cast("SupportsDataFrameOps", df)
 
         return cast("IDataFrame", df)
 
@@ -216,11 +224,6 @@ class SQLExecutor:
             pass
 
         # Return empty DataFrame to indicate success
-        from ...dataframe import DataFrame
-        from ...spark_types import StructType
-
-        from typing import cast
-
         return cast("IDataFrame", DataFrame([], StructType([])))
 
     def _execute_drop(self, ast: SQLAST) -> IDataFrame:
