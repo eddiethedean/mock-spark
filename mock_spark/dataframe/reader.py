@@ -25,12 +25,15 @@ Example:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from ..core.interfaces.dataframe import IDataFrame
+    from ..core.interfaces.session import ISession
 
 import polars as pl
 
-from ..core.interfaces.dataframe import IDataFrame
-from ..core.interfaces.session import ISession
 from ..errors import AnalysisException, IllegalArgumentException
 from ..spark_types import StructField, StructType
 from ..core.ddl_adapter import parse_ddl_schema
@@ -63,9 +66,9 @@ class DataFrameReader:
         self.session = session
         self._format = "parquet"
         self._options: dict[str, str] = {}
-        self._schema: Optional[StructType] = None
+        self._schema: StructType | None = None
 
-    def format(self, source: str) -> "DataFrameReader":
+    def format(self, source: str) -> DataFrameReader:
         """Set input format.
 
         Args:
@@ -80,7 +83,7 @@ class DataFrameReader:
         self._format = source
         return self
 
-    def option(self, key: str, value: Any) -> "DataFrameReader":
+    def option(self, key: str, value: Any) -> DataFrameReader:
         """Set option.
 
         Args:
@@ -96,7 +99,7 @@ class DataFrameReader:
         self._options[key] = value
         return self
 
-    def options(self, **options: Any) -> "DataFrameReader":
+    def options(self, **options: Any) -> DataFrameReader:
         """Set multiple options.
 
         Args:
@@ -111,7 +114,7 @@ class DataFrameReader:
         self._options.update(options)
         return self
 
-    def schema(self, schema: Union[StructType, str]) -> "DataFrameReader":
+    def schema(self, schema: StructType | str) -> DataFrameReader:
         """Set schema.
 
         Args:
@@ -135,7 +138,7 @@ class DataFrameReader:
         return self
 
     def load(
-        self, path: Optional[str] = None, format: Optional[str] = None, **options: Any
+        self, path: str | None = None, format: str | None = None, **options: Any
     ) -> IDataFrame:
         """Load data.
 
@@ -166,7 +169,9 @@ class DataFrameReader:
             return self.table(table_name)
 
         if path is None:
-            raise IllegalArgumentException("Path is required for DataFrameReader.load()")
+            raise IllegalArgumentException(
+                "Path is required for DataFrameReader.load()"
+            )
 
         paths = self._gather_paths(Path(path), resolved_format)
         if not paths:
@@ -178,7 +183,7 @@ class DataFrameReader:
 
         from .dataframe import DataFrame
 
-        return DataFrame(data_rows, schema, self.session.storage)
+        return cast("IDataFrame", DataFrame(data_rows, schema, self.session.storage))
 
     def table(self, table_name: str) -> IDataFrame:
         """Load table.
@@ -263,7 +268,7 @@ class DataFrameReader:
         # Fallback – include all files
         return [str(p) for p in sorted(root.rglob("*")) if p.is_file()]
 
-    def _extension_for_format(self, data_format: str) -> Optional[str]:
+    def _extension_for_format(self, data_format: str) -> str | None:
         """Map format names to file extensions."""
         mapping = {
             "parquet": ".parquet",
@@ -283,7 +288,9 @@ class DataFrameReader:
             return pl.DataFrame()
 
         if data_format == "parquet":
-            return pl.scan_parquet(paths_list, **self._extract_parquet_options(options)).collect()
+            return pl.scan_parquet(
+                paths_list, **self._extract_parquet_options(options)
+            ).collect()
         if data_format == "csv":
             csv_opts = self._extract_csv_options(options)
             return pl.scan_csv(paths_list, **csv_opts).collect()
@@ -292,11 +299,11 @@ class DataFrameReader:
         if data_format == "text":
             return self._read_text(paths_list)
 
-        raise AnalysisException(f"Unsupported format '{data_format}' for DataFrameReader")
+        raise AnalysisException(
+            f"Unsupported format '{data_format}' for DataFrameReader"
+        )
 
-    def _read_json(
-        self, paths: list[str], options: dict[str, Any]
-    ) -> pl.DataFrame:
+    def _read_json(self, paths: list[str], options: dict[str, Any]) -> pl.DataFrame:
         """Read JSON or NDJSON files via Polars, falling back to Python json."""
         ndjson_opts = {}
         if "infer_schema_length" in options:
@@ -311,7 +318,7 @@ class DataFrameReader:
         import json
 
         for file_path in paths:
-            with open(file_path, "r", encoding="utf-8") as handle:
+            with open(file_path, encoding="utf-8") as handle:
                 content = handle.read().strip()
                 if not content:
                     continue
@@ -339,7 +346,7 @@ class DataFrameReader:
         """Read plain text files into a single-column DataFrame."""
         values: list[str] = []
         for file_path in paths:
-            with open(file_path, "r", encoding="utf-8") as handle:
+            with open(file_path, encoding="utf-8") as handle:
                 values.extend([line.rstrip("\n") for line in handle])
         return pl.DataFrame({"value": values})
 
@@ -453,6 +460,5 @@ class DataFrameReader:
         """
         # Mock implementation
         from .dataframe import DataFrame
-        from typing import cast
 
         return cast("IDataFrame", DataFrame([], StructType([])))

@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.3.0 — 2025-11-12
+
+### Changed
+- Finalised the migration to Python 3.9-native typing throughout the Polars executor,
+  DataFrame reader/writer, schema manager, and Delta helpers so that `mypy mock_spark`
+  now completes without suppressions.
+- Consolidated type-only imports behind `TYPE_CHECKING` guards, reducing import
+  overhead while keeping tooling visibility intact.
+
+### Fixed
+- Ensured Python-evaluated projection columns always materialise with string aliases,
+  preventing accidental `None` column names when fallback expressions run outside Polars.
+- Normalised optional alias handling inside the Delta merge builder, avoiding runtime
+  `None` lookups when accessing assignment metadata.
+
+### Documentation
+- Updated the README “Recent Updates” section to call out the type-safety hardening in
+  3.3.0 and to highlight the clean `mypy` status.
+- Refreshed version references to 3.3.0 across project metadata.
+
 ## 3.2.0 — 2025-11-12
 
 ### Changed

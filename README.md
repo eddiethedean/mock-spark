@@ -374,6 +374,17 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
+### Version 3.3.0 - Type Hardening & Clean Type Check
+
+- 🧮 **Zero mypy Debt** – `mypy mock_spark` now runs clean after migrating the Polars executor,
+  expression evaluator, Delta merge helpers, and reader/writer stack to Python 3.9 union syntax.
+- 🧾 **Accurate DataFrame Interfaces** – `DataFrameReader.load()` and related helpers now return
+  `IDataFrame` consistently while keeping type-only imports behind `TYPE_CHECKING`.
+- 🧱 **Safer Delta & Projection Fallbacks** – Python-evaluated select columns always receive string
+  aliases, and Delta merge alias handling no longer leaks `None` keys into evaluation contexts.
+- 📚 **Docs & Metadata Updated** – README highlights the new type guarantees and all packaging
+  metadata points to v3.3.0.
+
 ### Version 3.2.0 - Python 3.9 Baseline & Tooling Refresh
 
 - 🐍 **Python 3.9+ Required** – Packaging metadata, tooling configs, and installation docs now align on Python 3.9 as the minimum supported runtime.

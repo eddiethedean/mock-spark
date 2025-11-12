@@ -361,7 +361,9 @@ class SchemaManager:
         if isinstance(schema_spec, Literal):
             return SchemaManager._coerce_to_struct_type(schema_spec.value)
 
-        if hasattr(schema_spec, "value") and not isinstance(schema_spec, (dict, list, str)):
+        if hasattr(schema_spec, "value") and not isinstance(
+            schema_spec, (dict, list, str)
+        ):
             return SchemaManager._coerce_to_struct_type(schema_spec.value)
 
         if isinstance(schema_spec, str):
@@ -371,25 +373,22 @@ class SchemaManager:
                 return StructType([])
 
         if isinstance(schema_spec, dict):
-            fields = [StructField(name, StringType()) for name in schema_spec.keys()]
-            return StructType(fields)
+            return StructType([StructField(name, StringType()) for name in schema_spec])
 
         if isinstance(schema_spec, (list, tuple)):
-            fields: list[StructField] = []
+            collected_fields: list[StructField] = []
             for item in schema_spec:
                 if isinstance(item, StructField):
-                    fields.append(item)
+                    collected_fields.append(item)
                 elif isinstance(item, str):
-                    fields.append(StructField(item, StringType()))
-            if fields:
-                return StructType(fields)
+                    collected_fields.append(StructField(item, StringType()))
+            if collected_fields:
+                return StructType(collected_fields)
 
         return None
 
     @staticmethod
-    def _build_function_alias(
-        operation: str, column_expr: Any, fallback: str
-    ) -> str:
+    def _build_function_alias(operation: str, column_expr: Any, fallback: str) -> str:
         if operation in ("to_json", "to_csv") and column_expr is not None:
             struct_alias = SchemaManager._format_struct_alias(column_expr)
             return f"{operation}({struct_alias})"
@@ -405,7 +404,10 @@ class SchemaManager:
     @staticmethod
     def _extract_struct_field_names(expr: Any) -> list[str]:
         names: list[str] = []
-        if isinstance(expr, ColumnOperation) and getattr(expr, "operation", None) == "struct":
+        if (
+            isinstance(expr, ColumnOperation)
+            and getattr(expr, "operation", None) == "struct"
+        ):
             first = SchemaManager._extract_column_name(expr.column)
             if first:
                 names.append(first)

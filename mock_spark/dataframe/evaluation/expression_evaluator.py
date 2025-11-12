@@ -13,12 +13,14 @@ import re
 import base64
 import datetime as dt_module
 from decimal import Decimal
-from typing import Any, Optional, Sequence, Union, cast
+from typing import Any, Optional, Union, cast
+from collections.abc import Sequence
 
 from ...functions import Column, ColumnOperation
 from ...functions.conditional import CaseWhen
 from ...spark_types import (
     ArrayType,
+    ByteType,
     BooleanType,
     DataType,
     DateType,
@@ -1263,7 +1265,9 @@ class ExpressionEvaluator:
         delimiter = ","
         null_value = None
         if isinstance(operation.value, dict):
-            delimiter = operation.value.get("sep", operation.value.get("delimiter", ",")) or ","
+            delimiter = (
+                operation.value.get("sep", operation.value.get("delimiter", ",")) or ","
+            )
             null_value = operation.value.get("nullValue")
 
         parts: list[str] = []
@@ -1286,9 +1290,12 @@ class ExpressionEvaluator:
         if isinstance(raw_value, tuple):
             if len(raw_value) >= 1:
                 schema_spec = raw_value[0]
-            if len(raw_value) >= 2 and raw_value[1] is not None:
-                if isinstance(raw_value[1], dict):
-                    options = dict(raw_value[1])
+            if (
+                len(raw_value) >= 2
+                and raw_value[1] is not None
+                and isinstance(raw_value[1], dict)
+            ):
+                options = dict(raw_value[1])
         elif isinstance(raw_value, dict):
             options = dict(raw_value)
 
@@ -1315,18 +1322,17 @@ class ExpressionEvaluator:
                 return StructType([])
 
         if isinstance(schema_spec, dict):
-            fields = [StructField(name, StringType()) for name in schema_spec.keys()]
-            return StructType(fields)
+            return StructType([StructField(name, StringType()) for name in schema_spec])
 
         if isinstance(schema_spec, (list, tuple)):
-            fields: list[StructField] = []
+            collected_fields: list[StructField] = []
             for item in schema_spec:
                 if isinstance(item, StructField):
-                    fields.append(item)
+                    collected_fields.append(item)
                 elif isinstance(item, str):
-                    fields.append(StructField(item, StringType()))
-            if fields:
-                return StructType(fields)
+                    collected_fields.append(StructField(item, StringType()))
+            if collected_fields:
+                return StructType(collected_fields)
 
         return None
 
@@ -1403,7 +1409,7 @@ class ExpressionEvaluator:
                 return None
         if isinstance(value, list):
             try:
-                return {k: v for k, v in value}
+                return dict(value)
             except Exception:
                 return None
         return None
@@ -1437,7 +1443,9 @@ class ExpressionEvaluator:
 
     def _parse_date(self, value: Any) -> Optional[dt_module.date]:
         """Parse string values into date objects."""
-        if isinstance(value, dt_module.date) and not isinstance(value, dt_module.datetime):
+        if isinstance(value, dt_module.date) and not isinstance(
+            value, dt_module.datetime
+        ):
             return value
         if isinstance(value, dt_module.datetime):
             return value.date()

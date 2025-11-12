@@ -22,13 +22,14 @@ For real Delta operations (MERGE, time travel, etc.), use real PySpark + delta-s
 from __future__ import annotations
 import re
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 from collections import defaultdict
 
 if TYPE_CHECKING:
     from .dataframe import DataFrame
+    from .spark_types import StructType
 
-from .functions import F, Column
+from .functions import Column
 
 
 def _normalize_boolean_expression(expression: str) -> str:
@@ -44,8 +45,8 @@ def _normalize_boolean_expression(expression: str) -> str:
 def _build_eval_context(
     target_row: dict[str, Any],
     target_aliases: set[str],
-    source_row: Optional[dict[str, Any]] = None,
-    source_aliases: Optional[set[str]] = None,
+    source_row: dict[str, Any] | None = None,
+    source_aliases: set[str] | None = None,
 ) -> dict[str, Any]:
     """Create evaluation context with target/source aliases for expression eval."""
     context: dict[str, Any] = dict(target_row)
@@ -312,7 +313,7 @@ class DeltaTable:
 
         return DataFrame(history, schema, self._spark.storage)
 
-    def _overwrite_table(self, df: "DataFrame") -> None:
+    def _overwrite_table(self, df: DataFrame) -> None:
         """Persist the provided DataFrame back into the Delta table."""
         df.write.format("delta").mode("overwrite").saveAsTable(self._table_name)
 
@@ -328,7 +329,7 @@ class DeltaTable:
         data = self._spark.storage.get_data(schema_name, table_name)
         return [dict(row) for row in data]
 
-    def _current_schema(self) -> "StructType":
+    def _current_schema(self) -> StructType:
         schema_name, table_name = self._resolve_table_parts()
         schema = self._spark.storage.get_table_schema(schema_name, table_name)
         if schema is None:
@@ -378,17 +379,17 @@ class DeltaMergeBuilder:
         delta_table: DeltaTable,
         source: Any,
         condition: str,
-        target_alias: Optional[str],
+        target_alias: str | None,
     ):
         self._table = delta_table
         self._source = source
         self._condition = condition
         self._target_alias = target_alias or "target"
         self._source_alias = getattr(source, "_alias", None) or "source"
-        self._matched_update_assignments: Optional[dict[str, Any]] = None
+        self._matched_update_assignments: dict[str, Any] | None = None
         self._matched_update_all: bool = False
-        self._matched_delete_condition: Optional[str] = None
-        self._not_matched_insert_assignments: Optional[dict[str, Any]] = None
+        self._matched_delete_condition: str | None = None
+        self._not_matched_insert_assignments: dict[str, Any] | None = None
         self._not_matched_insert_all: bool = False
 
     @property
@@ -467,15 +468,13 @@ class DeltaMergeBuilder:
                         )
                     elif self._not_matched_insert_assignments is not None:
                         result_rows.append(
-                            self._build_insert_from_assignments(
-                                src_row, target_schema
-                            )
+                            self._build_insert_from_assignments(src_row, target_schema)
                         )
 
         new_df = self._table._spark.createDataFrame(result_rows, target_schema)
         self._table._overwrite_table(new_df)
 
-    def _ensure_dataframe(self, source: Any) -> "DataFrame":
+    def _ensure_dataframe(self, source: Any) -> DataFrame:
         from .dataframe import DataFrame
 
         if isinstance(source, DataFrame):
@@ -520,7 +519,7 @@ class DeltaMergeBuilder:
         self,
         target_row: dict[str, Any],
         source_row: dict[str, Any],
-        schema: "StructType",
+        schema: StructType,
     ) -> dict[str, Any]:
         updated = dict(target_row)
 
@@ -538,7 +537,7 @@ class DeltaMergeBuilder:
         return updated
 
     def _project_source_row(
-        self, source_row: dict[str, Any], schema: "StructType"
+        self, source_row: dict[str, Any], schema: StructType
     ) -> dict[str, Any]:
         projected = {}
         for field in schema.fields:
@@ -546,7 +545,7 @@ class DeltaMergeBuilder:
         return projected
 
     def _build_insert_from_assignments(
-        self, source_row: dict[str, Any], schema: "StructType"
+        self, source_row: dict[str, Any], schema: StructType
     ) -> dict[str, Any]:
         row = {field.name: None for field in schema.fields}
         assert self._not_matched_insert_assignments is not None
@@ -598,8 +597,8 @@ class DeltaMergeBuilder:
     ) -> bool:
         context: dict[str, Any] = {}
 
-        target_ns = SimpleNamespace(**{k: v for k, v in target_row.items()})
-        source_ns = SimpleNamespace(**{k: v for k, v in source_row.items()})
+        target_ns = SimpleNamespace(**target_row)
+        source_ns = SimpleNamespace(**source_row)
 
         for alias in self._target_aliases:
             context[alias] = target_ns

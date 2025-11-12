@@ -30,16 +30,15 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import polars as pl
 
 from mock_spark.backend.polars.schema_utils import align_frame_to_schema
-from mock_spark.backend.protocols import StorageBackend
 from mock_spark.errors import AnalysisException, IllegalArgumentException
-from mock_spark.spark_types import StructType
 
 if TYPE_CHECKING:
+    from mock_spark.backend.protocols import StorageBackend
     from .dataframe import DataFrame
     from ..spark_types import StructType
 
@@ -61,7 +60,7 @@ class DataFrameWriter:
         >>> df.write.format("parquet").mode("overwrite").saveAsTable("my_table")
     """
 
-    def __init__(self, df: "DataFrame", storage: StorageBackend):
+    def __init__(self, df: DataFrame, storage: StorageBackend):
         """Initialize DataFrameWriter.
 
         Args:
@@ -73,9 +72,9 @@ class DataFrameWriter:
         self.format_name = "parquet"
         self.save_mode = "append"
         self._options: dict[str, Any] = {}
-        self._table_name: Optional[str] = None
+        self._table_name: str | None = None
 
-    def format(self, source: str) -> "DataFrameWriter":
+    def format(self, source: str) -> DataFrameWriter:
         """Set the output format for the DataFrame writer.
 
         Args:
@@ -90,7 +89,7 @@ class DataFrameWriter:
         self.format_name = source
         return self
 
-    def mode(self, mode: str) -> "DataFrameWriter":
+    def mode(self, mode: str) -> DataFrameWriter:
         """Set the save mode for the DataFrame writer.
 
         Args:
@@ -125,7 +124,7 @@ class DataFrameWriter:
         """
         return self.save_mode
 
-    def option(self, key: str, value: Any) -> "DataFrameWriter":
+    def option(self, key: str, value: Any) -> DataFrameWriter:
         """Set an option for the DataFrame writer.
 
         Args:
@@ -141,7 +140,7 @@ class DataFrameWriter:
         self._options[key] = value
         return self
 
-    def options(self, **kwargs: Any) -> "DataFrameWriter":
+    def options(self, **kwargs: Any) -> DataFrameWriter:
         """Set multiple options for the DataFrame writer.
 
         Args:
@@ -156,7 +155,7 @@ class DataFrameWriter:
         self._options.update(kwargs)
         return self
 
-    def partitionBy(self, *cols: str) -> "DataFrameWriter":
+    def partitionBy(self, *cols: str) -> DataFrameWriter:
         """Partition output by given columns.
 
         Args:
@@ -405,7 +404,7 @@ class DataFrameWriter:
                 },
             )
 
-    def save(self, path: Optional[str] = None) -> None:
+    def save(self, path: str | None = None) -> None:
         """Save DataFrame to a file path.
 
         Args:
@@ -441,7 +440,9 @@ class DataFrameWriter:
         elif resolved_format == "text":
             self._write_text(data_frame.data, data_frame.schema, target_path)
         else:
-            raise AnalysisException(f"File format '{self.format_name}' is not supported.")
+            raise AnalysisException(
+                f"File format '{self.format_name}' is not supported."
+            )
 
     def parquet(self, path: str, **options: Any) -> None:
         """Save DataFrame in Parquet format.
@@ -506,7 +507,7 @@ class DataFrameWriter:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _materialize_dataframe(self) -> "DataFrame":
+    def _materialize_dataframe(self) -> DataFrame:
         """Materialize the underlying DataFrame (handling lazy evaluation)."""
         from .dataframe import DataFrame
 
@@ -551,7 +552,11 @@ class DataFrameWriter:
             return pl.DataFrame(data)
 
         # Create DataFrame from dictionaries (handles empty data gracefully)
-        frame = pl.DataFrame(data) if data else pl.DataFrame({f.name: [] for f in schema.fields})
+        frame = (
+            pl.DataFrame(data)
+            if data
+            else pl.DataFrame({f.name: [] for f in schema.fields})
+        )
         return align_frame_to_schema(frame, schema)
 
     def _next_part_file(self, path: Path, extension: str) -> Path:
@@ -565,7 +570,9 @@ class DataFrameWriter:
 
     def _write_parquet(self, frame: pl.DataFrame, path: Path) -> None:
         target = (
-            path if path.suffix == ".parquet" else self._next_part_file(path, ".parquet")
+            path
+            if path.suffix == ".parquet"
+            else self._next_part_file(path, ".parquet")
         )
         compression = self._options.get("compression", "snappy")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -605,7 +612,11 @@ class DataFrameWriter:
         target = path if path.suffix == ".txt" else self._next_part_file(path, ".txt")
         target.parent.mkdir(parents=True, exist_ok=True)
 
-        mode = "a" if path.exists() and self.save_mode == "append" and target == path else "w"
+        mode = (
+            "a"
+            if path.exists() and self.save_mode == "append" and target == path
+            else "w"
+        )
         with open(target, mode, encoding="utf-8") as handle:
             for row in data:
                 value = row.get(column_name)

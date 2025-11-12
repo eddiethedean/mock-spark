@@ -79,4 +79,3 @@ class TestDeltaOperations:
         assert by_id[1].score == 175
         assert by_id[2].name == "Bob"
         assert by_id[3].name == "Charlie"
-
