@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.2.0 — 2025-11-12
+
+### Changed
+- Raised the minimum supported Python version to 3.9 and aligned Black, Ruff, and mypy
+  targets so local tooling matches the published wheel.
+- Removed the Python 3.8 compatibility shim in `mock_spark.compat.datetime` in favour of
+  native typing support, simplifying downstream imports.
+- Standardised type hints on built-in generics (`list[str]`, `dict[str, Any]`) and
+  `collections.abc` protocols across the codebase, eliminating leftover `typing` fallbacks.
+- Adopted `ruff format` as the canonical formatter, bringing the entire repository in line with
+  the Ruff style guide.
+
+### Documentation
+- Updated the README to call out the Python 3.9 baseline and refreshed the “Recent Updates”
+  section with the typing/tooling improvements delivered in 3.2.0.
+
 ## 3.1.0 — 2025-11-07
 
 ### Added

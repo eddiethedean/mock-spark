@@ -4,7 +4,7 @@
 
 **🚀 Test PySpark code at lightning speed—no JVM required**
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
@@ -373,6 +373,13 @@ Real-world test suite improvements:
 ---
 
 ## Recent Updates
+
+### Version 3.2.0 - Python 3.9 Baseline & Tooling Refresh
+
+- 🐍 **Python 3.9+ Required** – Packaging metadata, tooling configs, and installation docs now align on Python 3.9 as the minimum supported runtime.
+- 🧩 **Lean Compatibility Layer** – The Python 3.8 `sitecustomize` shim has been retired; datetime helpers use native typing without runtime fallbacks.
+- 🪄 **Type Hint Modernisation** – Replaced legacy `typing.List`/`Dict` usage with built-in generics (`list`, `dict`, `tuple`) and moved iterators to `collections.abc`.
+- 🧼 **Ruff Formatting by Default** – Adopted `ruff format` across the repository, keeping style consistent with the Ruff rule set.
 
 ### Version 3.1.0 - Type-Safe Protocols & Tooling
 
