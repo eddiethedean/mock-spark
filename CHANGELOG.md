@@ -1,6 +1,24 @@
 # Changelog
 
+## 3.4.0 — 2025-11-12
+
+### Changed
+- Standardised local workflows around `bash tests/run_all_tests.sh`, Ruff, and MyPy via updated Makefile targets and `install.sh`.
+- Introduced GitHub Actions CI that enforces linting, type-checking, and full-suite coverage on every push and pull request.
+- Refreshed development docs to reflect the consolidated tooling commands.
+
+### Added
+- Published `plans/typing_delta_roadmap.md`, outlining phased mypy cleanup and Delta feature milestones for the next release cycle.
+
+### Documentation
+- README “Recent Updates” highlights the 3.4.0 workflow improvements and roadmap visibility.
+
 ## 3.3.0 — 2025-11-12
+
+### Added
+- Consolidated release metadata so `pyproject.toml`, `mock_spark/__init__.py`, and published wheels all advertise version `3.3.0`.
+- Documented the renumbering from the legacy 3.x preview series to the semantic 0.x roadmap, keeping downstream consumers aligned with public messaging.
+- Updated README badges and compatibility tables to reflect the curated 396-test suite and PySpark 3.2–3.5 coverage.
 
 ### Changed
 - Finalised the migration to Python 3.9-native typing throughout the Polars executor,
@@ -16,8 +34,7 @@
   `None` lookups when accessing assignment metadata.
 
 ### Documentation
-- Updated the README “Recent Updates” section to call out the type-safety hardening in
-  3.3.0 and to highlight the clean `mypy` status.
+- README “Recent Updates” highlights the metadata realignment for 3.3.0 and the clean `mypy` status.
 - Refreshed version references to 3.3.0 across project metadata.
 
 ## 3.2.0 — 2025-11-12

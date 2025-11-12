@@ -26,9 +26,9 @@ echo "✅ Python $python_version detected"
 echo "📦 Installing Mock Spark..."
 pip install -e .
 
-# Run basic tests
-echo "🧪 Running basic tests..."
-python test_basic.py
+# Run full test suite with proper isolation
+echo "🧪 Running full test suite..."
+bash tests/run_all_tests.sh
 
 echo "✅ Mock Spark installed successfully!"
 echo ""

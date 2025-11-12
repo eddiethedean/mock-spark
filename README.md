@@ -374,6 +374,13 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
+### Version 3.4.0 - Workflow & CI Refresh
+
+- ♻️ **Unified Commands** – `Makefile`, `install.sh`, and docs now point to `bash tests/run_all_tests.sh`, `ruff`, and `mypy` as the standard dev workflow.
+- 🛡️ **Automated Gates** – New GitHub Actions pipeline runs linting, type-checking, and the full test suite on every push and PR.
+- 🗺️ **Forward Roadmap** – Published `plans/typing_delta_roadmap.md` to track mypy debt reduction and Delta feature milestones.
+- 📝 **Documentation Sweep** – README and quick-start docs highlight the 3.4.0 tooling changes and contributor expectations.
+
 ### Version 3.3.0 - Type Hardening & Clean Type Check
 
 - 🧮 **Zero mypy Debt** – `mypy mock_spark` now runs clean after migrating the Polars executor,
@@ -463,9 +470,10 @@ bash tests/run_all_tests.sh
 
 # Format code
 ruff format .
+ruff check . --fix
 
 # Type checking
-python -m ty check mock_spark
+mypy mock_spark tests
 
 # Linting
 ruff check .

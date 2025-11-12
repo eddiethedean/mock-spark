@@ -1,5 +1,7 @@
 # Getting Started with Mock Spark
 
+> **Compatibility Snapshot:** This guide targets Mock Spark `3.4.0`, which provides parity with PySpark 3.2–3.5 and ships with 648+ passing regression tests.
+
 ## Installation
 
 Install Mock Spark using pip:

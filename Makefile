@@ -12,21 +12,20 @@ install-dev: ## Install with development dependencies
 	pip install -e ".[dev]"
 
 test: ## Run tests
-	python test_basic.py
+	bash tests/run_all_tests.sh
 
 test-cov: ## Run tests with coverage
-	pytest --cov=mock_spark --cov-report=html --cov-report=term
+	PYTEST_ADDOPTS="--cov=mock_spark --cov-report=term-missing --cov-report=html --cov-report=xml" bash tests/run_all_tests.sh
 
 lint: ## Run linting
-	black --check mock_spark/
-	isort --check-only mock_spark/
+	ruff check .
 
 format: ## Format code
-	black mock_spark/
-	isort mock_spark/
+	ruff format .
+	ruff check . --fix
 
 type-check: ## Run mypy type checking
-	mypy mock_spark/
+	mypy mock_spark tests
 
 clean: ## Clean build artifacts
 	rm -rf build/
