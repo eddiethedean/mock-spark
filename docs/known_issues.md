@@ -30,4 +30,7 @@ columns to succeed.
   expressions with ``mock_spark.compat.datetime.to_date_str`` or
   ``to_timestamp_str`` to obtain stable ISO-formatted text values without
   mutating PySpark behaviour.
+- When you need native ``date`` objects (for example, deriving ``event_date`` in
+  analytics pipelines), prefer ``mock_spark.compat.datetime.to_date_typed`` so
+  the behaviour matches real Spark without substring fallbacks.
 

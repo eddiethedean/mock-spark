@@ -467,6 +467,14 @@ We welcome contributions! Areas of interest:
 
 ---
 
+## Mock-Spark Working Notes
+
+- **Datetime helpers**: Prefer `mock_spark.compat.datetime.to_date_typed` when deriving `event_date`-style columns so both PySpark and Mock Spark yield native `date` objects. Older `F.substring(..., 1, 10)` workarounds are no longer required.
+- **Python 3.8 shim**: The repository ships `sitecustomize.py`, which backfills `typing.TypeAlias`, adds `__class_getitem__` to key `collections.abc` classes, and stubs the optional DuckDB backend. See [`docs/upstream.md`](docs/upstream.md) for upstream tracking todos.
+- **Testing**: Always run `bash tests/run_all_tests.sh` locally—the script orchestrates Polars/DuckDB backend isolation and mirrors CI.
+
+---
+
 ## Known Limitations
 
 While Mock Spark provides comprehensive PySpark compatibility, some advanced features are planned for future releases:
