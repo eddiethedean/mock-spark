@@ -6,7 +6,7 @@ including table metadata, field metadata, and general metadata management.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 
 class IMetadata(ABC):
@@ -33,17 +33,17 @@ class IMetadata(ABC):
         pass
 
     @abstractmethod
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         """Get all keys."""
         pass
 
     @abstractmethod
-    def values(self) -> List[Any]:
+    def values(self) -> list[Any]:
         """Get all values."""
         pass
 
     @abstractmethod
-    def items(self) -> List[Tuple[Any, Any]]:
+    def items(self) -> list[tuple[Any, Any]]:
         """Get all items."""
         pass
 
@@ -53,12 +53,12 @@ class IMetadata(ABC):
         pass
 
     @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         pass
 
     @abstractmethod
-    def from_dict(self, data: Dict[str, Any]) -> None:
+    def from_dict(self, data: dict[str, Any]) -> None:
         """Load from dictionary."""
         pass
 
@@ -182,7 +182,7 @@ class ISchemaMetadata(IMetadata):
         pass
 
     @abstractmethod
-    def list_tables(self) -> List[str]:
+    def list_tables(self) -> list[str]:
         """List tables in schema."""
         pass
 
@@ -234,12 +234,12 @@ class IStatisticsMetadata(IMetadata):
     """Abstract interface for statistics metadata operations."""
 
     @abstractmethod
-    def get_statistics(self, column_name: str) -> Dict[str, Any]:
+    def get_statistics(self, column_name: str) -> dict[str, Any]:
         """Get column statistics."""
         pass
 
     @abstractmethod
-    def set_statistics(self, column_name: str, stats: Dict[str, Any]) -> None:
+    def set_statistics(self, column_name: str, stats: dict[str, Any]) -> None:
         """Set column statistics."""
         pass
 
@@ -254,7 +254,7 @@ class IStatisticsMetadata(IMetadata):
         pass
 
     @abstractmethod
-    def list_columns_with_stats(self) -> List[str]:
+    def list_columns_with_stats(self) -> list[str]:
         """List columns with statistics."""
         pass
 
@@ -278,7 +278,7 @@ class IMetadataRegistry(ABC):
         pass
 
     @abstractmethod
-    def list_metadata_keys(self) -> List[str]:
+    def list_metadata_keys(self) -> list[str]:
         """List all metadata keys."""
         pass
 

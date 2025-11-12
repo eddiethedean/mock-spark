@@ -5,17 +5,8 @@ This module defines type-safe protocols for the specialized handler classes
 that implement the Single Responsibility Principle for DataFrame operations.
 """
 
-from typing import (
-    Any,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Protocol,
-    Tuple,
-    TYPE_CHECKING,
-    Union,
-)
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Optional, Protocol, Union
 
 try:  # Python <3.11 compatibility
     from typing import Self  # type: ignore[attr-defined]
@@ -43,7 +34,7 @@ class HasSchema(Protocol):
 class HasData(Protocol):
     """Objects that carry in-memory row data."""
 
-    data: List[Dict[str, Any]]
+    data: list[dict[str, Any]]
 
 
 class HasStorage(Protocol):
@@ -55,7 +46,7 @@ class HasStorage(Protocol):
 class OperationQueueAware(Protocol):
     """Objects that queue operations prior to materialisation."""
 
-    _operations_queue: List[Tuple[str, Any]]
+    _operations_queue: list[tuple[str, Any]]
 
     def _queue_op(self, operation: str, payload: Any) -> Self: ...
 
@@ -72,7 +63,7 @@ class ColumnAware(Protocol):
     """Objects that expose column metadata."""
 
     @property
-    def columns(self) -> List[str]: ...
+    def columns(self) -> list[str]: ...
 
 
 class HandlerProvider(Protocol):
@@ -90,7 +81,7 @@ class HandlerProvider(Protocol):
 class CollectionSupport(Protocol):
     """Objects exposing collection-style helpers."""
 
-    def collect(self) -> List[Any]: ...
+    def collect(self) -> list[Any]: ...
 
     def orderBy(self, *columns: Any, **kwargs: Any) -> Self: ...
 
@@ -106,13 +97,9 @@ class LogicalOpSupport(Protocol):
 
     def distinct(self) -> Self: ...
 
-    def dropDuplicates(
-        self, subset: Optional[List[str]] = None
-    ) -> Self: ...
+    def dropDuplicates(self, subset: Optional[list[str]] = None) -> Self: ...
 
-    def drop_duplicates(
-        self, subset: Optional[List[str]] = None
-    ) -> Self: ...
+    def drop_duplicates(self, subset: Optional[list[str]] = None) -> Self: ...
 
     def union(self, other: Any) -> Self: ...
 
@@ -124,16 +111,16 @@ class MutationSupport(Protocol):
 
     def withColumn(self, col_name: str, col: Any) -> Self: ...
 
-    def withColumns(self, cols_map: Dict[str, Any]) -> Self: ...
+    def withColumns(self, cols_map: dict[str, Any]) -> Self: ...
 
     def withColumnRenamed(self, existing: str, new: str) -> Self: ...
 
-    def withColumnsRenamed(self, cols_map: Dict[str, str]) -> Self: ...
+    def withColumnsRenamed(self, cols_map: dict[str, str]) -> Self: ...
 
     def drop(self, *cols: str) -> Self: ...
 
     def replace(
-        self, to_replace: Any, value: Any = ..., subset: Optional[List[str]] = None
+        self, to_replace: Any, value: Any = ..., subset: Optional[list[str]] = None
     ) -> Self: ...
 
     def sample(
@@ -144,10 +131,12 @@ class MutationSupport(Protocol):
     ) -> Self: ...
 
     def sampleBy(
-        self, col: str, fractions: Dict[Any, float], seed: Optional[int] = None
+        self, col: str, fractions: dict[Any, float], seed: Optional[int] = None
     ) -> Self: ...
 
-    def randomSplit(self, weights: List[float], seed: Optional[int] = None) -> List[Self]: ...
+    def randomSplit(
+        self, weights: list[float], seed: Optional[int] = None
+    ) -> list[Self]: ...
 
     def describe(self, *cols: str) -> Self: ...
 
@@ -155,34 +144,32 @@ class MutationSupport(Protocol):
 
     def crosstab(self, col1: str, col2: str) -> Self: ...
 
-    def freqItems(self, cols: List[str], support: Optional[float] = None) -> Self: ...
+    def freqItems(self, cols: list[str], support: Optional[float] = None) -> Self: ...
 
     def approxQuantile(
-        self, col: Any, probabilities: List[float], relativeError: float
+        self, col: Any, probabilities: list[float], relativeError: float
     ) -> Any: ...
 
     def cov(self, col1: str, col2: str) -> float: ...
 
     def transform(self, func: Any) -> Self: ...
 
-    def mapPartitions(
-        self, func: Any, preservesPartitioning: bool = False
-    ) -> Self: ...
+    def mapPartitions(self, func: Any, preservesPartitioning: bool = False) -> Self: ...
 
     def mapInPandas(self, func: Any, schema: Any) -> Self: ...
 
     def unpivot(
         self,
-        ids: Union[str, List[str]],
-        values: Union[str, List[str]],
+        ids: Union[str, list[str]],
+        values: Union[str, list[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> Self: ...
 
     def melt(
         self,
-        ids: Optional[List[str]] = None,
-        values: Optional[List[str]] = None,
+        ids: Optional[list[str]] = None,
+        values: Optional[list[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> Self: ...
@@ -225,7 +212,7 @@ class MutationSupport(Protocol):
 
     def semanticHash(self) -> int: ...
 
-    def inputFiles(self) -> List[str]: ...
+    def inputFiles(self) -> list[str]: ...
 
     def isLocal(self) -> bool: ...
 
@@ -276,7 +263,7 @@ class SupportsDataFrameOps(
 
     def _evaluate_column_expression(
         self,
-        row: Dict[str, Any],
+        row: dict[str, Any],
         column_expression: Any,
     ) -> Any: ...
 
@@ -285,14 +272,14 @@ class WindowFunctionHandler(Protocol):
     """Protocol for window function evaluation."""
 
     def evaluate_window_functions(
-        self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
-    ) -> List[Dict[str, Any]]:
+        self, data: list[dict[str, Any]], window_functions: list[tuple[Any, ...]]
+    ) -> list[dict[str, Any]]:
         """Evaluate window functions across all rows."""
         ...
 
     def _evaluate_lag_lead(
         self,
-        result_data: List[Dict[str, Any]],
+        result_data: list[dict[str, Any]],
         window_func: Any,
         col_name: str,
         is_lead: bool,
@@ -301,15 +288,15 @@ class WindowFunctionHandler(Protocol):
         ...
 
     def _apply_ordering_to_indices(
-        self, data: List[Dict[str, Any]], indices: List[int], order_by_cols: List[Any]
-    ) -> List[int]:
+        self, data: list[dict[str, Any]], indices: list[int], order_by_cols: list[Any]
+    ) -> list[int]:
         """Apply ordering to row indices."""
         ...
 
     def _apply_lag_lead_to_partition(
         self,
-        result_data: List[Dict[str, Any]],
-        partition_indices: List[int],
+        result_data: list[dict[str, Any]],
+        partition_indices: list[int],
         window_func: Any,
         col_name: str,
         is_lead: bool,
@@ -318,15 +305,15 @@ class WindowFunctionHandler(Protocol):
         ...
 
     def _evaluate_rank_functions(
-        self, result_data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, result_data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate RANK/DENSE_RANK functions."""
         ...
 
     def _apply_rank_to_partition(
         self,
-        result_data: List[Dict[str, Any]],
-        partition_indices: List[int],
+        result_data: list[dict[str, Any]],
+        partition_indices: list[int],
         window_func: Any,
         col_name: str,
     ) -> None:
@@ -334,15 +321,15 @@ class WindowFunctionHandler(Protocol):
         ...
 
     def _evaluate_aggregate_window_functions(
-        self, result_data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, result_data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions (SUM, AVG, etc.)."""
         ...
 
     def _apply_aggregate_to_partition(
         self,
-        result_data: List[Dict[str, Any]],
-        partition_indices: List[int],
+        result_data: list[dict[str, Any]],
+        partition_indices: list[int],
         window_func: Any,
         col_name: str,
     ) -> None:
@@ -353,27 +340,27 @@ class WindowFunctionHandler(Protocol):
 class CollectionHandler(Protocol):
     """Protocol for collection operations."""
 
-    def collect(self, data: List[Dict[str, Any]], schema: "StructType") -> List["Row"]:
+    def collect(self, data: list[dict[str, Any]], schema: "StructType") -> list["Row"]:
         """Convert data to Row objects."""
         ...
 
     def take(
-        self, data: List[Dict[str, Any]], schema: "StructType", n: int
-    ) -> List["Row"]:
+        self, data: list[dict[str, Any]], schema: "StructType", n: int
+    ) -> list["Row"]:
         """Take first n rows."""
         ...
 
-    def head(self, data: List[Dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
+    def head(self, data: list[dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
         """Get first row(s)."""
         ...
 
-    def tail(self, data: List[Dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
+    def tail(self, data: list[dict[str, Any]], schema: "StructType", n: int = 1) -> Any:
         """Get last n rows."""
         ...
 
     def to_local_iterator(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: "StructType",
         prefetch: bool = False,
     ) -> Iterator["Row"]:
@@ -391,7 +378,7 @@ class ValidationHandler(Protocol):
         ...
 
     def validate_columns_exist(
-        self, schema: "StructType", column_names: List[str], operation: str
+        self, schema: "StructType", column_names: list[str], operation: str
     ) -> None:
         """Validate multiple columns exist."""
         ...
@@ -421,27 +408,27 @@ class ConditionHandler(Protocol):
     """Protocol for condition evaluation."""
 
     def apply_condition(
-        self, data: List[Dict[str, Any]], condition: Any
-    ) -> List[Dict[str, Any]]:
+        self, data: list[dict[str, Any]], condition: Any
+    ) -> list[dict[str, Any]]:
         """Filter data based on condition."""
         ...
 
-    def evaluate_condition(self, row: Dict[str, Any], condition: Any) -> bool:
+    def evaluate_condition(self, row: dict[str, Any], condition: Any) -> bool:
         """Evaluate condition for a single row."""
         ...
 
     def evaluate_column_expression(
-        self, row: Dict[str, Any], column_expression: Any
+        self, row: dict[str, Any], column_expression: Any
     ) -> Any:
         """Evaluate column expression."""
         ...
 
-    def evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
+    def evaluate_case_when(self, row: dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression."""
         ...
 
     def _evaluate_case_when_condition(
-        self, row: Dict[str, Any], condition: Any
+        self, row: dict[str, Any], condition: Any
     ) -> bool:
         """Helper for case when condition evaluation."""
         ...

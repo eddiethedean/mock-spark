@@ -5,7 +5,8 @@ This module provides a simplified RDD implementation that maintains
 compatibility with PySpark's RDD interface while working with mock data.
 """
 
-from typing import Any, List, Dict, Callable, Iterator
+from collections.abc import Iterator
+from typing import Any, Callable
 
 
 class MockRDD:
@@ -15,7 +16,7 @@ class MockRDD:
     that works with mock data structures.
     """
 
-    def __init__(self, data: List[Dict[str, Any]]):
+    def __init__(self, data: list[dict[str, Any]]):
         """Initialize MockRDD.
 
         Args:
@@ -23,7 +24,7 @@ class MockRDD:
         """
         self.data = data
 
-    def collect(self) -> List[Any]:
+    def collect(self) -> list[Any]:
         """Collect RDD data.
 
         Returns:
@@ -39,7 +40,7 @@ class MockRDD:
         """
         return len(self.data)
 
-    def take(self, num: int) -> List[Any]:
+    def take(self, num: int) -> list[Any]:
         """Take the first num elements.
 
         Args:
@@ -117,7 +118,7 @@ class MockRDD:
         Returns:
             MockGroupedRDD for grouped operations.
         """
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        groups: dict[Any, list[dict[str, Any]]] = {}
         for item in self.data:
             key = func(item)
             if key not in groups:
@@ -204,7 +205,7 @@ class MockRDD:
 class MockGroupedRDD:
     """Mock grouped RDD for groupBy operations."""
 
-    def __init__(self, groups: Dict[Any, List[Any]]):
+    def __init__(self, groups: dict[Any, list[Any]]):
         """Initialize MockGroupedRDD.
 
         Args:
@@ -212,7 +213,7 @@ class MockGroupedRDD:
         """
         self.groups = groups
 
-    def mapValues(self, func: Callable[[List[Any]], Any]) -> MockRDD:
+    def mapValues(self, func: Callable[[list[Any]], Any]) -> MockRDD:
         """Map function over grouped values.
 
         Args:
@@ -244,7 +245,7 @@ class MockGroupedRDD:
                 result.append({"key": key, "value": reduced})
         return MockRDD(result)
 
-    def countByKey(self) -> Dict[Any, int]:
+    def countByKey(self) -> dict[Any, int]:
         """Count values by key.
 
         Returns:
@@ -252,7 +253,7 @@ class MockGroupedRDD:
         """
         return {key: len(values) for key, values in self.groups.items()}
 
-    def collect(self) -> List[Any]:
+    def collect(self) -> list[Any]:
         """Collect grouped data.
 
         Returns:

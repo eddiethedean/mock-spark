@@ -29,7 +29,8 @@ Example:
     +----+---+
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from .protocols import SupportsDataFrameOps
 
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 
     def _ensure_dataframe_protocol(df: "DataFrame") -> "SupportsDataFrameOps":
         return df
+
 
 if TYPE_CHECKING:
     from .lazy import LazyEvaluationEngine
@@ -112,20 +114,20 @@ class DataFrame(
         +----+
     """
 
-    data: List[Dict[str, Any]]
+    data: list[dict[str, Any]]
     schema: StructType
     storage: StorageBackend
-    _operations_queue: List[Tuple[str, Any]]
+    _operations_queue: list[tuple[str, Any]]
     _cached_count: Optional[int]
     _watermark_col: Optional[str]
     _watermark_delay: Optional[str]
 
     def __init__(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: StructType,
         storage: Optional["StorageBackend"] = None,
-        operations: Optional[List[Tuple[str, Any]]] = None,
+        operations: Optional[list[tuple[str, Any]]] = None,
     ):
         """Initialize DataFrame.
 
@@ -140,7 +142,7 @@ class DataFrame(
         self.schema = schema
         self.storage: StorageBackend = storage or MemoryStorageManager()
         self._cached_count: Optional[int] = None
-        self._operations_queue: List[Tuple[str, Any]] = operations or []
+        self._operations_queue: list[tuple[str, Any]] = operations or []
         # Services are lazy-initialized via _get_* methods
         self._lazy_engine: Optional[LazyEvaluationEngine] = None
         self._expression_evaluator: Optional[ExpressionEvaluator] = None
@@ -149,7 +151,7 @@ class DataFrame(
         self._validation_handler: Optional[ValidationHandler] = None
         self._condition_handler: Optional[ConditionHandler] = None
         # Observations for metrics tracking (PySpark 3.3+)
-        self._observations: Dict[str, Tuple[Column, ...]] = {}
+        self._observations: dict[str, tuple[Column, ...]] = {}
 
     def _get_lazy_engine(self) -> "LazyEvaluationEngine":
         """Get or create the lazy evaluation engine."""
@@ -207,7 +209,7 @@ class DataFrame(
         Returns:
             New DataFrame with the operation queued.
         """
-        new_ops: List[Tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
+        new_ops: list[tuple[str, Any]] = self._operations_queue + [(op_name, payload)]
         return cast(
             "SupportsDataFrameOps",
             DataFrame(
@@ -249,7 +251,7 @@ class DataFrame(
             self.schema, column_name, operation
         )
 
-    def _validate_columns_exist(self, column_names: List[str], operation: str) -> None:
+    def _validate_columns_exist(self, column_names: list[str], operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""
         self._get_validation_handler().validate_columns_exist(
             self.schema, column_names, operation
@@ -328,13 +330,13 @@ class DataFrame(
         self.registerTempTable(name)
 
     def _apply_condition(
-        self, data: List[Dict[str, Any]], condition: ColumnOperation
-    ) -> List[Dict[str, Any]]:
+        self, data: list[dict[str, Any]], condition: ColumnOperation
+    ) -> list[dict[str, Any]]:
         """Apply condition to filter data."""
         return self._get_condition_handler().apply_condition(data, condition)
 
     def _evaluate_condition(
-        self, row: Dict[str, Any], condition: Union[ColumnOperation, Column]
+        self, row: dict[str, Any], condition: Union[ColumnOperation, Column]
     ) -> bool:
         """Evaluate condition for a single row.
 
@@ -344,7 +346,7 @@ class DataFrame(
 
     def _evaluate_column_expression(
         self,
-        row: Dict[str, Any],
+        row: dict[str, Any],
         column_expression: Union[Column, ColumnOperation, Literal, Any],
     ) -> Any:
         """Evaluate a column expression for a single row.
@@ -361,15 +363,15 @@ class DataFrame(
         )
 
     def _evaluate_window_functions(
-        self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
-    ) -> List[Dict[str, Any]]:
+        self, data: list[dict[str, Any]], window_functions: list[tuple[Any, ...]]
+    ) -> list[dict[str, Any]]:
         """Evaluate window functions across all rows."""
         return self._get_window_handler().evaluate_window_functions(
             data, window_functions
         )
 
     def _evaluate_lag_lead(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
     ) -> None:
         """Evaluate lag or lead window function."""
         return self._get_window_handler()._evaluate_lag_lead(
@@ -378,10 +380,10 @@ class DataFrame(
 
     def _apply_ordering_to_indices(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
-        order_by_cols: List[Union[Column, ColumnOperation]],
-    ) -> List[int]:
+        data: list[dict[str, Any]],
+        indices: list[int],
+        order_by_cols: list[Union[Column, ColumnOperation]],
+    ) -> list[int]:
         """Apply ordering to a list of indices based on order by columns."""
         return self._get_window_handler()._apply_ordering_to_indices(
             data, indices, order_by_cols
@@ -389,8 +391,8 @@ class DataFrame(
 
     def _apply_lag_lead_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
+        data: list[dict[str, Any]],
+        indices: list[int],
         source_col: str,
         target_col: str,
         offset: int,
@@ -403,7 +405,7 @@ class DataFrame(
         )
 
     def _evaluate_rank_functions(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate rank or dense_rank window function."""
         return self._get_window_handler()._evaluate_rank_functions(
@@ -412,9 +414,9 @@ class DataFrame(
 
     def _apply_rank_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
-        order_by_cols: List[Any],
+        data: list[dict[str, Any]],
+        indices: list[int],
+        order_by_cols: list[Any],
         col_name: str,
         is_dense: bool,
     ) -> None:
@@ -424,7 +426,7 @@ class DataFrame(
         )
 
     def _evaluate_aggregate_window_functions(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions like avg, sum, count, etc."""
         return self._get_window_handler()._evaluate_aggregate_window_functions(
@@ -433,8 +435,8 @@ class DataFrame(
 
     def _apply_aggregate_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
+        data: list[dict[str, Any]],
+        indices: list[int],
         window_func: Any,
         col_name: str,
     ) -> None:
@@ -443,12 +445,12 @@ class DataFrame(
             data, indices, window_func, col_name
         )
 
-    def _evaluate_case_when(self, row: Dict[str, Any], case_when_obj: Any) -> Any:
+    def _evaluate_case_when(self, row: dict[str, Any], case_when_obj: Any) -> Any:
         """Evaluate CASE WHEN expression for a row."""
         return self._get_condition_handler().evaluate_case_when(row, case_when_obj)
 
     def _evaluate_case_when_condition(
-        self, row: Dict[str, Any], condition: Any
+        self, row: dict[str, Any], condition: Any
     ) -> bool:
         """Evaluate a CASE WHEN condition for a row."""
         return self._get_condition_handler()._evaluate_case_when_condition(
@@ -515,8 +517,8 @@ class DataFrame(
     # sample is now provided by MiscellaneousOperations mixin
 
     def randomSplit(
-        self, weights: List[float], seed: Optional[int] = None
-    ) -> List[SupportsDataFrameOps]:
+        self, weights: list[float], seed: Optional[int] = None
+    ) -> list[SupportsDataFrameOps]:
         """Randomly split DataFrame into multiple DataFrames.
 
         Args:
@@ -550,13 +552,13 @@ class DataFrame(
 
         # Calculate split points
         cumulative_weight = 0.0
-        split_points: List[int] = []
+        split_points: list[int] = []
         for weight in weights:
             cumulative_weight += weight
             split_points.append(int(len(self.data) * cumulative_weight))
 
         # Create splits
-        splits: List[SupportsDataFrameOps] = []
+        splits: list[SupportsDataFrameOps] = []
         start_idx = 0
 
         for end_idx in split_points:
@@ -766,9 +768,6 @@ class DataFrame(
         # Materialize if lazy
         materialized = self._materialize_if_lazy()
 
-        # Convert data to Row objects
-        from typing import Iterator
-
         def row_iterator() -> Iterator[Row]:
             for row_dict in materialized.data:
                 yield Row(row_dict)
@@ -831,9 +830,6 @@ class DataFrame(
         # Convert to pandas DataFrame
         input_pdf = pd.DataFrame(materialized.data)
 
-        # Create an iterator that yields the pandas DataFrame
-        from typing import Iterator
-
         def input_iterator() -> Iterator[Any]:
             yield input_pdf
 
@@ -852,7 +848,7 @@ class DataFrame(
             result_pdfs.append(result_pdf)
 
         # Concatenate all results
-        result_data: List[Dict[str, Any]] = []
+        result_data: list[dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
@@ -909,8 +905,8 @@ class DataFrame(
 
     def unpivot(
         self,
-        ids: Union[str, List[str]],
-        values: Union[str, List[str]],
+        ids: Union[str, list[str]],
+        values: Union[str, list[str]],
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> "DataFrame":
@@ -993,7 +989,7 @@ class DataFrame(
         unpivoted_schema = StructType(fields)
         return DataFrame(unpivoted_data, unpivoted_schema, self.storage)
 
-    def inputFiles(self) -> List[str]:
+    def inputFiles(self) -> list[str]:
         """Return list of input files for this DataFrame (PySpark 3.1+).
 
         Returns:
@@ -1101,10 +1097,10 @@ class DataFrame(
     # Priority 3: Common DataFrame Methods
     def approxQuantile(
         self,
-        col: Union[str, List[str]],
-        probabilities: List[float],
+        col: Union[str, list[str]],
+        probabilities: list[float],
         relativeError: float,
-    ) -> Union[List[float], List[List[float]]]:
+    ) -> Union[list[float], list[list[float]]]:
         """Calculate approximate quantiles (all PySpark versions).
 
         Args:
@@ -1117,8 +1113,8 @@ class DataFrame(
         """
         import numpy as np
 
-        def calc_quantiles(column_name: str) -> List[float]:
-            values_list: List[float] = []
+        def calc_quantiles(column_name: str) -> list[float]:
+            values_list: list[float] = []
             for row in self.data:
                 val = row.get(column_name)
                 if val is not None:
@@ -1172,7 +1168,7 @@ class DataFrame(
         from collections import defaultdict
 
         # Build cross-tab structure
-        crosstab_data: Dict[Any, Dict[Any, int]] = defaultdict(lambda: defaultdict(int))
+        crosstab_data: dict[Any, dict[Any, int]] = defaultdict(lambda: defaultdict(int))
         col2_values = set()
 
         for row in self.data:
@@ -1200,7 +1196,7 @@ class DataFrame(
         return DataFrame(result_data, result_schema, self.storage)
 
     def freqItems(
-        self, cols: List[str], support: Optional[float] = None
+        self, cols: list[str], support: Optional[float] = None
     ) -> "DataFrame":
         """Find frequent items (all PySpark versions).
 
@@ -1254,7 +1250,7 @@ class DataFrame(
     # isEmpty is now provided by DisplayOperations mixin
 
     def sampleBy(
-        self, col: str, fractions: Dict[Any, float], seed: Optional[int] = None
+        self, col: str, fractions: dict[Any, float], seed: Optional[int] = None
     ) -> "DataFrame":
         """Stratified sampling (all PySpark versions).
 
@@ -1394,8 +1390,8 @@ class DataFrame(
 
     def melt(
         self,
-        ids: Optional[List[str]] = None,
-        values: Optional[List[str]] = None,
+        ids: Optional[list[str]] = None,
+        values: Optional[list[str]] = None,
         variableColumnName: str = "variable",
         valueColumnName: str = "value",
     ) -> "DataFrame":
@@ -1476,7 +1472,7 @@ class DataFrame(
 
         return DataFrame(result_data, target_schema, self.storage)
 
-    def withMetadata(self, columnName: str, metadata: Dict[str, Any]) -> "DataFrame":
+    def withMetadata(self, columnName: str, metadata: dict[str, Any]) -> "DataFrame":
         """Attach metadata to a column (PySpark 3.3+).
 
         Args:

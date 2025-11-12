@@ -26,9 +26,6 @@ class TestTablePersistence:
             yield db_path
             # Clean up handled by TemporaryDirectory
 
-    @pytest.mark.skip(
-        reason="Table persistence across sessions needs to be re-implemented for Polars file backend"
-    )
     def test_table_persistence_across_sessions(self, temp_db_path):
         """Test that tables persist across different sessions when using persistent storage."""
         # First session - create table
@@ -85,9 +82,6 @@ class TestTablePersistence:
         finally:
             spark2.stop()
 
-    @pytest.mark.skip(
-        reason="Table persistence across sessions needs to be re-implemented for Polars file backend"
-    )
     def test_append_to_persistent_table_across_sessions(self, temp_db_path):
         """Test appending to a persistent table across sessions."""
         # First session - create and append

@@ -30,7 +30,7 @@ Status will be updated as each theme is addressed.
 ## Progress Log
 
 - **2025-11-07** — Normalised type aliases in `mock_spark/compat/datetime.py`
-  (now using `TypeAlias` fallback) and cleaned helper annotations in
+  (now using standard 3.9 generics without runtime fallbacks) and cleaned helper annotations in
   `tests/tools/` and `mock_spark/backend/polars/{schema_registry,storage}.py`.
   Refreshed `mypy-baseline.log` after changes (still pending interface/optional
   work).

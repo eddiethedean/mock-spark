@@ -14,7 +14,7 @@ Key behaviors:
 - Supports sparse data (different keys per row)
 """
 
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 from ..spark_types import (
     StructType,
@@ -36,8 +36,8 @@ class SchemaInferenceEngine:
 
     @staticmethod
     def infer_from_data(
-        data: List[Dict[str, Any]],
-    ) -> Tuple[StructType, List[Dict[str, Any]]]:
+        data: list[dict[str, Any]],
+    ) -> tuple[StructType, list[dict[str, Any]]]:
         """
         Infer schema from a list of dictionaries.
 
@@ -66,7 +66,7 @@ class SchemaInferenceEngine:
             return StructType([]), []
 
         # Collect all unique keys from all rows (sparse data support)
-        all_keys: Set[str] = set()
+        all_keys: set[str] = set()
         for row in data:
             if isinstance(row, dict):
                 all_keys.update(row.keys())
@@ -201,7 +201,7 @@ class SchemaInferenceEngine:
 
 
 # Convenience functions for external use
-def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
+def infer_schema_from_data(data: list[dict[str, Any]]) -> StructType:
     """
     Infer schema from data (convenience function).
 
@@ -216,8 +216,8 @@ def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
 
 
 def normalize_data_for_schema(
-    data: List[Dict[str, Any]], schema: StructType
-) -> List[Dict[str, Any]]:
+    data: list[dict[str, Any]], schema: StructType
+) -> list[dict[str, Any]]:
     """
     Normalize data to match schema (fill missing keys, reorder).
 

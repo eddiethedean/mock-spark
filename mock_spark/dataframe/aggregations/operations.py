@@ -5,7 +5,7 @@ This mixin provides aggregation operations that can be mixed into
 the DataFrame class to add aggregation capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast
 
 from ...core.exceptions.operation import SparkColumnNotFoundError
 from ...functions import Column, ColumnOperation
@@ -13,7 +13,7 @@ from ..grouped import GroupedData
 from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
-    from pyspark.sql.types import StructType
+    from ...spark_types import StructType
 
 SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
@@ -23,8 +23,8 @@ class AggregationOperations(Generic[SupportsDF]):
 
     if TYPE_CHECKING:
         schema: StructType
-        data: List[Dict[str, Any]]
-        _operations_queue: List[Tuple[str, Any]]
+        data: list[dict[str, Any]]
+        _operations_queue: list[tuple[str, Any]]
 
         def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
 
@@ -70,7 +70,9 @@ class AggregationOperations(Generic[SupportsDF]):
         """
         return self.groupBy(*cols, **kwargs)
 
-    def rollup(self: SupportsDF, *columns: Union[str, Column]) -> Any:  # Returns RollupGroupedData
+    def rollup(
+        self: SupportsDF, *columns: Union[str, Column]
+    ) -> Any:  # Returns RollupGroupedData
         """Create rollup grouped data for hierarchical grouping.
 
         Args:
@@ -99,7 +101,9 @@ class AggregationOperations(Generic[SupportsDF]):
 
         return RollupGroupedData(self, col_names)
 
-    def cube(self: SupportsDF, *columns: Union[str, Column]) -> Any:  # Returns CubeGroupedData
+    def cube(
+        self: SupportsDF, *columns: Union[str, Column]
+    ) -> Any:  # Returns CubeGroupedData
         """Create cube grouped data for multi-dimensional grouping.
 
         Args:

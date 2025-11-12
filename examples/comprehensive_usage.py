@@ -12,7 +12,7 @@ Showcases advanced features including:
 Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
 """
 
-from typing import List, Dict, Any
+from typing import Any
 import os
 import sys
 
@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from mock_spark.sql import SparkSession, functions as F, Window
 
 
-def create_sample_data() -> List[Dict[str, Any]]:
+def create_sample_data() -> list[dict[str, Any]]:
     """Generate comprehensive sample dataset."""
     return [
         {

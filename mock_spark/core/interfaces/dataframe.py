@@ -6,7 +6,7 @@ ensuring consistent behavior across all DataFrame implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 from ..types.schema import ISchema
 
 
@@ -21,7 +21,7 @@ class IDataFrame(ABC):
 
     @property
     @abstractmethod
-    def columns(self) -> List[str]:
+    def columns(self) -> list[str]:
         """Get column names."""
         pass
 
@@ -51,7 +51,7 @@ class IDataFrame(ABC):
         pass
 
     @abstractmethod
-    def collect(self) -> List[Any]:
+    def collect(self) -> list[Any]:
         """Collect all rows."""
         pass
 
@@ -76,7 +76,7 @@ class IDataFrame(ABC):
         pass
 
     @abstractmethod
-    def rename(self, *mapping: Tuple[str, str]) -> "IDataFrame":
+    def rename(self, *mapping: tuple[str, str]) -> "IDataFrame":
         """Rename columns."""
         pass
 
@@ -92,7 +92,7 @@ class IDataFrame(ABC):
 
     @abstractmethod
     def join(
-        self, other: "IDataFrame", on: Union[str, List[str]], how: str = "inner"
+        self, other: "IDataFrame", on: Union[str, list[str]], how: str = "inner"
     ) -> "IDataFrame":
         """Join with another DataFrame."""
         pass
@@ -270,7 +270,7 @@ class IRDD(ABC):
     """Abstract interface for RDD operations."""
 
     @abstractmethod
-    def collect(self) -> List[Any]:
+    def collect(self) -> list[Any]:
         """Collect RDD elements."""
         pass
 
@@ -285,7 +285,7 @@ class IRDD(ABC):
         pass
 
     @abstractmethod
-    def take(self, n: int) -> List[Any]:
+    def take(self, n: int) -> list[Any]:
         """Take first n elements."""
         pass
 

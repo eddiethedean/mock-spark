@@ -5,7 +5,7 @@ This mixin provides join and set operations that can be mixed into
 the DataFrame class to add join capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Generic, List, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast
 
 from ...spark_types import DataType, StringType, StructField, StructType
 from ..protocols import SupportsDataFrameOps
@@ -21,16 +21,16 @@ class JoinOperations(Generic[SupportsDF]):
 
     if TYPE_CHECKING:
         schema: StructType
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
         storage: Any
-        _operations_queue: List[Tuple[str, Any]]
+        _operations_queue: list[tuple[str, Any]]
 
         def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
 
     def join(
         self: SupportsDF,
         other: SupportsDataFrameOps,
-        on: Union[str, List[str], "ColumnOperation"],
+        on: Union[str, list[str], "ColumnOperation"],
         how: str = "inner",
     ) -> SupportsDF:
         """Join with another DataFrame."""
@@ -230,9 +230,7 @@ class JoinOperations(Generic[SupportsDF]):
 
         return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))
 
-    def intersectAll(
-        self: SupportsDF, other: SupportsDataFrameOps
-    ) -> SupportsDF:
+    def intersectAll(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Return intersection with duplicates (PySpark 3.0+).
 
         Args:
@@ -243,7 +241,7 @@ class JoinOperations(Generic[SupportsDF]):
         """
         from collections import Counter
 
-        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
+        def row_to_tuple(row: dict[str, Any]) -> tuple[Any, ...]:
             return tuple(row.get(field.name) for field in self.schema.fields)
 
         # Count occurrences in each DataFrame
@@ -265,9 +263,7 @@ class JoinOperations(Generic[SupportsDF]):
 
         return cast("SupportsDF", DataFrame(result_data, self.schema, self.storage))
 
-    def exceptAll(
-        self: SupportsDF, other: SupportsDataFrameOps
-    ) -> SupportsDF:
+    def exceptAll(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Except all with another DataFrame (set difference with duplicates).
 
         Args:
@@ -287,19 +283,18 @@ class JoinOperations(Generic[SupportsDF]):
         ]
 
         # Count occurrences in other DataFrame
-        from typing import Dict, List, Tuple
 
-        other_row_counts: Dict[Tuple[Any, ...], int] = {}
+        other_row_counts: dict[tuple[Any, ...], int] = {}
         for row_tuple in other_rows:
             other_row_counts[row_tuple] = other_row_counts.get(row_tuple, 0) + 1
 
         # Count occurrences in self DataFrame
-        self_row_counts: Dict[Tuple[Any, ...], int] = {}
+        self_row_counts: dict[tuple[Any, ...], int] = {}
         for row_tuple in self_rows:
             self_row_counts[row_tuple] = self_row_counts.get(row_tuple, 0) + 1
 
         # Calculate the difference preserving duplicates
-        result_rows: List[Tuple[Any, ...]] = []
+        result_rows: list[tuple[Any, ...]] = []
         for row_tuple in self_rows:
             # Count how many times this row appears in other
             other_count = other_row_counts.get(row_tuple, 0)
@@ -332,7 +327,7 @@ class JoinOperations(Generic[SupportsDF]):
         """
 
         # Convert rows to tuples for comparison
-        def row_to_tuple(row: Dict[str, Any]) -> Tuple[Any, ...]:
+        def row_to_tuple(row: dict[str, Any]) -> tuple[Any, ...]:
             return tuple(row.get(field.name) for field in self.schema.fields)
 
         self_rows = {row_to_tuple(row) for row in self.data}

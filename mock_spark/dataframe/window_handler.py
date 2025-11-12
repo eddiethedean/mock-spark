@@ -5,7 +5,7 @@ This module handles window function evaluation (row_number, rank, lag, lead, etc
 following the Single Responsibility Principle.
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import Any
 
 
 class WindowFunctionHandler:
@@ -20,8 +20,8 @@ class WindowFunctionHandler:
         self.dataframe = dataframe
 
     def evaluate_window_functions(
-        self, data: List[Dict[str, Any]], window_functions: List[Tuple[Any, ...]]
-    ) -> List[Dict[str, Any]]:
+        self, data: list[dict[str, Any]], window_functions: list[tuple[Any, ...]]
+    ) -> list[dict[str, Any]]:
         """Evaluate window functions across all rows."""
         result_data = data.copy()
 
@@ -40,7 +40,7 @@ class WindowFunctionHandler:
 
                     if partition_by_cols:
                         # Handle partitioning - group by partition columns
-                        partition_groups: Dict[Any, List[int]] = {}
+                        partition_groups: dict[Any, list[int]] = {}
                         for i, row in enumerate(result_data):
                             # Create partition key
                             partition_key = tuple(
@@ -135,7 +135,7 @@ class WindowFunctionHandler:
         return result_data
 
     def _evaluate_lag_lead(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
     ) -> None:
         """Evaluate lag or lead window function."""
         if not window_func.column_name:
@@ -156,7 +156,7 @@ class WindowFunctionHandler:
 
             if partition_by_cols:
                 # Handle partitioning
-                partition_groups: Dict[Any, List[int]] = {}
+                partition_groups: dict[Any, list[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
                         row.get(col.name) if hasattr(col, "name") else row.get(str(col))
@@ -209,13 +209,13 @@ class WindowFunctionHandler:
             )
 
     def _apply_ordering_to_indices(
-        self, data: List[Dict[str, Any]], indices: List[int], order_by_cols: List[Any]
-    ) -> List[int]:
+        self, data: list[dict[str, Any]], indices: list[int], order_by_cols: list[Any]
+    ) -> list[int]:
         """Apply ordering to a list of indices based on order by columns."""
         if not order_by_cols:
             return indices
 
-        def sort_key(idx: int) -> Tuple[Any, ...]:
+        def sort_key(idx: int) -> tuple[Any, ...]:
             row = data[idx]
             key_values = []
             for col in order_by_cols:
@@ -245,8 +245,8 @@ class WindowFunctionHandler:
 
     def _apply_lag_lead_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
+        data: list[dict[str, Any]],
+        indices: list[int],
         source_col: str,
         target_col: str,
         offset: int,
@@ -274,7 +274,7 @@ class WindowFunctionHandler:
                     data[idx][target_col] = default_value
 
     def _evaluate_first_last_value(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str, is_last: bool
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str, is_last: bool
     ) -> None:
         """Evaluate first_value or last_value window function."""
         if not window_func.column_name:
@@ -293,7 +293,7 @@ class WindowFunctionHandler:
 
             if partition_by_cols:
                 # Handle partitioning
-                partition_groups: Dict[Any, List[int]] = {}
+                partition_groups: dict[Any, list[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
                         row.get(col.name) if hasattr(col, "name") else row.get(str(col))
@@ -331,11 +331,11 @@ class WindowFunctionHandler:
 
     def _apply_first_last_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
+        data: list[dict[str, Any]],
+        indices: list[int],
         source_col: str,
         target_col: str,
-        order_by_cols: List[Any],
+        order_by_cols: list[Any],
         is_last: bool,
     ) -> None:
         """Apply first_value or last_value to a specific partition."""
@@ -365,7 +365,7 @@ class WindowFunctionHandler:
             data[idx][target_col] = value
 
     def _evaluate_rank_functions(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate rank or dense_rank window function."""
         is_dense = window_func.function_name == "dense_rank"
@@ -378,7 +378,7 @@ class WindowFunctionHandler:
 
             if partition_by_cols:
                 # Handle partitioning
-                partition_groups: Dict[Any, List[int]] = {}
+                partition_groups: dict[Any, list[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
                         row.get(col.name) if hasattr(col, "name") else row.get(str(col))
@@ -405,9 +405,9 @@ class WindowFunctionHandler:
 
     def _apply_rank_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
-        order_by_cols: List[Any],
+        data: list[dict[str, Any]],
+        indices: list[int],
+        order_by_cols: list[Any],
         col_name: str,
         is_dense: bool,
     ) -> None:
@@ -478,7 +478,7 @@ class WindowFunctionHandler:
                 data[idx][col_name] = current_rank
 
     def _evaluate_aggregate_window_functions(
-        self, data: List[Dict[str, Any]], window_func: Any, col_name: str
+        self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions like avg, sum, count, etc."""
         if not window_func.column_name and window_func.function_name not in ["count"]:
@@ -495,7 +495,7 @@ class WindowFunctionHandler:
 
             if partition_by_cols:
                 # Handle partitioning
-                partition_groups: Dict[Any, List[int]] = {}
+                partition_groups: dict[Any, list[int]] = {}
                 for i, row in enumerate(data):
                     partition_key = tuple(
                         row.get(col.name) if hasattr(col, "name") else row.get(str(col))
@@ -530,8 +530,8 @@ class WindowFunctionHandler:
 
     def _apply_aggregate_to_partition(
         self,
-        data: List[Dict[str, Any]],
-        indices: List[int],
+        data: list[dict[str, Any]],
+        indices: list[int],
         window_func: Any,
         col_name: str,
     ) -> None:

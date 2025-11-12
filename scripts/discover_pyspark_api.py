@@ -15,14 +15,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
-
 
 # PySpark versions to test
 PYSPARK_VERSIONS = ["3.0.3", "3.1.3", "3.2.4", "3.3.4", "3.4.3", "3.5.2"]
 
 
-def discover_api(spark_version: str) -> Dict[str, List[str]]:
+def discover_api(spark_version: str) -> dict[str, list[str]]:
     """
     Install PySpark version and catalog functions and DataFrame methods.
 
@@ -77,8 +75,8 @@ def discover_api(spark_version: str) -> Dict[str, List[str]]:
 
 
 def build_matrix(
-    versions_data: Dict[str, Dict[str, List[str]]],
-) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    versions_data: dict[str, dict[str, list[str]]],
+) -> dict[str, dict[str, dict[str, bool]]]:
     """
     Build a matrix showing which items exist in which versions.
 
@@ -89,8 +87,8 @@ def build_matrix(
         Dict with 'functions' and 'dataframe_methods' matrices
     """
     # Collect all unique items across all versions
-    all_functions: Set[str] = set()
-    all_df_methods: Set[str] = set()
+    all_functions: set[str] = set()
+    all_df_methods: set[str] = set()
 
     for data in versions_data.values():
         all_functions.update(data["functions"])
@@ -148,7 +146,7 @@ def save_json(matrix: Dict, output_path: Path) -> None:
     print(f"✓ Saved {output_path}")
 
 
-def save_markdown(matrix: Dict, output_path: Path, versions: List[str]) -> None:
+def save_markdown(matrix: Dict, output_path: Path, versions: list[str]) -> None:
     """Save matrix as markdown table."""
     print(f"\nGenerating markdown table at {output_path}...")
 

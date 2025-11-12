@@ -20,7 +20,7 @@ Example:
     'MyApp'
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from dataclasses import dataclass
 
 
@@ -75,7 +75,7 @@ class Configuration:
         """
         self._config[key] = str(value)
 
-    def setAll(self, pairs: Dict[str, Any]) -> None:
+    def setAll(self, pairs: dict[str, Any]) -> None:
         """Set multiple configuration values.
 
         Args:
@@ -100,7 +100,7 @@ class Configuration:
         """
         self.set("spark.app.name", name)
 
-    def getAll(self) -> Dict[str, str]:
+    def getAll(self) -> dict[str, str]:
         """Get all configuration values.
 
         Returns:
@@ -211,7 +211,7 @@ class ConfigBuilder:
         self._config.set(key, value)
         return self
 
-    def setAll(self, pairs: Dict[str, Any]) -> "ConfigBuilder":
+    def setAll(self, pairs: dict[str, Any]) -> "ConfigBuilder":
         """Set multiple configuration values.
 
         Args:

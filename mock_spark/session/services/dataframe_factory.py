@@ -5,7 +5,7 @@ This service handles DataFrame creation, schema inference, and validation
 following the Single Responsibility Principle.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 from mock_spark.spark_types import (
     StructType,
     StructField,
@@ -21,8 +21,8 @@ class DataFrameFactory:
 
     def create_dataframe(
         self,
-        data: Union[List[Dict[str, Any]], List[Any]],
-        schema: Optional[Union[StructType, List[str], str]],
+        data: Union[list[dict[str, Any]], list[Any]],
+        schema: Optional[Union[StructType, list[str], str]],
         engine_config: SparkConfig,
         storage: Any,
     ) -> DataFrame:
@@ -151,8 +151,8 @@ class DataFrameFactory:
         return DataFrame(data, schema, storage)
 
     def _handle_schema_inference(
-        self, data: List[Dict[str, Any]], schema: Optional[Any]
-    ) -> Tuple[StructType, List[Dict[str, Any]]]:
+        self, data: list[dict[str, Any]], schema: Optional[Any]
+    ) -> tuple[StructType, list[dict[str, Any]]]:
         """Handle schema inference or conversion.
 
         Args:
@@ -172,10 +172,10 @@ class DataFrameFactory:
 
     def _apply_validation_and_coercion(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: StructType,
         engine_config: SparkConfig,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Apply validation and type coercion.
 
         Args:

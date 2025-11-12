@@ -20,14 +20,14 @@ Example:
     'SELECT'
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 from ...core.exceptions.analysis import ParseException
 
 
 class SQLAST:
     """Abstract Syntax Tree for SQL queries."""
 
-    def __init__(self, query_type: str, components: Dict[str, Any], query: str = ""):
+    def __init__(self, query_type: str, components: dict[str, Any], query: str = ""):
         """Initialize SQL AST.
 
         Args:
@@ -307,7 +307,7 @@ class SQLParser:
         else:
             return "UNKNOWN"
 
-    def _parse_components(self, query: str, query_type: str) -> Dict[str, Any]:
+    def _parse_components(self, query: str, query_type: str) -> dict[str, Any]:
         """Parse query components based on query type.
 
         Args:
@@ -348,7 +348,7 @@ class SQLParser:
 
         return components
 
-    def _tokenize(self, query: str) -> List[str]:
+    def _tokenize(self, query: str) -> list[str]:
         """Tokenize SQL query.
 
         Args:
@@ -363,7 +363,7 @@ class SQLParser:
         tokens = re.findall(r"\b\w+\b|[(),;=<>!]+", query)
         return tokens
 
-    def _parse_select_query(self, query: str) -> Dict[str, Any]:
+    def _parse_select_query(self, query: str) -> dict[str, Any]:
         """Parse SELECT query components.
 
         Args:
@@ -373,7 +373,7 @@ class SQLParser:
             Dictionary of SELECT components.
         """
         # Mock implementation - in real parser this would be much more sophisticated
-        components: Dict[str, Union[List[str], None]] = {
+        components: dict[str, Union[list[str], None]] = {
             "select_columns": [],
             "from_tables": [],
             "where_conditions": [],
@@ -413,7 +413,7 @@ class SQLParser:
 
         return components
 
-    def _parse_create_query(self, query: str) -> Dict[str, Any]:
+    def _parse_create_query(self, query: str) -> dict[str, Any]:
         """Parse CREATE query components.
 
         Args:
@@ -449,7 +449,7 @@ class SQLParser:
             "definition": query,
         }
 
-    def _parse_drop_query(self, query: str) -> Dict[str, Any]:
+    def _parse_drop_query(self, query: str) -> dict[str, Any]:
         """Parse DROP query components.
 
         Args:
@@ -483,7 +483,7 @@ class SQLParser:
             "object_name": "unknown",
         }
 
-    def _parse_insert_query(self, query: str) -> Dict[str, Any]:
+    def _parse_insert_query(self, query: str) -> dict[str, Any]:
         """Parse INSERT query components.
 
         Args:
@@ -495,7 +495,7 @@ class SQLParser:
         # Mock implementation
         return {"table_name": "unknown", "columns": [], "values": []}
 
-    def _parse_update_query(self, query: str) -> Dict[str, Any]:
+    def _parse_update_query(self, query: str) -> dict[str, Any]:
         """Parse UPDATE query components.
 
         Args:
@@ -507,7 +507,7 @@ class SQLParser:
         # Mock implementation
         return {"table_name": "unknown", "set_clauses": [], "where_conditions": []}
 
-    def _parse_delete_query(self, query: str) -> Dict[str, Any]:
+    def _parse_delete_query(self, query: str) -> dict[str, Any]:
         """Parse DELETE query components.
 
         Args:
@@ -519,7 +519,7 @@ class SQLParser:
         # Mock implementation
         return {"table_name": "unknown", "where_conditions": []}
 
-    def _parse_merge_query(self, query: str) -> Dict[str, Any]:
+    def _parse_merge_query(self, query: str) -> dict[str, Any]:
         """Parse MERGE INTO query components.
 
         Args:

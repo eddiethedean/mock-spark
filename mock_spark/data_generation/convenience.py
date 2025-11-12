@@ -5,14 +5,14 @@ This module provides convenient functions for common data generation
 scenarios without requiring manual class instantiation.
 """
 
-from typing import List, Dict, Any
+from typing import Any
 from ..spark_types import StructType
 from .generator import MockDataGenerator
 
 
 def create_test_data(
     schema: StructType, num_rows: int = 100, seed: int = 42
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Create test data based on schema.
 
     Args:
@@ -31,7 +31,7 @@ def create_corrupted_data(
     corruption_rate: float = 0.1,
     num_rows: int = 100,
     seed: int = 42,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Create corrupted data for error testing.
 
     Args:
@@ -50,7 +50,7 @@ def create_corrupted_data(
 
 def create_realistic_data(
     schema: StructType, num_rows: int = 100, seed: int = 42
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Create realistic data with proper distributions.
 
     Args:

@@ -6,7 +6,7 @@ must satisfy. Using protocols enables dependency injection and makes modules
 testable independently.
 """
 
-from typing import Protocol, List, Dict, Any, Tuple
+from typing import Protocol, Any
 from mock_spark.spark_types import StructType, Row
 from mock_spark.core.interfaces.storage import IStorageManager
 
@@ -18,7 +18,7 @@ class QueryExecutor(Protocol):
     Implementations can use different engines.
     """
 
-    def execute_query(self, query: str) -> List[Dict[str, Any]]:
+    def execute_query(self, query: str) -> list[dict[str, Any]]:
         """Execute a SQL query and return results.
 
         Args:
@@ -30,7 +30,7 @@ class QueryExecutor(Protocol):
         ...
 
     def create_table(
-        self, name: str, schema: StructType, data: List[Dict[str, Any]]
+        self, name: str, schema: StructType, data: list[dict[str, Any]]
     ) -> None:
         """Create a table with the given schema and data.
 
@@ -55,10 +55,10 @@ class DataMaterializer(Protocol):
 
     def materialize(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: StructType,
-        operations: List[Tuple[str, Any]],
-    ) -> List[Row]:
+        operations: list[tuple[str, Any]],
+    ) -> list[Row]:
         """Materialize lazy operations into actual data.
 
         Args:

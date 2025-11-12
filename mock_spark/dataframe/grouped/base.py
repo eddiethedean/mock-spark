@@ -5,16 +5,7 @@ This module provides the core GroupedData class for DataFrame aggregation
 operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 import statistics
 
 from ...functions import (
@@ -40,7 +31,7 @@ class GroupedData:
     maintaining compatibility with PySpark's GroupedData interface.
     """
 
-    def __init__(self, df: SupportsDataFrameOps, group_columns: List[str]):
+    def __init__(self, df: SupportsDataFrameOps, group_columns: list[str]):
         """Initialize GroupedData.
 
         Args:
@@ -68,7 +59,7 @@ class GroupedData:
             self.df = self.df._materialize_if_lazy()
 
         # Group data by group columns
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        groups: dict[Any, list[dict[str, Any]]] = {}
         for row in self.df.data:
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -95,8 +86,6 @@ class GroupedData:
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name"):
                     # Handle AggregateFunction
-                    from typing import cast
-
                     result_key, result_value = self._evaluate_aggregate_function(
                         cast("AggregateFunction", expr), group_rows
                     )
@@ -133,7 +122,7 @@ class GroupedData:
 
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
-        literal_keys: Set[str] = set()
+        literal_keys: set[str] = set()
         for expr in exprs:
             if isinstance(expr, Literal):
                 lit_key = getattr(expr, "name", str(expr.value))
@@ -363,8 +352,8 @@ class GroupedData:
             return DataFrame(result_data, schema)
 
     def _evaluate_string_expression(
-        self, expr: str, group_rows: List[Dict[str, Any]]
-    ) -> Tuple[str, Any]:
+        self, expr: str, group_rows: list[dict[str, Any]]
+    ) -> tuple[str, Any]:
         """Evaluate string aggregation expression.
 
         Args:
@@ -428,8 +417,8 @@ class GroupedData:
             return expr, None
 
     def _evaluate_aggregate_function(
-        self, expr: AggregateFunction, group_rows: List[Dict[str, Any]]
-    ) -> Tuple[str, Any]:
+        self, expr: AggregateFunction, group_rows: list[dict[str, Any]]
+    ) -> tuple[str, Any]:
         """Evaluate AggregateFunction.
 
         Args:
@@ -998,21 +987,15 @@ class GroupedData:
                 x_col = getattr(column_expr, "value", None)
                 if y_col is None or x_col is None:
                     result_key = (
-                        alias_name
-                        if alias_name
-                        else f"{func_name}({col_name})"
+                        alias_name if alias_name else f"{func_name}({col_name})"
                     )
                     return result_key, None
 
-                y_col_name = (
-                    y_col.name if hasattr(y_col, "name") else str(y_col)
-                )
-                x_col_name = (
-                    x_col.name if hasattr(x_col, "name") else str(x_col)
-                )
+                y_col_name = y_col.name if hasattr(y_col, "name") else str(y_col)
+                x_col_name = x_col.name if hasattr(x_col, "name") else str(x_col)
 
                 # Get pairs of (y, x) values where both are not None
-                cleaned_pairs: List[Tuple[float, float]] = []
+                cleaned_pairs: list[tuple[float, float]] = []
                 for row in group_rows:
                     y_raw = row.get(y_col_name)
                     x_raw = row.get(x_col_name)
@@ -1031,8 +1014,8 @@ class GroupedData:
                     )
                     return result_key, None
 
-                y_values: List[float] = [pair[0] for pair in cleaned_pairs]
-                x_values: List[float] = [pair[1] for pair in cleaned_pairs]
+                y_values: list[float] = [pair[0] for pair in cleaned_pairs]
+                x_values: list[float] = [pair[1] for pair in cleaned_pairs]
                 n = len(cleaned_pairs)
 
                 # Calculate basic statistics
@@ -1094,9 +1077,7 @@ class GroupedData:
 
             # Values of the column
             values = [
-                row.get(col_name)
-                for row in group_rows
-                if row.get(col_name) is not None
+                row.get(col_name) for row in group_rows if row.get(col_name) is not None
             ]
 
             if not values:
@@ -1109,10 +1090,7 @@ class GroupedData:
             column_expr = getattr(expr, "column", None)
             column_operation = getattr(column_expr, "operation", None)
             operation_value = getattr(column_operation, "value", None)
-            if (
-                isinstance(operation_value, tuple)
-                and len(operation_value) >= 1
-            ):
+            if isinstance(operation_value, tuple) and len(operation_value) >= 1:
                 first_arg = operation_value[0]
                 if isinstance(first_arg, (int, float)):
                     percentage = float(first_arg)
@@ -1148,8 +1126,8 @@ class GroupedData:
     def _evaluate_column_expression(
         self,
         expr: Union[Column, ColumnOperation],
-        group_rows: List[Dict[str, Any]],
-    ) -> Tuple[str, Any]:
+        group_rows: list[dict[str, Any]],
+    ) -> tuple[str, Any]:
         """Evaluate Column or ColumnOperation.
 
         Args:
@@ -1457,7 +1435,7 @@ class GroupedData:
         return CubeGroupedData(self.df, col_names)
 
     def pivot(
-        self, pivot_col: str, values: Optional[List[Any]] = None
+        self, pivot_col: str, values: Optional[list[Any]] = None
     ) -> "PivotGroupedData":
         """Create pivot grouped data.
 
@@ -1519,7 +1497,7 @@ class GroupedData:
         df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
+        groups: dict[Any, list[dict[str, Any]]] = {}
         for row in df.data:
             group_key = tuple(row.get(col) for col in self.group_columns)
             if group_key not in groups:
@@ -1543,7 +1521,7 @@ class GroupedData:
             result_pdfs.append(result_pdf)
 
         # Concatenate all results
-        result_data: List[Dict[str, Any]] = []
+        result_data: list[dict[str, Any]] = []
         if result_pdfs:
             combined_pdf = pd.concat(result_pdfs, ignore_index=True)
             # Convert to records and ensure string keys
@@ -1608,8 +1586,8 @@ class GroupedData:
         df = self.df._materialize_if_lazy() if self.df._operations_queue else self.df
 
         # Group data by group columns
-        groups: Dict[Any, List[Dict[str, Any]]] = {}
-        group_indices: Dict[Any, List[int]] = {}  # Track original indices
+        groups: dict[Any, list[dict[str, Any]]] = {}
+        group_indices: dict[Any, list[int]] = {}  # Track original indices
 
         for idx, row in enumerate(df.data):
             group_key = tuple(row.get(col) for col in self.group_columns)
@@ -1620,7 +1598,7 @@ class GroupedData:
             group_indices[group_key].append(idx)
 
         # Apply function to each group and preserve order
-        result_rows: List[Dict[str, Any]] = [{}] * len(df.data)
+        result_rows: list[dict[str, Any]] = [{}] * len(df.data)
 
         for group_key, group_rows in groups.items():
             # Convert group to pandas DataFrame

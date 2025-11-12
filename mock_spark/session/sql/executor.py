@@ -20,7 +20,7 @@ Example:
     >>> result.show()
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 from ...core.exceptions.execution import QueryExecutionException
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.session import ISession
@@ -128,7 +128,7 @@ class SQLExecutor:
 
             # For now, create a simple DataFrame with one row
             # This is a basic implementation for literal SELECT queries
-            data: List[Dict[str, Any]] = [
+            data: list[dict[str, Any]] = [
                 {}
             ]  # Empty row, we'll populate based on SELECT columns
             schema = StructType([])

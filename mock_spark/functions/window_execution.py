@@ -4,7 +4,7 @@ Window functions for Mock Spark.
 This module contains window function implementations including row_number, rank, etc.
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 import contextlib
 
 if TYPE_CHECKING:
@@ -78,7 +78,7 @@ class WindowFunction:
         self.name = name
         return self
 
-    def evaluate(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def evaluate(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate the window function over the data.
 
         Args:
@@ -120,11 +120,11 @@ class WindowFunction:
         else:
             return [None] * len(data)
 
-    def _evaluate_row_number(self, data: List[Dict[str, Any]]) -> List[int]:
+    def _evaluate_row_number(self, data: list[dict[str, Any]]) -> list[int]:
         """Evaluate row_number() window function."""
         return list(range(1, len(data) + 1))
 
-    def _evaluate_rank(self, data: List[Dict[str, Any]]) -> List[int]:
+    def _evaluate_rank(self, data: list[dict[str, Any]]) -> list[int]:
         """Evaluate rank() window function."""
         if not data:
             return []
@@ -175,14 +175,14 @@ class WindowFunction:
 
         return ranks
 
-    def _evaluate_dense_rank(self, data: List[Dict[str, Any]]) -> List[int]:
+    def _evaluate_dense_rank(self, data: list[dict[str, Any]]) -> list[int]:
         """Evaluate dense_rank() window function."""
         # Simple dense rank implementation - returns row numbers for now
         return list(range(1, len(data) + 1))
 
-    def _evaluate_lag(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_lag(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate lag() window function."""
-        results: List[Any] = [None]  # First row has no previous value
+        results: list[Any] = [None]  # First row has no previous value
         for i in range(1, len(data)):
             # Get the column value from the previous row
             if self.column_name and self.column_name in data[i - 1]:
@@ -191,9 +191,9 @@ class WindowFunction:
                 results.append(None)
         return results
 
-    def _evaluate_lead(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_lead(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate lead() window function."""
-        results: List[Any] = []
+        results: list[Any] = []
         for i in range(len(data) - 1):
             # Get the column value from the next row
             if self.column_name and self.column_name in data[i + 1]:
@@ -203,14 +203,14 @@ class WindowFunction:
         results.append(None)  # Last row has no next value
         return results
 
-    def _evaluate_nth_value(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_nth_value(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate nth_value() window function."""
         # For simplicity, return the first value for all rows
         if not data:
             return []
         return [data[0]] * len(data)
 
-    def _evaluate_ntile(self, data: List[Dict[str, Any]]) -> List[int]:
+    def _evaluate_ntile(self, data: list[dict[str, Any]]) -> list[int]:
         """Evaluate ntile() window function."""
         if not data:
             return []
@@ -218,21 +218,21 @@ class WindowFunction:
         n = len(data)
         return list(range(1, n + 1))
 
-    def _evaluate_cume_dist(self, data: List[Dict[str, Any]]) -> List[float]:
+    def _evaluate_cume_dist(self, data: list[dict[str, Any]]) -> list[float]:
         """Evaluate cume_dist() window function."""
         if not data:
             return []
         n = len(data)
         return [i / n for i in range(1, n + 1)]
 
-    def _evaluate_percent_rank(self, data: List[Dict[str, Any]]) -> List[float]:
+    def _evaluate_percent_rank(self, data: list[dict[str, Any]]) -> list[float]:
         """Evaluate percent_rank() window function."""
         if not data:
             return []
         n = len(data)
         return [i / (n - 1) if n > 1 else 0.0 for i in range(n)]
 
-    def _evaluate_first(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_first(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate first() window function."""
         if not data:
             return []
@@ -251,7 +251,7 @@ class WindowFunction:
 
         return [first_value] * len(data)
 
-    def _evaluate_last(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_last(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate last() window function."""
         if not data:
             return []
@@ -270,7 +270,7 @@ class WindowFunction:
 
         return [last_value] * len(data)
 
-    def _evaluate_sum(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_sum(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate sum() window function."""
         if not data:
             return []
@@ -292,7 +292,7 @@ class WindowFunction:
 
         return result
 
-    def _evaluate_avg(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_avg(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate avg() window function."""
         if not data:
             return []
@@ -303,7 +303,7 @@ class WindowFunction:
             return [None] * len(data)
 
         # Calculate average for each position
-        result: List[Optional[float]] = []
+        result: list[Optional[float]] = []
         running_sum = 0.0
         count = 0
 
@@ -322,7 +322,7 @@ class WindowFunction:
 
         return result
 
-    def _evaluate_first_value(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_first_value(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate first_value() window function."""
         if not data:
             return []
@@ -343,7 +343,7 @@ class WindowFunction:
         # Return the first value for all rows in the window
         return [first_value] * len(data)
 
-    def _evaluate_last_value(self, data: List[Dict[str, Any]]) -> List[Any]:
+    def _evaluate_last_value(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate last_value() window function."""
         if not data:
             return []

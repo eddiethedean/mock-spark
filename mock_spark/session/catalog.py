@@ -21,7 +21,7 @@ Example:
     [Database(name='test_db')]
 """
 
-from typing import Any, List, Optional, Set
+from typing import Any, Optional
 from ..core.interfaces.storage import IStorageManager
 from ..core.exceptions.analysis import AnalysisException
 from ..core.exceptions.validation import IllegalArgumentException
@@ -93,9 +93,9 @@ class Catalog:
             storage: Storage manager instance.
         """
         self.storage = storage
-        self._cached_tables: Set[str] = set()  # Track cached tables
+        self._cached_tables: set[str] = set()  # Track cached tables
 
-    def listDatabases(self) -> List[Database]:
+    def listDatabases(self) -> list[Database]:
         """List all databases.
 
         Returns:
@@ -283,7 +283,7 @@ class Catalog:
                 f"Failed to check table existence '{dbName}.{tableName}': {str(e)}"
             )
 
-    def listTables(self, dbName: Optional[str] = None) -> List[Table]:
+    def listTables(self, dbName: Optional[str] = None) -> list[Table]:
         """List tables in database.
 
         Args:

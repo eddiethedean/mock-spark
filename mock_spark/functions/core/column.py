@@ -5,7 +5,7 @@ This module provides the Column class for DataFrame column operations,
 maintaining compatibility with PySpark's Column interface.
 """
 
-from typing import Any, List, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 from ...spark_types import DataType, StringType
 
 if TYPE_CHECKING:
@@ -18,6 +18,7 @@ class ColumnOperatorMixin:
     """Mixin providing common operator methods for Column and ColumnOperation."""
 
     if TYPE_CHECKING:
+
         @property
         def name(self) -> str: ...
 
@@ -109,7 +110,7 @@ class ColumnOperatorMixin:
         """Check if column value is not null (PySpark compatibility)."""
         return self.isnotnull()
 
-    def isin(self, values: List[Any]) -> "ColumnOperation":
+    def isin(self, values: list[Any]) -> "ColumnOperation":
         """Check if column value is in list of values."""
         return self._create_operation("isin", values)
 
@@ -177,7 +178,7 @@ class Column(ColumnOperatorMixin):
         self.column_type = column_type or StringType()
         self.operation = None
         self.operand = None
-        self._operations: List[ColumnOperation] = []
+        self._operations: list[ColumnOperation] = []
         # Add expr attribute for PySpark compatibility
         self.expr = f"Column('{name}')"
 

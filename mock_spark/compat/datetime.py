@@ -4,28 +4,32 @@ These helpers normalise date and timestamp outputs when running on the
 Polars-backed Mock Spark engine, while acting as no-ops under real PySpark.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from datetime import date, datetime
-from typing import Union, cast
-
-try:  # Python <3.10 support
-    from typing import TypeAlias  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover - fallback for older versions
-    from typing_extensions import TypeAlias
-
-try:  # pragma: no cover - optional dependency
-    from pyspark.sql.column import Column as PySparkColumn  # type: ignore
-except Exception:  # pragma: no cover - PySpark not available in Mock Spark env
-    PySparkColumn = None
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from mock_spark.functions import Functions as F
 from mock_spark.functions.base import Column, ColumnOperation
 from mock_spark.spark_types import Row
 
-ColumnLike: TypeAlias = Union[str, Column, ColumnOperation]
-RowLike: TypeAlias = Union[Row, Mapping[str, object]]
+if TYPE_CHECKING:
+    from pyspark.sql.column import Column as PySparkColumnType
+else:  # pragma: no cover - PySpark not available in Mock Spark env
+    PySparkColumnType = Any
+
+PySparkColumn: Optional[type[PySparkColumnType]]
+try:  # pragma: no cover - optional dependency
+    from pyspark.sql.column import Column as _RuntimePySparkColumn  # type: ignore
+except Exception:  # pragma: no cover - PySpark not available in Mock Spark env
+    PySparkColumn = None
+else:
+    PySparkColumn = cast(
+        "Optional[type[PySparkColumnType]]",
+        _RuntimePySparkColumn,  # type: ignore[arg-type]
+    )
+
+ColumnLike = Union[str, Column, ColumnOperation]
+RowLike = Union[Row, Mapping[str, object]]
 
 
 def _is_pyspark_column(column: object) -> bool:
@@ -45,7 +49,7 @@ def _ensure_to_date_operation(column: ColumnLike) -> ColumnOperation:
 
 
 def _ensure_to_timestamp_operation(
-    column: ColumnLike, fmt: str | None
+    column: ColumnLike, fmt: Optional[str]
 ) -> ColumnOperation:
     if isinstance(column, ColumnOperation):
         if getattr(column, "operation", None) == "to_timestamp":
@@ -60,7 +64,7 @@ def _ensure_to_timestamp_operation(
 
 def to_date_str(
     column: ColumnLike, fmt: str = "yyyy-MM-dd"
-) -> ColumnOperation | ColumnLike:
+) -> Union[ColumnOperation, ColumnLike]:
     """Ensure ``to_date`` results are represented as ISO-8601 strings.
 
     When running under PySpark, the function returns the original column to avoid
@@ -79,8 +83,8 @@ def to_date_str(
 def to_timestamp_str(
     column: ColumnLike,
     fmt: str = "yyyy-MM-dd HH:mm:ss",
-    source_format: str | None = None,
-) -> ColumnOperation | ColumnLike:
+    source_format: Optional[str] = None,
+) -> Union[ColumnOperation, ColumnLike]:
     """Format ``to_timestamp`` outputs as strings when using Mock Spark."""
 
     if _is_pyspark_column(column):  # type: ignore[arg-type]
@@ -91,7 +95,7 @@ def to_timestamp_str(
     return formatted.alias(to_timestamp_op.name)
 
 
-def normalize_date_value(value: object) -> str | None:
+def normalize_date_value(value: object) -> Optional[str]:
     """Convert Python ``date`` values to ISO strings while leaving others intact."""
 
     if value is None:
@@ -103,7 +107,7 @@ def normalize_date_value(value: object) -> str | None:
 
 def normalize_timestamp_value(
     value: object, fmt: str = "%Y-%m-%d %H:%M:%S"
-) -> str | None:
+) -> Optional[str]:
     """Convert Python ``datetime`` values to formatted strings."""
 
     if value is None:
@@ -116,10 +120,10 @@ def normalize_timestamp_value(
 def normalize_collected_datetimes(
     rows: Sequence[RowLike],
     *,
-    date_columns: Iterable[str] | None = None,
-    timestamp_columns: Iterable[str] | None = None,
+    date_columns: Optional[Iterable[str]] = None,
+    timestamp_columns: Optional[Iterable[str]] = None,
     timestamp_format: str = "%Y-%m-%d %H:%M:%S",
-) -> list[MutableMapping[str, str | None]]:
+) -> list[MutableMapping[str, object]]:
     """Normalise collected Row objects containing date/timestamp values.
 
     Returns a list of dictionaries to make downstream assertions (especially in
@@ -129,16 +133,13 @@ def normalize_collected_datetimes(
     date_cols = list(date_columns or [])
     ts_cols = list(timestamp_columns or [])
 
-    normalized: list[MutableMapping[str, str | None]] = []
+    normalized: list[MutableMapping[str, object]] = []
 
     for row in rows:
         if isinstance(row, Mapping):
-            data = dict(row)
+            data: MutableMapping[str, object] = dict(row)
         else:
-            try:
-                data = row.asDict(recursive=True)
-            except TypeError:
-                data = row.asDict()
+            data = cast("MutableMapping[str, object]", row.asDict())
 
         for col in date_cols:
             if col in data:

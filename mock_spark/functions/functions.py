@@ -26,7 +26,7 @@ Example:
     ALICE        50
 """
 
-from typing import Any, Optional, Union, Callable, Tuple, Dict
+from typing import Any, Optional, Union, Callable
 from .core.column import Column, ColumnOperation
 from .core.literals import Literal
 from .base import AggregateFunction
@@ -1078,7 +1078,7 @@ class Functions:
         return ConditionalFunctions.when(condition)
 
     @staticmethod
-    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> CaseWhen:
+    def case_when(*conditions: tuple[Any, Any], else_value: Any = None) -> CaseWhen:
         """Create CASE WHEN expression with multiple conditions."""
         return ConditionalFunctions.case_when(*conditions, else_value=else_value)
 
@@ -2090,7 +2090,7 @@ class Functions:
     def from_json(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: Optional[dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse JSON string into struct/array."""
         from mock_spark.functions.json_csv import JSONCSVFunctions
@@ -2129,7 +2129,7 @@ class Functions:
     def from_csv(
         column: Union[Column, str],
         schema: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: Optional[dict[str, Any]] = None,
     ) -> ColumnOperation:
         """Parse CSV string into struct."""
         from mock_spark.functions.json_csv import JSONCSVFunctions

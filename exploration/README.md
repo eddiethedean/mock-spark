@@ -12,10 +12,10 @@ Before implementing features in mock-spark, we run exploration scripts to:
 
 ## Environment
 
-Use the dedicated Python 3.8 environment:
+Use the dedicated Python 3.9 environment:
 
 ```bash
-source venv_exploration_py38/bin/activate
+source venv_exploration_py39/bin/activate
 python exploration/{script_name}.py > exploration/outputs/{script_name}_output.txt
 ```
 

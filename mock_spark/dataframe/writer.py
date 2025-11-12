@@ -24,9 +24,20 @@ Example:
     >>> df.write.format("parquet").option("compression", "snappy").save("/path")
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from __future__ import annotations
 
+import os
+import shutil
+import uuid
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Optional, cast
+
+import polars as pl
+
+from mock_spark.backend.polars.schema_utils import align_frame_to_schema
 from mock_spark.backend.protocols import StorageBackend
+from mock_spark.errors import AnalysisException, IllegalArgumentException
+from mock_spark.spark_types import StructType
 
 if TYPE_CHECKING:
     from .dataframe import DataFrame
@@ -61,7 +72,7 @@ class DataFrameWriter:
         self.storage = storage
         self.format_name = "parquet"
         self.save_mode = "append"
-        self._options: Dict[str, Any] = {}
+        self._options: dict[str, Any] = {}
         self._table_name: Optional[str] = None
 
     def format(self, source: str) -> "DataFrameWriter":
@@ -275,7 +286,9 @@ class DataFrameWriter:
 
                             # Drop and recreate table with new schema
                             self.storage.drop_table(schema, table)
-                            self.storage.create_table(schema, table, merged_schema.fields)
+                            self.storage.create_table(
+                                schema, table, merged_schema.fields
+                            )
 
                             # Reinsert existing data with nulls
                             if existing_data:
@@ -405,24 +418,30 @@ class DataFrameWriter:
             >>> df.write.format("parquet").mode("overwrite").save("/path/to/file")
         """
         if path is None:
-            from ..errors import IllegalArgumentException
-
             raise IllegalArgumentException("Path cannot be None")
 
         if not path:
-            from ..errors import IllegalArgumentException
-
             raise IllegalArgumentException("Path cannot be empty")
 
-        # For mock implementation, we'll just log the operation
-        # In a real implementation, this would save to the specified path
-        print(
-            f"Mock save: DataFrame saved to {path} in {self.format_name} format with mode {self.save_mode}"
-        )
+        resolved_format = (self.format_name or "parquet").lower()
+        target_path = Path(path)
 
-        # Store options for reference
-        if self._options:
-            print(f"Options: {self._options}")
+        if self._should_skip_write(target_path):
+            return
+
+        data_frame = self._materialize_dataframe()
+        polars_frame = self._to_polars_frame(data_frame.data, data_frame.schema)
+
+        if resolved_format == "parquet":
+            self._write_parquet(polars_frame, target_path)
+        elif resolved_format == "json":
+            self._write_json(polars_frame, target_path)
+        elif resolved_format == "csv":
+            self._write_csv(polars_frame, target_path)
+        elif resolved_format == "text":
+            self._write_text(data_frame.data, data_frame.schema, target_path)
+        else:
+            raise AnalysisException(f"File format '{self.format_name}' is not supported.")
 
     def parquet(self, path: str, **options: Any) -> None:
         """Save DataFrame in Parquet format.
@@ -483,3 +502,121 @@ class DataFrameWriter:
             >>> df.write.text("/path/to/file.txt")
         """
         self.format("text").options(**options).save(path)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _materialize_dataframe(self) -> "DataFrame":
+        """Materialize the underlying DataFrame (handling lazy evaluation)."""
+        from .dataframe import DataFrame
+
+        materialized = cast("DataFrame", self.df._materialize_if_lazy())
+        # _materialize_if_lazy returns SupportsDataFrameOps which is a DataFrame in practice
+        if not isinstance(materialized, DataFrame):
+            raise TypeError("Expected DataFrame after materialization")
+        return materialized
+
+    def _should_skip_write(self, path: Path) -> bool:
+        """Handle save modes before writing; return True if no write is needed."""
+        if path.exists():
+            if self.save_mode == "error":
+                raise AnalysisException(f"Path '{path}' already exists")
+            if self.save_mode == "ignore":
+                return True
+            if self.save_mode == "overwrite":
+                self._delete_path(path)
+            # append mode keeps existing files
+        else:
+            if self.save_mode == "append":
+                # Append to new location behaves like regular write
+                pass
+
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+        return False
+
+    def _delete_path(self, path: Path) -> None:
+        """Remove existing output path for overwrite mode."""
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+
+    def _to_polars_frame(
+        self, data: list[dict[str, Any]], schema: StructType
+    ) -> pl.DataFrame:
+        """Convert row dictionaries and schema into a Polars DataFrame."""
+        if not schema.fields:
+            return pl.DataFrame(data)
+
+        # Create DataFrame from dictionaries (handles empty data gracefully)
+        frame = pl.DataFrame(data) if data else pl.DataFrame({f.name: [] for f in schema.fields})
+        return align_frame_to_schema(frame, schema)
+
+    def _next_part_file(self, path: Path, extension: str) -> Path:
+        """Generate a unique part file name within the target directory."""
+        path.mkdir(parents=True, exist_ok=True)
+        existing = sorted(path.glob(f"part-*{extension}"))
+        index = len(existing)
+        unique = uuid.uuid4().hex[:8]
+        filename = f"part-{index:05d}-{unique}{extension}"
+        return path / filename
+
+    def _write_parquet(self, frame: pl.DataFrame, path: Path) -> None:
+        target = (
+            path if path.suffix == ".parquet" else self._next_part_file(path, ".parquet")
+        )
+        compression = self._options.get("compression", "snappy")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        frame.write_parquet(str(target), compression=compression)
+
+    def _write_json(self, frame: pl.DataFrame, path: Path) -> None:
+        target = path if path.suffix == ".json" else self._next_part_file(path, ".json")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Spark writes newline-delimited JSON; Polars handles this via write_ndjson
+        frame.write_ndjson(str(target))
+
+    def _write_csv(self, frame: pl.DataFrame, path: Path) -> None:
+        target = path if path.suffix == ".csv" else self._next_part_file(path, ".csv")
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        include_header = self._get_bool_option("header", default=True)
+        delimiter = self._options.get("sep", self._options.get("delimiter", ","))
+        null_value = self._options.get("nullValue")
+        compression = self._options.get("compression")
+
+        kwargs: dict[str, Any] = {"include_header": include_header}
+        if delimiter:
+            kwargs["separator"] = delimiter
+        if null_value is not None:
+            kwargs["null_value"] = null_value
+        if compression is not None:
+            kwargs["compression"] = compression
+
+        frame.write_csv(str(target), **kwargs)
+
+    def _write_text(
+        self, data: list[dict[str, Any]], schema: StructType, path: Path
+    ) -> None:
+        column_name = "value"
+        if schema.fields:
+            column_name = schema.fields[0].name
+        target = path if path.suffix == ".txt" else self._next_part_file(path, ".txt")
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        mode = "a" if path.exists() and self.save_mode == "append" and target == path else "w"
+        with open(target, mode, encoding="utf-8") as handle:
+            for row in data:
+                value = row.get(column_name)
+                handle.write("" if value is None else str(value))
+                handle.write(os.linesep)
+
+    def _get_bool_option(self, key: str, default: bool = False) -> bool:
+        """Resolve boolean option values with Spark-compatible parsing."""
+        if key not in self._options:
+            return default
+        value = self._options[key]
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "yes", "y"}

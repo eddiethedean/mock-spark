@@ -5,7 +5,7 @@ This module provides shared condition evaluation logic to avoid duplication
 between DataFrame and conditional function modules.
 """
 
-from typing import Any, Dict, List, Tuple, Union, Optional, cast
+from typing import Any, Union, Optional, cast
 from ..functions.base import Column, ColumnOperation
 
 
@@ -13,7 +13,7 @@ class ConditionEvaluator:
     """Shared condition evaluation logic."""
 
     @staticmethod
-    def evaluate_expression(row: Dict[str, Any], expression: Any) -> Any:
+    def evaluate_expression(row: dict[str, Any], expression: Any) -> Any:
         """Evaluate an expression (arithmetic, function, etc.) for a given row.
 
         Args:
@@ -33,7 +33,7 @@ class ConditionEvaluator:
             return expression
 
     @staticmethod
-    def evaluate_condition(row: Dict[str, Any], condition: Any) -> Optional[bool]:
+    def evaluate_condition(row: dict[str, Any], condition: Any) -> Optional[bool]:
         """Evaluate a condition for a given row.
 
         Args:
@@ -54,7 +54,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_column_operation_value(
-        row: Dict[str, Any], operation: ColumnOperation
+        row: dict[str, Any], operation: ColumnOperation
     ) -> Optional[Any]:
         """Evaluate a column operation and return the value (not boolean).
 
@@ -216,7 +216,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_function_operation_value(
-        row: Dict[str, Any], operation: ColumnOperation
+        row: dict[str, Any], operation: ColumnOperation
     ) -> Any:
         """Evaluate a function operation and return the value.
 
@@ -406,7 +406,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_comparison_operation(
-        row: Dict[str, Any], operation: ColumnOperation
+        row: dict[str, Any], operation: ColumnOperation
     ) -> bool:
         """Evaluate a comparison operation.
 
@@ -441,7 +441,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_logical_operation(
-        row: Dict[str, Any], operation: ColumnOperation
+        row: dict[str, Any], operation: ColumnOperation
     ) -> Optional[bool]:
         """Evaluate a logical operation.
 
@@ -469,7 +469,7 @@ class ConditionEvaluator:
 
     @staticmethod
     def _evaluate_column_operation(
-        row: Dict[str, Any], operation: ColumnOperation
+        row: dict[str, Any], operation: ColumnOperation
     ) -> Optional[bool]:
         """Evaluate a column operation.
 
@@ -1054,7 +1054,7 @@ class ConditionEvaluator:
         return None
 
     @staticmethod
-    def _get_column_value(row: Dict[str, Any], column: Union[Column, str, Any]) -> Any:
+    def _get_column_value(row: dict[str, Any], column: Union[Column, str, Any]) -> Any:
         """Get column value from row.
 
         Args:
@@ -1130,7 +1130,7 @@ class ConditionEvaluator:
         return bool(re.match(regex_pattern, value))
 
     @staticmethod
-    def _evaluate_isin_operation(col_value: Any, values: List[Any]) -> bool:
+    def _evaluate_isin_operation(col_value: Any, values: list[Any]) -> bool:
         """Evaluate IN operation.
 
         Args:
@@ -1143,7 +1143,7 @@ class ConditionEvaluator:
         return col_value in values if col_value is not None else False
 
     @staticmethod
-    def _evaluate_between_operation(col_value: Any, bounds: Tuple[Any, Any]) -> bool:
+    def _evaluate_between_operation(col_value: Any, bounds: tuple[Any, Any]) -> bool:
         """Evaluate BETWEEN operation.
 
         Args:

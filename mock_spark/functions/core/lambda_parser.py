@@ -24,7 +24,7 @@ Example:
 import ast
 import inspect
 import textwrap
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 
 class LambdaTranslationError(Exception):
@@ -133,7 +133,7 @@ class LambdaParser:
         # Extract parameter names
         self.param_names = self.get_param_names()
 
-    def get_param_names(self) -> List[str]:
+    def get_param_names(self) -> list[str]:
         """Extract parameter names from the lambda.
 
         Returns:
@@ -368,7 +368,7 @@ class MockLambdaExpression:
         """
         return self.parser.to_duckdb_lambda()
 
-    def get_param_names(self) -> List[str]:
+    def get_param_names(self) -> list[str]:
         """Get parameter names.
 
         Returns:

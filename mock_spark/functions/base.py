@@ -5,7 +5,7 @@ This module provides base classes for all function types.
 Most classes are imported from core/ modules to avoid duplication.
 """
 
-from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
+from typing import Any, Union, Optional, TYPE_CHECKING
 from mock_spark.spark_types import DataType, StringType
 
 # Import core classes from their canonical locations
@@ -118,7 +118,7 @@ class AggregateFunction:
             else:
                 return f"{display_name}({self.column.name})"
 
-    def evaluate(self, data: List[Dict[str, Any]]) -> Any:
+    def evaluate(self, data: list[dict[str, Any]]) -> Any:
         """Evaluate the aggregate function on the given data.
 
         Args:
@@ -140,7 +140,7 @@ class AggregateFunction:
         else:
             return None
 
-    def _evaluate_count(self, data: List[Dict[str, Any]]) -> int:
+    def _evaluate_count(self, data: list[dict[str, Any]]) -> int:
         """Evaluate count function."""
         if self.column is None:
             return len(data)
@@ -150,7 +150,7 @@ class AggregateFunction:
             )
             return sum(1 for row in data if row.get(column_name) is not None)
 
-    def _evaluate_sum(self, data: List[Dict[str, Any]]) -> Any:
+    def _evaluate_sum(self, data: list[dict[str, Any]]) -> Any:
         """Evaluate sum function."""
         if self.column is None:
             return 0
@@ -163,7 +163,7 @@ class AggregateFunction:
                 total += value
         return total
 
-    def _evaluate_avg(self, data: List[Dict[str, Any]]) -> Any:
+    def _evaluate_avg(self, data: list[dict[str, Any]]) -> Any:
         """Evaluate average function."""
         if self.column is None:
             return 0.0
@@ -178,7 +178,7 @@ class AggregateFunction:
         else:
             return None
 
-    def _evaluate_max(self, data: List[Dict[str, Any]]) -> Any:
+    def _evaluate_max(self, data: list[dict[str, Any]]) -> Any:
         """Evaluate max function."""
         if self.column is None:
             return None
@@ -192,7 +192,7 @@ class AggregateFunction:
         else:
             return None
 
-    def _evaluate_min(self, data: List[Dict[str, Any]]) -> Any:
+    def _evaluate_min(self, data: list[dict[str, Any]]) -> Any:
         """Evaluate min function."""
         if self.column is None:
             return None

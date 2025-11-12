@@ -22,7 +22,6 @@ class TestJsonCsvFunctionsCompatibility:
         yield session
         session.stop()
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_from_json(self, spark):
         """Test from_json function."""
         expected = load_expected_output("functions", "from_json")
@@ -30,7 +29,6 @@ class TestJsonCsvFunctionsCompatibility:
         result = df.select(F.from_json(df.json_str, F.lit("name string, age int")))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_to_json(self, spark):
         """Test to_json function."""
         expected = load_expected_output("functions", "to_json")
@@ -38,7 +36,6 @@ class TestJsonCsvFunctionsCompatibility:
         result = df.select(F.to_json(F.struct(df.name, df.age)))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_to_csv(self, spark):
         """Test to_csv function."""
         expected = load_expected_output("functions", "to_csv")

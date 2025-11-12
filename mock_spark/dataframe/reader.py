@@ -22,10 +22,20 @@ Example:
     >>> df = spark.read.format("parquet").option("header", "true").load("/path")
 """
 
-from typing import Any, Dict, Optional, Union
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Iterable, Optional, Union
+
+import polars as pl
+
 from ..core.interfaces.dataframe import IDataFrame
 from ..core.interfaces.session import ISession
-from ..spark_types import StructType
+from ..errors import AnalysisException, IllegalArgumentException
+from ..spark_types import StructField, StructType
+from ..core.ddl_adapter import parse_ddl_schema
+from ..backend.polars.schema_utils import align_frame_to_schema
+from ..backend.polars.type_mapper import polars_dtype_to_mock_type
 
 
 class DataFrameReader:
@@ -52,7 +62,8 @@ class DataFrameReader:
         """
         self.session = session
         self._format = "parquet"
-        self._options: Dict[str, str] = {}
+        self._options: dict[str, str] = {}
+        self._schema: Optional[StructType] = None
 
     def format(self, source: str) -> "DataFrameReader":
         """Set input format.
@@ -112,8 +123,15 @@ class DataFrameReader:
         Example:
             >>> spark.read.schema("name STRING, age INT")
         """
-        # Mock implementation - store schema for reference
-        self._schema = schema
+        if isinstance(schema, StructType):
+            self._schema = schema
+        elif isinstance(schema, str):
+            self._schema = parse_ddl_schema(schema)
+        else:
+            raise IllegalArgumentException(
+                f"Unsupported schema type {type(schema)!r}. "
+                "Provide a StructType or DDL string."
+            )
         return self
 
     def load(
@@ -133,11 +151,34 @@ class DataFrameReader:
             >>> spark.read.load("/path/to/file")
             >>> spark.read.format("parquet").load("/path/to/file")
         """
-        # Mock implementation - return empty DataFrame
-        from .dataframe import DataFrame
-        from typing import cast
+        resolved_format = (format or self._format or "parquet").lower()
+        combined_options: dict[str, Any] = {**self._options, **options}
 
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        if resolved_format == "delta":
+            # Delegate to table() for Delta path semantics
+            if path is None:
+                raise IllegalArgumentException(
+                    "load() with format 'delta' requires a path. "
+                    "Use read.format('delta').table('schema.table') for tables."
+                )
+            # Treat path segments as schema.table if possible
+            table_name = Path(path).name
+            return self.table(table_name)
+
+        if path is None:
+            raise IllegalArgumentException("Path is required for DataFrameReader.load()")
+
+        paths = self._gather_paths(Path(path), resolved_format)
+        if not paths:
+            raise AnalysisException(f"No {resolved_format} files found at {path}")
+
+        frame = self._read_with_polars(paths, resolved_format, combined_options)
+
+        schema, data_rows = self._build_schema_and_rows(frame)
+
+        from .dataframe import DataFrame
+
+        return DataFrame(data_rows, schema, self.session.storage)
 
     def table(self, table_name: str) -> IDataFrame:
         """Load table.
@@ -204,62 +245,167 @@ class DataFrameReader:
 
         return self.session.table(table_name)
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _gather_paths(self, root: Path, data_format: str) -> list[str]:
+        """Collect concrete file paths for the requested format."""
+        if root.is_file():
+            return [str(root)]
+
+        if not root.exists():
+            return []
+
+        extension = self._extension_for_format(data_format)
+        if extension:
+            return [str(p) for p in sorted(root.rglob(f"*{extension}")) if p.is_file()]
+
+        # Fallback – include all files
+        return [str(p) for p in sorted(root.rglob("*")) if p.is_file()]
+
+    def _extension_for_format(self, data_format: str) -> Optional[str]:
+        """Map format names to file extensions."""
+        mapping = {
+            "parquet": ".parquet",
+            "csv": ".csv",
+            "json": ".json",
+            "ndjson": ".json",
+            "text": ".txt",
+        }
+        return mapping.get(data_format)
+
+    def _read_with_polars(
+        self, paths: Iterable[str], data_format: str, options: dict[str, Any]
+    ) -> pl.DataFrame:
+        """Load data from disk using Polars."""
+        paths_list = list(paths)
+        if not paths_list:
+            return pl.DataFrame()
+
+        if data_format == "parquet":
+            return pl.scan_parquet(paths_list, **self._extract_parquet_options(options)).collect()
+        if data_format == "csv":
+            csv_opts = self._extract_csv_options(options)
+            return pl.scan_csv(paths_list, **csv_opts).collect()
+        if data_format == "json":
+            return self._read_json(paths_list, options)
+        if data_format == "text":
+            return self._read_text(paths_list)
+
+        raise AnalysisException(f"Unsupported format '{data_format}' for DataFrameReader")
+
+    def _read_json(
+        self, paths: list[str], options: dict[str, Any]
+    ) -> pl.DataFrame:
+        """Read JSON or NDJSON files via Polars, falling back to Python json."""
+        ndjson_opts = {}
+        if "infer_schema_length" in options:
+            ndjson_opts["infer_schema_length"] = int(options["infer_schema_length"])
+
+        try:
+            return pl.scan_ndjson(paths, **ndjson_opts).collect()
+        except Exception:
+            pass
+
+        frames: list[pl.DataFrame] = []
+        import json
+
+        for file_path in paths:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                content = handle.read().strip()
+                if not content:
+                    continue
+                try:
+                    parsed = json.loads(content)
+                except json.JSONDecodeError:
+                    # Attempt line-by-line parsing for permissive mode
+                    parsed = []
+                    for line in content.splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        parsed.append(json.loads(line))
+                if isinstance(parsed, list):
+                    frames.append(pl.DataFrame(parsed))
+                else:
+                    frames.append(pl.DataFrame([parsed]))
+
+        if not frames:
+            return pl.DataFrame()
+
+        return pl.concat(frames, how="diagonal_relaxed")
+
+    def _read_text(self, paths: list[str]) -> pl.DataFrame:
+        """Read plain text files into a single-column DataFrame."""
+        values: list[str] = []
+        for file_path in paths:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                values.extend([line.rstrip("\n") for line in handle])
+        return pl.DataFrame({"value": values})
+
+    def _extract_parquet_options(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Filter parquet-specific options."""
+        parquet_opts: dict[str, Any] = {}
+        if "hive_partitioning" in options:
+            parquet_opts["hive_partitioning"] = options["hive_partitioning"]
+        return parquet_opts
+
+    def _extract_csv_options(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Translate Spark CSV options to Polars equivalents."""
+        csv_opts: dict[str, Any] = {}
+
+        header = options.get("header", options.get("hasHeader", "true"))
+        csv_opts["has_header"] = self._to_bool(header, default=True)
+
+        delimiter = options.get("sep", options.get("delimiter", ","))
+        if isinstance(delimiter, str) and delimiter:
+            csv_opts["separator"] = delimiter
+
+        null_value = options.get("nullValue")
+        if null_value is not None:
+            csv_opts["null_values"] = null_value
+
+        infer_schema = options.get("inferSchema")
+        if infer_schema is not None and self._to_bool(infer_schema):
+            # 0 means use all rows for inference
+            csv_opts["infer_schema_length"] = 0
+
+        return csv_opts
+
+    def _to_bool(self, value: Any, default: bool = False) -> bool:
+        """Interpret Spark-style truthy values."""
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return default
+        return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+    def _build_schema_and_rows(
+        self, frame: pl.DataFrame
+    ) -> tuple[StructType, list[dict[str, Any]]]:
+        """Create StructType schema and dictionary rows from a Polars frame."""
+        if self._schema is not None:
+            aligned = align_frame_to_schema(frame, self._schema)
+            return self._schema, aligned.to_dicts()
+
+        fields: list[StructField] = []
+        for name, dtype in zip(frame.columns, frame.dtypes):
+            mock_type = polars_dtype_to_mock_type(dtype)
+            fields.append(StructField(name, mock_type))
+        schema = StructType(fields)
+        return schema, frame.to_dicts()
+
     def json(self, path: str, **options: Any) -> IDataFrame:
-        """Load JSON data.
-
-        Args:
-            path: Path to JSON file.
-            **options: Additional options.
-
-        Returns:
-            DataFrame with JSON data.
-
-        Example:
-            >>> spark.read.json("/path/to/file.json")
-        """
-        # Mock implementation
-        from .dataframe import DataFrame
-        from typing import cast
-
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        """Load JSON data from disk."""
+        return self.format("json").options(**options).load(path)
 
     def csv(self, path: str, **options: Any) -> IDataFrame:
-        """Load CSV data.
-
-        Args:
-            path: Path to CSV file.
-            **options: Additional options.
-
-        Returns:
-            DataFrame with CSV data.
-
-        Example:
-            >>> spark.read.csv("/path/to/file.csv")
-        """
-        # Mock implementation
-        from .dataframe import DataFrame
-        from typing import cast
-
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        """Load CSV data from disk."""
+        return self.format("csv").options(**options).load(path)
 
     def parquet(self, path: str, **options: Any) -> IDataFrame:
-        """Load Parquet data.
-
-        Args:
-            path: Path to Parquet file.
-            **options: Additional options.
-
-        Returns:
-            DataFrame with Parquet data.
-
-        Example:
-            >>> spark.read.parquet("/path/to/file.parquet")
-        """
-        # Mock implementation
-        from .dataframe import DataFrame
-        from typing import cast
-
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        """Load Parquet data from disk."""
+        return self.format("parquet").options(**options).load(path)
 
     def orc(self, path: str, **options: Any) -> IDataFrame:
         """Load ORC data.
@@ -274,11 +420,7 @@ class DataFrameReader:
         Example:
             >>> spark.read.orc("/path/to/file.orc")
         """
-        # Mock implementation
-        from .dataframe import DataFrame
-        from typing import cast
-
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        raise AnalysisException("ORC format is not supported by the Polars backend")
 
     def text(self, path: str, **options: Any) -> IDataFrame:
         """Load text data.
@@ -293,11 +435,7 @@ class DataFrameReader:
         Example:
             >>> spark.read.text("/path/to/file.txt")
         """
-        # Mock implementation
-        from .dataframe import DataFrame
-        from typing import cast
-
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        return self.format("text").options(**options).load(path)
 
     def jdbc(self, url: str, table: str, **options: Any) -> IDataFrame:
         """Load data from JDBC source.

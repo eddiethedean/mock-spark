@@ -8,7 +8,7 @@ execution times to help identify performance differences.
 
 import time
 import statistics
-from typing import Dict, Any, Callable
+from typing import Any, Callable
 from mock_spark import MockSparkSession, F
 
 
@@ -18,7 +18,7 @@ def benchmark_operation(
     operation: Callable,
     warmup_runs: int = 2,
     benchmark_runs: int = 5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Benchmark an operation multiple times and return statistics.
 
     Args:
@@ -90,7 +90,7 @@ def create_test_dataframe(spark: MockSparkSession, size: int = 10000):
     return spark.createDataFrame(data)
 
 
-def run_benchmarks(backend_type: str, size: int = 10000) -> Dict[str, Any]:
+def run_benchmarks(backend_type: str, size: int = 10000) -> dict[str, Any]:
     """Run all benchmarks for a specific backend.
 
     Args:
@@ -239,7 +239,7 @@ def run_benchmarks(backend_type: str, size: int = 10000) -> Dict[str, Any]:
     return results
 
 
-def print_results(results: Dict[str, Dict[str, Any]], backend_name: str):
+def print_results(results: dict[str, dict[str, Any]], backend_name: str):
     """Print benchmark results in a formatted table.
 
     Args:
@@ -268,8 +268,8 @@ def print_results(results: Dict[str, Dict[str, Any]], backend_name: str):
 
 
 def compare_results(
-    polars_results: Dict[str, Dict[str, Any]],
-    duckdb_results: Dict[str, Dict[str, Any]],
+    polars_results: dict[str, dict[str, Any]],
+    duckdb_results: dict[str, dict[str, Any]],
 ):
     """Compare results from both backends and show speedup.
 

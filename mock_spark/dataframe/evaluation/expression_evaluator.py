@@ -6,14 +6,36 @@ of all column expressions including arithmetic operations, comparison operations
 logical operations, function calls, conditional expressions, and type casting.
 """
 
+import csv
+import json
 import math
 import re
 import base64
 import datetime as dt_module
-from typing import Any, Dict, List, Optional, Union, cast
+from decimal import Decimal
+from typing import Any, Optional, Sequence, Union, cast
 
 from ...functions import Column, ColumnOperation
 from ...functions.conditional import CaseWhen
+from ...spark_types import (
+    ArrayType,
+    BooleanType,
+    DataType,
+    DateType,
+    DecimalType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    MapType,
+    Row,
+    ShortType,
+    StringType,
+    StructField,
+    StructType,
+    TimestampType,
+)
+from ...core.ddl_adapter import parse_ddl_schema
 
 
 class ExpressionEvaluator:
@@ -32,7 +54,7 @@ class ExpressionEvaluator:
         """Initialize evaluator with function registry."""
         self._function_registry = self._build_function_registry()
 
-    def evaluate_expression(self, row: Dict[str, Any], expression: Any) -> Any:
+    def evaluate_expression(self, row: dict[str, Any], expression: Any) -> Any:
         """Main entry point for expression evaluation."""
         # Handle CaseWhen (when/otherwise expressions)
         if isinstance(expression, CaseWhen):
@@ -51,14 +73,14 @@ class ExpressionEvaluator:
             return self._evaluate_direct_value(expression)
 
     def evaluate_condition(
-        self, row: Dict[str, Any], condition: Union[ColumnOperation, Column]
+        self, row: dict[str, Any], condition: Union[ColumnOperation, Column]
     ) -> bool:
         """Evaluate condition for a single row."""
         from ...core.condition_evaluator import ConditionEvaluator
 
         return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
-    def _evaluate_case_when(self, row: Dict[str, Any], case_when: CaseWhen) -> Any:
+    def _evaluate_case_when(self, row: dict[str, Any], case_when: CaseWhen) -> Any:
         """Evaluate when/otherwise expressions."""
         # Evaluate each condition in order
         for condition, value in case_when.conditions:
@@ -77,7 +99,7 @@ class ExpressionEvaluator:
 
         return None
 
-    def _evaluate_mock_column(self, row: Dict[str, Any], column: Column) -> Any:
+    def _evaluate_mock_column(self, row: dict[str, Any], column: Column) -> Any:
         """Evaluate a Column expression."""
         col_name = column.name
 
@@ -96,7 +118,7 @@ class ExpressionEvaluator:
             # Simple column reference
             return row.get(column.name)
 
-    def _evaluate_column_operation(self, row: Dict[str, Any], operation: Any) -> Any:
+    def _evaluate_column_operation(self, row: dict[str, Any], operation: Any) -> Any:
         """Evaluate a ColumnOperation."""
         op = operation.operation
 
@@ -125,7 +147,7 @@ class ExpressionEvaluator:
                 return self._evaluate_arithmetic_operation(row, operation)
 
     def _evaluate_arithmetic_operation(
-        self, row: Dict[str, Any], operation: Any
+        self, row: dict[str, Any], operation: Any
     ) -> Any:
         """Evaluate arithmetic operations on columns."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
@@ -160,7 +182,7 @@ class ExpressionEvaluator:
             return None
 
     def _evaluate_comparison_operation(
-        self, row: Dict[str, Any], operation: Any
+        self, row: dict[str, Any], operation: Any
     ) -> Any:
         """Evaluate comparison operations like ==, !=, <, >, <=, >=."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
@@ -191,7 +213,7 @@ class ExpressionEvaluator:
         else:
             return None
 
-    def _evaluate_function_call(self, row: Dict[str, Any], operation: Any) -> Any:
+    def _evaluate_function_call(self, row: dict[str, Any], operation: Any) -> Any:
         """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):
             return None
@@ -350,13 +372,13 @@ class ExpressionEvaluator:
         return value
 
     def _evaluate_format_string(
-        self, row: Dict[str, Any], operation: Any, value: Any
+        self, row: dict[str, Any], operation: Any, value: Any
     ) -> Any:
         """Evaluate format_string function."""
-        from typing import Any, List, Optional
+        from typing import Any, Optional
 
         fmt: Optional[str] = None
-        args: List[Any] = []
+        args: list[Any] = []
         if value is not None:
             val = value
             if isinstance(val, tuple) and len(val) >= 1:
@@ -389,7 +411,7 @@ class ExpressionEvaluator:
             return None
 
     def _evaluate_expr_function(
-        self, row: Dict[str, Any], operation: Any, value: Any
+        self, row: dict[str, Any], operation: Any, value: Any
     ) -> Any:
         """Evaluate expr function - parse SQL expressions."""
         expr_str = operation.value if hasattr(operation, "value") else ""
@@ -440,7 +462,7 @@ class ExpressionEvaluator:
             return expr_str
 
     def _evaluate_function_call_by_name(
-        self, row: Dict[str, Any], col_name: str
+        self, row: dict[str, Any], col_name: str
     ) -> Any:
         """Evaluate function calls by parsing the function name."""
         if col_name.startswith("coalesce("):
@@ -531,7 +553,7 @@ class ExpressionEvaluator:
         # Default fallback
         return None
 
-    def _evaluate_to_date_function(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_to_date_function(self, row: dict[str, Any], col_name: str) -> Any:
         """Evaluate to_date function."""
         # Extract column name from function call
         match = re.search(r"to_date\(([^)]+)\)", col_name)
@@ -553,7 +575,7 @@ class ExpressionEvaluator:
         return None
 
     def _evaluate_to_timestamp_function(
-        self, row: Dict[str, Any], col_name: str
+        self, row: dict[str, Any], col_name: str
     ) -> Any:
         """Evaluate to_timestamp function."""
         # Extract column name from function call
@@ -571,7 +593,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_hour_function(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_hour_function(self, row: dict[str, Any], col_name: str) -> Any:
         """Evaluate hour function."""
         match = re.search(r"hour\(([^)]+)\)", col_name)
         if match:
@@ -590,7 +612,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_day_function(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_day_function(self, row: dict[str, Any], col_name: str) -> Any:
         """Evaluate day function."""
         match = re.search(r"day\(([^)]+)\)", col_name)
         if match:
@@ -609,7 +631,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_month_function(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_month_function(self, row: dict[str, Any], col_name: str) -> Any:
         """Evaluate month function."""
         match = re.search(r"month\(([^)]+)\)", col_name)
         if match:
@@ -628,7 +650,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_year_function(self, row: Dict[str, Any], col_name: str) -> Any:
+    def _evaluate_year_function(self, row: dict[str, Any], col_name: str) -> Any:
         """Evaluate year function."""
         match = re.search(r"year\(([^)]+)\)", col_name)
         if match:
@@ -647,7 +669,7 @@ class ExpressionEvaluator:
                     return None
         return None
 
-    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
+    def _evaluate_value(self, row: dict[str, Any], value: Any) -> Any:
         """Evaluate a value (could be a column reference, literal, or operation)."""
         if hasattr(value, "operation") and hasattr(value, "column"):
             # It's a ColumnOperation
@@ -700,7 +722,7 @@ class ExpressionEvaluator:
         )
         return any(name.startswith(prefix) for prefix in function_prefixes)
 
-    def _build_function_registry(self) -> Dict[str, Any]:
+    def _build_function_registry(self) -> dict[str, Any]:
         """Build registry of supported functions."""
         return {
             # String functions
@@ -815,6 +837,10 @@ class ExpressionEvaluator:
             "split": self._func_split,
             "regexp_replace": self._func_regexp_replace,
             "format_string": self._func_format_string,
+            "from_json": self._func_from_json,
+            "to_json": self._func_to_json,
+            "from_csv": self._func_from_csv,
+            "to_csv": self._func_to_csv,
             # Math functions
             "abs": self._func_abs,
             "round": self._func_round,
@@ -918,7 +944,9 @@ class ExpressionEvaluator:
             return None
         return len(str(value).encode("utf-8")) * 8
 
-    def _func_startswith(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
+    def _func_startswith(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bool]:
         """Startswith function - check if string starts with substring."""
         if value is None:
             return None
@@ -1006,7 +1034,9 @@ class ExpressionEvaluator:
         pos = str(value).find(substring)
         return pos + 1 if pos >= 0 else 0
 
-    def _func_octet_length(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_octet_length(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Octet_length function - get byte length of string."""
         if value is None:
             return None
@@ -1086,7 +1116,9 @@ class ExpressionEvaluator:
         """Months function - convert number to months interval."""
         return value  # Return as-is for date arithmetic
 
-    def _func_equal_null(self, value: Any, operation: ColumnOperation) -> Optional[bool]:
+    def _func_equal_null(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[bool]:
         """Equal_null function - equality check that treats NULL as equal."""
         # This requires comparing two values, which is complex
         # For now, return None as this needs special handling
@@ -1118,7 +1150,7 @@ class ExpressionEvaluator:
         except Exception:
             return b""
 
-    def _func_split(self, value: Any, operation: ColumnOperation) -> List[str]:
+    def _func_split(self, value: Any, operation: ColumnOperation) -> list[str]:
         """Split function."""
         if value is None:
             return []
@@ -1147,6 +1179,297 @@ class ExpressionEvaluator:
         # This is a limitation of the current architecture
         # For now, return empty string to indicate this function needs special handling
         return ""
+
+    def _func_from_json(self, value: Any, operation: ColumnOperation) -> Any:
+        """Parse JSON string column into Python structures."""
+        if value is None:
+            return None
+
+        schema_spec, options = self._unpack_schema_and_options(operation)
+        schema = self._resolve_struct_schema(schema_spec)
+        mode = str(options.get("mode", "PERMISSIVE")).upper()
+        corrupt_column = options.get("columnNameOfCorruptRecord")
+
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            if mode == "FAILFAST":
+                raise
+            if mode == "DROPMALFORMED":
+                return None
+            if corrupt_column and schema is not None:
+                return {corrupt_column: value}
+            return None
+
+        if schema is None:
+            return parsed
+
+        if not isinstance(schema, StructType) or not isinstance(parsed, dict):
+            return None
+
+        projected: dict[str, Any] = {
+            field.name: parsed.get(field.name) for field in schema.fields
+        }
+
+        if corrupt_column and corrupt_column not in projected:
+            projected[corrupt_column] = None
+
+        return projected
+
+    def _func_to_json(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+        """Serialize struct or map values to JSON strings."""
+        if value is None:
+            return None
+        struct_dict = self._struct_to_dict(value)
+        if struct_dict is None:
+            return None
+        return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"))
+
+    def _func_from_csv(self, value: Any, operation: ColumnOperation) -> Any:
+        """Parse CSV strings based on optional provided schema."""
+        if value is None:
+            return None
+
+        schema_spec, options = self._unpack_schema_and_options(operation)
+        schema = self._resolve_struct_schema(schema_spec)
+        delimiter = options.get("sep", options.get("delimiter", ","))
+        quote = options.get("quote", '"')
+        null_value = options.get("nullValue")
+
+        reader = csv.reader(
+            [value],
+            delimiter=delimiter if isinstance(delimiter, str) and delimiter else ",",
+            quotechar=quote if isinstance(quote, str) and quote else '"',
+        )
+        try:
+            row_values = next(reader)
+        except Exception:
+            return None
+
+        if schema is None:
+            return row_values
+
+        return self._apply_csv_schema(schema, row_values, null_value)
+
+    def _func_to_csv(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+        """Serialize struct values to CSV strings."""
+        if value is None:
+            return None
+
+        struct_dict = self._struct_to_dict(value)
+        if struct_dict is None:
+            return None
+
+        delimiter = ","
+        null_value = None
+        if isinstance(operation.value, dict):
+            delimiter = operation.value.get("sep", operation.value.get("delimiter", ",")) or ","
+            null_value = operation.value.get("nullValue")
+
+        parts: list[str] = []
+        for item in struct_dict.values():
+            if item is None:
+                parts.append("" if null_value is None else str(null_value))
+            else:
+                parts.append(str(item))
+
+        return delimiter.join(parts)
+
+    def _unpack_schema_and_options(
+        self, operation: ColumnOperation
+    ) -> tuple[Any, dict[str, Any]]:
+        """Extract schema specification and options dictionary."""
+        schema_spec: Any = None
+        options: dict[str, Any] = {}
+
+        raw_value = getattr(operation, "value", None)
+        if isinstance(raw_value, tuple):
+            if len(raw_value) >= 1:
+                schema_spec = raw_value[0]
+            if len(raw_value) >= 2 and raw_value[1] is not None:
+                if isinstance(raw_value[1], dict):
+                    options = dict(raw_value[1])
+        elif isinstance(raw_value, dict):
+            options = dict(raw_value)
+
+        return schema_spec, options
+
+    def _resolve_struct_schema(self, schema_spec: Any) -> Optional[StructType]:
+        """Convert schema specifications into StructType objects."""
+        if schema_spec is None:
+            return None
+
+        if isinstance(schema_spec, StructType):
+            return schema_spec
+
+        if isinstance(schema_spec, StructField):
+            return StructType([schema_spec])
+
+        if hasattr(schema_spec, "value"):
+            return self._resolve_struct_schema(schema_spec.value)
+
+        if isinstance(schema_spec, str):
+            try:
+                return parse_ddl_schema(schema_spec)
+            except Exception:
+                return StructType([])
+
+        if isinstance(schema_spec, dict):
+            fields = [StructField(name, StringType()) for name in schema_spec.keys()]
+            return StructType(fields)
+
+        if isinstance(schema_spec, (list, tuple)):
+            fields: list[StructField] = []
+            for item in schema_spec:
+                if isinstance(item, StructField):
+                    fields.append(item)
+                elif isinstance(item, str):
+                    fields.append(StructField(item, StringType()))
+            if fields:
+                return StructType(fields)
+
+        return None
+
+    def _apply_struct_schema(
+        self, schema: StructType, data: Any
+    ) -> Optional[dict[str, Any]]:
+        """Coerce dictionaries into StructType layout."""
+        if not isinstance(schema, StructType):
+            return None
+
+        if data is None:
+            return {field.name: None for field in schema.fields}
+
+        source = self._struct_to_dict(data)
+        if source is None:
+            if isinstance(data, dict):
+                source = data
+            else:
+                return {field.name: None for field in schema.fields}
+
+        result: dict[str, Any] = {}
+        for field in schema.fields:
+            raw_value = source.get(field.name)
+            if isinstance(field.dataType, StructType) and isinstance(raw_value, dict):
+                result[field.name] = self._apply_struct_schema(
+                    field.dataType, raw_value
+                )
+            elif isinstance(field.dataType, ArrayType) and isinstance(raw_value, list):
+                result[field.name] = [
+                    self._coerce_simple_value(item, field.dataType.element_type)
+                    for item in raw_value
+                ]
+            elif isinstance(field.dataType, MapType) and isinstance(raw_value, dict):
+                result[field.name] = {
+                    str(k): self._coerce_simple_value(v, field.dataType.value_type)
+                    for k, v in raw_value.items()
+                }
+            else:
+                result[field.name] = self._coerce_simple_value(
+                    raw_value, field.dataType
+                )
+
+        return result
+
+    def _apply_csv_schema(
+        self, schema: StructType, values: Sequence[str], null_value: Optional[str]
+    ) -> dict[str, Any]:
+        """Apply StructType to a CSV row."""
+        result: dict[str, Any] = {}
+        for idx, field in enumerate(schema.fields):
+            raw = values[idx] if idx < len(values) else None
+            if raw is None or (null_value is not None and raw == null_value):
+                result[field.name] = None
+            else:
+                result[field.name] = self._coerce_simple_value(raw, field.dataType)
+        return result
+
+    def _struct_to_dict(self, value: Any) -> Optional[dict[str, Any]]:
+        """Convert Row-like structures to dictionaries."""
+        if value is None:
+            return None
+        if isinstance(value, Row):
+            base = value.asDict()
+            return {
+                key: self._struct_to_dict(val) if isinstance(val, Row) else val
+                for key, val in base.items()
+            }
+        if isinstance(value, dict):
+            return dict(value)
+        if hasattr(value, "items"):
+            try:
+                return dict(value.items())
+            except Exception:
+                return None
+        if isinstance(value, list):
+            try:
+                return {k: v for k, v in value}
+            except Exception:
+                return None
+        return None
+
+    def _coerce_simple_value(self, value: Any, data_type: DataType) -> Any:
+        """Coerce primitive values according to basic Spark SQL data types."""
+        if value is None:
+            return None
+
+        try:
+            if isinstance(data_type, (IntegerType, LongType, ShortType, ByteType)):
+                return int(value)
+            if isinstance(data_type, (DoubleType, FloatType)):
+                return float(value)
+            if isinstance(data_type, BooleanType):
+                if isinstance(value, bool):
+                    return value
+                return str(value).strip().lower() in {"1", "true", "t", "yes", "y"}
+            if isinstance(data_type, StringType):
+                return str(value)
+            if isinstance(data_type, DecimalType):
+                return Decimal(str(value))
+            if isinstance(data_type, DateType):
+                return self._parse_date(value)
+            if isinstance(data_type, TimestampType):
+                return self._parse_timestamp(value)
+        except Exception:
+            return None
+
+        return value
+
+    def _parse_date(self, value: Any) -> Optional[dt_module.date]:
+        """Parse string values into date objects."""
+        if isinstance(value, dt_module.date) and not isinstance(value, dt_module.datetime):
+            return value
+        if isinstance(value, dt_module.datetime):
+            return value.date()
+        if isinstance(value, str):
+            cleaned = value.strip()
+            try:
+                return dt_module.date.fromisoformat(cleaned.split("T")[0])
+            except Exception:
+                try:
+                    return dt_module.datetime.fromisoformat(
+                        cleaned.replace("Z", "+00:00")
+                    ).date()
+                except Exception:
+                    return None
+        return None
+
+    def _parse_timestamp(self, value: Any) -> Optional[dt_module.datetime]:
+        """Parse string values into datetime objects."""
+        if isinstance(value, dt_module.datetime):
+            return value
+        if isinstance(value, dt_module.date):
+            return dt_module.datetime.combine(value, dt_module.time())
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned.endswith("Z"):
+                cleaned = cleaned[:-1] + "+00:00"
+            cleaned = cleaned.replace(" ", "T")
+            try:
+                return dt_module.datetime.fromisoformat(cleaned)
+            except Exception:
+                return None
+        return None
 
     # Math function implementations
     def _func_abs(self, value: Any, operation: ColumnOperation) -> Any:
@@ -1918,7 +2241,7 @@ class ExpressionEvaluator:
 
     def _func_json_object_keys(
         self, value: Any, operation: ColumnOperation
-    ) -> Optional[List[Any]]:
+    ) -> Optional[list[Any]]:
         """Json_object_keys function - get keys of JSON object."""
         if value is None:
             return None
@@ -1965,7 +2288,9 @@ class ExpressionEvaluator:
         except (ValueError, TypeError):
             return None
 
-    def _func_width_bucket(self, value: Any, operation: ColumnOperation) -> Optional[int]:
+    def _func_width_bucket(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[int]:
         """Width_bucket function - compute histogram bucket number."""
         if value is None:
             return None

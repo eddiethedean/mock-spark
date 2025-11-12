@@ -6,7 +6,8 @@ for DataFrame. Extracted from dataframe.py to improve organization.
 """
 
 import contextlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Optional, cast
 from ..spark_types import (
     StringType,
     StructField,
@@ -76,8 +77,8 @@ class LazyEvaluationEngine:
         )
 
     def optimize_operations(
-        self, operations: List[Tuple[str, Any]]
-    ) -> List[Tuple[str, Any]]:
+        self, operations: list[tuple[str, Any]]
+    ) -> list[tuple[str, Any]]:
         """Optimize operations using the query optimizer.
 
         Args:
@@ -103,8 +104,8 @@ class LazyEvaluationEngine:
             return operations
 
     def _convert_to_optimizer_operations(
-        self, operations: List[Tuple[str, Any]]
-    ) -> List[Any]:
+        self, operations: list[tuple[str, Any]]
+    ) -> list[Any]:
         """Convert operations to optimizer format."""
         from ..optimizer.query_optimizer import Operation, OperationType
 
@@ -145,8 +146,8 @@ class LazyEvaluationEngine:
         return optimizer_ops
 
     def _convert_from_optimizer_operations(
-        self, optimizer_ops: List[Any]
-    ) -> List[Tuple[str, Any]]:
+        self, optimizer_ops: list[Any]
+    ) -> list[tuple[str, Any]]:
         """Convert optimizer operations back to original format."""
         operations = []
         for op in optimizer_ops:
@@ -228,7 +229,7 @@ class LazyEvaluationEngine:
             return LazyEvaluationEngine._materialize_manual(df)
 
     @staticmethod
-    def _has_default_values(data: List[Dict[str, Any]], schema: "StructType") -> bool:
+    def _has_default_values(data: list[dict[str, Any]], schema: "StructType") -> bool:
         """Check if data contains default values that indicate backend couldn't handle the operations."""
         if not data:
             # Empty data could be valid (e.g., filter with no matches, join with no matches)
@@ -276,7 +277,7 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _requires_manual_materialization(
-        operations_queue: List[Tuple[str, Any]],
+        operations_queue: list[tuple[str, Any]],
     ) -> bool:
         """Check if operations require manual materialization."""
         for op_name, op_val in operations_queue:
@@ -320,8 +321,8 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _convert_materialized_rows(
-        rows: List[Any], schema: "StructType"
-    ) -> List[Dict[str, Any]]:
+        rows: list[Any], schema: "StructType"
+    ) -> list[dict[str, Any]]:
         """Convert materialized rows to proper data format with type conversion.
 
         Args:
@@ -348,7 +349,7 @@ class LazyEvaluationEngine:
             # Build dict matching schema field order, handling _right suffix columns
             schema_field_names = [f.name for f in schema.fields]
             converted_dict = {}
-            seen_field_names: Dict[str, int] = {}
+            seen_field_names: dict[str, int] = {}
 
             for field_name in schema_field_names:
                 # Count occurrences of this field name in schema
@@ -752,6 +753,8 @@ class LazyEvaluationEngine:
                                     result_seq: Optional[Sequence[Any]]
                                     if result_raw is None:
                                         result_seq = None
+                                    elif isinstance(result_raw, Sequence):
+                                        result_seq = result_raw
                                     else:
                                         result_seq = cast("Sequence[Any]", result_raw)
 
@@ -761,7 +764,9 @@ class LazyEvaluationEngine:
                                         and row_index < len(result_seq)
                                         and i < len(new_fields)
                                     ):
-                                        new_row[new_fields[i].name] = result_seq[row_index]
+                                        new_row[new_fields[i].name] = result_seq[
+                                            row_index
+                                        ]
                                     elif i < len(new_fields):
                                         new_row[new_fields[i].name] = None
                                 except Exception:
@@ -839,7 +844,7 @@ class LazyEvaluationEngine:
                     if how.lower() in ["semi", "anti"]:
                         new_schema = current.schema
                     else:
-                        merged_fields: List[StructField] = [
+                        merged_fields: list[StructField] = [
                             existing_field
                             for existing_field in current.schema.fields
                             if existing_field is not None

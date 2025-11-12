@@ -1,6 +1,6 @@
 """Schema management and inference for DataFrame operations."""
 
-from typing import Any, Dict, List, Tuple, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, Union, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from ...dataframe import DataFrame
@@ -21,6 +21,7 @@ from ...spark_types import (
     MapType,
 )
 from ...functions import Literal, Column, ColumnOperation
+from ...core.ddl_adapter import parse_ddl_schema
 
 
 class SchemaManager:
@@ -36,7 +37,7 @@ class SchemaManager:
 
     @staticmethod
     def project_schema_with_operations(
-        base_schema: StructType, operations_queue: List[Tuple[str, Any]]
+        base_schema: StructType, operations_queue: list[tuple[str, Any]]
     ) -> StructType:
         """Compute schema after applying queued lazy operations.
 
@@ -48,7 +49,7 @@ class SchemaManager:
         # Ensure base_schema has fields attribute
         if not hasattr(base_schema, "fields"):
             # Fallback to empty schema if fields attribute missing
-            fields_map: Dict[str, StructField] = {}
+            fields_map: dict[str, StructField] = {}
         else:
             # Preserve base schema fields - this works even for empty DataFrames with schemas
             fields_map = {f.name: f for f in base_schema.fields}
@@ -83,8 +84,8 @@ class SchemaManager:
 
     @staticmethod
     def _handle_select_operation(
-        fields_map: Dict[str, StructField], columns: Tuple[Any, ...]
-    ) -> Dict[str, StructField]:
+        fields_map: dict[str, StructField], columns: tuple[Any, ...]
+    ) -> dict[str, StructField]:
         """Handle select operation schema changes."""
         new_fields_map = {}
 
@@ -113,11 +114,11 @@ class SchemaManager:
 
     @staticmethod
     def _handle_withcolumn_operation(
-        fields_map: Dict[str, StructField],
+        fields_map: dict[str, StructField],
         col_name: str,
         col: Union[Column, ColumnOperation, Literal, Any],
         base_schema: StructType,
-    ) -> Dict[str, StructField]:
+    ) -> dict[str, StructField]:
         """Handle withColumn operation schema changes."""
         col_any = cast("Any", col)
         operation = getattr(col_any, "operation", None)
@@ -190,6 +191,16 @@ class SchemaManager:
                 "weekofyear",
             ]:
                 fields_map[col_name] = StructField(col_name, IntegerType())
+            elif operation in ("from_json", "from_csv"):
+                struct_type = SchemaManager._resolve_struct_type(col_any)
+                fields_map[col_name] = StructField(
+                    col_name, struct_type if struct_type is not None else StructType([])
+                )
+            elif operation in ("to_json", "to_csv"):
+                alias = SchemaManager._build_function_alias(
+                    operation, col_any.column, col_name
+                )
+                fields_map[col_name] = StructField(alias, StringType())
             else:
                 fields_map[col_name] = StructField(col_name, StringType())
         elif isinstance(col, Literal):
@@ -205,9 +216,9 @@ class SchemaManager:
 
     @staticmethod
     def _handle_drop_operation(
-        fields_map: Dict[str, StructField],
-        columns_to_drop: Union[str, List[str], Tuple[str, ...]],
-    ) -> Dict[str, StructField]:
+        fields_map: dict[str, StructField],
+        columns_to_drop: Union[str, list[str], tuple[str, ...]],
+    ) -> dict[str, StructField]:
         """Handle drop operation schema changes.
 
         Args:
@@ -234,10 +245,10 @@ class SchemaManager:
 
     @staticmethod
     def _handle_join_operation(
-        fields_map: Dict[str, StructField],
+        fields_map: dict[str, StructField],
         other_df: "DataFrame",
         how: str = "inner",
-    ) -> Dict[str, StructField]:
+    ) -> dict[str, StructField]:
         """Handle join operation schema changes."""
         # For semi/anti joins, only return left DataFrame columns
         if how and how.lower() in ["semi", "anti", "left_semi", "left_anti"]:
@@ -303,12 +314,122 @@ class SchemaManager:
                 "weekofyear",
             ]:
                 return StructField(col.name, IntegerType())
+            elif operation in ("from_json", "from_csv"):
+                struct_type = SchemaManager._resolve_struct_type(col)
+                return StructField(
+                    col.name, struct_type if struct_type is not None else StructType([])
+                )
+            elif operation in ("to_json", "to_csv"):
+                alias = SchemaManager._build_function_alias(
+                    operation, getattr(col, "column", None), col.name
+                )
+                return StructField(alias, StringType())
             else:
                 # Default to StringType for unknown operations
                 return StructField(col.name, StringType())
         else:
             # No operation attribute - default to StringType
             return StructField(col.name, StringType())
+
+    @staticmethod
+    def _resolve_struct_type(col: Union[ColumnOperation, Any]) -> Optional[StructType]:
+        """Extract StructType information from a column operation's schema argument."""
+        if not hasattr(col, "value"):
+            return None
+
+        value = getattr(col, "value")
+        schema_spec: Any = None
+        if isinstance(value, tuple) and len(value) >= 1:
+            schema_spec = value[0]
+        else:
+            schema_spec = value
+
+        return SchemaManager._coerce_to_struct_type(schema_spec)
+
+    @staticmethod
+    def _coerce_to_struct_type(schema_spec: Any) -> Optional[StructType]:
+        """Coerce various schema representations to StructType."""
+        if schema_spec is None:
+            return None
+
+        if isinstance(schema_spec, StructType):
+            return schema_spec
+
+        if isinstance(schema_spec, StructField):
+            return StructType([schema_spec])
+
+        if isinstance(schema_spec, Literal):
+            return SchemaManager._coerce_to_struct_type(schema_spec.value)
+
+        if hasattr(schema_spec, "value") and not isinstance(schema_spec, (dict, list, str)):
+            return SchemaManager._coerce_to_struct_type(schema_spec.value)
+
+        if isinstance(schema_spec, str):
+            try:
+                return parse_ddl_schema(schema_spec)
+            except Exception:
+                return StructType([])
+
+        if isinstance(schema_spec, dict):
+            fields = [StructField(name, StringType()) for name in schema_spec.keys()]
+            return StructType(fields)
+
+        if isinstance(schema_spec, (list, tuple)):
+            fields: list[StructField] = []
+            for item in schema_spec:
+                if isinstance(item, StructField):
+                    fields.append(item)
+                elif isinstance(item, str):
+                    fields.append(StructField(item, StringType()))
+            if fields:
+                return StructType(fields)
+
+        return None
+
+    @staticmethod
+    def _build_function_alias(
+        operation: str, column_expr: Any, fallback: str
+    ) -> str:
+        if operation in ("to_json", "to_csv") and column_expr is not None:
+            struct_alias = SchemaManager._format_struct_alias(column_expr)
+            return f"{operation}({struct_alias})"
+        return fallback
+
+    @staticmethod
+    def _format_struct_alias(expr: Any) -> str:
+        names = SchemaManager._extract_struct_field_names(expr)
+        if names:
+            return f"struct({', '.join(names)})"
+        return "struct(...)"
+
+    @staticmethod
+    def _extract_struct_field_names(expr: Any) -> list[str]:
+        names: list[str] = []
+        if isinstance(expr, ColumnOperation) and getattr(expr, "operation", None) == "struct":
+            first = SchemaManager._extract_column_name(expr.column)
+            if first:
+                names.append(first)
+            additional = expr.value
+            if isinstance(additional, tuple):
+                for item in additional:
+                    name = SchemaManager._extract_column_name(item)
+                    if name:
+                        names.append(name)
+        else:
+            name = SchemaManager._extract_column_name(expr)
+            if name:
+                names.append(name)
+        return names
+
+    @staticmethod
+    def _extract_column_name(expr: Any) -> Optional[str]:
+        if isinstance(expr, Column):
+            return expr.name
+        if isinstance(expr, ColumnOperation) and hasattr(expr, "name"):
+            return expr.name
+        if isinstance(expr, str):
+            return expr
+        return getattr(expr, "name", None)
 
     @staticmethod
     def _infer_arithmetic_type(

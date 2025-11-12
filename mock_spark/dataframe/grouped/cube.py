@@ -5,7 +5,7 @@ This module provides cube grouped data functionality for multi-dimensional
 grouping operations, maintaining compatibility with PySpark's GroupedData interface.
 """
 
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING, Union
+from typing import Any, TYPE_CHECKING, Union
 import itertools
 
 from ...functions import Column, ColumnOperation, AggregateFunction
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class CubeGroupedData(GroupedData):
     """Mock cube grouped data for multi-dimensional grouping operations."""
 
-    def __init__(self, df: SupportsDataFrameOps, cube_columns: List[str]):
+    def __init__(self, df: SupportsDataFrameOps, cube_columns: list[str]):
         """Initialize CubeGroupedData.
 
         Args:
@@ -91,7 +91,7 @@ class CubeGroupedData(GroupedData):
                     result_data.append(result_row)
                 else:
                     # Group by active columns
-                    groups: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
+                    groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
                     for row in self.df.data:
                         group_key = tuple(row.get(col) for col in active_columns)
                         if group_key not in groups:

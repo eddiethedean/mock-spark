@@ -10,7 +10,7 @@ import gc
 import os
 import pytest
 
-# Prevent numpy crashes on macOS ARM chips with Python 3.8
+# Prevent numpy crashes on macOS ARM chips with Python 3.9
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 
 

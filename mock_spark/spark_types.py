@@ -23,18 +23,8 @@ Example:
     >>> df = spark.createDataFrame(data, schema)
 """
 
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Iterator,
-    KeysView,
-    ValuesView,
-    ItemsView,
-    Tuple,
-    Union,
-)
+from collections.abc import ItemsView, Iterator, KeysView, ValuesView
+from typing import Any, Optional, Union
 from dataclasses import dataclass
 
 
@@ -292,7 +282,7 @@ class StructField:
     name: str
     dataType: DataType
     nullable: bool = True
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     default_value: Optional[Any] = None  # PySpark 3.2+ feature
 
     def __post_init__(self) -> None:
@@ -322,7 +312,7 @@ class StructType(DataType):
     """Mock StructType for schema definition."""
 
     def __init__(
-        self, fields: Optional[List[StructField]] = None, nullable: bool = True
+        self, fields: Optional[list[StructField]] = None, nullable: bool = True
     ):
         super().__init__(nullable)
         self.fields = fields or []
@@ -380,7 +370,7 @@ class StructType(DataType):
         other_cols = {f.name for f in other.fields}
         return self_cols == other_cols
 
-    def fieldNames(self) -> List[str]:
+    def fieldNames(self) -> list[str]:
         """Get list of field names."""
         return [field.name for field in self.fields]
 
@@ -448,7 +438,7 @@ def convert_python_type_to_mock_type(python_type: type) -> DataType:
     return type_mapping.get(python_type, StringType())
 
 
-def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
+def infer_schema_from_data(data: list[dict[str, Any]]) -> StructType:
     """Infer schema from data."""
     if not data:
         return StructType([])
@@ -468,7 +458,7 @@ def infer_schema_from_data(data: List[Dict[str, Any]]) -> StructType:
     return StructType(fields)
 
 
-def create_schema_from_columns(columns: List[str]) -> StructType:
+def create_schema_from_columns(columns: list[str]) -> StructType:
     """Create schema from column names (all StringType)."""
     fields = [StructField(name=col, dataType=StringType()) for col in columns]
     return StructType(fields)
@@ -509,7 +499,7 @@ class Row:
             and isinstance(data[0], (list, tuple))
         ):
             # List of (name, value) tuples - preserve duplicates
-            self.data: Union[List[Tuple[str, Any]], Dict[str, Any]] = list(
+            self.data: Union[list[tuple[str, Any]], dict[str, Any]] = list(
                 data
             )  # Keep as list
             self._data_dict = dict(data)  # For backward compatibility
@@ -624,7 +614,7 @@ class Row:
             try:
                 from collections import OrderedDict
 
-                data_dict: Union[Dict[str, Any], OrderedDict[str, Any]]
+                data_dict: Union[dict[str, Any], OrderedDict[str, Any]]
                 if isinstance(self.data, list):
                     data_dict = OrderedDict(self.data)
                 else:
@@ -642,7 +632,7 @@ class Row:
         else:
             return False
 
-    def asDict(self) -> Dict[str, Any]:
+    def asDict(self) -> dict[str, Any]:
         """Convert to dictionary (PySpark compatibility)."""
         # If we have _data_dict, use it (last value for duplicates)
         if hasattr(self, "_data_dict"):
@@ -709,7 +699,7 @@ class Row:
         data_dict = self.data if isinstance(self.data, dict) else dict(self.data)
         return data_dict.get(key, default)
 
-    def _get_field_names_ordered(self) -> List[str]:
+    def _get_field_names_ordered(self) -> list[str]:
         if self._schema is not None and getattr(self._schema, "fields", None):
             return [f.name for f in self._schema.fields]
         # fallback to dict insertion order

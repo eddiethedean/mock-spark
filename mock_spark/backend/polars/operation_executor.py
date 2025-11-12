@@ -5,12 +5,15 @@ This module provides execution of DataFrame operations (filter, select, join, et
 using Polars DataFrame API.
 """
 
-from typing import Any, List, Optional, Set, Tuple, Union
+import json
+from typing import Any, List, Optional, Union
 import polars as pl
 from .expression_translator import PolarsExpressionTranslator
 from .window_handler import PolarsWindowHandler
-from mock_spark.functions import ColumnOperation
+from mock_spark.functions import Column, ColumnOperation
 from mock_spark.functions.window_execution import WindowFunction
+from mock_spark.spark_types import StructType
+from mock_spark.core.ddl_adapter import parse_ddl_schema
 
 
 class PolarsOperationExecutor:
@@ -38,7 +41,7 @@ class PolarsOperationExecutor:
         filter_expr = self.translator.translate(condition)
         return df.filter(filter_expr)
 
-    def apply_select(self, df: pl.DataFrame, columns: Tuple[Any, ...]) -> pl.DataFrame:
+    def apply_select(self, df: pl.DataFrame, columns: tuple[Any, ...]) -> pl.DataFrame:
         """Apply a select operation.
 
         Args:
@@ -51,6 +54,9 @@ class PolarsOperationExecutor:
         select_exprs = []
         select_names = []
         map_op_indices = set()  # Track which columns are map operations
+        python_columns: list[tuple[str, list[Any]]] = []
+        rows_cache: Optional[List[dict[str, Any]]] = None
+        evaluator: Optional["ExpressionEvaluator"] = None
 
         # First pass: handle map_keys, map_values, map_entries using struct operations
         for i, col in enumerate(columns):
@@ -177,7 +183,7 @@ class PolarsOperationExecutor:
 
                             # Merge all struct columns - combine all fields from all maps
                             # Get all field names from all struct columns
-                            all_field_names: Set[str] = set()
+                            all_field_names: set[str] = set()
                             for map_col in map_cols:
                                 if map_col in df.columns:
                                     struct_dtype = df[map_col].dtype
@@ -264,27 +270,51 @@ class PolarsOperationExecutor:
                 select_exprs.append(window_expr.alias(alias_name))
                 select_names.append(alias_name)
             else:
-                # Translate expression
-                expr = self.translator.translate(col)
-                # Get alias if available
                 alias_name = getattr(col, "name", None) or getattr(
                     col, "_alias_name", None
                 )
-                if alias_name:
-                    expr = expr.alias(alias_name)
-                    select_exprs.append(expr)
-                    select_names.append(alias_name)
-                else:
-                    select_exprs.append(expr)
-                    # Try to infer name from expression
-                    if hasattr(col, "name"):
-                        select_names.append(col.name)
-                    elif isinstance(col, str):
-                        select_names.append(col)
+                try:
+                    expr = self.translator.translate(col)
+                    if alias_name:
+                        expr = expr.alias(alias_name)
+                        select_exprs.append(expr)
+                        select_names.append(alias_name)
                     else:
-                        select_names.append(f"col_{len(select_exprs)}")
+                        select_exprs.append(expr)
+                        if hasattr(col, "name"):
+                            select_names.append(col.name)
+                        elif isinstance(col, str):
+                            select_names.append(col)
+                        else:
+                            select_names.append(f"col_{len(select_exprs)}")
+                except ValueError:
+                    # Fallback to Python evaluation for unsupported expressions
+                    if rows_cache is None:
+                        rows_cache = df.to_dicts()
+                    if evaluator is None:
+                        from mock_spark.dataframe.evaluation.expression_evaluator import (
+                            ExpressionEvaluator,
+                        )
 
-        if not select_exprs:
+                        evaluator = ExpressionEvaluator()
+                    values = [
+                        self._evaluate_python_expression(row, col, evaluator)
+                        for row in rows_cache
+                    ]
+                    column_name = alias_name or getattr(
+                        col, "name", f"col_{len(select_exprs) + len(python_columns) + 1}"
+                    )
+                    if isinstance(col, ColumnOperation) and col.operation in {
+                        "to_json",
+                        "to_csv",
+                    }:
+                        struct_alias = self._format_struct_alias(col.column)
+                        column_name = f"{col.operation}({struct_alias})"
+                    python_columns.append((column_name, values))
+                    select_names.append(column_name)
+                    continue
+
+        if not select_exprs and not python_columns:
             return df
 
         # Check if any column uses explode or explode_outer operation
@@ -303,38 +333,39 @@ class PolarsOperationExecutor:
                 has_explode_outer = True
                 explode_outer_index = i
 
-        if has_explode or has_explode_outer:
-            # For explode/explode_outer, we need to use Polars' explode() method which expands rows
-            # First, translate the explode expression to get the array column
-            # Then select all columns and explode the DataFrame
-            result = df.select(select_exprs)
-            # Use the alias name for the exploded column
-            exploded_col_name = None
-            if (
-                has_explode
-                and explode_index is not None
-                and explode_index < len(select_names)
-            ):
-                exploded_col_name = select_names[explode_index]
-            elif (
-                has_explode_outer
-                and explode_outer_index is not None
-                and explode_outer_index < len(select_names)
-            ):
-                exploded_col_name = select_names[explode_outer_index]
-            if exploded_col_name:
-                # For explode_outer, Polars' explode() already handles null/empty arrays correctly
-                # by producing null values for those cases, which matches PySpark behavior
-                result = result.explode(exploded_col_name)
+        if select_exprs:
+            if has_explode or has_explode_outer:
+                result = df.select(select_exprs)
+                exploded_col_name = None
+                if (
+                    has_explode
+                    and explode_index is not None
+                    and explode_index < len(select_names)
+                ):
+                    exploded_col_name = select_names[explode_index]
+                elif (
+                    has_explode_outer
+                    and explode_outer_index is not None
+                    and explode_outer_index < len(select_names)
+                ):
+                    exploded_col_name = select_names[explode_outer_index]
+                if exploded_col_name:
+                    result = result.explode(exploded_col_name)
+            else:
+                result = df.select(select_exprs)
+        elif python_columns:
+            # Only Python-evaluated columns; build DataFrame from values
+            data_dict = {name: values for name, values in python_columns}
+            result = pl.DataFrame(data_dict)
         else:
-            result = df.select(select_exprs)
+            return df
 
         # Special handling: if we're selecting only literals (no column references),
         # Polars returns 1 row by default. We need to ensure the literal broadcasts
         # to all rows in the source DataFrame.
         # Check if result has fewer rows than source and we're selecting expressions
         # (not string column names)
-        if len(result) == 1 and len(df) > 1:
+        if select_exprs and len(result) == 1 and len(df) > 1:
             # Check if all selected items are expressions (not string column names)
             # If all are expressions and none reference columns from df, they're literals
             has_column_reference = False
@@ -353,7 +384,147 @@ class PolarsOperationExecutor:
                 # Replicate the single row to match DataFrame length
                 result = pl.concat([result] * len(df))
 
+        # Append Python-evaluated columns
+        for name, values in python_columns:
+            result = result.with_columns(pl.Series(name, values))
+
+        if select_names:
+            result = result.select(select_names)
+
         return result
+
+    def _evaluate_python_expression(
+        self,
+        row: dict[str, Any],
+        expression: Any,
+        evaluator: "ExpressionEvaluator",
+    ) -> Any:
+        """Evaluate expressions that require Python fallbacks."""
+        if isinstance(expression, ColumnOperation):
+            op_name = expression.operation
+            if op_name == "from_json":
+                return self._python_from_json(row, expression)
+            if op_name == "to_json":
+                return self._python_to_json(row, expression)
+            if op_name == "to_csv":
+                return self._python_to_csv(row, expression)
+        return evaluator.evaluate_expression(row, expression)
+
+    def _python_from_json(
+        self, row: dict[str, Any], expression: ColumnOperation
+    ) -> Any:
+        column_name = self._extract_column_name(expression.column)
+        if not column_name:
+            return None
+
+        raw_value = row.get(column_name)
+        if raw_value is None:
+            return None
+
+        schema_spec, _ = self._unpack_schema_and_options(expression)
+        try:
+            parsed = json.loads(raw_value)
+        except json.JSONDecodeError:
+            return None
+
+        schema = self._resolve_struct_schema(schema_spec)
+        if schema is None:
+            return parsed
+
+        if not isinstance(parsed, dict):
+            return None
+
+        return {field.name: parsed.get(field.name) for field in schema.fields}
+
+    def _python_to_json(
+        self, row: dict[str, Any], expression: ColumnOperation
+    ) -> Optional[str]:
+        field_names = self._extract_struct_field_names(expression.column)
+        if not field_names:
+            return None
+        struct_dict = {name: row.get(name) for name in field_names}
+        return json.dumps(struct_dict, ensure_ascii=False, separators=(",", ":"))
+
+    def _python_to_csv(
+        self, row: dict[str, Any], expression: ColumnOperation
+    ) -> Optional[str]:
+        field_names = self._extract_struct_field_names(expression.column)
+        if not field_names:
+            return None
+
+        values = []
+        for name in field_names:
+            val = row.get(name)
+            values.append("" if val is None else str(val))
+        return ",".join(values)
+
+    def _extract_column_name(self, expr: Any) -> Optional[str]:
+        if isinstance(expr, Column):
+            return expr.name
+        if isinstance(expr, ColumnOperation) and hasattr(expr, "name"):
+            return expr.name
+        if isinstance(expr, str):
+            return expr
+        return getattr(expr, "name", None)
+
+    def _extract_struct_field_names(self, expr: Any) -> list[str]:
+        names: list[str] = []
+        if isinstance(expr, ColumnOperation) and expr.operation == "struct":
+            first = self._extract_column_name(expr.column)
+            if first:
+                names.append(first)
+            additional = expr.value
+            if isinstance(additional, tuple):
+                for item in additional:
+                    name = self._extract_column_name(item)
+                    if name:
+                        names.append(name)
+        else:
+            name = self._extract_column_name(expr)
+            if name:
+                names.append(name)
+        return names
+
+    def _format_struct_alias(self, expr: Any) -> str:
+        names = self._extract_struct_field_names(expr)
+        if names:
+            return f"struct({', '.join(names)})"
+        return "struct(...)"
+
+    def _unpack_schema_and_options(
+        self, expression: ColumnOperation
+    ) -> tuple[Any, dict[str, Any]]:
+        schema_spec: Any = None
+        options: dict[str, Any] = {}
+
+        raw_value = getattr(expression, "value", None)
+        if isinstance(raw_value, tuple):
+            if len(raw_value) >= 1:
+                schema_spec = raw_value[0]
+            if len(raw_value) >= 2 and isinstance(raw_value[1], dict):
+                options = dict(raw_value[1])
+        elif isinstance(raw_value, dict):
+            options = dict(raw_value)
+
+        return schema_spec, options
+
+    def _resolve_struct_schema(self, schema_spec: Any) -> Optional[StructType]:
+        if schema_spec is None:
+            return None
+
+        if isinstance(schema_spec, StructType):
+            return schema_spec
+
+        if hasattr(schema_spec, "value"):
+            return self._resolve_struct_schema(schema_spec.value)
+
+        if isinstance(schema_spec, str):
+            try:
+                return parse_ddl_schema(schema_spec)
+            except Exception:
+                return StructType([])
+
+        return None
 
     def apply_with_column(
         self, df: pl.DataFrame, column_name: str, expression: Any
@@ -474,7 +645,7 @@ class PolarsOperationExecutor:
         self,
         df1: pl.DataFrame,
         df2: pl.DataFrame,
-        on: Optional[Union[str, List[str], ColumnOperation]] = None,
+        on: Optional[Union[str, list[str], ColumnOperation]] = None,
         how: str = "inner",
     ) -> pl.DataFrame:
         """Apply a join operation.
@@ -489,7 +660,7 @@ class PolarsOperationExecutor:
             Joined DataFrame
         """
         # Extract column names from join condition if it's a ColumnOperation
-        join_keys: List[str]
+        join_keys: list[str]
         if isinstance(on, ColumnOperation) and getattr(on, "operation", None) == "==":
             if not hasattr(on, "column") or not hasattr(on, "value"):
                 raise ValueError("Join condition must have column and value attributes")
@@ -598,7 +769,7 @@ class PolarsOperationExecutor:
         return pl.concat([df1, df2])
 
     def apply_order_by(
-        self, df: pl.DataFrame, columns: List[Any], ascending: bool = True
+        self, df: pl.DataFrame, columns: list[Any], ascending: bool = True
     ) -> pl.DataFrame:
         """Apply an orderBy operation.
 
@@ -657,7 +828,7 @@ class PolarsOperationExecutor:
         return df.slice(n)
 
     def apply_group_by_agg(
-        self, df: pl.DataFrame, group_by: List[Any], aggs: List[Any]
+        self, df: pl.DataFrame, group_by: list[Any], aggs: list[Any]
     ) -> pl.DataFrame:
         """Apply a groupBy().agg() operation.
 
@@ -706,7 +877,7 @@ class PolarsOperationExecutor:
         """
         return df.unique()
 
-    def apply_drop(self, df: pl.DataFrame, columns: List[str]) -> pl.DataFrame:
+    def apply_drop(self, df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
         """Apply a drop operation.
 
         Args:

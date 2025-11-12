@@ -6,7 +6,7 @@ for persistence and in-memory DataFrames for active operations.
 """
 
 import os
-from typing import Dict, List, Any, Optional, Union
+from typing import Any, Optional, Union
 from datetime import datetime, timezone
 import polars as pl
 
@@ -113,11 +113,11 @@ class PolarsTable(ITable):
         return self._schema
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """Get table metadata."""
         return self._metadata
 
-    def insert(self, data: List[Dict[str, Any]]) -> None:
+    def insert(self, data: list[dict[str, Any]]) -> None:
         """Insert data into table.
 
         Args:
@@ -151,7 +151,7 @@ class PolarsTable(ITable):
         except Exception as e:
             raise ValueError(f"Failed to insert data: {e}") from e
 
-    def query(self, **filters: Any) -> List[Dict[str, Any]]:
+    def query(self, **filters: Any) -> list[dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -216,7 +216,7 @@ class PolarsSchema:
         """
         self.name = name
         self.db_path = db_path
-        self.tables: Dict[str, PolarsTable] = {}
+        self.tables: dict[str, PolarsTable] = {}
 
         # Create schema directory if db_path is provided and not in-memory
         if db_path and db_path != ":memory:":
@@ -224,7 +224,7 @@ class PolarsSchema:
             os.makedirs(schema_dir, exist_ok=True)
 
     def create_table(
-        self, table: str, columns: Union[List[StructField], StructType]
+        self, table: str, columns: Union[list[StructField], StructType]
     ) -> Optional[PolarsTable]:
         """Create a new table in this schema.
 
@@ -255,7 +255,7 @@ class PolarsStorageManager(IStorageManager):
                     If None, uses in-memory storage only.
         """
         self.db_path = db_path or ":memory:"
-        self.schemas: Dict[str, PolarsSchema] = {}
+        self.schemas: dict[str, PolarsSchema] = {}
         # Use ":memory:" for schema registry when using in-memory storage
         # The schema registry already handles ":memory:" by skipping file operations
         schema_storage_path = self.db_path
@@ -265,6 +265,8 @@ class PolarsStorageManager(IStorageManager):
         if self.db_path != ":memory:":
             os.makedirs(os.path.join(self.db_path, "default"), exist_ok=True)
         self.schemas["default"] = PolarsSchema("default", self.db_path)
+
+        self._rehydrate_from_disk()
 
     def create_schema(self, schema_name: str) -> None:
         """Create a new schema.
@@ -306,6 +308,41 @@ class PolarsStorageManager(IStorageManager):
 
         del self.schemas[schema_name]
 
+    def _rehydrate_from_disk(self) -> None:
+        """Hydrate schemas and tables from disk for persistent storage."""
+        if self.db_path == ":memory:":
+            return
+        if not os.path.exists(self.db_path):
+            return
+
+        for schema_name in sorted(os.listdir(self.db_path)):
+            schema_dir = os.path.join(self.db_path, schema_name)
+            if not os.path.isdir(schema_dir):
+                continue
+
+            self.create_schema(schema_name)
+            registry_files = [
+                filename
+                for filename in os.listdir(schema_dir)
+                if filename.endswith(".schema.json")
+            ]
+
+            schema_container = self.schemas[schema_name]
+            for registry_file in registry_files:
+                table_name = registry_file[: -len(".schema.json")]
+                schema = self.schema_registry.load_schema(schema_name, table_name)
+                if schema is None:
+                    continue
+                if table_name in schema_container.tables:
+                    continue
+
+                schema_container.tables[table_name] = PolarsTable(
+                    table_name,
+                    schema,
+                    schema_name=schema_name,
+                    db_path=self.db_path,
+                )
+
     def schema_exists(self, schema_name: str) -> bool:
         """Check if schema exists.
 
@@ -319,7 +356,7 @@ class PolarsStorageManager(IStorageManager):
             return True
         return schema_name in self.schemas
 
-    def list_schemas(self) -> List[str]:
+    def list_schemas(self) -> list[str]:
         """List all schemas.
 
         Returns:
@@ -346,7 +383,7 @@ class PolarsStorageManager(IStorageManager):
         self,
         schema_name: str,
         table_name: str,
-        fields: Union[List[StructField], StructType],
+        fields: Union[list[StructField], StructType],
     ) -> Optional[PolarsTable]:
         """Create a new table.
 
@@ -425,7 +462,7 @@ class PolarsStorageManager(IStorageManager):
 
         return False
 
-    def list_tables(self, schema_name: Optional[str] = None) -> List[str]:
+    def list_tables(self, schema_name: Optional[str] = None) -> list[str]:
         """List tables in schema.
 
         Args:
@@ -462,7 +499,7 @@ class PolarsStorageManager(IStorageManager):
             return tables
 
         # List all tables across all schemas
-        all_tables: List[str] = []
+        all_tables: list[str] = []
         for schema in self.schemas.values():
             all_tables.extend(schema.tables.keys())
 
@@ -504,7 +541,7 @@ class PolarsStorageManager(IStorageManager):
         raise ValueError(f"Table {schema_name}.{table_name} not found")
 
     def insert_data(
-        self, schema_name: str, table_name: str, data: List[Dict[str, Any]]
+        self, schema_name: str, table_name: str, data: list[dict[str, Any]]
     ) -> None:
         """Insert data into table.
 
@@ -525,7 +562,7 @@ class PolarsStorageManager(IStorageManager):
 
     def query_data(
         self, schema_name: str, table_name: str, **filters: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query data from table.
 
         Args:
@@ -546,7 +583,7 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         return table.query(**filters)
 
-    def get_table_metadata(self, schema_name: str, table_name: str) -> Dict[str, Any]:
+    def get_table_metadata(self, schema_name: str, table_name: str) -> dict[str, Any]:
         """Get table metadata.
 
         Args:
@@ -566,7 +603,7 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         return table.metadata
 
-    def get_data(self, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+    def get_data(self, schema_name: str, table_name: str) -> list[dict[str, Any]]:
         """Get all data from table (optional method).
 
         Args:
@@ -580,7 +617,7 @@ class PolarsStorageManager(IStorageManager):
 
     def query_table(
         self, schema_name: str, table_name: str, filter_expr: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query table with filter expression (optional method).
 
         Args:
@@ -602,7 +639,7 @@ class PolarsStorageManager(IStorageManager):
         return self.query_data(schema_name, table_name)
 
     def update_table_metadata(
-        self, schema_name: str, table_name: str, metadata_updates: Dict[str, Any]
+        self, schema_name: str, table_name: str, metadata_updates: dict[str, Any]
     ) -> None:
         """Update table metadata (optional method).
 

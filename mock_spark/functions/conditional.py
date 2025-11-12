@@ -4,7 +4,7 @@ Conditional functions for Mock Spark.
 This module contains conditional functions including CASE WHEN expressions.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, Union, TYPE_CHECKING, cast
 from mock_spark.functions.base import Column, ColumnOperation
 from mock_spark.core.condition_evaluator import ConditionEvaluator
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def validate_rule(
-    column: Union[Column, str], rule: Union[str, List[Any]]
+    column: Union[Column, str], rule: Union[str, list[Any]]
 ) -> ColumnOperation:
     """Convert validation rule to column expression.
 
@@ -129,7 +129,7 @@ class CaseWhen:
             value: The value to return if condition is true.
         """
         self.column = column
-        self.conditions: List[Tuple[Any, Any]] = []
+        self.conditions: list[tuple[Any, Any]] = []
         self.default_value: Any = None
 
         if condition is not None and value is not None:
@@ -197,7 +197,7 @@ class CaseWhen:
         self.name = name
         return self
 
-    def evaluate(self, row: Dict[str, Any]) -> Any:
+    def evaluate(self, row: dict[str, Any]) -> Any:
         """Evaluate the CASE WHEN expression for a given row.
 
         Args:
@@ -281,7 +281,7 @@ class CaseWhen:
         # Default to LongType for arithmetic operations, not BooleanType
         return LongType(nullable=not all_literals)
 
-    def _evaluate_condition(self, row: Dict[str, Any], condition: Any) -> bool:
+    def _evaluate_condition(self, row: dict[str, Any], condition: Any) -> bool:
         """Evaluate a condition for a given row.
 
         Delegates to shared ConditionEvaluator for consistency.
@@ -297,7 +297,7 @@ class CaseWhen:
 
         return ConditionEvaluator.evaluate_condition(row, condition)  # type: ignore[return-value]
 
-    def _evaluate_value(self, row: Dict[str, Any], value: Any) -> Any:
+    def _evaluate_value(self, row: dict[str, Any], value: Any) -> Any:
         """Evaluate a value for a given row.
 
         Args:
@@ -326,7 +326,7 @@ class CaseWhen:
             return value
 
     def _evaluate_column_operation_value(
-        self, row: Dict[str, Any], operation: Any
+        self, row: dict[str, Any], operation: Any
     ) -> Any:
         """Evaluate a column operation for a value.
 
@@ -578,7 +578,7 @@ class ConditionalFunctions:
         )
 
     @staticmethod
-    def case_when(*conditions: Tuple[Any, Any], else_value: Any = None) -> CaseWhen:
+    def case_when(*conditions: tuple[Any, Any], else_value: Any = None) -> CaseWhen:
         """Create CASE WHEN expression with multiple conditions.
 
         Args:

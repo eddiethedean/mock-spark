@@ -5,7 +5,7 @@ This mixin provides display and collection operations that can be mixed into
 the DataFrame class to add display capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from ...spark_types import Row, StringType, StructField, StructType
 from ..protocols import SupportsDataFrameOps
@@ -18,9 +18,9 @@ class DisplayOperations:
     """Mixin providing display and collection operations for DataFrame."""
 
     if TYPE_CHECKING:
-        data: List[Dict[str, Any]]
+        data: list[dict[str, Any]]
         schema: StructType
-        _operations_queue: List[Tuple[str, Any]]
+        _operations_queue: list[tuple[str, Any]]
         _cached_count: Optional[int]
 
         def _materialize_if_lazy(self) -> SupportsDataFrameOps: ...
@@ -167,7 +167,7 @@ class DisplayOperations:
                 f" |-- {field.name}: {field.dataType.__class__.__name__} ({nullable})"
             )
 
-    def collect(self) -> List[Row]:
+    def collect(self) -> list[Row]:
         """Collect all data as list of Row objects."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -176,7 +176,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().collect(self.data, self.schema)
 
-    def take(self, n: int) -> List[Row]:
+    def take(self, n: int) -> list[Row]:
         """Take first n rows as list of Row objects."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -185,7 +185,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().take(self.data, self.schema, n)
 
-    def head(self, n: int = 1) -> Union[Row, List[Row], None]:
+    def head(self, n: int = 1) -> Union[Row, list[Row], None]:
         """Return first n rows."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -194,7 +194,7 @@ class DisplayOperations:
             )
         return self._get_collection_handler().head(self.data, self.schema, n)
 
-    def tail(self, n: int = 1) -> Union[Row, List[Row], None]:
+    def tail(self, n: int = 1) -> Union[Row, list[Row], None]:
         """Return last n rows."""
         if self._operations_queue:
             materialized = self._materialize_if_lazy()

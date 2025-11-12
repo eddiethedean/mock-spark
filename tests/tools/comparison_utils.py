@@ -7,8 +7,9 @@ expected outputs from PySpark, replacing the runtime comparison approach.
 
 import math
 import datetime as dt
+from collections.abc import Sequence
 from decimal import Decimal
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any
 from dataclasses import dataclass
 
 
@@ -17,8 +18,8 @@ class ComparisonResult:
     """Result of comparing mock-spark output with expected output."""
 
     equivalent: bool
-    errors: List[str]
-    details: Dict[str, Any]
+    errors: list[str]
+    details: dict[str, Any]
 
     def __init__(self):
         self.equivalent = True
@@ -28,7 +29,7 @@ class ComparisonResult:
 
 def compare_dataframes(
     mock_df: Any,
-    expected_output: Dict[str, Any],
+    expected_output: dict[str, Any],
     tolerance: float = 1e-6,
     check_schema: bool = True,
     check_data: bool = True,
@@ -178,7 +179,7 @@ def compare_dataframes(
     return result
 
 
-def _get_columns(df: Any) -> List[str]:
+def _get_columns(df: Any) -> list[str]:
     """Extract ordered column names from a DataFrame-like object."""
     # Always prefer schema fields over columns or dict keys
     # This handles duplicate column names correctly (schema has all fields, dicts only have unique keys)
@@ -216,9 +217,9 @@ def _get_columns(df: Any) -> List[str]:
     return []
 
 
-def _collect_rows(df: Any, columns: Sequence[str]) -> List[Dict[str, Any]]:
+def _collect_rows(df: Any, columns: Sequence[str]) -> list[dict[str, Any]]:
     """Collect rows from a DataFrame-like object into dictionaries."""
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
 
     if hasattr(df, "collect"):
         try:
@@ -236,7 +237,7 @@ def _collect_rows(df: Any, columns: Sequence[str]) -> List[Dict[str, Any]]:
     return rows
 
 
-def _row_to_dict(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
+def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
     """Convert a row to a dictionary.
 
     Note: When there are duplicate column names, dictionaries can only store one value per key.
@@ -281,7 +282,7 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
     ):
         return {col: row[idx] for idx, col in enumerate(columns)}
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for col in columns:
         value = None
         try:
@@ -293,8 +294,8 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
 
 
 def _sort_rows(
-    rows: Sequence[Dict[str, Any]], columns: Sequence[str]
-) -> List[Dict[str, Any]]:
+    rows: Sequence[dict[str, Any]], columns: Sequence[str]
+) -> list[dict[str, Any]]:
     """Sort rows for consistent comparison."""
     if not rows:
         return list(rows)
@@ -322,7 +323,7 @@ def _sort_rows(
         return list(rows)
 
 
-def _has_complex_values(rows: Sequence[Dict[str, Any]], columns: Sequence[str]) -> bool:
+def _has_complex_values(rows: Sequence[dict[str, Any]], columns: Sequence[str]) -> bool:
     """Check if rows contain complex values that can't be sorted."""
     for row in rows:
         for col in columns:
@@ -332,7 +333,7 @@ def _has_complex_values(rows: Sequence[Dict[str, Any]], columns: Sequence[str]) 
     return False
 
 
-def _sortable_value(value: Any) -> Tuple[int, Any]:
+def _sortable_value(value: Any) -> tuple[int, Any]:
     """Convert value to sortable tuple."""
     if _is_null(value):
         return (0, "")
@@ -351,7 +352,7 @@ def _sortable_value(value: Any) -> Tuple[int, Any]:
 
 def _compare_values(
     mock_val: Any, expected_val: Any, tolerance: float, context: str
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Compare two values with tolerance."""
     if _is_null(mock_val) and _is_null(expected_val):
         return True, ""
@@ -576,7 +577,7 @@ def _normalize_column_name(col_name: str) -> str:
     return col_name.lower()
 
 
-def compare_schemas(mock_df: Any, expected_schema: Dict[str, Any]) -> ComparisonResult:
+def compare_schemas(mock_df: Any, expected_schema: dict[str, Any]) -> ComparisonResult:
     """
     Compare DataFrame schemas.
 
@@ -662,7 +663,7 @@ def compare_schemas(mock_df: Any, expected_schema: Dict[str, Any]) -> Comparison
 
 def assert_dataframes_equal(
     mock_df: Any,
-    expected_output: Dict[str, Any],
+    expected_output: dict[str, Any],
     tolerance: float = 1e-6,
     msg: str = "",
 ) -> None:
@@ -720,7 +721,7 @@ def assert_dataframes_equal(
 
 
 def assert_schemas_equal(
-    mock_df: Any, expected_schema: Dict[str, Any], msg: str = ""
+    mock_df: Any, expected_schema: dict[str, Any], msg: str = ""
 ) -> None:
     """
     Assert that DataFrame schemas are equivalent.

@@ -5,7 +5,7 @@ This module provides materialization of lazy DataFrame operations using Polars,
 replacing SQL-based materialization with Polars DataFrame operations.
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import Any
 import polars as pl
 from mock_spark.spark_types import StructType, Row
 from .expression_translator import PolarsExpressionTranslator
@@ -22,10 +22,10 @@ class PolarsMaterializer:
 
     def materialize(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: StructType,
-        operations: List[Tuple[str, Any]],
-    ) -> List[Row]:
+        operations: list[tuple[str, Any]],
+    ) -> list[Row]:
         """Materialize lazy operations into actual data.
 
         Args:
@@ -197,7 +197,7 @@ class PolarsMaterializer:
         # Materialize (collect) the lazy DataFrame
         result_df = lazy_df.collect()
 
-        # Convert to List[Row]
+        # Convert to list[Row]
         # For joins with duplicate columns, Polars uses _right suffix
         # We need to convert these to match PySpark's duplicate column handling
         rows = []

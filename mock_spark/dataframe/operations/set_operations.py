@@ -1,6 +1,6 @@
 """Set operations for DataFrame."""
 
-from typing import List, Any, Dict, Tuple, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from ...spark_types import Row
 
@@ -12,7 +12,7 @@ class SetOperations:
     """Handles set operations for DataFrame."""
 
     @staticmethod
-    def distinct_rows(rows: List[Row]) -> List[Row]:
+    def distinct_rows(rows: list[Row]) -> list[Row]:
         """Remove duplicate rows from a list."""
         seen = set()
         unique_rows = []
@@ -79,18 +79,18 @@ class SetOperations:
         return unique_rows
 
     @staticmethod
-    def union_rows(rows1: List[Row], rows2: List[Row]) -> List[Row]:
+    def union_rows(rows1: list[Row], rows2: list[Row]) -> list[Row]:
         """Union two lists of rows."""
         return rows1 + rows2
 
     @staticmethod
     def union(
-        data1: List[Dict[str, Any]],
+        data1: list[dict[str, Any]],
         schema1: "StructType",
-        data2: List[Dict[str, Any]],
+        data2: list[dict[str, Any]],
         schema2: "StructType",
         storage: Any,
-    ) -> Tuple[List[Dict[str, Any]], "StructType"]:
+    ) -> tuple[list[dict[str, Any]], "StructType"]:
         """Union two DataFrames with their data and schemas."""
         # Convert data to Row objects for union
         rows1 = [Row(row) for row in data1]
@@ -122,10 +122,10 @@ class SetOperations:
         return result_data, schema1
 
     @staticmethod
-    def intersect_rows(rows1: List[Row], rows2: List[Row]) -> List[Row]:
+    def intersect_rows(rows1: list[Row], rows2: list[Row]) -> list[Row]:
         """Find intersection of two lists of rows."""
 
-        def make_hashable(row: Row) -> Tuple[Any, ...]:
+        def make_hashable(row: Row) -> tuple[Any, ...]:
             row_values = []
             for col in row.__dict__:
                 value = getattr(row, col)
@@ -148,10 +148,10 @@ class SetOperations:
         return result
 
     @staticmethod
-    def except_rows(rows1: List[Row], rows2: List[Row]) -> List[Row]:
+    def except_rows(rows1: list[Row], rows2: list[Row]) -> list[Row]:
         """Find rows in rows1 that are not in rows2."""
 
-        def make_hashable(row: Row) -> Tuple[Any, ...]:
+        def make_hashable(row: Row) -> tuple[Any, ...]:
             row_values = []
             for col in row.__dict__:
                 value = getattr(row, col)

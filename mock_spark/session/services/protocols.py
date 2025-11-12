@@ -5,7 +5,7 @@ This module defines Protocol interfaces that provide type safety
 and clear contracts for service implementations.
 """
 
-from typing import Protocol, List, Dict, Any, Optional, Tuple, Union
+from typing import Protocol, Any, Optional, Union
 from mock_spark.spark_types import StructType
 from mock_spark.dataframe import DataFrame
 from mock_spark.session.config import SparkConfig
@@ -16,8 +16,8 @@ class IDataFrameFactory(Protocol):
 
     def create_dataframe(
         self,
-        data: List[Dict[str, Any]],
-        schema: Optional[Union[StructType, List[str], str]],
+        data: list[dict[str, Any]],
+        schema: Optional[Union[StructType, list[str], str]],
         engine_config: SparkConfig,
         storage: Any,
     ) -> DataFrame:
@@ -25,17 +25,17 @@ class IDataFrameFactory(Protocol):
         ...
 
     def _handle_schema_inference(
-        self, data: List[Dict[str, Any]], schema: Optional[Any]
-    ) -> Tuple[StructType, List[Dict[str, Any]]]:
+        self, data: list[dict[str, Any]], schema: Optional[Any]
+    ) -> tuple[StructType, list[dict[str, Any]]]:
         """Handle schema inference or conversion."""
         ...
 
     def _apply_validation_and_coercion(
         self,
-        data: List[Dict[str, Any]],
+        data: list[dict[str, Any]],
         schema: StructType,
         engine_config: SparkConfig,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Apply validation and type coercion."""
         ...
 
@@ -44,7 +44,7 @@ class ISQLParameterBinder(Protocol):
     """Protocol for SQL parameter binding services."""
 
     def bind_parameters(
-        self, query: str, args: Tuple[Any, ...], kwargs: Dict[str, Any]
+        self, query: str, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> str:
         """Bind parameters to SQL query safely."""
         ...
@@ -78,7 +78,7 @@ class IMockingCoordinator(Protocol):
         """Set up a mock implementation for a method."""
         ...
 
-    def reset_all_mocks(self, original_impls: Dict[str, Any]) -> Dict[str, Any]:
+    def reset_all_mocks(self, original_impls: dict[str, Any]) -> dict[str, Any]:
         """Reset all mocks to original implementations."""
         ...
 
