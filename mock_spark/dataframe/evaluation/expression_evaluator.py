@@ -16,6 +16,8 @@ from decimal import Decimal
 from typing import Any, Optional, Union, cast
 from collections.abc import Sequence
 
+from mock_spark.utils.profiling import profiled
+
 from ...functions import Column, ColumnOperation
 from ...functions.conditional import CaseWhen
 from ...spark_types import (
@@ -56,6 +58,7 @@ class ExpressionEvaluator:
         """Initialize evaluator with function registry."""
         self._function_registry = self._build_function_registry()
 
+    @profiled("expression.evaluate_expression", category="expression")
     def evaluate_expression(self, row: dict[str, Any], expression: Any) -> Any:
         """Main entry point for expression evaluation."""
         # Handle CaseWhen (when/otherwise expressions)
@@ -120,6 +123,7 @@ class ExpressionEvaluator:
             # Simple column reference
             return row.get(column.name)
 
+    @profiled("expression.evaluate_column_operation", category="expression")
     def _evaluate_column_operation(self, row: dict[str, Any], operation: Any) -> Any:
         """Evaluate a ColumnOperation."""
         op = operation.operation
@@ -215,6 +219,7 @@ class ExpressionEvaluator:
         else:
             return None
 
+    @profiled("expression.evaluate_function_call", category="expression")
     def _evaluate_function_call(self, row: dict[str, Any], operation: Any) -> Any:
         """Evaluate function calls like upper(), lower(), length(), abs(), round()."""
         if not hasattr(operation, "operation") or not hasattr(operation, "column"):

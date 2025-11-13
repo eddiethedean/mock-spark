@@ -368,11 +368,22 @@ Real-world test suite improvements:
 | Window Functions | 5-10s | 0.05s | **100x** |
 | Full Test Suite | 5-10min | 30-60s | **10x** |
 
+### Performance Tooling
+
+- [Hot path profiling guide](docs/performance/profiling.md)
+- [Pandas fallback vs native benchmarks](docs/performance/pandas_fallback.md)
+
 ---
 
 ---
 
 ## Recent Updates
+
+### Version 3.6.0 - Profiling & Adaptive Execution
+
+- ⚡ **Feature-Flagged Profiling** – Introduced `mock_spark.utils.profiling` with opt-in instrumentation for Polars hot paths and expression evaluation, plus a new guide at `docs/performance/profiling.md`.
+- 🔁 **Adaptive Execution Simulation** – Query plans can now inject synthetic `REPARTITION` steps based on skew metrics, configurable via `QueryOptimizer.configure_adaptive_execution` and covered by new regression tests.
+- 🐼 **Pandas Backend Choice** – Added an optional native pandas mode (`MOCK_SPARK_PANDAS_MODE`) with benchmarking support (`scripts/benchmark_pandas_fallback.py`) and documentation in `docs/performance/pandas_fallback.md`.
 
 ### Version 3.5.0 - Session-Aware Catalog & Safer Fallbacks
 

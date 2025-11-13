@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
+from mock_spark import config
+
 
 class OperationType(Enum):
     """Types of DataFrame operations."""
@@ -24,6 +26,7 @@ class OperationType(Enum):
     DROP = "drop"
     UNION = "union"
     WINDOW = "window"
+    REPARTITION = "repartition"
 
 
 @dataclass
@@ -360,8 +363,18 @@ class QueryOptimizer:
             PredicatePushdownRule(),
             ProjectionPushdownRule(),
         ]
+        self._adaptive_enabled = config.is_feature_enabled(
+            "enable_adaptive_execution_simulation"
+        )
+        self._adaptive_threshold = 2.0
+        self._adaptive_max_split_factor = 8
+        self._adaptive_settings: dict[str, Any] = {}
 
-    def optimize(self, operations: list[Operation]) -> list[Operation]:
+    def optimize(
+        self,
+        operations: list[Operation],
+        runtime_stats: Optional[dict[str, Any]] = None,
+    ) -> list[Operation]:
         """Apply all optimization rules to the query plan."""
         optimized = operations.copy()
 
@@ -370,7 +383,125 @@ class QueryOptimizer:
             if rule.can_apply(optimized):
                 optimized = rule.apply(optimized)
 
+        if runtime_stats:
+            self._adaptive_settings.update(runtime_stats)
+
+        if self._adaptive_enabled:
+            optimized = self._simulate_adaptive_execution(optimized)
+
         return optimized
+
+    def configure_adaptive_execution(
+        self,
+        *,
+        enabled: Optional[bool] = None,
+        skew_threshold: Optional[float] = None,
+        max_split_factor: Optional[int] = None,
+    ) -> None:
+        """Configure adaptive execution simulation parameters."""
+
+        if enabled is not None:
+            self._adaptive_enabled = enabled
+        if skew_threshold is not None and skew_threshold > 1.0:
+            self._adaptive_threshold = float(skew_threshold)
+        if max_split_factor is not None and max_split_factor >= 1:
+            self._adaptive_max_split_factor = int(max_split_factor)
+
+    def reset_adaptive_state(self) -> None:
+        """Clear cached adaptive runtime hints."""
+
+        self._adaptive_settings.clear()
+
+    def _simulate_adaptive_execution(
+        self, operations: list[Operation]
+    ) -> list[Operation]:
+        rewritten: list[Operation] = []
+
+        for op in operations:
+            skew_metrics = self._extract_skew_metrics(op)
+            if skew_metrics:
+                try:
+                    skew_ratio = float(skew_metrics.get("max_partition_ratio", 1.0))
+                except (TypeError, ValueError):
+                    skew_ratio = 1.0
+                if skew_ratio >= self._adaptive_threshold:
+                    partition_columns = self._resolve_partition_columns(
+                        op, skew_metrics
+                    )
+                    if partition_columns:
+                        split_factor = max(int(round(skew_ratio)), 2)
+                        split_factor = min(
+                            split_factor, self._adaptive_max_split_factor
+                        )
+                        rewritten.append(
+                            Operation(
+                                type=OperationType.REPARTITION,
+                                columns=partition_columns,
+                                predicates=[],
+                                join_conditions=[],
+                                group_by_columns=[],
+                                order_by_columns=[],
+                                limit_count=None,
+                                window_specs=[],
+                                metadata={
+                                    "reason": "adaptive_skew_mitigation",
+                                    "source_operation": op.type.value,
+                                    "target_split_factor": split_factor,
+                                    "skew_metrics": skew_metrics,
+                                },
+                            )
+                        )
+            rewritten.append(op)
+
+        return rewritten
+
+    def _extract_skew_metrics(self, op: Operation) -> Optional[dict[str, Any]]:
+        metrics = op.metadata.get("skew_metrics") if op.metadata else None
+        if isinstance(metrics, dict):
+            return metrics
+
+        hints = self._adaptive_settings.get("skew_hints")
+        if isinstance(hints, dict):
+            identifier = op.metadata.get("plan_node_id") if op.metadata else None
+            if (
+                identifier
+                and identifier in hints
+                and isinstance(hints[identifier], dict)
+            ):
+                return hints[identifier]
+        return None
+
+    def _resolve_partition_columns(
+        self, op: Operation, metrics: dict[str, Any]
+    ) -> list[str]:
+        columns = metrics.get("partition_columns")
+        if isinstance(columns, list) and all(isinstance(col, str) for col in columns):
+            return list(columns)
+
+        inferred = []
+        if op.group_by_columns:
+            inferred.extend(op.group_by_columns)
+        elif op.join_conditions:
+            for condition in op.join_conditions:
+                if isinstance(condition, dict):
+                    left = condition.get("left_column")
+                    right = condition.get("right_column")
+                    if isinstance(left, str):
+                        inferred.append(left)
+                    if isinstance(right, str):
+                        inferred.append(right)
+        elif op.columns:
+            inferred.extend(op.columns)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_columns = []
+        for col in inferred:
+            if col not in seen:
+                seen.add(col)
+                unique_columns.append(col)
+
+        return unique_columns
 
     def add_rule(self, rule: OptimizationRule) -> None:
         """Add a custom optimization rule."""

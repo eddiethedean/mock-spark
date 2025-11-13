@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.6.0 — 2025-11-13
+
+### Added
+- Feature-flagged profiling utilities in `mock_spark.utils.profiling`, with Polars execution and
+  expression hot paths instrumented via lightweight decorators.
+- Optional native pandas backend selection through `MOCK_SPARK_PANDAS_MODE`, including a benchmarking
+  harness at `scripts/benchmark_pandas_fallback.py`.
+
+### Changed
+- The query optimizer now supports adaptive execution simulation, inserting configurable
+  `REPARTITION` operations when skew metrics indicate imbalanced workloads.
+
+### Documentation
+- Published performance guides covering hot-path profiling (`docs/performance/profiling.md`) and
+  pandas fallback benchmarking (`docs/performance/pandas_fallback.md`).
+- README “Recent Updates” highlights the profiling, adaptive execution, and pandas backend features.
+
 ## 3.5.0 — 2025-11-13
 
 ### Added

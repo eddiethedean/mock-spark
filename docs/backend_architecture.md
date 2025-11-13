@@ -257,6 +257,59 @@ To add a new backend implementation:
        return "new_backend"
    ```
 
+## Query Optimizer Hooks
+
+### Adaptive Execution Simulation
+
+Mock Spark includes a lightweight adaptive execution simulation layer that can
+rewrite logical plans when skewed partitions are detected. The feature is
+disabled by default and can be toggled through configuration or
+programmatically:
+
+```python
+from mock_spark.optimizer.query_optimizer import QueryOptimizer
+
+optimizer = QueryOptimizer()
+optimizer.configure_adaptive_execution(
+    enabled=True,
+    skew_threshold=1.8,
+    max_split_factor=8,
+)
+```
+
+When enabled, the optimizer inspects the `skew_metrics` metadata attached to
+operations. For joins or aggregations that exceed the configured threshold, the
+optimizer injects a synthetic `REPARTITION` step with guidance about the target
+split factor and affected columns:
+
+```python
+operation.metadata["skew_metrics"] = {
+    "max_partition_ratio": 3.2,
+    "partition_columns": ["region"],
+    "hot_partitions": ["us-east"],
+}
+```
+
+Runtime systems can also pass observed statistics at optimize time:
+
+```python
+plan = optimizer.optimize(
+    operations,
+    runtime_stats={
+        "skew_hints": {
+            "join-hotspot": {
+                "max_partition_ratio": 6.5,
+                "partition_columns": ["id"],
+            }
+        }
+    },
+)
+```
+
+Each synthesized `REPARTITION` operation carries structured metadata (`reason`,
+`target_split_factor`, `skew_metrics`) that downstream components can use to
+adjust execution strategies or produce diagnostics.
+
 ## Backward Compatibility
 
 All existing imports continue to work via re-exports:

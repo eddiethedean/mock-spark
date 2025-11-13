@@ -147,7 +147,9 @@ def save_json(matrix: dict[str, Any], output_path: Path) -> None:
     print(f"✓ Saved {output_path}")
 
 
-def save_markdown(matrix: dict[str, Any], output_path: Path, versions: list[str]) -> None:
+def save_markdown(
+    matrix: dict[str, Any], output_path: Path, versions: list[str]
+) -> None:
     """Save matrix as markdown table."""
     print(f"\nGenerating markdown table at {output_path}...")
 

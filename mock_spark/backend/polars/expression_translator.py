@@ -8,6 +8,9 @@ to Polars expressions (pl.Expr) for DataFrame operations.
 from typing import Any, Optional
 import polars as pl
 import math
+import threading
+from collections import OrderedDict
+from mock_spark import config
 from mock_spark.functions import Column, ColumnOperation, Literal
 from mock_spark.functions.base import AggregateFunction
 from mock_spark.functions.window_execution import WindowFunction
@@ -39,6 +42,14 @@ def _is_mock_case_when(expr: Any) -> bool:
 class PolarsExpressionTranslator:
     """Translates Column expressions to Polars expressions."""
 
+    def __init__(self) -> None:
+        self._cache_enabled = config.is_feature_enabled(
+            "enable_expression_translation_cache"
+        )
+        self._cache_lock = threading.Lock()
+        self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
+        self._cache_size = 512
+
     def translate(self, expr: Any) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
@@ -48,23 +59,29 @@ class PolarsExpressionTranslator:
         Returns:
             Polars expression (pl.Expr)
         """
+        cache_key = self._build_cache_key(expr) if self._cache_enabled else None
+        if cache_key is not None:
+            cached = self._cache_get(cache_key)
+            if cached is not None:
+                return cached
+
         if isinstance(expr, Column):
-            return self._translate_column(expr)
+            result = self._translate_column(expr)
         elif isinstance(expr, ColumnOperation):
-            return self._translate_operation(expr)
+            result = self._translate_operation(expr)
         elif isinstance(expr, Literal):
-            return self._translate_literal(expr)
+            result = self._translate_literal(expr)
         elif isinstance(expr, AggregateFunction):
-            return self._translate_aggregate_function(expr)
+            result = self._translate_aggregate_function(expr)
         elif isinstance(expr, WindowFunction):
             # Window functions are handled separately in window_handler.py
             raise ValueError("Window functions should be handled by WindowHandler")
         elif isinstance(expr, str):
             # String column name
-            return pl.col(expr)
+            result = pl.col(expr)
         elif isinstance(expr, (int, float, bool)):
             # Literal value
-            return pl.lit(expr)
+            result = pl.lit(expr)
         elif isinstance(expr, tuple):
             # Tuple - this is likely a function argument tuple, not a literal
             # Don't try to create a literal from it - tuples as literals are not supported in Polars
@@ -74,11 +91,16 @@ class PolarsExpressionTranslator:
                 f"Cannot translate tuple as literal: {expr}. This should be handled by the function that uses it."
             )
         elif expr is None:
-            return pl.lit(None)
+            result = pl.lit(None)
         elif _is_mock_case_when(expr):
-            return self._translate_case_when(expr)
+            result = self._translate_case_when(expr)
         else:
             raise ValueError(f"Unsupported expression type: {type(expr)}")
+
+        if cache_key is not None:
+            self._cache_set(cache_key, result)
+
+        return result
 
     def _translate_column(self, col: Column) -> pl.Expr:
         """Translate Column to Polars column expression.
@@ -425,6 +447,81 @@ class PolarsExpressionTranslator:
                 return expr.str.ends_with(value_expr)
         else:
             raise ValueError(f"Unsupported string operation: {operation}")
+
+    def _build_cache_key(self, expr: Any) -> Optional[tuple[Any, ...]]:
+        try:
+            return self._serialize_expression(expr)
+        except Exception:
+            return None
+
+    def _serialize_expression(self, expr: Any) -> tuple[Any, ...]:
+        if isinstance(expr, Column):
+            alias = getattr(expr, "_alias_name", None)
+            original = getattr(expr, "_original_column", None)
+            original_name = getattr(original, "name", None)
+            return ("column", expr.name, alias, original_name)
+        if isinstance(expr, ColumnOperation):
+            column_repr = self._serialize_value(getattr(expr, "column", None))
+            value_repr = self._serialize_value(getattr(expr, "value", None))
+            return (
+                "operation",
+                expr.operation,
+                column_repr,
+                value_repr,
+                getattr(expr, "name", None),
+                getattr(expr, "function_name", None),
+            )
+        if isinstance(expr, Literal):
+            return ("literal", expr.value)
+        if isinstance(expr, tuple):
+            return ("tuple",) + tuple(self._serialize_value(item) for item in expr)
+        if isinstance(expr, list):
+            return ("list",) + tuple(self._serialize_value(item) for item in expr)
+        if isinstance(expr, dict):
+            return (
+                "dict",
+                tuple(
+                    sorted(
+                        (self._serialize_value(k), self._serialize_value(v))
+                        for k, v in expr.items()
+                    )
+                ),
+            )
+        if isinstance(expr, (int, float, bool, str)):
+            return ("scalar", expr)
+        if expr is None:
+            return ("none",)
+        return ("repr", repr(expr))
+
+    def _serialize_value(self, value: Any) -> Any:
+        if isinstance(value, (Column, ColumnOperation, Literal)):
+            return self._serialize_expression(value)
+        if isinstance(value, (list, tuple)):
+            return tuple(self._serialize_value(item) for item in value)
+        if isinstance(value, dict):
+            return tuple(
+                sorted(
+                    (self._serialize_value(k), self._serialize_value(v))
+                    for k, v in value.items()
+                )
+            )
+        if isinstance(value, (int, float, bool, str)) or value is None:
+            return value
+        return repr(value)
+
+    def _cache_get(self, key: tuple[Any, ...]) -> Optional[pl.Expr]:
+        with self._cache_lock:
+            cached = self._translation_cache.get(key)
+            if cached is not None:
+                self._translation_cache.move_to_end(key)
+            return cached
+
+    def _cache_set(self, key: tuple[Any, ...], expr: pl.Expr) -> None:
+        with self._cache_lock:
+            self._translation_cache[key] = expr
+            self._translation_cache.move_to_end(key)
+            if len(self._translation_cache) > self._cache_size:
+                self._translation_cache.popitem(last=False)
 
     def _translate_function_call(self, op: ColumnOperation) -> pl.Expr:
         """Translate function call operations.

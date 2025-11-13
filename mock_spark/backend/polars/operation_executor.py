@@ -8,10 +8,12 @@ import json
 from typing import TYPE_CHECKING, Any
 import polars as pl
 from .window_handler import PolarsWindowHandler
+from mock_spark import config
 from mock_spark.functions import Column, ColumnOperation
 from mock_spark.functions.window_execution import WindowFunction
 from mock_spark.spark_types import StructType
 from mock_spark.core.ddl_adapter import parse_ddl_schema
+from mock_spark.utils.profiling import profiled
 
 if TYPE_CHECKING:
     from .expression_translator import PolarsExpressionTranslator
@@ -31,7 +33,12 @@ class PolarsOperationExecutor:
         """
         self.translator = expression_translator
         self.window_handler = PolarsWindowHandler()
+        self._shortcuts_enabled = config.is_feature_enabled(
+            "enable_polars_vectorized_shortcuts"
+        )
+        self._struct_field_cache: dict[tuple[str, str], list[str]] = {}
 
+    @profiled("polars.apply_filter", category="polars")
     def apply_filter(self, df: pl.DataFrame, condition: Any) -> pl.DataFrame:
         """Apply a filter operation.
 
@@ -45,6 +52,7 @@ class PolarsOperationExecutor:
         filter_expr = self.translator.translate(condition)
         return df.filter(filter_expr)
 
+    @profiled("polars.apply_select", category="polars")
     def apply_select(self, df: pl.DataFrame, columns: tuple[Any, ...]) -> pl.DataFrame:
         """Apply a select operation.
 
@@ -95,7 +103,9 @@ class PolarsOperationExecutor:
                 struct_dtype = df[map_col_name].dtype
                 if hasattr(struct_dtype, "fields") and struct_dtype.fields:
                     # Build expression using struct.field() checks
-                    field_names = [f.name for f in struct_dtype.fields]
+                    field_names = self._get_struct_field_names(
+                        map_col_name, struct_dtype
+                    )
                     alias_name = (
                         getattr(col, "name", None) or f"{map_op_name}({map_col_name})"
                     )
@@ -192,9 +202,9 @@ class PolarsOperationExecutor:
                                 if map_col in df.columns:
                                     struct_dtype = df[map_col].dtype
                                     if hasattr(struct_dtype, "fields"):
-                                        field_names = [
-                                            f.name for f in struct_dtype.fields
-                                        ]
+                                        field_names = self._get_struct_field_names(
+                                            map_col, struct_dtype
+                                        )
                                         all_field_names.update(field_names)
                             sorted_field_names = sorted(all_field_names)
 
@@ -417,6 +427,26 @@ class PolarsOperationExecutor:
                 return self._python_to_csv(row, expression)
         return evaluator.evaluate_expression(row, expression)
 
+    def _get_struct_field_names(self, column_name: str, struct_dtype: Any) -> list[str]:
+        """Return struct field names, caching results when shortcuts are enabled."""
+
+        if not hasattr(struct_dtype, "fields") or not struct_dtype.fields:
+            return []
+
+        cache_key = (column_name, repr(struct_dtype))
+        if self._shortcuts_enabled:
+            cached = self._struct_field_cache.get(cache_key)
+            if cached is not None:
+                return cached
+
+        field_names = [field.name for field in struct_dtype.fields]
+
+        if self._shortcuts_enabled:
+            # Store a shallow copy in case downstream users mutate the list.
+            self._struct_field_cache[cache_key] = list(field_names)
+
+        return field_names
+
     def _python_from_json(
         self, row: dict[str, Any], expression: ColumnOperation
     ) -> Any:
@@ -533,6 +563,7 @@ class PolarsOperationExecutor:
 
         return None
 
+    @profiled("polars.apply_with_column", category="polars")
     def apply_with_column(
         self, df: pl.DataFrame, column_name: str, expression: Any
     ) -> pl.DataFrame:
@@ -648,6 +679,7 @@ class PolarsOperationExecutor:
             expr = self.translator.translate(expression)
             return df.with_columns(expr.alias(column_name))
 
+    @profiled("polars.apply_join", category="polars")
     def apply_join(
         self,
         df1: pl.DataFrame,
@@ -834,6 +866,7 @@ class PolarsOperationExecutor:
         """
         return df.slice(n)
 
+    @profiled("polars.apply_group_by_agg", category="polars")
     def apply_group_by_agg(
         self, df: pl.DataFrame, group_by: list[Any], aggs: list[Any]
     ) -> pl.DataFrame:
