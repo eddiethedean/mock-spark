@@ -126,6 +126,14 @@ class Catalog:
         """
         return self.storage.get_current_schema()
 
+    def currentCatalog(self) -> str:
+        """Get current catalog name (Spark SQL compatibility).
+
+        Returns:
+            Catalog identifier. Mock Spark exposes a single catalog.
+        """
+        return "spark_catalog"
+
     def createDatabase(self, name: str, ignoreIfExists: bool = True) -> None:
         """Create a database.
 

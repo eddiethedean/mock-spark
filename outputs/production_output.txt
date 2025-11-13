@@ -11,7 +11,7 @@
 🎯 Creating Mock Spark Session
 ============================================================
 ✓ Created session: ProductionDemo
-✓ Version: 3.4.0
+✓ Version: 3.5.0
 
 ============================================================
 🎯 Comprehensive Data Types Support

@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-648+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![Tests](https://img.shields.io/badge/tests-650+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from mock_spark.sql import SparkSession
 | 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 648+ passing tests, 100% mypy typed |
+| 🏭 **Production Ready** | 650+ passing tests, 100% mypy typed |
 | 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
@@ -373,6 +373,13 @@ Real-world test suite improvements:
 ---
 
 ## Recent Updates
+
+### Version 3.5.0 - Session-Aware Catalog & Safer Fallbacks
+
+- 🧭 **Session-Literal Helpers** – `F.current_catalog`, `F.current_database`, `F.current_schema`, and `F.current_user` return PySpark-compatible literals and understand the active session (with new regression coverage).
+- 🗃️ **Reliable Catalog Context** – The Polars backend and unified storage manager now track the selected schema so `setCurrentDatabase` works end-to-end, and `SparkContext.sparkUser()` mirrors PySpark behaviour.
+- 🧮 **Pure-Python Stats** – Lightweight `percentile` and `covariance` helpers keep percentile/cov tests green even without NumPy, eliminating native-crash regressions.
+- 🛠️ **Dynamic Dispatch** – `F.call_function("func_name", ...)` lets wrappers dynamically invoke registered Mock Spark functions with PySpark-style error messages.
 
 ### Version 3.4.0 - Workflow & CI Refresh
 

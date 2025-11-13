@@ -112,7 +112,7 @@ class SparkSession:
         self._catalog = Catalog(self.storage)
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
-        self._version = "3.4.0"  # Mock version
+        self._version = "3.5.0"  # Mock version
 
         self._sql_executor = SQLExecutor(cast("ISession", self))
 

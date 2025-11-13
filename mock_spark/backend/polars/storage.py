@@ -256,6 +256,7 @@ class PolarsStorageManager(IStorageManager):
         """
         self.db_path = db_path or ":memory:"
         self.schemas: dict[str, PolarsSchema] = {}
+        self._current_schema = "default"
         # Use ":memory:" for schema registry when using in-memory storage
         # The schema registry already handles ":memory:" by skipping file operations
         schema_storage_path = self.db_path
@@ -307,6 +308,8 @@ class PolarsStorageManager(IStorageManager):
                 shutil.rmtree(schema_dir)
 
         del self.schemas[schema_name]
+        if self._current_schema == schema_name:
+            self._current_schema = "default"
 
     def _rehydrate_from_disk(self) -> None:
         """Hydrate schemas and tables from disk for persistent storage."""
@@ -355,6 +358,16 @@ class PolarsStorageManager(IStorageManager):
         if schema_name == "default":
             return True
         return schema_name in self.schemas
+
+    def get_current_schema(self) -> str:
+        """Return the schema used for unqualified table references."""
+        return self._current_schema
+
+    def set_current_schema(self, schema_name: str) -> None:
+        """Set the schema used for unqualified table references."""
+        if not self.schema_exists(schema_name):
+            raise ValueError(f"Schema '{schema_name}' does not exist")
+        self._current_schema = schema_name
 
     def list_schemas(self) -> list[str]:
         """List all schemas.

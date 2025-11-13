@@ -6,6 +6,8 @@ Polars-backed Mock Spark engine, while acting as no-ops under real PySpark.
 
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from datetime import date, datetime
+import importlib.util
+import os
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from mock_spark.functions import Functions as F
@@ -18,15 +20,20 @@ else:  # pragma: no cover - PySpark not available in Mock Spark env
     PySparkColumnType = Any
 
 PySparkColumn: Optional[type[PySparkColumnType]]
-try:  # pragma: no cover - optional dependency
-    from pyspark.sql.column import Column as _RuntimePySparkColumn  # type: ignore
-except Exception:  # pragma: no cover - PySpark not available in Mock Spark env
-    PySparkColumn = None
+
+_ALLOW_PYSPARK_IMPORT = os.environ.get("MOCK_SPARK_ENABLE_PYSPARK_SHIMS", "0") == "1"
+if _ALLOW_PYSPARK_IMPORT and importlib.util.find_spec("pyspark.sql.column") is not None:
+    try:  # pragma: no cover - optional dependency
+        from pyspark.sql.column import Column as _RuntimePySparkColumn  # type: ignore
+    except Exception:  # pragma: no cover - PySpark not available or broken
+        PySparkColumn = None
+    else:
+        PySparkColumn = cast(
+            "Optional[type[PySparkColumnType]]",
+            _RuntimePySparkColumn,  # type: ignore[arg-type]
+        )
 else:
-    PySparkColumn = cast(
-        "Optional[type[PySparkColumnType]]",
-        _RuntimePySparkColumn,  # type: ignore[arg-type]
-    )
+    PySparkColumn = None
 
 ColumnLike = Union[str, Column, ColumnOperation]
 RowLike = Union[Row, Mapping[str, object]]

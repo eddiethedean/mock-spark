@@ -561,7 +561,6 @@ class MiscellaneousOperations:
         Returns:
             List of quantile values, or list of lists if multiple columns
         """
-        import numpy as np
 
         def calc_quantiles(column_name: str) -> list[float]:
             values_list: list[float] = []
@@ -571,7 +570,9 @@ class MiscellaneousOperations:
                     values_list.append(float(val))
             if not values_list:
                 return [float("nan")] * len(probabilities)
-            return [float(np.percentile(values_list, p * 100)) for p in probabilities]
+            from mock_spark.utils.statistics import percentile
+
+            return [float(percentile(values_list, p * 100)) for p in probabilities]
 
         if isinstance(col, str):
             return calc_quantiles(col)
@@ -588,8 +589,6 @@ class MiscellaneousOperations:
         Returns:
             Covariance value
         """
-        import numpy as np
-
         # Filter rows where both values are not None and extract numeric values
         pairs = [
             (row.get(col1), row.get(col2))
@@ -603,7 +602,9 @@ class MiscellaneousOperations:
         values1 = [float(p[0]) for p in pairs]  # type: ignore
         values2 = [float(p[1]) for p in pairs]  # type: ignore
 
-        return float(np.cov(values1, values2)[0][1])
+        from mock_spark.utils.statistics import covariance
+
+        return float(covariance(values1, values2))
 
     # Transformation Operations
     def transform(self: SupportsDataFrameOps, func: Any) -> SupportsDataFrameOps:

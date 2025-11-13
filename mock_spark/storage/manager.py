@@ -6,6 +6,7 @@ This module provides a unified storage manager that can use different backends.
 
 from typing import Any, Optional, Union
 from datetime import datetime
+import contextlib
 import gc
 import psutil
 import os
@@ -92,6 +93,10 @@ class UnifiedStorageManager(IStorageManager):
         """
         self.backend = backend
         self._table_metadata: dict[str, TableMetadata] = {}
+        try:
+            self._current_schema = backend.get_current_schema()
+        except Exception:  # pragma: no cover - backend without state support
+            self._current_schema = "default"
 
     def create_schema(self, schema: str) -> None:
         """Create a new schema.
@@ -120,6 +125,8 @@ class UnifiedStorageManager(IStorageManager):
             cascade: Whether to cascade the drop operation.
         """
         self.backend.drop_schema(schema_name, cascade)
+        if self._current_schema == schema_name:
+            self._current_schema = "default"
 
     def list_schemas(self) -> list[str]:
         """List all schemas.
@@ -128,6 +135,27 @@ class UnifiedStorageManager(IStorageManager):
             List of schema names.
         """
         return self.backend.list_schemas()
+
+    def get_current_schema(self) -> str:
+        """Return the current schema used for unqualified table references."""
+        try:
+            backend_schema = self.backend.get_current_schema()
+        except Exception:
+            backend_schema = None
+
+        if backend_schema:
+            self._current_schema = backend_schema
+        return self._current_schema
+
+    def set_current_schema(self, schema_name: str) -> None:
+        """Set the current schema used for unqualified table references."""
+        if not self.schema_exists(schema_name):
+            raise ValueError(f"Schema '{schema_name}' does not exist")
+
+        with contextlib.suppress(Exception):
+            self.backend.set_current_schema(schema_name)
+
+        self._current_schema = schema_name
 
     def table_exists(self, schema: str, table: str) -> bool:
         """Check if table exists.

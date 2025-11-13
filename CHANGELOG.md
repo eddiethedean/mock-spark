@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.5.0 — 2025-11-13
+
+### Added
+- Session-aware helper functions in `mock_spark.functions`: `current_catalog`, `current_database`,
+  `current_schema`, and `current_user`, plus a dynamic `call_function` dispatcher.
+- Regression tests covering the new helpers and dynamic dispatch, ensuring PySpark-compatible error
+  handling.
+- Pure-Python statistical fallbacks (`percentile`, `covariance`) to remove the dependency on native
+  wheels when running documentation and compatibility suites.
+
+### Changed
+- The Polars storage backend and `UnifiedStorageManager` now track the active schema so
+  `setCurrentDatabase` updates propagate end-to-end.
+- `SparkContext.sparkUser()` mirrors PySpark’s context helper, allowing the new literal functions to
+  surface the current user.
+
+### Documentation
+- README and quick-start docs updated for version 3.5.0 and the session-aware catalogue features.
+- Internal upgrade summary documents the stability improvements and successful full-suite run.
+
 ## 3.4.0 — 2025-11-12
 
 ### Changed

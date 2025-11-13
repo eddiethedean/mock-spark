@@ -26,7 +26,7 @@ Example:
     ALICE        50
 """
 
-from typing import Any, Optional, Union, Callable
+from typing import Any, Optional, Union, Callable, TYPE_CHECKING
 from .core.column import Column, ColumnOperation
 from .core.literals import Literal
 from .base import AggregateFunction
@@ -41,6 +41,10 @@ from .map import MapFunctions
 from .bitwise import BitwiseFunctions
 from .xml import XMLFunctions
 from .crypto import CryptoFunctions
+from ..errors import PySparkTypeError, PySparkValueError
+
+if TYPE_CHECKING:
+    from ..session import SparkSession
 
 
 class Functions:
@@ -50,6 +54,23 @@ class Functions:
     """
 
     # Column functions
+    @staticmethod
+    def _resolve_session(session: Optional["SparkSession"]) -> "SparkSession":
+        """Resolve an active SparkSession for session-aware functions."""
+        from ..session import SparkSession
+
+        if session is not None:
+            return session
+
+        active = SparkSession._singleton_session  # type: ignore[attr-defined]
+        if active is not None:
+            return active
+
+        raise PySparkValueError(
+            "No active SparkSession found. Call SparkSession.builder.getOrCreate() "
+            "or pass a session explicitly."
+        )
+
     @staticmethod
     def col(name: str) -> Column:
         """Create a column reference."""
@@ -74,6 +95,46 @@ class Functions:
         if isinstance(column, str):
             column = Column(column)
         return column.cast(data_type)
+
+    @staticmethod
+    def current_catalog(session: Optional["SparkSession"] = None) -> Literal:
+        """Return the current catalog name as a literal."""
+        spark = Functions._resolve_session(session)
+        catalog = getattr(spark.catalog, "currentCatalog", None)
+        catalog_name = catalog() if callable(catalog) else "spark_catalog"
+
+        literal = Literal(catalog_name)
+        literal.name = "current_catalog()"
+        return literal
+
+    @staticmethod
+    def current_database(session: Optional["SparkSession"] = None) -> Literal:
+        """Return the current database/schema as a literal."""
+        spark = Functions._resolve_session(session)
+        current_db = spark.catalog.currentDatabase()
+        literal = Literal(current_db)
+        literal.name = "current_database()"
+        return literal
+
+    @staticmethod
+    def current_schema(session: Optional["SparkSession"] = None) -> Literal:
+        """Alias for current_database (Spark SQL compatibility)."""
+        spark = Functions._resolve_session(session)
+        current_schema = spark.catalog.currentDatabase()
+        literal = Literal(current_schema)
+        literal.name = "current_schema()"
+        return literal
+
+    @staticmethod
+    def current_user(session: Optional["SparkSession"] = None) -> Literal:
+        """Return the current Spark user as a literal."""
+        spark = Functions._resolve_session(session)
+        spark_user = getattr(spark.sparkContext, "sparkUser", None)
+        user_name = spark_user() if callable(spark_user) else "mock_user"
+
+        literal = Literal(user_name)
+        literal.name = "current_user()"
+        return literal
 
     # String functions
     @staticmethod
@@ -2768,6 +2829,46 @@ class Functions:
     def toRadians(column: Union[Column, str]) -> ColumnOperation:
         """Deprecated alias for radians (all PySpark versions)."""
         return MathFunctions.toRadians(column)
+
+    # Dynamic dispatch helpers
+    @staticmethod
+    def call_function(function_name: str, *columns: Any) -> Any:
+        """
+        Dynamically invoke a function from the mock-spark functions namespace.
+
+        Args:
+            function_name: Name of the function to invoke (e.g. ``"upper"``).
+            *columns: Positional arguments passed to the resolved function.
+
+        Returns:
+            Whatever the resolved function returns (typically a ColumnOperation).
+
+        Raises:
+            PySparkValueError: If the requested function is not registered.
+            PySparkTypeError: If the supplied arguments are incompatible with the
+                resolved function signature.
+        """
+
+        if not isinstance(function_name, str) or not function_name:
+            raise PySparkTypeError(
+                "call_function() expects a non-empty string as function name"
+            )
+
+        if function_name == "call_function":
+            raise PySparkValueError("Function 'call_function' cannot be dispatched")
+
+        candidate = getattr(Functions, function_name, None)
+        if candidate is None or not callable(candidate):
+            raise PySparkValueError(
+                f"Function {function_name!r} is not registered in mock-spark"
+            )
+
+        try:
+            return candidate(*columns)
+        except TypeError as exc:
+            raise PySparkTypeError(
+                f"Function {function_name!r} does not accept the provided arguments: {exc}"
+            ) from exc
 
 
 # Create the F namespace instance

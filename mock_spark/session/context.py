@@ -22,6 +22,7 @@ Example:
 """
 
 from typing import Any
+import getpass
 
 
 class MockJVMFunctions:
@@ -116,6 +117,10 @@ class SparkContext:
         """
         # Mock implementation - in real Spark this would stop the context
         pass
+
+    def sparkUser(self) -> str:
+        """Return the logical Spark user associated with this context."""
+        return getpass.getuser()
 
     def __enter__(self) -> "SparkContext":
         """Context manager entry."""

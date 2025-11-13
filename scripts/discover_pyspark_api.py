@@ -15,6 +15,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 # PySpark versions to test
 PYSPARK_VERSIONS = ["3.0.3", "3.1.3", "3.2.4", "3.3.4", "3.4.3", "3.5.2"]
@@ -138,7 +139,7 @@ def check_mock_spark_availability(item_name: str, item_type: str) -> bool:
     return False
 
 
-def save_json(matrix: Dict, output_path: Path) -> None:
+def save_json(matrix: dict[str, Any], output_path: Path) -> None:
     """Save matrix as JSON."""
     print(f"\nSaving JSON to {output_path}...")
     with open(output_path, "w") as f:
@@ -146,7 +147,7 @@ def save_json(matrix: Dict, output_path: Path) -> None:
     print(f"✓ Saved {output_path}")
 
 
-def save_markdown(matrix: Dict, output_path: Path, versions: list[str]) -> None:
+def save_markdown(matrix: dict[str, Any], output_path: Path, versions: list[str]) -> None:
     """Save matrix as markdown table."""
     print(f"\nGenerating markdown table at {output_path}...")
 

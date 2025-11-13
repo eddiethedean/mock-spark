@@ -21,6 +21,8 @@ class BackendFactory:
         >>> materializer = BackendFactory.create_materializer("polars")
     """
 
+    _duckdb_available_cache: Optional[bool] = None
+
     @staticmethod
     def create_storage_backend(
         backend_type: str = "polars",
@@ -229,5 +231,14 @@ class BackendFactory:
     def _duckdb_available() -> bool:
         """Check whether the optional DuckDB backend is available."""
 
-        spec = importlib.util.find_spec("mock_spark.backend.duckdb.storage")
-        return spec is not None
+        if BackendFactory._duckdb_available_cache is not None:
+            return BackendFactory._duckdb_available_cache
+
+        try:
+            spec = importlib.util.find_spec("mock_spark.backend.duckdb.storage")
+        except ModuleNotFoundError:
+            BackendFactory._duckdb_available_cache = False
+        else:
+            BackendFactory._duckdb_available_cache = spec is not None
+
+        return BackendFactory._duckdb_available_cache
