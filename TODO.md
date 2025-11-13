@@ -6,14 +6,9 @@
 - [x] Benchmark stubbed `pandas` fallback and explore lightweight real dependency opt-in for consumers that want parity with `toPandas`. (Optional native pandas backend with benchmark script in `scripts/benchmark_pandas_fallback.py`; guidance captured in `docs/performance/pandas_fallback.md`.)
 
 ## Testing & Reliability
-- [ ] Extend regression suite for session-aware helpers (`F.current_*`) to cover multi-session scenarios and catalog drop/recreate workflows.
-- [ ] Add integration smoke tests for `scripts/discover_pyspark_api.py` to ensure generated matrices stay in sync with new function coverage.
-- [ ] Harden documentation example harness to fail fast when dependencies (e.g. pandas stub) are missing or stale.
-
-## Tooling & Release Flow
-- [ ] Automate CHANGELOG and README “Recent Updates” entries during release tagging.
-- [ ] Wire `scripts/discover_pyspark_api.py` into CI (nightly) so compatibility matrices stay current without manual invocation.
-- [ ] Add packaging check that prevents publishing if stub modules (like `pandas` shim) drift from production behaviour expectations.
+- [x] Extend regression suite for session-aware helpers (`F.current_*`) to cover multi-session scenarios and catalog drop/recreate workflows. (New cases in `tests/unit/functions/test_session_functions.py` verify isolation and catalog lifecycle resilience.)
+- [x] Add integration smoke tests for `scripts/discover_pyspark_api.py` to ensure generated matrices stay in sync with new function coverage. (`tests/integration/scripts/test_discover_pyspark_api.py` stubs discovery to validate artifact generation.)
+- [x] Harden documentation example harness to fail fast when dependencies (e.g. pandas stub) are missing or stale. (`tests/documentation/test_examples.py` now enforces optional dependency versions and skips with guidance when absent.)
 
 ## Documentation & Community
 - [ ] Document new session-aware literals and schema tracking in guides (`docs/sql_operations_guide.md`, `docs/getting_started.md` advanced section).

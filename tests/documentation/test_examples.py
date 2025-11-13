@@ -4,10 +4,89 @@ Test that all example scripts are runnable.
 Ensures documentation examples work correctly and produce expected outputs.
 """
 
-import subprocess
+from __future__ import annotations
+
 import os
+import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
+
+import pytest
+from importlib.metadata import PackageNotFoundError, version
+from packaging.requirements import Requirement
+from packaging.version import Version
+
+try:  # Python 3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - fallback for older interpreters
+    import tomli as tomllib  # type: ignore[no-redef]
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PYPROJECT_PATH = PROJECT_ROOT / "pyproject.toml"
+OPTIONAL_DEPENDENCIES_TO_VALIDATE = ("pandas", "pandas-stubs")
+
+
+@lru_cache(maxsize=1)
+def _optional_dependency_requirements() -> dict[str, list[Requirement]]:
+    """Parse optional dependency requirements from pyproject.toml."""
+    data = tomllib.loads(PYPROJECT_PATH.read_text())
+    optional = data.get("project", {}).get("optional-dependencies", {})
+
+    requirements: dict[str, list[Requirement]] = {}
+    for entries in optional.values():
+        for entry in entries:
+            req = Requirement(entry)
+            requirements.setdefault(req.name, []).append(req)
+    return requirements
+
+
+def _validate_optional_dependency(package: str) -> Version | None:
+    """Ensure optional dependency is installed and meets version specifiers."""
+    specs = _optional_dependency_requirements().get(package, [])
+    if not specs:
+        return None
+
+    try:
+        installed_version = Version(version(package))
+    except PackageNotFoundError:
+        pytest.skip(
+            f"Optional dependency '{package}' is not installed; "
+            "install the 'mock-spark[pandas]' extra to run documentation examples.",
+            allow_module_level=True,
+        )
+
+    for requirement in specs:
+        if requirement.specifier and installed_version not in requirement.specifier:
+            pytest.fail(
+                f"Optional dependency '{package}' has version {installed_version}, "
+                f"which does not satisfy constraint '{requirement.specifier}'. "
+                "Update the package to meet documentation harness expectations.",
+                pytrace=False,
+            )
+
+    return installed_version
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_documentation_dependencies() -> None:
+    """Fail fast (or skip) if optional docs dependencies are missing or stale."""
+    versions: dict[str, Version] = {}
+    for package in OPTIONAL_DEPENDENCIES_TO_VALIDATE:
+        dep_version = _validate_optional_dependency(package)
+        if dep_version is not None:
+            versions[package] = dep_version
+
+    pandas_version = versions.get("pandas")
+    stubs_version = versions.get("pandas-stubs")
+    if pandas_version and stubs_version and pandas_version.major != stubs_version.major:
+        pytest.fail(
+            "Detected mismatched major versions between 'pandas' "
+            f"({pandas_version}) and 'pandas-stubs' ({stubs_version}). "
+            "Update the stub package to align with the installed pandas version.",
+            pytrace=False,
+        )
 
 
 class TestExampleScripts:
@@ -16,17 +95,16 @@ class TestExampleScripts:
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         env = os.environ.copy()
-        project_root = Path(__file__).parent.parent.parent
         existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
-            f"{project_root}:{existing_path}" if existing_path else str(project_root)
+            f"{PROJECT_ROOT}:{existing_path}" if existing_path else str(PROJECT_ROOT)
         )
         result = subprocess.run(
             [sys.executable, "examples/basic_usage.py"],
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=Path(__file__).parent.parent.parent,
+            cwd=PROJECT_ROOT,
             env=env,
         )
         assert result.returncode == 0, f"basic_usage.py failed: {result.stderr}"
@@ -36,17 +114,16 @@ class TestExampleScripts:
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
         env = os.environ.copy()
-        project_root = Path(__file__).parent.parent.parent
         existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
-            f"{project_root}:{existing_path}" if existing_path else str(project_root)
+            f"{PROJECT_ROOT}:{existing_path}" if existing_path else str(PROJECT_ROOT)
         )
         result = subprocess.run(
             [sys.executable, "examples/comprehensive_usage.py"],
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=Path(__file__).parent.parent.parent,
+            cwd=PROJECT_ROOT,
             env=env,
         )
         assert result.returncode == 0, f"comprehensive_usage.py failed: {result.stderr}"
@@ -54,7 +131,7 @@ class TestExampleScripts:
 
     def test_examples_show_v2_features(self):
         """Test that examples mention v2.0.0 features."""
-        examples_dir = Path(__file__).parent.parent.parent / "examples"
+        examples_dir = PROJECT_ROOT / "examples"
 
         # Check basic_usage.py
         basic_content = (examples_dir / "basic_usage.py").read_text()
@@ -68,7 +145,7 @@ class TestExampleScripts:
 
     def test_example_outputs_captured(self):
         """Test that example outputs are saved."""
-        outputs_dir = Path(__file__).parent.parent.parent / "outputs"
+        outputs_dir = PROJECT_ROOT / "outputs"
 
         # Check that outputs directory exists and has files
         assert outputs_dir.exists(), "outputs/ directory should exist"

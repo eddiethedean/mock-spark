@@ -51,6 +51,85 @@ class TestSessionFunctions:
         result = df.select(F.current_user()).collect()[0][0]
         assert result == getpass.getuser()
 
+    def test_current_helpers_are_session_isolated(self) -> None:
+        """Ensure session-aware helpers reflect each session's catalog state."""
+        primary_row = (
+            self.spark.createDataFrame([{"value": 1}])
+            .select(
+                F.current_database(),
+                F.current_catalog(),
+                F.current_user(),
+            )
+            .collect()[0]
+        )
+
+        other_session = self.spark.newSession()
+        original_session = SparkSession._singleton_session
+        try:
+            other_session.catalog.createDatabase("default", ignoreIfExists=True)
+            other_session.catalog.setCurrentDatabase("default")
+
+            SparkSession._singleton_session = other_session
+            secondary_row = (
+                other_session.createDataFrame([{"value": 1}])
+                .select(
+                    F.current_database(),
+                    F.current_catalog(),
+                    F.current_user(),
+                )
+                .collect()[0]
+            )
+        finally:
+            other_session.stop()
+            SparkSession._singleton_session = original_session or self.spark
+
+        assert primary_row[0] == "analytics"
+        assert primary_row[1] == "spark_catalog"
+        assert secondary_row[0] == "default"
+        assert secondary_row[1] == "spark_catalog"
+        assert primary_row[2] == secondary_row[2] == getpass.getuser()
+
+        reaffirm = (
+            self.spark.createDataFrame([{"value": 1}])
+            .select(F.current_database())
+            .collect()[0][0]
+        )
+        assert reaffirm == "analytics"
+
+    def test_current_helpers_survive_catalog_drop_and_recreate(self) -> None:
+        """`current_*` helpers stay consistent across catalog lifecycle events."""
+        initial_row = (
+            self.spark.createDataFrame([{"value": 1}])
+            .select(
+                F.current_database(),
+                F.current_schema(),
+                F.current_catalog(),
+            )
+            .collect()[0]
+        )
+        assert initial_row[0] == "analytics"
+        assert initial_row[1] == "analytics"
+        assert initial_row[2] == "spark_catalog"
+
+        self.spark.catalog.setCurrentDatabase("default")
+        self.spark.catalog.dropDatabase("analytics", ignoreIfNotExists=False)
+        self.spark.catalog.createDatabase("analytics", ignoreIfExists=False)
+        self.spark.catalog.setCurrentDatabase("analytics")
+
+        post_reset_row = (
+            self.spark.createDataFrame([{"value": 2}])
+            .select(
+                F.current_database(),
+                F.current_schema(),
+                F.current_catalog(),
+            )
+            .collect()[0]
+        )
+
+        assert post_reset_row[0] == "analytics"
+        assert post_reset_row[1] == "analytics"
+        assert post_reset_row[2] == "spark_catalog"
+
     def test_error_when_no_active_session(self) -> None:
         SparkSession._singleton_session = None  # type: ignore[attr-defined]
         from mock_spark.errors import PySparkValueError
