@@ -379,6 +379,15 @@ Real-world test suite improvements:
 
 ## Recent Updates
 
+### Version 3.7.0 - Full SQL DDL/DML Support
+
+- 🗄️ **Complete SQL DDL/DML** – Full implementation of `CREATE TABLE`, `DROP TABLE`, `INSERT INTO`, `UPDATE`, and `DELETE FROM` statements in the SQL executor.
+- 📝 **Enhanced SQL Parser** – Comprehensive support for DDL statements with column definitions, `IF NOT EXISTS`, and `IF EXISTS` clauses.
+- 💾 **INSERT Operations** – Support for `INSERT INTO ... VALUES (...)` with multiple rows and `INSERT INTO ... SELECT ...` sub-queries.
+- 🔄 **UPDATE & DELETE** – Full support for `UPDATE ... SET ... WHERE ...` and `DELETE FROM ... WHERE ...` with Python-based expression evaluation.
+- 🐛 **Bug Fixes** – Fixed recursion errors in schema projection and resolved import shadowing issues in SQL executor.
+- ✨ **Code Quality** – Improved linting, formatting, and type safety across the codebase.
+
 ### Version 3.6.0 - Profiling & Adaptive Execution
 
 - ⚡ **Feature-Flagged Profiling** – Introduced `mock_spark.utils.profiling` with opt-in instrumentation for Polars hot paths and expression evaluation, plus a new guide at `docs/performance/profiling.md`.

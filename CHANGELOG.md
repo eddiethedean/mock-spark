@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.7.0 — 2025-01-XX
+
+### Added
+- Full SQL DDL/DML support: `CREATE TABLE`, `DROP TABLE`, `INSERT INTO`, `UPDATE`, and `DELETE FROM` statements are now fully implemented in the SQL executor.
+- Enhanced SQL parser with comprehensive support for DDL statements including column definitions, `IF NOT EXISTS`, and `IF EXISTS` clauses.
+- Support for `INSERT INTO ... VALUES (...)` with multiple rows and `INSERT INTO ... SELECT ...` sub-queries.
+- `UPDATE ... SET ... WHERE ...` statements with Python-based expression evaluation for WHERE conditions and SET clauses.
+- `DELETE FROM ... WHERE ...` statements with Python-based condition evaluation.
+
+### Changed
+- SQL executor now handles DDL/DML operations by directly interacting with the storage backend, bypassing DataFrame expression translation for complex SQL operations.
+- Improved error handling in SQL operations with proper exception types and messages.
+
+### Fixed
+- Fixed recursion error in `DataFrame._project_schema_with_operations` by using `_schema` directly instead of the `schema` property.
+- Fixed `UnboundLocalError` in SQL executor by removing shadowing local imports of `StructType`.
+- Removed unused imports and improved code quality with ruff linting fixes.
+
+### Documentation
+- Updated SQL executor docstrings to reflect full DDL/DML implementation status.
+- README "Recent Updates" highlights the new SQL DDL/DML capabilities.
+
 ## 3.6.0 — 2025-11-13
 
 ### Added
