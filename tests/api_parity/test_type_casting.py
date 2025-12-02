@@ -364,12 +364,17 @@ class TestTypeCasting(ParityTestBase):
 
     def test_cast_in_expressions(self, mock_spark, pyspark_spark, numeric_data):
         """Test casting within expressions."""
+        from mock_spark import F as MockF
+        from pyspark.sql import functions as PySparkF
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(numeric_data)
         mock_result = mock_df.select(
             "id",
             (mock_df.value.cast("int") + 10).alias("value_plus_10"),
-            (mock_df.value.cast("string") + "_suffix").alias("value_with_suffix"),
+            MockF.concat(mock_df.value.cast("string"), MockF.lit("_suffix")).alias(
+                "value_with_suffix"
+            ),
         )
 
         # PySpark
@@ -377,7 +382,9 @@ class TestTypeCasting(ParityTestBase):
         pyspark_result = pyspark_df.select(
             "id",
             (pyspark_df.value.cast("int") + 10).alias("value_plus_10"),
-            (pyspark_df.value.cast("string") + "_suffix").alias("value_with_suffix"),
+            PySparkF.concat(
+                pyspark_df.value.cast("string"), PySparkF.lit("_suffix")
+            ).alias("value_with_suffix"),
         )
 
         # Compare

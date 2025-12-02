@@ -726,24 +726,47 @@ class MathFunctions:
         )
 
     @staticmethod
-    def nanvl(col1: Union[Column, str], col2: Union[Column, str]) -> ColumnOperation:
+    def nanvl(
+        col1: Union[Column, str], col2: Union[Column, str, int, float]
+    ) -> ColumnOperation:
         """Returns col1 if not NaN, or col2 if col1 is NaN.
 
         Args:
             col1: First column
-            col2: Second column (replacement for NaN)
+            col2: Second column or literal value (replacement for NaN)
 
         Returns:
             ColumnOperation representing the nanvl function.
         """
-        column1 = Column(col1) if isinstance(col1, str) else col1
-        column2 = Column(col2) if isinstance(col2, str) else col2
+        from .core.literals import Literal
+        from typing import Union, Any
 
+        column1 = Column(col1) if isinstance(col1, str) else col1
+        column2: Union[Column, Literal, Any]
+        if isinstance(col2, (int, float)):
+            column2 = Literal(col2)
+        elif isinstance(col2, str):
+            column2 = Column(col2)
+        else:
+            column2 = col2
+
+        col2_name = (
+            column2.name
+            if hasattr(column2, "name")
+            else str(column2.value)
+            if hasattr(column2, "value")
+            else str(col2)
+        )
+        # PySpark generates: CASE WHEN (NOT (col1 = col1)) THEN col2 ELSE col1 END
+        # For now, use the simpler nanvl name, but we could generate CASE WHEN if needed
+        # The test expects: CASE WHEN (NOT (salary = salary)) THEN 0 ELSE salary END
+        col1_name = column1.name if hasattr(column1, "name") else str(column1)
+        name = f"CASE WHEN (NOT ({col1_name} = {col1_name})) THEN {col2_name} ELSE {col1_name} END"
         return ColumnOperation(
             column1,
             "nanvl",
             value=column2,
-            name=f"nanvl({column1.name}, {column2.name})",
+            name=name,
         )
 
     @staticmethod

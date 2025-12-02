@@ -78,6 +78,8 @@ class TestAggregations(ParityTestBase):
 
     def test_agg_multiple_functions(self, mock_spark, pyspark_spark, sample_data):
         """Test agg with multiple aggregation functions."""
+        from pyspark.sql import functions as PySparkF
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.groupBy("department").agg(
@@ -86,12 +88,12 @@ class TestAggregations(ParityTestBase):
             mock_df.salary.sum().alias("total_salary"),
         )
 
-        # PySpark
+        # PySpark - use F functions instead of column methods
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.groupBy("department").agg(
-            pyspark_df.salary.count().alias("count"),
-            pyspark_df.salary.avg().alias("avg_salary"),
-            pyspark_df.salary.sum().alias("total_salary"),
+            PySparkF.count(pyspark_df.salary).alias("count"),
+            PySparkF.avg(pyspark_df.salary).alias("avg_salary"),
+            PySparkF.sum(pyspark_df.salary).alias("total_salary"),
         )
 
         # Compare
@@ -294,6 +296,8 @@ class TestAggregations(ParityTestBase):
 
     def test_global_aggregations(self, mock_spark, pyspark_spark, sample_data):
         """Test global aggregations (no groupBy)."""
+        from pyspark.sql import functions as PySparkF
+
         # MockSpark
         mock_df = mock_spark.createDataFrame(sample_data)
         mock_result = mock_df.agg(
@@ -302,12 +306,12 @@ class TestAggregations(ParityTestBase):
             mock_df.salary.sum().alias("total_salary"),
         )
 
-        # PySpark
+        # PySpark - use F functions instead of column methods
         pyspark_df = pyspark_spark.createDataFrame(sample_data)
         pyspark_result = pyspark_df.agg(
-            pyspark_df.salary.count().alias("total_count"),
-            pyspark_df.salary.avg().alias("avg_salary"),
-            pyspark_df.salary.sum().alias("total_salary"),
+            PySparkF.count(pyspark_df.salary).alias("total_count"),
+            PySparkF.avg(pyspark_df.salary).alias("avg_salary"),
+            PySparkF.sum(pyspark_df.salary).alias("total_salary"),
         )
 
         # Compare
@@ -315,6 +319,8 @@ class TestAggregations(ParityTestBase):
 
     def test_aggregation_with_nulls(self, mock_spark, pyspark_spark):
         """Test aggregations with null values."""
+        from pyspark.sql import functions as PySparkF
+
         data_with_nulls = [
             {"id": 1, "name": "Alice", "salary": 50000.0},
             {"id": 2, "name": "Bob", "salary": None},
@@ -329,11 +335,11 @@ class TestAggregations(ParityTestBase):
             mock_df.salary.avg().alias("avg_salary"),
         )
 
-        # PySpark
+        # PySpark - use F functions instead of column methods
         pyspark_df = pyspark_spark.createDataFrame(data_with_nulls)
         pyspark_result = pyspark_df.agg(
-            pyspark_df.salary.count().alias("count"),
-            pyspark_df.salary.avg().alias("avg_salary"),
+            PySparkF.count(pyspark_df.salary).alias("count"),
+            PySparkF.avg(pyspark_df.salary).alias("avg_salary"),
         )
 
         # Compare

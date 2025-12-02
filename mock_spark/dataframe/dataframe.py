@@ -236,6 +236,37 @@ class DataFrame(
             self, name, super().__getattribute__
         )
 
+    def __getitem__(self, key: Union[str, int, slice]) -> Union[Column, "DataFrame"]:
+        """Access column by name using dictionary-style syntax.
+
+        Args:
+            key: Column name (str), column index (int), or slice for multiple columns.
+
+        Returns:
+            Column object for single column, or DataFrame for slice.
+
+        Example:
+            >>> df["name"]  # Returns Column
+            >>> df[["name", "age"]]  # Returns DataFrame with selected columns
+        """
+        if isinstance(key, str):
+            # Single column access - return Column
+            from ..functions import Column
+
+            return Column(key)
+        elif isinstance(key, (list, tuple)):
+            # Multiple column selection - return DataFrame with selected columns
+            return self.select(*key)
+        elif isinstance(key, slice):
+            # Slice selection - return DataFrame with selected columns
+            all_cols = [field.name for field in self.schema.fields]
+            selected = all_cols[key]
+            return self.select(*selected)
+        else:
+            raise TypeError(
+                f"DataFrame indices must be strings, lists, or slices, not {type(key)}"
+            )
+
     def __getattr__(self, name: str) -> Column:
         """Enable df.column_name syntax for column access (PySpark compatibility)."""
         return DataFrameAttributeHandler.handle_getattr(self, name)

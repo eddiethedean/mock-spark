@@ -353,13 +353,20 @@ class MemoryStorageManager(IStorageManager):
         self.create_schema(schema)
 
         # Convert DataFrame data to table format
-        data = dataframe.data
+        # Materialize the DataFrame if it has lazy operations
+        if hasattr(dataframe, "_materialize_if_lazy"):
+            dataframe = dataframe._materialize_if_lazy()
+
+        data = list(dataframe.data)  # Ensure it's a list
         schema_obj = dataframe.schema
 
-        # Create the table
-        self.create_table(schema, name, schema_obj)
+        # Create the table - pass fields, not the schema object
+        fields = schema_obj.fields if hasattr(schema_obj, "fields") else schema_obj
 
-        # Insert the data
+        # Create the table using the public API
+        self.create_table(schema, name, fields)
+
+        # Insert the data using the public API
         self.insert_data(schema, name, data)
 
     def list_tables(self, schema_name: Optional[str] = None) -> list[str]:

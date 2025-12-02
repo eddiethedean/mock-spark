@@ -79,6 +79,68 @@ result = df.filter(df.age > 25) \
 - **Debug Mode**: Enable SQL logging for troubleshooting
 - **Validation Rules**: String and list-based validation expressions
 - **Performance**: 10x faster than PySpark for most operations
+- **Storage API**: Convenient `.storage` API for database and table management (mock-spark-specific)
+
+### 📝 Mock-Spark-Specific Features
+
+#### Storage API
+
+Mock-Spark provides a convenient `.storage` API for managing databases and tables. This is a **mock-spark-specific feature** that doesn't exist in PySpark. In PySpark, you would use SQL commands instead.
+
+**Mock-Spark (using .storage API):**
+```python
+from mock_spark.sql import SparkSession
+from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+
+spark = SparkSession("MyApp")
+
+# Create database/schema
+spark.storage.create_schema("test_db")
+
+# Create table with schema
+schema = StructType([
+    StructField("name", StringType(), True),
+    StructField("age", IntegerType(), True)
+])
+spark.storage.create_table("test_db", "users", schema)
+
+# Insert data
+spark.storage.insert_data("test_db", "users", [
+    {"name": "Alice", "age": 25},
+    {"name": "Bob", "age": 30}
+])
+```
+
+**PySpark (using SQL commands):**
+```python
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
+
+# Create database/schema
+spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
+
+# Create table with schema
+schema = StructType([
+    StructField("name", StringType(), True),
+    StructField("age", IntegerType(), True)
+])
+df = spark.createDataFrame([], schema)
+df.write.saveAsTable("test_db.users")
+
+# Insert data
+spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
+```
+
+**Compatibility Note:** For maximum compatibility with PySpark, use SQL commands in mock-spark. Both approaches work in mock-spark, but SQL commands are portable to PySpark:
+
+```python
+# Works in both mock-spark and PySpark
+spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
+spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
+spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
+```
 
 ### ⚠️ Known Limitations
 

@@ -7,7 +7,8 @@ In PySpark, you can import functions in two ways:
     1. from pyspark.sql import functions as F
     2. from pyspark.sql.functions import col, upper, etc.
 
-This module supports both patterns.
+This module supports both patterns and behaves as a proper module (not a class),
+matching PySpark's behavior exactly.
 
 Example:
     >>> from mock_spark.sql import functions as F
@@ -18,29 +19,70 @@ Example:
 
     >>> from mock_spark.sql.functions import col, upper
     >>> df.select(upper(col("name"))).show()
+
+    >>> from types import ModuleType
+    >>> from mock_spark.sql import functions
+    >>> isinstance(functions, ModuleType)  # True - matches PySpark
 """
 
-# Import F and Functions
+import warnings
+from typing import Any
+
+# Import F and Functions for backward compatibility
 from ..functions import F, Functions  # noqa: E402
 
-# Re-export F as the default
+# Cache for dynamically accessed attributes
+_cached_attrs: dict[str, object] = {}
+
+# Build __all__ list with all public functions from F
 __all__ = ["F", "Functions"]
 
-# For compatibility with: from mock_spark.sql.functions import col, upper, etc.
-# We need to make all functions available at the module level
-# This is done by copying all public attributes from F to this module
-import sys
-
-# Get the current module
-_current_module = sys.modules[__name__]
-
-# Copy all public attributes from F to this module
+# Pre-populate module-level attributes for all public functions
 # This allows: from mock_spark.sql.functions import col, upper, etc.
 for attr_name in dir(F):
     if not attr_name.startswith("_"):
         attr_value = getattr(F, attr_name)
-        # Only copy callable attributes (functions) and non-private attributes
+        # Only expose callable attributes (functions) and non-private attributes
         if callable(attr_value) or not attr_name.startswith("_"):
-            setattr(_current_module, attr_name, attr_value)
+            _cached_attrs[attr_name] = attr_value
             if attr_name not in __all__:
                 __all__.append(attr_name)
+
+
+def __getattr__(name: str) -> object:
+    """Dynamically provide access to functions from F instance.
+
+    This makes the module behave like PySpark's functions module,
+    where all functions are available at module level.
+    """
+    if name in _cached_attrs:
+        return _cached_attrs[name]
+
+    # Try to get from F instance
+    if hasattr(F, name):
+        attr_value = getattr(F, name)
+        _cached_attrs[name] = attr_value
+        return attr_value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# Deprecation warning for Functions() instantiation
+# Store original __init__ if it exists
+if hasattr(Functions, "__init__"):
+    _original_functions_init = Functions.__init__
+
+    def _deprecated_functions_init(self: Any, *args: Any, **kwargs: Any) -> Any:
+        """Warn when Functions() is instantiated directly."""
+        warnings.warn(
+            "Direct instantiation of Functions() is deprecated. "
+            "Use 'from mock_spark.sql import functions as F' or "
+            "'from mock_spark.sql.functions import col, ...' instead. "
+            "This matches PySpark's behavior where functions is a module, not a class.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _original_functions_init(self, *args, **kwargs)
+
+    # Monkey-patch Functions.__init__ to add deprecation warning
+    Functions.__init__ = _deprecated_functions_init  # type: ignore[assignment]

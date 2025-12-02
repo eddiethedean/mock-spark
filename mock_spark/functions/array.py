@@ -810,11 +810,23 @@ class ArrayFunctions:
             else:
                 cols.append(col)
 
+        # Generate proper name with column names
+        if len(cols) == 0:
+            name = "arrays_zip()"
+        elif len(cols) == 1:
+            col_name = cols[0].name if hasattr(cols[0], "name") else str(cols[0])
+            name = f"arrays_zip({col_name})"
+        else:
+            col_names = ", ".join(
+                c.name if hasattr(c, "name") else str(c) for c in cols
+            )
+            name = f"arrays_zip({col_names})"
+
         return ColumnOperation(
             cols[0] if cols else Column(""),
             "arrays_zip",
             value=cols[1:] if len(cols) > 1 else [],
-            name="arrays_zip(...)",
+            name=name,
         )
 
     @staticmethod
@@ -840,11 +852,34 @@ class ArrayFunctions:
 
             start = Literal(start)  # type: ignore[assignment]
 
+        # Generate proper name with literal values
+        start_str = (
+            str(start.value)
+            if hasattr(start, "value") and hasattr(start, "name")
+            else (start.name if hasattr(start, "name") else str(start))
+        )
+        stop_str = (
+            str(stop)
+            if isinstance(stop, (int, float))
+            else (stop.name if hasattr(stop, "name") else str(stop))
+        )
+        step_str = (
+            str(step)
+            if isinstance(step, (int, float))
+            else (step.name if hasattr(step, "name") else str(step))
+        )
+
+        # Only include step if it's not the default value of 1
+        if step_str == "1" or (isinstance(step, int) and step == 1):
+            name = f"sequence({start_str}, {stop_str})"
+        else:
+            name = f"sequence({start_str}, {stop_str}, {step_str})"
+
         return ColumnOperation(
             start,
             "sequence",
             value=(stop, step),
-            name=f"sequence({start}, {stop}, {step})",
+            name=name,
         )
 
     @staticmethod

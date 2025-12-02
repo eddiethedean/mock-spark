@@ -277,12 +277,31 @@ class PolarsOperationExecutor:
                     select_names.append(col)
             elif isinstance(col, WindowFunction):
                 # Handle window functions
-                window_expr = self.window_handler.translate_window_function(col, df)
-                alias_name = (
-                    getattr(col, "name", None) or f"{col.function_name.lower()}_window"
-                )
-                select_exprs.append(window_expr.alias(alias_name))
-                select_names.append(alias_name)
+                try:
+                    window_expr = self.window_handler.translate_window_function(col, df)
+                    alias_name = (
+                        getattr(col, "name", None)
+                        or f"{col.function_name.lower()}_window"
+                    )
+                    select_exprs.append(window_expr.alias(alias_name))
+                    select_names.append(alias_name)
+                except ValueError:
+                    # Fallback to Python evaluation for unsupported window functions
+                    # (e.g., rowsBetween frames that require reverse cumulative operations)
+                    # Window functions need to be evaluated across all rows, not row-by-row
+                    # So we'll collect them and evaluate them together later
+                    if rows_cache is None:
+                        rows_cache = df.to_dicts()
+                    # Store window function for batch evaluation
+                    if not hasattr(self, "_python_window_functions"):
+                        self._python_window_functions = []
+                    alias_name = (
+                        getattr(col, "name", None)
+                        or f"{col.function_name.lower()}_window"
+                    )
+                    self._python_window_functions.append((alias_name, col, rows_cache))
+                    select_names.append(alias_name)
+                    continue
             else:
                 alias_name = getattr(col, "name", None) or getattr(
                     col, "_alias_name", None
@@ -405,8 +424,50 @@ class PolarsOperationExecutor:
         for name, values in python_columns:
             result = result.with_columns(pl.Series(name, values))
 
-        if select_names:
-            result = result.select(select_names)
+        # Evaluate window functions that require Python evaluation
+        # These need to be evaluated across all rows, not row-by-row
+        if hasattr(self, "_python_window_functions") and self._python_window_functions:
+            from mock_spark.dataframe.window_handler import WindowFunctionHandler
+            from mock_spark.dataframe import DataFrame
+
+            # Use the cached rows for window function evaluation
+            data_rows = rows_cache if rows_cache else result.to_dicts()
+
+            # Create a temporary DataFrame for window function evaluation
+            # We need the original data to evaluate window functions correctly
+            # Create an empty schema since we're only using this for window function evaluation
+            from mock_spark.spark_types import StructType
+
+            temp_df = DataFrame(data_rows, StructType([]), None)
+            window_handler = WindowFunctionHandler(temp_df)
+
+            # Evaluate all window functions
+            for alias_name, window_func, _ in self._python_window_functions:
+                # Evaluate window function across all rows
+                # The window handler modifies data_rows in place
+                window_handler.evaluate_window_functions(data_rows, [(0, window_func)])
+                # Extract values from evaluated data
+                values = [row.get(alias_name) for row in data_rows]
+                result = result.with_columns(pl.Series(alias_name, values))
+
+            # Clean up
+            delattr(self, "_python_window_functions")
+
+        # Only reorder if we have python_columns AND the order doesn't match
+        # This ensures we preserve all columns while matching the requested order
+        if select_names and (
+            python_columns
+            or (
+                hasattr(self, "_python_window_functions")
+                and getattr(self, "_python_window_functions", None)
+            )
+        ):
+            existing_cols = list(result.columns)
+            # Check if reordering is needed and safe
+            if existing_cols != select_names and all(
+                name in existing_cols for name in select_names
+            ):
+                result = result.select(select_names)
 
         return result
 
@@ -699,7 +760,10 @@ class PolarsOperationExecutor:
             Joined DataFrame
         """
         # Extract column names from join condition if it's a ColumnOperation
-        join_keys: list[str]
+        join_keys: list[str] | None = None
+        left_on: list[str] | None = None
+        right_on: list[str] | None = None
+
         if isinstance(on, ColumnOperation) and getattr(on, "operation", None) == "==":
             if not hasattr(on, "column") or not hasattr(on, "value"):
                 raise ValueError("Join condition must have column and value attributes")
@@ -707,12 +771,34 @@ class PolarsOperationExecutor:
             right_col = on.value.name if hasattr(on.value, "name") else str(on.value)
             left_col_str = str(left_col)
             right_col_str = str(right_col)
-            if left_col_str in df1.columns and left_col_str in df2.columns:
+
+            # Check if both columns have the same name (common column join)
+            # or if left/right column exists in both DataFrames
+            if (
+                left_col_str == right_col_str
+                and left_col_str in df1.columns
+                and left_col_str in df2.columns
+            ) or (left_col_str in df1.columns and left_col_str in df2.columns):
                 join_keys = [left_col_str]
+            # Check if right column exists in both DataFrames
             elif right_col_str in df1.columns and right_col_str in df2.columns:
                 join_keys = [right_col_str]
+            # Different column names - use left_on and right_on
+            elif left_col_str in df1.columns and right_col_str in df2.columns:
+                left_on = [left_col_str]
+                right_on = [right_col_str]
             else:
-                join_keys = [left_col_str]
+                # Try to extract from Column objects if they're nested
+                # This handles cases like df1.col == df2.col
+                if hasattr(on.column, "name") and hasattr(on.value, "name"):
+                    left_on = [on.column.name]
+                    right_on = [on.value.name]
+                else:
+                    raise ValueError(
+                        f"Join column '{left_col_str}' not found in left DataFrame or "
+                        f"'{right_col_str}' not found in right DataFrame. "
+                        f"Left columns: {df1.columns}, Right columns: {df2.columns}"
+                    )
         elif on is None:
             common_cols = set(df1.columns) & set(df2.columns)
             if not common_cols:
@@ -761,24 +847,53 @@ class PolarsOperationExecutor:
             else:
                 # If no right columns (all match left), check if join key exists
                 # This case shouldn't happen, but handle it
-                joined = joined.filter(pl.col(join_keys[0]).is_null())
+                if join_keys is not None and len(join_keys) > 0:
+                    joined = joined.filter(pl.col(join_keys[0]).is_null())
             # Select only columns from df1
             left_cols = [col for col in joined.columns if col in df1.columns]
             return joined.select(left_cols)
         elif polars_how == "cross":
             return df1.join(df2, how="cross")
         else:
-            # Verify columns exist in both DataFrames
-            for col in join_keys:
-                if col not in df1.columns:
-                    raise ValueError(
-                        f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
-                    )
-                if col not in df2.columns:
-                    raise ValueError(
-                        f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
-                    )
-            return df1.join(df2, on=join_keys, how=polars_how)
+            # Handle different column names with left_on/right_on
+            if left_on is not None and right_on is not None:
+                # Verify columns exist
+                for col in left_on:
+                    if col not in df1.columns:
+                        raise ValueError(
+                            f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
+                        )
+                for col in right_on:
+                    if col not in df2.columns:
+                        raise ValueError(
+                            f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
+                        )
+                # Polars join with left_on/right_on doesn't include right_on column
+                # But PySpark includes both columns, so we need to add it back
+                joined = df1.join(
+                    df2, left_on=left_on, right_on=right_on, how=polars_how
+                )
+                # Add the right_on column back if it's not already present (PySpark includes both)
+                for right_col in right_on:
+                    if right_col not in joined.columns:
+                        # Get the corresponding left column value (they should be equal after join)
+                        left_col = left_on[right_on.index(right_col)]
+                        joined = joined.with_columns(pl.col(left_col).alias(right_col))
+                return joined
+            else:
+                # Verify columns exist in both DataFrames
+                if join_keys is None:
+                    raise ValueError("Join keys must be specified")
+                for col in join_keys:
+                    if col not in df1.columns:
+                        raise ValueError(
+                            f"Join column '{col}' not found in left DataFrame. Available columns: {df1.columns}"
+                        )
+                    if col not in df2.columns:
+                        raise ValueError(
+                            f"Join column '{col}' not found in right DataFrame. Available columns: {df2.columns}"
+                        )
+                return df1.join(df2, on=join_keys, how=polars_how)
 
     def apply_union(self, df1: pl.DataFrame, df2: pl.DataFrame) -> pl.DataFrame:
         """Apply a union operation.

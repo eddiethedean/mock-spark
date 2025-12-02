@@ -97,6 +97,38 @@ ranked = df.select(
 ```python
 # Create temporary view
 df.createOrReplaceTempView("employees")
+```
+
+### Storage Management
+
+Mock-Spark provides two ways to manage databases and tables:
+
+**Option 1: SQL Commands (PySpark-Compatible - Recommended)**
+```python
+# Works in both mock-spark and PySpark
+spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
+spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
+spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
+```
+
+**Option 2: Storage API (Mock-Spark-Specific)**
+```python
+# Convenient API, but mock-spark-specific
+from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+
+spark.storage.create_schema("test_db")
+schema = StructType([
+    StructField("name", StringType(), True),
+    StructField("age", IntegerType(), True)
+])
+spark.storage.create_table("test_db", "users", schema)
+spark.storage.insert_data("test_db", "users", [
+    {"name": "Alice", "age": 25},
+    {"name": "Bob", "age": 30}
+])
+```
+
+**Note:** For maximum compatibility with PySpark, use SQL commands. The `.storage` API is a mock-spark convenience feature that doesn't exist in PySpark.
 
 # Run SQL queries
 result = spark.sql("SELECT name, salary FROM employees WHERE salary > 80000")

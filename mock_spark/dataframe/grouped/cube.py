@@ -30,7 +30,8 @@ class CubeGroupedData(GroupedData):
         self.cube_columns = cube_columns
 
     def agg(
-        self, *exprs: Union[str, Column, ColumnOperation, AggregateFunction]
+        self,
+        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]],
     ) -> "DataFrame":
         """Aggregate cube grouped data with multi-dimensional grouping.
 
@@ -82,11 +83,16 @@ class CubeGroupedData(GroupedData):
                             if expr.function_name == "count":
                                 non_nullable_keys.add(result_key)
                             result_row[result_key] = result_value
-                        elif hasattr(expr, "name"):
+                        elif hasattr(expr, "name") and isinstance(
+                            expr, (Column, ColumnOperation)
+                        ):
                             result_key, result_value = self._evaluate_column_expression(
                                 expr, filtered_rows
                             )
                             result_row[result_key] = result_value
+                        elif isinstance(expr, dict):
+                            # Skip dict expressions - should have been converted already
+                            pass
 
                     result_data.append(result_row)
                 else:
@@ -130,11 +136,16 @@ class CubeGroupedData(GroupedData):
                                 if expr.function_name == "count":
                                     non_nullable_keys.add(result_key)
                                 result_row[result_key] = result_value
-                            elif hasattr(expr, "name"):
+                            elif hasattr(expr, "name") and isinstance(
+                                expr, (Column, ColumnOperation)
+                            ):
                                 result_key, result_value = (
                                     self._evaluate_column_expression(expr, group_rows)
                                 )
                                 result_row[result_key] = result_value
+                            elif isinstance(expr, dict):
+                                # Skip dict expressions - should have been converted already
+                                pass
 
                         result_data.append(result_row)
 

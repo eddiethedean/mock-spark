@@ -193,35 +193,61 @@ class ColumnValidator:
 
             # Check if this is a column reference
             if hasattr(expression, "column"):
+                # Check if it's a Literal - skip validation
+                if is_literal(expression.column):
+                    pass  # Skip literals
                 # Check if it's a DataFrame (has 'data' attribute) - skip validation
-                if hasattr(expression.column, "data") and hasattr(
+                elif hasattr(expression.column, "data") and hasattr(
                     expression.column, "schema"
                 ):
                     pass  # Skip DataFrame objects
+                elif isinstance(expression.column, ColumnOperation):
+                    # The column itself is a ColumnOperation (e.g., struct, array) - validate it recursively
+                    ColumnValidator.validate_expression_columns(
+                        schema, expression.column, operation, in_lazy_materialization
+                    )
                 elif isinstance(expression.column, Column):
-                    # Skip validation for the dummy "__expr__" column created by F.expr()
-                    if expression.column.name == "__expr__":
+                    # Skip validation for dummy columns created by F.expr() and F.struct()
+                    if expression.column.name in (
+                        "__expr__",
+                        "__struct_dummy__",
+                        "__create_map_base__",
+                        "__create_map_dummy__",
+                    ):
                         return
 
-                    if not in_lazy_materialization and expression.column.name != "*":
+                    # Check if the column name is actually a Literal (string representation)
+                    col_name = expression.column.name
+                    if (
+                        isinstance(col_name, str)
+                        and "<mock_spark.functions.core.literals.Literal" in col_name
+                    ):
+                        # This is a Literal used as a column - skip validation
+                        pass
+                    elif not in_lazy_materialization and col_name != "*":
                         # Skip validation for wildcard selector
                         ColumnValidator.validate_column_exists(
-                            schema, expression.column.name, operation
+                            schema, col_name, operation
                         )
 
             # Recursively validate nested expressions
-            if hasattr(expression, "column") and isinstance(
-                expression.column, ColumnOperation
-            ):
-                ColumnValidator.validate_expression_columns(
-                    schema, expression.column, operation, in_lazy_materialization
-                )
+            if hasattr(expression, "column"):
+                if is_literal(expression.column):
+                    # Skip validation for literals used as columns
+                    pass
+                elif isinstance(expression.column, ColumnOperation):
+                    ColumnValidator.validate_expression_columns(
+                        schema, expression.column, operation, in_lazy_materialization
+                    )
             if hasattr(expression, "value") and isinstance(
                 expression.value, ColumnOperation
             ):
                 ColumnValidator.validate_expression_columns(
                     schema, expression.value, operation, in_lazy_materialization
                 )
+            elif hasattr(expression, "value") and is_literal(expression.value):
+                # Skip validation for literals
+                pass
             elif (
                 hasattr(expression, "value")
                 and isinstance(expression.value, Column)
@@ -233,6 +259,27 @@ class ColumnValidator:
                 ColumnValidator.validate_column_exists(
                     schema, expression.value.name, operation
                 )
+            # Handle list/tuple of values (e.g., create_map with multiple args, array with literals)
+            elif hasattr(expression, "value") and isinstance(
+                expression.value, (list, tuple)
+            ):
+                for item in expression.value:
+                    if is_literal(item):
+                        continue  # Skip literals
+                    elif isinstance(item, ColumnOperation):
+                        # Recursively validate nested ColumnOperations (e.g., struct inside array)
+                        ColumnValidator.validate_expression_columns(
+                            schema, item, operation, in_lazy_materialization
+                        )
+                    elif (
+                        isinstance(item, Column)
+                        and not in_lazy_materialization
+                        and item.name != "*"
+                    ):
+                        ColumnValidator.validate_column_exists(
+                            schema, item.name, operation
+                        )
+                    # Skip other non-column types
         elif isinstance(expression, Column):
             # Check if this is an aliased column with an original column reference
             if (

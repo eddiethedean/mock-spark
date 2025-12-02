@@ -285,38 +285,39 @@ class LazyEvaluationEngine:
                 # Check if select contains operations that require manual materialization
                 for col in op_val:
                     # Check for CaseWhen (when/otherwise expressions)
+                    # CaseWhen can be translated by Polars, so don't force manual materialization
                     if hasattr(col, "conditions"):
-                        return True
+                        # CaseWhen can be translated by Polars, so allow backend to handle it
+                        continue
                     # Check for ColumnOperation
-                    if hasattr(col, "operation"):
-                        # Check for operations that require DataFrame evaluation
-                        # Note: "cast" is now handled by Polars backend, so removed from this list
-                        if col.operation in [
-                            "months_between",
-                            # Allow backend to handle datediff via SQL path
-                            # "cast",  # Removed - Polars handles cast operations
-                            "when",
-                            "otherwise",
-                        ]:
-                            return True
+                    if hasattr(col, "operation") and col.operation in [
+                        "months_between",
+                        # Allow backend to handle datediff via SQL path
+                        # "cast",  # Removed - Polars handles cast operations
+                        # "when",  # Removed - Polars handles when/otherwise via CaseWhen
+                        # "otherwise",  # Removed - Polars handles when/otherwise via CaseWhen
+                    ]:
+                        return True
                         # Check for comparison operations
-                        if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
-                            return True
+                        # Note: Polars can handle comparison operations, so removed
+                        # if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
+                        #     return True
                         # Check for arithmetic operations with cast
-                        if col.operation in ["+", "-", "*", "/", "%"]:
-                            # Check if operands contain cast operations
-                            if (
-                                hasattr(col, "column")
-                                and hasattr(col.column, "operation")
-                                and col.column.operation == "cast"
-                            ):
-                                return True
-                            if (
-                                hasattr(col, "value")
-                                and hasattr(col.value, "operation")
-                                and col.value.operation == "cast"
-                            ):
-                                return True
+                        # Note: Polars can handle cast operations, so removed this check
+                        # if col.operation in ["+", "-", "*", "/", "%"]:
+                        #     # Check if operands contain cast operations
+                        #     if (
+                        #         hasattr(col, "column")
+                        #         and hasattr(col.column, "operation")
+                        #         and col.column.operation == "cast"
+                        #     ):
+                        #         return True
+                        #     if (
+                        #         hasattr(col, "value")
+                        #         and hasattr(col.value, "operation")
+                        #         and col.value.operation == "cast"
+                        #     ):
+                        #         return True
         return False
 
     @staticmethod
@@ -795,22 +796,34 @@ class LazyEvaluationEngine:
 
                     # Handle join condition
                     # Extract column names from ColumnOperation if it's a == comparison
+                    join_conditions = []
                     if hasattr(on, "operation") and on.operation == "==":
                         # Extract column names from == comparison
+                        # Handle case where left and right columns have different names
                         left_col = (
                             on.column.name
                             if hasattr(on.column, "name")
                             else str(on.column)
                         )
-                        # Use left column name (assuming both DataFrames have same column name)
-                        on_columns = [left_col]
+                        # Check if the value is a Column (different column names)
+                        if hasattr(on, "value") and hasattr(on.value, "name"):
+                            # Different column names: left_col == right_col
+                            right_col = on.value.name
+                            join_conditions.append((left_col, right_col))
+                        else:
+                            # Same column name in both DataFrames
+                            join_conditions.append((left_col, left_col))
                     elif isinstance(on, str):
-                        on_columns = [on]
+                        # Single column name (same in both DataFrames)
+                        join_conditions.append((on, on))
                     elif isinstance(on, (list, tuple)):
-                        on_columns = list(on)
+                        # List of column names (same in both DataFrames)
+                        for col in on:
+                            join_conditions.append((col, col))
                     else:
                         # Try to extract column name(s) from the object
-                        on_columns = [on.name] if hasattr(on, "name") else [str(on)]
+                        col_name = on.name if hasattr(on, "name") else str(on)
+                        join_conditions.append((col_name, col_name))
 
                     # Perform the join
                     joined_data = []
@@ -818,8 +831,8 @@ class LazyEvaluationEngine:
                         for right_row in other_df.data:
                             # Check if join condition is met
                             join_match = True
-                            for col in on_columns:
-                                if left_row.get(col) != right_row.get(col):
+                            for left_col, right_col in join_conditions:
+                                if left_row.get(left_col) != right_row.get(right_col):
                                     join_match = False
                                     break
 

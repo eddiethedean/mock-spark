@@ -153,7 +153,17 @@ class PolarsMaterializer:
                         col_expr = pl.col(col_name)
                         is_desc = True
                     else:
-                        col_name = col.name if hasattr(col, "name") else str(col)
+                        # For ColumnOperation with asc/desc, get the actual column name
+                        if hasattr(col, "column") and hasattr(col.column, "name"):
+                            col_name = col.column.name
+                        elif hasattr(col, "name"):
+                            col_name = col.name
+                        else:
+                            col_name = str(col)
+                        # Remove any " ASC" or " DESC" suffix that might be in the name
+                        col_name = (
+                            col_name.replace(" ASC", "").replace(" DESC", "").strip()
+                        )
                         col_expr = pl.col(col_name)
                         is_desc = not ascending
 

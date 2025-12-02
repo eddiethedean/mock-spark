@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from ...window import WindowSpec
     from ..conditional import CaseWhen
     from ..window_execution import WindowFunction
+    from ..base import AggregateFunction
 
 
 class ColumnOperatorMixin:
@@ -241,6 +242,81 @@ class Column(ColumnOperatorMixin):
         """
         return ColumnOperation(self, "count", None)
 
+    def avg(self) -> "AggregateFunction":  # noqa: F821
+        """Average values in this column.
+
+        Returns:
+            AggregateFunction representing the avg function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "avg", DoubleType())
+
+    def sum(self) -> "AggregateFunction":  # noqa: F821
+        """Sum values in this column.
+
+        Returns:
+            AggregateFunction representing the sum function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "sum", DoubleType())
+
+    def max(self) -> "AggregateFunction":  # noqa: F821
+        """Maximum value in this column.
+
+        Returns:
+            AggregateFunction representing the max function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "max", DoubleType())
+
+    def min(self) -> "AggregateFunction":  # noqa: F821
+        """Minimum value in this column.
+
+        Returns:
+            AggregateFunction representing the min function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "min", DoubleType())
+
+    def stddev(self) -> "AggregateFunction":  # noqa: F821
+        """Standard deviation of values in this column.
+
+        Returns:
+            AggregateFunction representing the stddev function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "stddev", DoubleType())
+
+    def variance(self) -> "AggregateFunction":  # noqa: F821
+        """Variance of values in this column.
+
+        Returns:
+            AggregateFunction representing the variance function.
+        """
+        from ..base import AggregateFunction
+        from ...spark_types import DoubleType
+
+        return AggregateFunction(self, "variance", DoubleType())
+
+    def bitwise_not(self) -> "ColumnOperation":
+        """Bitwise NOT operation on this column.
+
+        Returns:
+            ColumnOperation representing the bitwise_not function.
+        """
+        # PySpark uses ~column for bitwise_not column names
+        return ColumnOperation(self, "bitwise_not", name=f"~{self.name}")
+
 
 class ColumnOperation(ColumnOperatorMixin):
     """Represents a column operation (comparison, arithmetic, etc.).
@@ -376,7 +452,10 @@ class ColumnOperation(ColumnOperatorMixin):
         else:
             column_ref = str(self.column)
 
-        if self.operation == "==":
+        if self.operation == "bitwise_not":
+            # PySpark uses ~column for bitwise_not
+            return f"~{column_ref}"
+        elif self.operation == "==":
             return f"{column_ref} = {value_str}"
         elif self.operation == "!=":
             return f"{column_ref} != {value_str}"
@@ -465,6 +544,38 @@ class ColumnOperation(ColumnOperatorMixin):
             return f"LIST_MAX({self.column.name})"
         elif self.operation == "array_min":
             return f"LIST_MIN({self.column.name})"
+        elif self.operation == "struct":
+            # Generate struct name from columns/literals in value
+            if (
+                hasattr(self, "value")
+                and self.value is not None
+                and isinstance(self.value, (list, tuple))
+            ):
+                col_names = []
+                for col in self.value:
+                    if hasattr(col, "value") and hasattr(col, "data_type"):
+                        # It's a Literal
+                        col_names.append(str(col.value))
+                    elif hasattr(col, "name"):
+                        col_names.append(col.name)
+                    else:
+                        col_names.append(str(col))
+                # Also include the first column if it's not a dummy
+                if self.column and self.column.name != "__struct_dummy__":
+                    if hasattr(self.column, "value") and hasattr(
+                        self.column, "data_type"
+                    ):
+                        col_names.insert(0, str(self.column.value))
+                    else:
+                        col_names.insert(
+                            0,
+                            self.column.name
+                            if hasattr(self.column, "name")
+                            else str(self.column),
+                        )
+                return f"struct({', '.join(col_names)})"
+            # Fallback to default
+            return "struct(...)"
         else:
             return f"{self.column.name} {self.operation} {self.value}"
 

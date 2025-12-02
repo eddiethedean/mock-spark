@@ -29,7 +29,6 @@ class TestConditionalFunctionsExtendedCompatibility:
         result = df.select(F.when(df.salary.isNull(), 0).otherwise(df.salary))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_nanvl(self, spark):
         """Test nanvl function."""
         expected = load_expected_output("functions", "nanvl")

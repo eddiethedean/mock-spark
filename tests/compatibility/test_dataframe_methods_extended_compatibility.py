@@ -4,7 +4,6 @@ Compatibility tests for DataFrame methods.
 Tests DataFrame operations against expected outputs generated from PySpark.
 """
 
-import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 from mock_spark import F
@@ -151,7 +150,6 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="aggregation with dict not yet implemented correctly")
     def test_aggregation(self, spark):
         """Test DataFrame aggregation operations."""
         expected = load_expected_output("dataframe_operations", "aggregation")
@@ -165,13 +163,13 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="column_access not yet implemented correctly")
     def test_column_access(self, spark):
         """Test DataFrame column access operations."""
         expected = load_expected_output("dataframe_operations", "column_access")
 
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.col("name"), df.age, F.col("salary"))
+        # Expected output has ['id', 'name', 'salary'] columns
+        result = df.select(df.id, F.col("name"), F.col("salary"))
 
         assert_dataframes_equal(result, expected)
 
@@ -190,7 +188,6 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="left_join not yet implemented correctly")
     def test_left_join(self, spark):
         """Test DataFrame left join operation."""
         expected = load_expected_output("joins", "left_join")
@@ -206,7 +203,6 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="right_join not yet implemented correctly")
     def test_right_join(self, spark):
         """Test DataFrame right join operation."""
         expected = load_expected_output("joins", "right_join")
@@ -222,7 +218,6 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="outer_join not yet implemented correctly")
     def test_outer_join(self, spark):
         """Test DataFrame outer join operation."""
         expected = load_expected_output("joins", "outer_join")

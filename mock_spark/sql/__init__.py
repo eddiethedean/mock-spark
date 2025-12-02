@@ -41,6 +41,9 @@ from . import types  # noqa: E402
 # Import functions submodule
 from . import functions  # noqa: E402
 
+# Import utils submodule (PySpark-compatible exception exports)
+from . import utils  # noqa: E402
+
 __all__ = [
     # Core classes
     "SparkSession",
@@ -58,6 +61,8 @@ __all__ = [
     "functions",
     # Types submodule
     "types",
+    # Utils submodule (exceptions)
+    "utils",
     # Exceptions (PySpark 3.5+ compatibility)
     "PySparkTypeError",
     "PySparkValueError",

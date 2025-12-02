@@ -13,7 +13,7 @@ from mock_spark import F
 class TestColumnOrderingFunctionsCompatibility:
     """Test column/ordering functions compatibility with PySpark."""
 
-    @pytest.mark.skip(reason="asc ordering not yet implemented correctly")
+    @pytest.mark.skip(reason="Expected output file not found: column_asc.json")
     def test_asc(self, spark):
         """Test asc ordering function."""
         expected = load_expected_output("functions", "column_asc")
@@ -23,7 +23,7 @@ class TestColumnOrderingFunctionsCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="desc ordering not yet implemented correctly")
+    @pytest.mark.skip(reason="Expected output file not found: column_desc.json")
     def test_desc(self, spark):
         """Test desc ordering function."""
         expected = load_expected_output("functions", "column_desc")

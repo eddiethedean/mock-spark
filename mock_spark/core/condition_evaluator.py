@@ -238,7 +238,14 @@ class ConditionEvaluator:
         elif operation_type == "length":
             return len(str(col_value)) if col_value is not None else None
         elif operation_type == "trim":
-            return str(col_value).strip() if col_value is not None else None
+            # PySpark trim only removes ASCII space characters (0x20), not tabs/newlines
+            return str(col_value).strip(" ") if col_value is not None else None
+        elif operation_type == "ltrim":
+            # PySpark ltrim only removes ASCII space characters (0x20), not tabs/newlines
+            return str(col_value).lstrip(" ") if col_value is not None else None
+        elif operation_type == "rtrim":
+            # PySpark rtrim only removes ASCII space characters (0x20), not tabs/newlines
+            return str(col_value).rstrip(" ") if col_value is not None else None
         elif operation_type == "abs":
             return abs(float(col_value)) if col_value is not None else None
         elif operation_type == "round":
@@ -392,10 +399,12 @@ class ConditionEvaluator:
                 else:
                     start_dt = start_date
 
-                # Calculate difference in months (simplified)
+                # Calculate difference in months using PySpark formula:
+                # (year1 - year2) * 12 + (month1 - month2) + (day1 - day2) / 31.0
                 year_diff = end_dt.year - start_dt.year
                 month_diff = end_dt.month - start_dt.month
-                return year_diff * 12 + month_diff
+                day_diff = end_dt.day - start_dt.day
+                return year_diff * 12 + month_diff + day_diff / 31.0
             except (ValueError, AttributeError):
                 return None
         else:

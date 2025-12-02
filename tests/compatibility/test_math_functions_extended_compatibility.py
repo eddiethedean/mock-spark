@@ -22,7 +22,6 @@ class TestMathFunctionsExtendedCompatibility:
         yield session
         session.stop()
 
-    @pytest.mark.skip(reason="acos not yet implemented correctly")
     def test_acos(self, spark):
         """Test acos function."""
         expected = load_expected_output("functions", "math_acos")
@@ -30,7 +29,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.acos(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="asin not yet implemented correctly")
     def test_asin(self, spark):
         """Test asin function."""
         expected = load_expected_output("functions", "math_asin")
@@ -38,7 +36,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.asin(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="atan not yet implemented correctly")
     def test_atan(self, spark):
         """Test atan function."""
         expected = load_expected_output("functions", "math_atan")
@@ -46,7 +43,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.atan(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="atan2 not yet implemented correctly")
     def test_atan2(self, spark):
         """Test atan2 function."""
         expected = load_expected_output("functions", "math_atan2")
@@ -54,15 +50,13 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.atan2(df.x, df.y))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="acosh not yet implemented correctly")
     def test_acosh(self, spark):
         """Test acosh function."""
         expected = load_expected_output("functions", "math_acosh")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.acosh(df.x))
+        result = df.select(F.acosh(df.x + 1.5))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="asinh not yet implemented correctly")
     def test_asinh(self, spark):
         """Test asinh function."""
         expected = load_expected_output("functions", "math_asinh")
@@ -70,15 +64,13 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.asinh(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="atanh not yet implemented correctly")
     def test_atanh(self, spark):
         """Test atanh function."""
         expected = load_expected_output("functions", "math_atanh")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.atanh(df.x))
+        result = df.select(F.atanh(df.x * 0.5))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="cosh not yet implemented correctly")
     def test_cosh(self, spark):
         """Test cosh function."""
         expected = load_expected_output("functions", "math_cosh")
@@ -86,7 +78,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.cosh(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="sinh not yet implemented correctly")
     def test_sinh(self, spark):
         """Test sinh function."""
         expected = load_expected_output("functions", "math_sinh")
@@ -94,7 +85,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.sinh(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="tanh not yet implemented correctly")
     def test_tanh(self, spark):
         """Test tanh function."""
         expected = load_expected_output("functions", "math_tanh")
@@ -102,7 +92,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.tanh(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="cbrt not yet implemented correctly")
     def test_cbrt(self, spark):
         """Test cbrt function."""
         expected = load_expected_output("functions", "math_cbrt")
@@ -110,7 +99,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.cbrt(df.value))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="degrees not yet implemented correctly")
     def test_degrees(self, spark):
         """Test degrees function."""
         expected = load_expected_output("functions", "math_degrees")
@@ -118,7 +106,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.degrees(df.angle))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="radians not yet implemented correctly")
     def test_radians(self, spark):
         """Test radians function."""
         expected = load_expected_output("functions", "math_radians")
@@ -126,7 +113,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.radians(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="expm1 not yet implemented correctly")
     def test_expm1(self, spark):
         """Test expm1 function."""
         expected = load_expected_output("functions", "math_expm1")
@@ -134,7 +120,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.expm1(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="log1p not yet implemented correctly")
     def test_log1p(self, spark):
         """Test log1p function."""
         expected = load_expected_output("functions", "math_log1p")
@@ -142,7 +127,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.log1p(df.x))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="log2 not yet implemented correctly")
     def test_log2(self, spark):
         """Test log2 function."""
         expected = load_expected_output("functions", "math_log2")
@@ -150,7 +134,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.log2(df.value))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="log10 not yet implemented correctly")
     def test_log10(self, spark):
         """Test log10 function."""
         expected = load_expected_output("functions", "math_log10")
@@ -158,7 +141,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.log10(df.value))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="rint not yet implemented correctly")
     def test_rint(self, spark):
         """Test rint function."""
         expected = load_expected_output("functions", "math_rint")
@@ -180,7 +162,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.factorial(df.id))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="hypot not yet implemented correctly")
     def test_hypot(self, spark):
         """Test hypot function."""
         expected = load_expected_output("functions", "math_hypot")
@@ -188,7 +169,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.hypot(df.x, df.y))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="signum not yet implemented correctly")
     def test_signum(self, spark):
         """Test signum function."""
         expected = load_expected_output("functions", "math_signum")
@@ -196,7 +176,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.signum(df.value))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="e not yet implemented correctly")
     def test_e(self, spark):
         """Test e function (Euler's number)."""
         expected = load_expected_output("functions", "math_e")
@@ -204,7 +183,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.expr("e()"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="pi not yet implemented correctly")
     def test_pi(self, spark):
         """Test pi function."""
         expected = load_expected_output("functions", "math_pi")
@@ -251,7 +229,6 @@ class TestMathFunctionsExtendedCompatibility:
         result = df.select(F.hex(df.id))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="bitwise_not not yet implemented correctly")
     @pytest.mark.skip(reason="not yet implemented")
     def test_bitwise_not(self, spark):
         """Test bitwise_not function."""

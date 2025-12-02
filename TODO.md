@@ -1,5 +1,35 @@
 # TODO & Future Enhancements
 
+## Recently Completed (2024)
+
+### PySpark Compatibility
+- [x] Convert `mock_spark/sql/functions.py` to export a proper module instead of Functions class, using `__getattr__` to expose all functions. (Ensures `isinstance(functions, ModuleType)` returns True for PySpark compatibility.)
+- [x] Create `mock_spark/sql/utils.py` to export exceptions matching PySpark structure (AnalysisException, ParseException, IllegalArgumentException, etc.).
+- [x] Update module structure to match PySpark's `pyspark.sql.types`, `pyspark.sql.functions`, and `pyspark.sql.utils` organization.
+- [x] Fix PySpark environment configuration in API parity tests to resolve `java.net.BindException` issues. (Configured `spark.driver.bindAddress`, `spark.driver.host`, `spark.master`, and `spark.ui.enabled`.)
+
+### Window Functions
+- [x] Implement support for `rowsBetween` and `rangeBetween` window frames in Polars backend.
+- [x] Fix window function complex ordering to handle multiple columns with different directions (asc/desc). (Updated `PolarsWindowHandler` to correctly extract base column names and apply sort directions.)
+- [x] Implement reverse cumulative sum for `rowsBetween(currentRow, unboundedFollowing)` with Python evaluation fallback.
+
+### Function Implementations
+- [x] Fix trim/ltrim/rtrim functions to only remove ASCII space characters (`" "`) to match PySpark's behavior (not all whitespace).
+- [x] Fix `concat` function to correctly handle string literals by wrapping them in `Literal` objects.
+- [x] Add `rlike` method to `ColumnOperations` to support `df.col.rlike()` syntax.
+- [x] Fix `isin` function to correctly handle column expressions and literals.
+- [x] Fix `when/otherwise` expressions to be handled by Polars backend instead of forcing Python evaluation.
+- [x] Fix `date_format`, `datediff`, `day` extraction, and timestamp casting functions.
+- [x] Fix string-to-numeric casting for decimal strings like '10.5'.
+- [x] Fix array and map casting to string types.
+- [x] Fix date and timestamp casting to/from string types.
+
+### Code Quality
+- [x] Fix all mypy type checking errors across 161 source files. (Added proper type annotations, fixed Optional types, resolved Union syntax for Python 3.9 compatibility.)
+- [x] Fix all ruff linting errors. (Removed unused imports, simplified nested if statements, combined if branches, replaced if-else blocks with ternary operators.)
+- [x] Ensure all code passes `ruff format`, `ruff check`, and `mypy` validation.
+- [x] All 1077 tests passing with 58 expected skips.
+
 ## Performance & Optimisation
 - [x] Profile Polars execution hot paths (`backend/polars/operation_executor.py`, `dataframe/evaluation/expression_evaluator.py`) and introduce vectorised shortcuts or caching for common operators. (Feature-flagged profiling utilities added in `mock_spark/utils/profiling.py`; hot paths instrumented with caching and documented in `docs/performance/profiling.md`.)
 - [x] Evaluate adaptive execution simulation hook in `mock_spark/optimizer/query_optimizer.py` to better mirror Spark's AQE plans under skew. (Adaptive simulation toggle implemented with regression tests under `tests/unit/optimizer/test_query_optimizer_adaptive.py` and documented in `docs/backend_architecture.md`.)
@@ -14,4 +44,5 @@
 - [ ] Document new session-aware literals and schema tracking in guides (`docs/sql_operations_guide.md`, `docs/getting_started.md` advanced section).
 - [ ] Publish troubleshooting guide for native dependency crashes, referencing the pure-Python percentile/covariance fallbacks.
 - [ ] Draft migration notes for upcoming performance knobs to help users tune mock behaviour per pipeline.
+- [ ] Document PySpark compatibility improvements and module structure changes in migration guide.
 

@@ -20,7 +20,7 @@ Example:
     'SELECT'
 """
 
-from typing import Any, Union
+from typing import Any
 from ...core.exceptions.analysis import ParseException
 
 
@@ -373,7 +373,7 @@ class SQLParser:
             Dictionary of SELECT components.
         """
         # Mock implementation - in real parser this would be much more sophisticated
-        components: dict[str, Union[list[str], None]] = {
+        components: dict[str, Any] = {
             "select_columns": [],
             "from_tables": [],
             "where_conditions": [],
@@ -386,30 +386,128 @@ class SQLParser:
         # Simple regex-based parsing for demonstration
         import re
 
-        # Extract SELECT columns
-        select_match = re.search(r"SELECT\s+(.*?)\s+FROM", query, re.IGNORECASE)
+        # Extract SELECT columns (handle multiline queries)
+        select_match = re.search(
+            r"SELECT\s+(.*?)\s+FROM", query, re.IGNORECASE | re.DOTALL
+        )
         if select_match:
-            columns_str = select_match.group(1)
-            if columns_str.strip() == "*":
+            columns_str = select_match.group(1).strip()
+            if columns_str == "*":
                 components["select_columns"] = ["*"]
             else:
-                components["select_columns"] = [
-                    col.strip() for col in columns_str.split(",")
+                # Split by comma, handling multiline and whitespace
+                columns = []
+                current_col = ""
+                paren_depth = 0
+                for char in columns_str:
+                    if char == "(":
+                        paren_depth += 1
+                        current_col += char
+                    elif char == ")":
+                        paren_depth -= 1
+                        current_col += char
+                    elif char == "," and paren_depth == 0:
+                        if current_col.strip():
+                            columns.append(current_col.strip())
+                        current_col = ""
+                    else:
+                        current_col += char
+                if current_col.strip():
+                    columns.append(current_col.strip())
+                components["select_columns"] = columns
+
+        # Extract FROM tables (handle aliases and JOINs)
+        # Pattern: FROM table [alias] [JOIN table2 [alias2] ON condition]
+        from_match = re.search(
+            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+(.+?))?)?",
+            query,
+            re.IGNORECASE,
+        )
+        if from_match:
+            table1 = from_match.group(1)
+            alias1 = from_match.group(2)
+            table2 = from_match.group(3)
+            alias2 = from_match.group(4)
+            join_condition = from_match.group(5)
+
+            # Store table and alias mappings
+            table_aliases = {table1: alias1 or table1}
+            if table2:
+                table_aliases[table2] = alias2 or table2
+                components["joins"] = [
+                    {
+                        "table": table2,
+                        "alias": alias2 or table2,
+                        "condition": join_condition.strip() if join_condition else None,
+                    }
                 ]
 
-        # Extract FROM tables
-        from_match = re.search(r"FROM\s+(\w+)", query, re.IGNORECASE)
-        if from_match:
-            components["from_tables"] = [from_match.group(1)]
+            components["from_tables"] = [table1]
+            components["table_aliases"] = table_aliases
 
         # Extract WHERE conditions
         where_match = re.search(
-            r"WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+ORDER\s+BY|\s+LIMIT|$)",
+            r"WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|$)",
             query,
             re.IGNORECASE,
         )
         if where_match:
             components["where_conditions"] = [where_match.group(1).strip()]
+
+        # Extract GROUP BY columns
+        group_by_match = re.search(
+            r"GROUP\s+BY\s+(.*?)(?:\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
+        )
+        if group_by_match:
+            group_by_str = group_by_match.group(1).strip()
+            components["group_by_columns"] = [
+                col.strip() for col in group_by_str.split(",")
+            ]
+
+        # Extract HAVING conditions
+        having_match = re.search(
+            r"HAVING\s+(.*?)(?:\s+ORDER\s+BY|\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
+        )
+        if having_match:
+            components["having_conditions"] = [having_match.group(1).strip()]
+
+        # Extract ORDER BY columns
+        order_by_match = re.search(
+            r"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)",
+            query,
+            re.IGNORECASE,
+        )
+        if order_by_match:
+            order_by_str = order_by_match.group(1).strip()
+            # Handle DESC/ASC keywords - preserve original case
+            order_columns = []
+            for col_part in order_by_str.split(","):
+                col_part = col_part.strip()
+                col_upper = col_part.upper()
+                if "DESC" in col_upper:
+                    # Extract column name and mark as descending - preserve original case
+                    col_name = re.sub(
+                        r"\s+DESC\s*$", "", col_part, flags=re.IGNORECASE
+                    ).strip()
+                    order_columns.append(f"{col_name} DESC")
+                elif "ASC" in col_upper:
+                    # Extract column name - preserve original case, don't include ASC in result
+                    col_name = re.sub(
+                        r"\s+ASC\s*$", "", col_part, flags=re.IGNORECASE
+                    ).strip()
+                    order_columns.append(col_name)
+                else:
+                    order_columns.append(col_part)
+            components["order_by_columns"] = order_columns
+
+        # Extract LIMIT value
+        limit_match = re.search(r"LIMIT\s+(\d+)", query, re.IGNORECASE)
+        if limit_match:
+            components["limit_value"] = int(limit_match.group(1))
 
         return components
 

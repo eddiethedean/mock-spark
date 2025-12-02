@@ -22,7 +22,6 @@ class TestBitwiseFunctionsCompatibility:
         yield session
         session.stop()
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_bitwise_not(self, spark):
         """Test bitwise_not function."""
         expected = load_expected_output("functions", "bitwise_bitwise_not")

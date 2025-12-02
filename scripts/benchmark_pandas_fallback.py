@@ -10,8 +10,10 @@ import os
 import statistics
 import sys
 import time
-from collections.abc import Callable
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _load_pandas_backend(mode: str):
@@ -42,7 +44,7 @@ def _summarise(samples: list[float]) -> dict[str, float]:
     }
 
 
-def benchmark_backend(mode: str, rows: int, samples: int) -> Dict[str, Any]:
+def benchmark_backend(mode: str, rows: int, samples: int) -> dict[str, Any]:
     pandas_module = _load_pandas_backend(mode)
     backend_label = getattr(pandas_module, "get_backend", lambda: mode)()
 
@@ -83,7 +85,7 @@ def benchmark_backend(mode: str, rows: int, samples: int) -> Dict[str, Any]:
     }
 
 
-def print_report(results: List[Dict[str, dict[str, float]]]) -> None:
+def print_report(results: list[dict[str, dict[str, float]]]) -> None:
     headers = [
         "Backend",
         "Create (mean ms)",

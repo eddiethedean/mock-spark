@@ -161,6 +161,13 @@ class PolarsExpressionTranslator:
         if operation == "cast":
             return self._translate_cast(left, value)
 
+        # Special handling for isin - value is a list, don't translate it
+        if operation == "isin":
+            if isinstance(value, list):
+                return left.is_in(value)
+            else:
+                return left.is_in([value])
+
         # Check if this is a binary operator first (must be handled as binary operation, not function)
         binary_operators = [
             "==",
@@ -181,8 +188,15 @@ class PolarsExpressionTranslator:
             # Binary operators should NOT be routed to function calls - handle as binary operation below
             pass
         # Check if this is a string operation (must be handled as binary operation, not function)
-        elif operation in ["contains", "startswith", "endswith", "like", "rlike"]:
-            # String operations should NOT be routed to function calls - handle as binary operation below
+        elif operation in [
+            "contains",
+            "startswith",
+            "endswith",
+            "like",
+            "rlike",
+            "isin",
+        ]:
+            # String operations and isin should NOT be routed to function calls - handle as binary operation below
             pass
         # Check if this is a unary operator (must be handled as unary operation, not function)
         elif value is None and operation in ["!", "-"]:
@@ -348,12 +362,7 @@ class PolarsExpressionTranslator:
         elif operation == "cast":
             # Handle cast operation
             return self._translate_cast(left, value)
-        elif operation == "isin":
-            # Handle isin operation
-            if isinstance(value, list):
-                return left.is_in(value)
-            else:
-                return left.is_in([value])
+        # isin is handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             return self._translate_string_operation(left, operation, value)
         elif operation == "contains":
@@ -411,8 +420,102 @@ class PolarsExpressionTranslator:
             if target_type is None:
                 raise ValueError(f"Unsupported cast type: {target_type}")
 
+        # Special handling for casting to StringType
+        if isinstance(target_type, StringType):
+            # For arrays and maps, Polars can't directly cast to string
+            # Use map_elements to convert to string representation
+            # PySpark formats:
+            # - Arrays: "[1, 2, 3]"
+            # - Maps: "{key -> value, key2 -> value2}"
+            def to_string(val: Any) -> Optional[str]:
+                if val is None:
+                    return None
+                # Handle Polars List (arrays) - may come as Series or list
+                if hasattr(val, "to_list"):
+                    # Polars Series
+                    lst = val.to_list()
+                    return "[" + ", ".join(str(v) for v in lst) + "]"
+                elif isinstance(val, list):
+                    # Already a list
+                    return "[" + ", ".join(str(v) for v in val) + "]"
+                elif isinstance(val, dict):
+                    # Format map as PySpark: {key -> value, key2 -> value2}
+                    parts = [f"{k} -> {v}" for k, v in val.items()]
+                    return "{" + ", ".join(parts) + "}"
+                elif hasattr(val, "__dict__"):
+                    # Struct-like object (Polars struct)
+                    parts = [
+                        f"{k} -> {v}"
+                        for k, v in val.__dict__.items()
+                        if not k.startswith("_")
+                    ]
+                    return "{" + ", ".join(parts) + "}"
+                return str(val)
+
+            # For complex types (arrays, maps, structs), use map_elements
+            # For simple types, direct cast works
+            # We'll use map_elements for all to be safe (it works for simple types too)
+            return expr.map_elements(to_string, return_dtype=pl.Utf8)
+
         polars_dtype = mock_type_to_polars_dtype(target_type)
-        return expr.cast(polars_dtype)
+
+        # For string to int/long casting, Polars needs float intermediate step
+        # PySpark handles "10.5" -> 10 by converting to float first, then int
+        if isinstance(target_type, (IntegerType, LongType)):
+            # Check if source is string - need float intermediate step
+            # For other types, direct cast is fine
+            return expr.cast(pl.Float64, strict=False).cast(polars_dtype, strict=False)
+
+        # For string to date/timestamp casting
+        if isinstance(target_type, (DateType, TimestampType)):
+            # Try to parse string to date/timestamp
+            # Use map_elements to handle both string and non-string inputs
+            if isinstance(target_type, DateType):
+                # Parse date string
+                def parse_date(val: Any) -> Any:
+                    if val is None:
+                        return None
+                    from datetime import datetime
+
+                    val_str = str(val)
+                    try:
+                        return datetime.strptime(val_str, "%Y-%m-%d").date()
+                    except ValueError:
+                        return None
+
+                # Try strptime first (works for string columns), fall back to map_elements
+                try:
+                    return expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
+                except Exception:
+                    return expr.map_elements(parse_date, return_dtype=pl.Date)
+            else:  # TimestampType
+                # Parse timestamp string
+                def parse_timestamp(val: Any) -> Any:
+                    if val is None:
+                        return None
+                    from datetime import datetime
+
+                    val_str = str(val)
+                    try:
+                        return datetime.strptime(val_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        try:
+                            return datetime.strptime(val_str, "%Y-%m-%d")
+                        except ValueError:
+                            return None
+
+                # Try strptime first (works for string columns), fall back to map_elements
+                try:
+                    return expr.str.strptime(
+                        pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False
+                    )
+                except Exception:
+                    return expr.map_elements(
+                        parse_timestamp, return_dtype=pl.Datetime(time_unit="us")
+                    )
+
+        # For other types, use strict=False to return null for invalid casts (PySpark behavior)
+        return expr.cast(polars_dtype, strict=False)
 
     def _translate_string_operation(
         self, expr: pl.Expr, operation: str, value: Any
@@ -821,8 +924,24 @@ class PolarsExpressionTranslator:
                     all_cols = [col_expr]  # Start with the first column
                     for col in op.value:
                         if isinstance(col, str):
-                            # String literal
-                            all_cols.append(pl.lit(col))
+                            # Try to translate as column first
+                            # If it fails or doesn't exist, we'll treat as literal
+                            # For now, we'll try pl.col() and catch errors, but a better approach
+                            # is to check if it's a valid identifier (column names are identifiers)
+                            # Strings with spaces or special chars are likely literals
+                            if (
+                                col.strip() != col
+                                or not col.replace("_", "").replace("-", "").isalnum()
+                            ):
+                                # String has spaces or special chars - treat as literal
+                                all_cols.append(pl.lit(col))
+                            else:
+                                # Try as column name
+                                try:
+                                    all_cols.append(pl.col(col))
+                                except Exception:
+                                    # If it fails, treat as literal
+                                    all_cols.append(pl.lit(col))
                         elif hasattr(col, "value"):  # Literal
                             all_cols.append(pl.lit(col.value))
                         else:
@@ -981,10 +1100,31 @@ class PolarsExpressionTranslator:
                         polars_format = polars_format.replace(
                             java_pattern, polars_pattern
                         )
-                    # If column is string, parse it first; if already date, use directly
-                    # For now, assume we need to parse string dates
-                    parsed = col_expr.str.strptime(pl.Date, "%Y-%m-%d", strict=False)
-                    return parsed.dt.strftime(polars_format)
+
+                    # If column is string, parse it first; if already date/timestamp, use directly
+                    # Try to parse as datetime first (handles timestamps), then fall back to date
+                    # For string columns, try datetime format first (handles "2024-01-15 10:30:00")
+                    # then fall back to date format (handles "2024-01-15")
+                    # Use map_elements to handle both formats
+                    def parse_and_format(val: str) -> Optional[str]:
+                        if val is None:
+                            return None
+                        from datetime import datetime
+
+                        # Try datetime format first
+                        try:
+                            dt = datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+                            return dt.strftime(polars_format)
+                        except ValueError:
+                            # Fall back to date format
+                            try:
+                                dt = datetime.strptime(val, "%Y-%m-%d")
+                                return dt.strftime(polars_format)
+                            except ValueError:
+                                return None
+
+                    # Use map_elements for flexible parsing
+                    return col_expr.map_elements(parse_and_format, return_dtype=pl.Utf8)
                 else:
                     raise ValueError("date_format requires format string")
             elif operation == "date_add":
@@ -1039,7 +1179,13 @@ class PolarsExpressionTranslator:
             elif operation == "datediff":
                 # datediff(end, start) - note: in PySpark, end comes first
                 # In ColumnOperation: column is end, value is start
-                start_date = self.translate(op.value)
+                # Handle Literal objects in value
+                from ...functions.core.literals import Literal
+
+                if isinstance(op.value, Literal):
+                    start_date = pl.lit(op.value.value)
+                else:
+                    start_date = self.translate(op.value)
                 # Handle both string dates and date columns
                 # Polars str.strptime() only works on string columns, so it fails on date columns
                 # Use cast to Date which works for both: strings are parsed, dates are unchanged
@@ -1180,23 +1326,32 @@ class PolarsExpressionTranslator:
                     pl.element().filter(pl.element() != value_expr)
                 )
             elif operation == "array":
-                # array(*cols) - create array from columns
-                # op.value can be list, tuple, or None
-                if isinstance(op.value, (list, tuple)) and len(op.value) > 0:
-                    cols = [col_expr] + [self.translate(col) for col in op.value]
-                    return pl.concat_list(cols)
-                elif op.value is None:
-                    # Single column - just wrap it in a list
-                    return pl.list([col_expr])
-                else:
-                    # Try to handle as iterable
-                    cols = [col_expr]
-                    try:
-                        for col in op.value:
-                            cols.append(self.translate(col))
-                        return pl.concat_list(cols)
-                    except (TypeError, AttributeError):
-                        return pl.list([col_expr])
+                # array(*cols) - create array containing values from each column as elements
+                # So array(arr1, arr2) where arr1=[1,2,3] and arr2=[4,5] creates [[1,2,3], [4,5]]
+                # NOT [1,2,3,4,5] (which would be concatenation)
+                # Polars concat_list concatenates arrays, so we need Python evaluation
+                # Raise ValueError to trigger Python evaluation fallback
+                raise ValueError(
+                    "array function requires Python evaluation to create array of arrays"
+                )
+            elif operation == "timestamp_seconds":
+                # timestamp_seconds needs to return formatted string, not datetime object
+                # Force Python evaluation to format correctly
+                raise ValueError(
+                    "timestamp_seconds requires Python evaluation to format timestamp string"
+                )
+            elif operation == "to_utc_timestamp":
+                # to_utc_timestamp needs timezone conversion
+                # Force Python evaluation for proper timezone handling
+                raise ValueError(
+                    "to_utc_timestamp requires Python evaluation for timezone conversion"
+                )
+            elif operation == "from_utc_timestamp":
+                # from_utc_timestamp needs timezone conversion
+                # Force Python evaluation for proper timezone handling
+                raise ValueError(
+                    "from_utc_timestamp requires Python evaluation for timezone conversion"
+                )
             elif operation == "array_intersect":
                 # array_intersect(col1, col2) - intersection of two arrays
                 col2_expr = self.translate(op.value)
@@ -1788,9 +1943,10 @@ class PolarsExpressionTranslator:
             "lower": lambda e: e.str.to_lowercase(),
             "length": lambda e: e.str.len_chars(),
             "char_length": lambda e: e.str.len_chars(),  # Alias for length
-            "trim": lambda e: e.str.strip_chars(),
-            "ltrim": lambda e: e.str.strip_chars_start(),
-            "rtrim": lambda e: e.str.strip_chars_end(),
+            # PySpark trim only removes ASCII space characters (0x20), not tabs/newlines
+            "trim": lambda e: e.str.strip_chars(" "),
+            "ltrim": lambda e: e.str.strip_chars_start(" "),
+            "rtrim": lambda e: e.str.strip_chars_end(" "),
             "btrim": lambda e: e.str.strip_chars(),  # btrim without trim_string is same as trim
             "bit_length": lambda e: (e.str.len_bytes() * 8),
             "octet_length": lambda e: e.str.len_bytes(),  # Byte length (octet = 8 bits, but octet_length is bytes)
@@ -1922,7 +2078,7 @@ class PolarsExpressionTranslator:
             "unix_seconds": lambda e: e,  # Will be handled in operation-specific code
             "unix_millis": lambda e: e,  # Will be handled in operation-specific code
             "unix_micros": lambda e: e,  # Will be handled in operation-specific code
-            "timestamp_seconds": lambda e: e,  # Will be handled in operation-specific code
+            # timestamp_seconds removed - handled in operation-specific code to force Python evaluation
             "timestamp_millis": lambda e: e,  # Will be handled in operation-specific code
             "timestamp_micros": lambda e: e,  # Will be handled in operation-specific code
             # New utility functions

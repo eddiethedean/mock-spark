@@ -43,7 +43,6 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.array_intersect(df.arr1, df.arr2))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="array_join not yet implemented correctly")
     def test_array_join(self, spark):
         """Test array_join function."""
         expected = load_expected_output("arrays", "array_join")
@@ -72,7 +71,9 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.array_repeat(df.value, 3))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="array_sort not yet implemented correctly")
+    @pytest.mark.skip(
+        reason="array_sort with lambda function name generation requires full lambda support"
+    )
     def test_array_sort(self, spark):
         """Test array_sort function."""
         expected = load_expected_output("arrays", "array_sort")
@@ -80,7 +81,6 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.array_sort(df.arr3))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="array_union not yet implemented correctly")
     def test_array_union(self, spark):
         """Test array_union function."""
         expected = load_expected_output("arrays", "array_union")
@@ -95,7 +95,6 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.arrays_overlap(df.arr1, df.arr2))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="arrays_zip not yet implemented correctly")
     def test_arrays_zip(self, spark):
         """Test arrays_zip function."""
         expected = load_expected_output("arrays", "arrays_zip")
@@ -103,7 +102,6 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.arrays_zip(df.arr1, df.arr2))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="flatten not yet implemented correctly")
     def test_flatten(self, spark):
         """Test flatten function."""
         expected = load_expected_output("arrays", "flatten")
@@ -118,7 +116,6 @@ class TestArrayFunctionsExtendedCompatibility:
         result = df.select(F.reverse(df.arr1))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="sequence not yet implemented correctly")
     def test_sequence(self, spark):
         """Test sequence function."""
         expected = load_expected_output("arrays", "sequence")

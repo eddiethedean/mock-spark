@@ -1078,11 +1078,12 @@ class DateTimeFunctions:
         if isinstance(column, str):
             column = Column(column)
 
+        # PySpark doesn't quote the format string in the column name
         operation = ColumnOperation(
             column,
             "from_unixtime",
             format,
-            name=f"from_unixtime({column.name}, '{format}')",
+            name=f"from_unixtime({column.name}, {format})",
         )
         return operation
 
@@ -1185,11 +1186,19 @@ class DateTimeFunctions:
         if isinstance(ts, str):
             ts = Column(ts)
 
+        # PySpark doesn't quote the timezone string in the column name
+        # Extract timezone string if it's a Literal
+        tz_str = tz
+        if hasattr(tz, "value") and hasattr(tz, "data_type"):
+            tz_str = str(tz.value)
+        elif isinstance(tz, str):
+            tz_str = tz
+
         return ColumnOperation(
             ts,
             "from_utc_timestamp",
             tz,
-            name=f"from_utc_timestamp({ts.name}, '{tz}')",
+            name=f"from_utc_timestamp({ts.name}, {tz_str})",
         )
 
     @staticmethod
@@ -1198,11 +1207,19 @@ class DateTimeFunctions:
         if isinstance(ts, str):
             ts = Column(ts)
 
+        # PySpark doesn't quote the timezone string in the column name
+        # Extract timezone string if it's a Literal
+        tz_str = tz
+        if hasattr(tz, "value") and hasattr(tz, "data_type"):
+            tz_str = str(tz.value)
+        elif isinstance(tz, str):
+            tz_str = tz
+
         return ColumnOperation(
             ts,
             "to_utc_timestamp",
             tz,
-            name=f"to_utc_timestamp({ts.name}, '{tz}')",
+            name=f"to_utc_timestamp({ts.name}, {tz_str})",
         )
 
     # Date/Time Part Functions (PySpark 3.2+)
@@ -1308,26 +1325,66 @@ class DateTimeFunctions:
         )
 
     @staticmethod
-    def datediff(end: Union[Column, str], start: Union[Column, str]) -> ColumnOperation:
+    def datediff(
+        end: Union[Column, str, Literal], start: Union[Column, str, Literal]
+    ) -> ColumnOperation:
         """Returns number of days between two dates.
 
         Args:
-            end: End date column
-            start: Start date column
+            end: End date column or literal
+            start: Start date column or literal
 
         Returns:
             ColumnOperation representing the datediff function
 
         Example:
-            >>> df.select(F.datediff(F.col('end_date'), F.col('start_date')))
+            >>> df.select(F.datediff(F.col('end_date'), F.lit('2024-01-01')))
         """
-        if isinstance(end, str):
-            end = Column(end)
-        if isinstance(start, str):
-            start = Column(start)
+        # Handle Literal objects
+        end_col: Union[Literal, Column]
+        if isinstance(end, Literal):
+            # For literals, use the literal as-is
+            end_col = end
+        elif isinstance(end, str):
+            # Check if it looks like a date string (not a column name)
+            # If it contains dashes and looks like a date, treat as literal
+            # Simple heuristic: "YYYY-MM-DD"
+            end_col = Literal(end) if "-" in end and len(end) == 10 else Column(end)
+        else:
+            end_col = end  # type: ignore[assignment]
+
+        start_col: Union[Literal, Column]
+        if isinstance(start, Literal):
+            start_col = start
+        elif isinstance(start, str):
+            # Check if it looks like a date string (not a column name)
+            if "-" in start and len(start) == 10:  # Simple heuristic: "YYYY-MM-DD"
+                start_col = Literal(start)
+            else:
+                start_col = Column(start)
+        else:
+            start_col = start  # type: ignore[assignment]
+
+        end_name = (
+            end_col.name
+            if hasattr(end_col, "name")
+            else str(end_col.value)
+            if isinstance(end_col, Literal)
+            else str(end_col)
+        )
+        start_name = (
+            start_col.name
+            if hasattr(start_col, "name")
+            else str(start_col.value)
+            if isinstance(start_col, Literal)
+            else str(start_col)
+        )
 
         return ColumnOperation(
-            end, "datediff", value=start, name=f"datediff({end.name}, {start.name})"
+            end_col,
+            "datediff",
+            value=start_col,
+            name=f"datediff({end_name}, {start_name})",
         )
 
     @staticmethod
@@ -1470,10 +1527,19 @@ class DateTimeFunctions:
 
             col = Literal(col)  # type: ignore[assignment]
 
+        # Extract value from Literal for name generation
+        if hasattr(col, "value") and hasattr(col, "data_type"):
+            # It's a Literal - use its value in the name
+            col_name = str(col.value)
+        elif hasattr(col, "name"):
+            col_name = col.name
+        else:
+            col_name = str(col)
+
         return ColumnOperation(
             col,
             "timestamp_seconds",
-            name=f"timestamp_seconds({col})",
+            name=f"timestamp_seconds({col_name})",
         )
 
     @staticmethod

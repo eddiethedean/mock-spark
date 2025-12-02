@@ -91,6 +91,23 @@ df.show()
 # 30    Bob
 ```
 
+### Storage API (Mock-Spark-Specific)
+
+Mock-Spark provides a convenient `.storage` API for managing databases and tables. **Note:** This is a mock-spark-specific feature. For PySpark compatibility, use SQL commands instead:
+
+```python
+# Mock-Spark: Using .storage API (convenient but not PySpark-compatible)
+spark.storage.create_schema("test_db")
+spark.storage.create_table("test_db", "users", schema)
+
+# Both Mock-Spark and PySpark: Using SQL commands (recommended for compatibility)
+spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
+spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
+```
+
+See the [Migration Guide](docs/migration_from_pyspark.md) for more details.
+```
+
 ### Testing Example
 
 ```python

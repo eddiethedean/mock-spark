@@ -161,6 +161,7 @@ class TestStringOperations(ParityTestBase):
         """Test concat string function."""
         from mock_spark import F as MockF
         from pyspark.sql import functions as PySparkF
+        from pyspark.sql.functions import lit
 
         # MockSpark
         mock_df = mock_spark.createDataFrame(string_data)
@@ -168,12 +169,12 @@ class TestStringOperations(ParityTestBase):
             "text", "email", MockF.concat("text", " - ", "email").alias("concatenated")
         )
 
-        # PySpark
+        # PySpark - string literals need to be wrapped in lit()
         pyspark_df = pyspark_spark.createDataFrame(string_data)
         pyspark_result = pyspark_df.select(
             "text",
             "email",
-            PySparkF.concat("text", " - ", "email").alias("concatenated"),
+            PySparkF.concat("text", lit(" - "), "email").alias("concatenated"),
         )
 
         # Compare
@@ -279,15 +280,14 @@ class TestStringOperations(ParityTestBase):
     def test_rlike_function(self, mock_spark, pyspark_spark, string_data):
         """Test rlike string function."""
         from mock_spark import F as MockF
-        from pyspark.sql import functions as PySparkF
 
         # MockSpark
         mock_df = mock_spark.createDataFrame(string_data)
         mock_result = mock_df.filter(MockF.rlike("text", r"^[A-Z]"))
 
-        # PySpark
+        # PySpark - rlike is a column method, not a function
         pyspark_df = pyspark_spark.createDataFrame(string_data)
-        pyspark_result = pyspark_df.filter(PySparkF.rlike("text", r"^[A-Z]"))
+        pyspark_result = pyspark_df.filter(pyspark_df.text.rlike(r"^[A-Z]"))
 
         # Compare
         compare_dataframes(mock_result, pyspark_result)
@@ -420,7 +420,7 @@ class TestStringOperations(ParityTestBase):
             PySparkF.upper("text").alias("upper_text"),
             PySparkF.length("text").alias("text_length"),
             PySparkF.substring("text", 1, 5).alias("first_5_chars"),
-            PySparkF.concat("text", " - ", "email").alias("full_info"),
+            PySparkF.concat("text", PySparkF.lit(" - "), "email").alias("full_info"),
         )
 
         # Compare

@@ -5,6 +5,7 @@ This module handles window functions using Polars `.over()` expressions.
 """
 
 from typing import Optional
+import sys
 import polars as pl
 from mock_spark.functions.window_execution import WindowFunction
 
@@ -36,19 +37,55 @@ class PolarsWindowHandler:
                 elif hasattr(col, "name"):
                     partition_by.append(pl.col(col.name))
 
-        # Build order_by
+        # Build order_by - handle multiple columns with different directions
         order_by: list[pl.Expr] = []
         if hasattr(window_spec, "_order_by") and window_spec._order_by:
             for col in window_spec._order_by:
                 if isinstance(col, str):
                     order_by.append(pl.col(col))
-                elif hasattr(col, "name"):
-                    order_by.append(pl.col(col.name))
                 elif hasattr(col, "operation") and col.operation == "desc":
-                    col_name = col.column.name if hasattr(col, "column") else col.name
-                    order_by.append(pl.col(col_name).desc())
+                    # Extract base column name from ColumnOperation
+                    if hasattr(col, "column"):
+                        if hasattr(col.column, "name"):
+                            col_name = col.column.name
+                        elif hasattr(col.column, "column") and hasattr(
+                            col.column.column, "name"
+                        ):
+                            # Nested column reference
+                            col_name = col.column.column.name
+                        else:
+                            col_name = str(col.column)
+                    else:
+                        col_name = col.name if hasattr(col, "name") else str(col)
+                    # Remove " DESC" suffix if present
+                    if col_name.endswith(" DESC"):
+                        col_name = col_name[:-5]
+                    order_by.append(pl.col(col_name).sort(descending=True))
+                elif hasattr(col, "operation") and col.operation == "asc":
+                    # Extract base column name from ColumnOperation
+                    if hasattr(col, "column"):
+                        if hasattr(col.column, "name"):
+                            col_name = col.column.name
+                        elif hasattr(col.column, "column") and hasattr(
+                            col.column.column, "name"
+                        ):
+                            # Nested column reference
+                            col_name = col.column.column.name
+                        else:
+                            col_name = str(col.column)
+                    else:
+                        col_name = col.name if hasattr(col, "name") else str(col)
+                    # Remove " ASC" suffix if present
+                    if col_name.endswith(" ASC"):
+                        col_name = col_name[:-4]
+                    order_by.append(pl.col(col_name))
                 else:
                     order_by.append(pl.col(col.name))
+
+        # Check for window frames (rows_between or range_between)
+        rows_between = None
+        if hasattr(window_spec, "_rows_between") and window_spec._rows_between:
+            rows_between = window_spec._rows_between
 
         # Get column expression if available
         column_expr: Optional[pl.Expr] = None
@@ -83,7 +120,7 @@ class PolarsWindowHandler:
             if partition_by:
                 if order_by:
                     return (pl.int_range(pl.len()) + 1).over(
-                        partition_by, order_by=order_by[0]
+                        partition_by, order_by=order_by
                     )
                 else:
                     return (pl.int_range(pl.len()) + 1).over(partition_by)
@@ -93,19 +130,18 @@ class PolarsWindowHandler:
             if column_expr is not None:
                 if partition_by:
                     if order_by:
-                        return column_expr.rank().over(
-                            partition_by, order_by=order_by[0]
-                        )
+                        return column_expr.rank().over(partition_by, order_by=order_by)
                     else:
                         return column_expr.rank().over(partition_by)
                 else:
                     if order_by:
-                        return column_expr.rank().over(order_by=order_by[0])
+                        return column_expr.rank().over(order_by=order_by)
                     else:
                         return column_expr.rank()
             else:
                 # Fallback: use first order_by column (rank() doesn't take a column)
                 if order_by:
+                    # Use first order column for ranking (rank doesn't take a column argument)
                     order_col = order_by[0]
                     if partition_by:
                         # When ranking on order_by column with partition_by, just use partition_by
@@ -125,20 +161,19 @@ class PolarsWindowHandler:
                 if partition_by:
                     if order_by:
                         return column_expr.rank(method="dense").over(
-                            partition_by, order_by=order_by[0]
+                            partition_by, order_by=order_by
                         )
                     else:
                         return column_expr.rank(method="dense").over(partition_by)
                 else:
                     if order_by:
-                        return column_expr.rank(method="dense").over(
-                            order_by=order_by[0]
-                        )
+                        return column_expr.rank(method="dense").over(order_by=order_by)
                     else:
                         return column_expr.rank(method="dense")
             else:
                 # Fallback: use first order_by column (dense_rank() doesn't take a column)
                 if order_by:
+                    # Use first order column for ranking (dense_rank doesn't take a column argument)
                     order_col = order_by[0]
                     if partition_by:
                         # When ranking on order_by column with partition_by, use rank with method='dense'
@@ -155,18 +190,67 @@ class PolarsWindowHandler:
                         return pl.int_range(pl.len()) + 1
         elif function_name == "SUM":
             if column_expr is not None:
+                # Handle rows_between frames
+                # For complex frames like rowsBetween(currentRow, unboundedFollowing),
+                # Polars doesn't support nested window functions, so we raise ValueError
+                # to trigger Python evaluation fallback
+                if rows_between:
+                    start, end = rows_between
+                    # For rowsBetween(currentRow, unboundedFollowing): sum from current row to end
+                    # This requires reverse cumulative sum which Polars doesn't support natively
+                    if (
+                        start == 0 and end == sys.maxsize
+                    ):  # currentRow to unboundedFollowing
+                        # Raise ValueError to trigger Python evaluation
+                        raise ValueError(
+                            "rowsBetween(currentRow, unboundedFollowing) requires Python evaluation"
+                        )
+                    # For other frame types, fall through to default behavior
+
                 if partition_by:
-                    return column_expr.sum().over(partition_by)
+                    if order_by:
+                        # With orderBy, PySpark uses default frame UNBOUNDED PRECEDING AND CURRENT ROW
+                        # So sum() returns a running sum (cumulative sum)
+                        # Use cum_sum() which works on expressions
+                        return column_expr.cum_sum().over(
+                            partition_by, order_by=order_by
+                        )
+                    else:
+                        return column_expr.sum().over(partition_by)
                 else:
-                    return column_expr.sum()
+                    if order_by:
+                        # Running sum without partition
+                        return column_expr.cum_sum().over(order_by=order_by)
+                    else:
+                        return column_expr.sum()
             else:
                 raise ValueError("SUM window function requires a column")
         elif function_name == "AVG" or function_name == "MEAN":
             if column_expr is not None:
                 if partition_by:
-                    return column_expr.mean().over(partition_by)
+                    if order_by:
+                        # With orderBy, PySpark uses default frame UNBOUNDED PRECEDING AND CURRENT ROW
+                        # So avg() returns a running average (cumulative average)
+                        # Use cum_sum() / row_number() to compute running average
+                        cumsum_expr = column_expr.cum_sum().over(
+                            partition_by, order_by=order_by
+                        )
+                        row_num_expr = (pl.int_range(pl.len()) + 1).over(
+                            partition_by, order_by=order_by
+                        )
+                        return cumsum_expr / row_num_expr
+                    else:
+                        return column_expr.mean().over(partition_by)
                 else:
-                    return column_expr.mean()
+                    if order_by:
+                        # Running average without partition
+                        cumsum_expr = column_expr.cum_sum().over(order_by=order_by)
+                        row_num_expr = (pl.int_range(pl.len()) + 1).over(
+                            order_by=order_by
+                        )
+                        return cumsum_expr / row_num_expr
+                    else:
+                        return column_expr.mean()
             else:
                 raise ValueError("AVG window function requires a column")
         elif function_name == "COUNT":
@@ -209,7 +293,7 @@ class PolarsWindowHandler:
                 )
                 if partition_by:
                     if order_by:
-                        return shift_expr.over(partition_by, order_by=order_by[0])
+                        return shift_expr.over(partition_by, order_by=order_by)
                     else:
                         return shift_expr.over(partition_by)
                 else:
@@ -229,45 +313,54 @@ class PolarsWindowHandler:
                 )
                 if partition_by:
                     if order_by:
-                        return shift_expr.over(partition_by, order_by=order_by[0])
+                        return shift_expr.over(partition_by, order_by=order_by)
                     else:
                         return shift_expr.over(partition_by)
                 else:
                     return shift_expr
             else:
                 raise ValueError("LEAD window function requires a column")
-        elif function_name == "FIRST_VALUE":
+        elif function_name in ("FIRST", "FIRST_VALUE"):
             if column_expr is not None:
                 if partition_by:
                     if order_by:
-                        return column_expr.first().over(
-                            partition_by, order_by=order_by[0]
-                        )
+                        return column_expr.first().over(partition_by, order_by=order_by)
                     else:
                         return column_expr.first().over(partition_by)
                 else:
                     return column_expr.first()
             else:
-                raise ValueError("FIRST_VALUE window function requires a column")
-        elif function_name == "LAST_VALUE":
+                raise ValueError("FIRST/FIRST_VALUE window function requires a column")
+        elif function_name in ("LAST", "LAST_VALUE"):
             if column_expr is not None:
                 if partition_by:
                     if order_by:
-                        return column_expr.last().over(
-                            partition_by, order_by=order_by[0]
-                        )
+                        # With orderBy, PySpark's default frame is UNBOUNDED PRECEDING AND CURRENT ROW
+                        # So last() returns the current row's value (last in the frame up to current row)
+                        # Use max() with the same frame to get the current row's value
+                        # Actually, we need to use a range frame: rows_between(UNBOUNDED_PRECEDING, CURRENT_ROW)
+                        # But Polars doesn't support range frames directly, so we use a workaround:
+                        # For each row, last() with orderBy returns that row's value
+                        # We can use max() over the frame, but Polars doesn't have frame support
+                        # So we'll use a different approach: use the column itself (current row value)
+                        # when orderBy is present, as that's what PySpark does with default frame
+                        return column_expr.over(partition_by, order_by=order_by)
                     else:
                         return column_expr.last().over(partition_by)
                 else:
-                    return column_expr.last()
+                    if order_by:
+                        # With orderBy but no partition, return current row value
+                        return column_expr.over(order_by=order_by)
+                    else:
+                        return column_expr.last()
             else:
-                raise ValueError("LAST_VALUE window function requires a column")
+                raise ValueError("LAST/LAST_VALUE window function requires a column")
         elif function_name == "CUME_DIST":
             # CUME_DIST is not directly available in Polars, use approximation
             if partition_by:
                 if order_by:
                     return pl.int_range(pl.len()).over(
-                        partition_by, order_by=order_by[0]
+                        partition_by, order_by=order_by
                     ) / pl.len().over(partition_by)
                 else:
                     return pl.int_range(pl.len()).over(partition_by) / pl.len().over(
@@ -280,8 +373,7 @@ class PolarsWindowHandler:
             if partition_by:
                 if order_by:
                     rank_expr = (
-                        pl.int_range(pl.len()).over(partition_by, order_by=order_by[0])
-                        - 1
+                        pl.int_range(pl.len()).over(partition_by, order_by=order_by) - 1
                     )
                     count_expr = pl.len().over(partition_by) - 1
                     return rank_expr / count_expr

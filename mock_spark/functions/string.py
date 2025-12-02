@@ -779,10 +779,11 @@ class StringFunctions:
             column = Column(column)
 
         if null_replacement is not None:
-            name = f"array_join({column.name}, '{delimiter}', '{null_replacement}')"
+            name = f"array_join({column.name}, '{null_replacement}', '{delimiter}')"
             args: Any = (delimiter, null_replacement)
         else:
-            name = f"array_join({column.name}, '{delimiter}')"
+            # PySpark doesn't quote the delimiter in the column name
+            name = f"array_join({column.name}, {delimiter})"
             args = (delimiter, None)
 
         operation = ColumnOperation(column, "array_join", args, name=name)
@@ -1176,9 +1177,25 @@ class StringFunctions:
         if isinstance(src, str):
             src = Column(src)
 
-        return ColumnOperation(
-            src, "overlay", value=(replace, pos, len), name=f"overlay({src.name})"
+        # Generate proper name with all arguments
+        replace_str = (
+            replace.name
+            if isinstance(replace, Column)
+            else (replace.value if hasattr(replace, "value") else str(replace))
         )
+        pos_str = (
+            pos.name
+            if isinstance(pos, Column)
+            else (pos.value if hasattr(pos, "value") else str(pos))
+        )
+        len_str = (
+            len.name
+            if isinstance(len, Column)
+            else (len.value if hasattr(len, "value") else str(len))
+        )
+        name = f"overlay({src.name}, {replace_str}, {pos_str}, {len_str})"
+
+        return ColumnOperation(src, "overlay", value=(replace, pos, len), name=name)
 
     @staticmethod
     def bin(column: Union[Column, str]) -> ColumnOperation:
@@ -1242,11 +1259,23 @@ class StringFunctions:
             else:
                 columns.append(col)
 
+        # Generate proper name with column names
+        if len(columns) == 1:
+            col_name = (
+                columns[0].name if hasattr(columns[0], "name") else str(columns[0])
+            )
+            name = f"hash({col_name})"
+        else:
+            col_names = ", ".join(
+                c.name if hasattr(c, "name") else str(c) for c in columns
+            )
+            name = f"hash({col_names})"
+
         return ColumnOperation(
             columns[0] if columns else Column(""),
             "hash",
             value=columns[1:] if len(columns) > 1 else [],
-            name="hash(...)",
+            name=name,
         )
 
     @staticmethod

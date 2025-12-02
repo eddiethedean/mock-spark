@@ -239,10 +239,10 @@ class TestDatetimeOperations(ParityTestBase):
         mock_df = mock_spark.createDataFrame(datetime_data)
         mock_result = mock_df.select("timestamp", MockF.day("timestamp").alias("day"))
 
-        # PySpark
+        # PySpark - day is dayofmonth
         pyspark_df = pyspark_spark.createDataFrame(datetime_data)
         pyspark_result = pyspark_df.select(
-            "timestamp", PySparkF.day("timestamp").alias("day")
+            "timestamp", PySparkF.dayofmonth("timestamp").alias("day")
         )
 
         # Compare
@@ -293,16 +293,20 @@ class TestDatetimeOperations(ParityTestBase):
         from mock_spark import F as MockF
         from pyspark.sql import functions as PySparkF
 
-        # MockSpark
+        # MockSpark - datediff requires F.lit() for string literals
         mock_df = mock_spark.createDataFrame(datetime_data)
         mock_result = mock_df.select(
-            "date", MockF.datediff("date", "2024-01-01").alias("days_since_jan_1")
+            "date",
+            MockF.datediff("date", MockF.lit("2024-01-01")).alias("days_since_jan_1"),
         )
 
-        # PySpark
+        # PySpark - datediff requires F.lit() for string literals
         pyspark_df = pyspark_spark.createDataFrame(datetime_data)
         pyspark_result = pyspark_df.select(
-            "date", PySparkF.datediff("date", "2024-01-01").alias("days_since_jan_1")
+            "date",
+            PySparkF.datediff("date", PySparkF.lit("2024-01-01")).alias(
+                "days_since_jan_1"
+            ),
         )
 
         # Compare
@@ -367,13 +371,13 @@ class TestDatetimeOperations(ParityTestBase):
             MockF.dayofweek("timestamp").alias("day_of_week"),
         )
 
-        # PySpark
+        # PySpark - day is dayofmonth
         pyspark_df = pyspark_spark.createDataFrame(datetime_data)
         pyspark_result = pyspark_df.select(
             "timestamp",
             PySparkF.year("timestamp").alias("year"),
             PySparkF.month("timestamp").alias("month"),
-            PySparkF.day("timestamp").alias("day"),
+            PySparkF.dayofmonth("timestamp").alias("day"),
             PySparkF.hour("timestamp").alias("hour"),
             PySparkF.dayofweek("timestamp").alias("day_of_week"),
         )

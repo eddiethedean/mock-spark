@@ -22,7 +22,6 @@ class TestMapFunctionsExtendedCompatibility:
         yield session
         session.stop()
 
-    @pytest.mark.skip(reason="create_map with literals not yet implemented correctly")
     def test_create_map(self, spark):
         """Test create_map function."""
         expected = load_expected_output("maps", "create_map")
@@ -52,7 +51,6 @@ class TestMapFunctionsExtendedCompatibility:
         result = df.select(F.map_filter(df.map1, lambda k, v: k == "a"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="map_from_arrays not yet implemented correctly")
     def test_map_from_arrays(self, spark):
         """Test map_from_arrays function."""
         expected = load_expected_output("maps", "map_from_arrays")
@@ -64,7 +62,6 @@ class TestMapFunctionsExtendedCompatibility:
         )
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="map_from_entries not yet implemented correctly")
     def test_map_from_entries(self, spark):
         """Test map_from_entries function."""
         expected = load_expected_output("maps", "map_from_entries")

@@ -82,6 +82,10 @@ from .errors import (  # noqa: E402
     IllegalArgumentException,
 )
 
+# Note: Exceptions are also available via mock_spark.sql.utils for PySpark compatibility:
+#   from mock_spark.sql.utils import AnalysisException  # PySpark-compatible path
+#   from mock_spark import AnalysisException  # Backward-compatible path (still works)
+
 # ==============================================================================
 # TESTING UTILITIES - AVAILABLE VIA EXPLICIT IMPORT
 # ==============================================================================
@@ -98,7 +102,7 @@ from .errors import (  # noqa: E402
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "3.6.1"
+__version__ = "3.8.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

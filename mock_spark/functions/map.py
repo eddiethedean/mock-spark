@@ -162,19 +162,41 @@ class MapFunctions:
         Example:
             >>> df.select(F.create_map(F.col("k1"), F.col("v1"), F.col("k2"), F.col("v2")))
         """
+        from .core.literals import Literal
+
         if len(cols) < 2 or len(cols) % 2 != 0:
             raise ValueError(
                 "create_map requires an even number of arguments (key-value pairs)"
             )
 
-        # Use first column as base, store rest as value
-        base_col = cols[0] if isinstance(cols[0], Column) else Column(str(cols[0]))
+        # Use first column/literal as base, store ALL arguments as value
+        # If it's a Literal, create a dummy Column for the base
+        if isinstance(cols[0], Literal):
+            # Create a dummy column for validation purposes
+            base_col = Column("__create_map_base__")
+        elif isinstance(cols[0], Column):
+            base_col = cols[0]
+        else:
+            base_col = Column(str(cols[0]))
+
+        # Generate PySpark-compatible name: map(key, value) or map(key1, value1, key2, value2, ...)
+        from .core.literals import Literal
+
+        name_parts = []
+        for col in cols:
+            if isinstance(col, Literal):
+                name_parts.append(str(col.value))
+            elif isinstance(col, Column):
+                name_parts.append(col.name)
+            else:
+                name_parts.append(str(col))
+        name = f"map({', '.join(name_parts)})"
 
         return ColumnOperation(
             base_col,
             "create_map",
-            value=cols[1:],
-            name="create_map(...)",
+            value=cols,  # Store all arguments, not just cols[1:]
+            name=name,
         )
 
     @staticmethod

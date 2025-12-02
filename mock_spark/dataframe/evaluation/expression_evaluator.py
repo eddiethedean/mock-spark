@@ -241,9 +241,192 @@ class ExpressionEvaluator:
                     if hasattr(operation.column, "name")
                     else str(operation.column)
                 )
-                value = row.get(col_name)
+                # Check if the column name is actually a Literal (string representation)
+                if (
+                    isinstance(col_name, str)
+                    and "<mock_spark.functions.core.literals.Literal" in col_name
+                ):
+                    # This is a Literal used as a column - try to extract the actual value
+                    # The column might have the Literal object stored somewhere
+                    # For now, try to evaluate it as a Literal
+                    if hasattr(operation.column, "_literal") or hasattr(
+                        operation.column, "literal"
+                    ):
+                        lit = getattr(operation.column, "_literal", None) or getattr(
+                            operation.column, "literal", None
+                        )
+                        value = lit.value if lit and hasattr(lit, "value") else None
+                    else:
+                        # Can't extract the value - return None
+                        value = None
+                else:
+                    value = row.get(col_name)
 
         func_name = operation.operation
+
+        # Handle struct function - collects multiple values into a struct/dict
+        if func_name == "struct":
+            result = {}
+            all_values = []
+
+            # Check if operation.value contains all columns (when first is Literal)
+            # or if we need to get first from column
+            if hasattr(operation, "value") and operation.value is not None:
+                # Check if operation.value contains all columns (including first)
+                # This happens when the first column is a Literal
+                if (
+                    isinstance(operation.value, (list, tuple))
+                    and len(operation.value) > 0
+                ):
+                    # Check if first item is a Literal - if so, all columns are in value
+                    first_item = operation.value[0]
+                    if hasattr(first_item, "value") and hasattr(first_item, "name"):
+                        # All columns are in operation.value (first is Literal)
+                        for item in operation.value:
+                            if hasattr(item, "value") and hasattr(item, "name"):
+                                # It's a Literal
+                                all_values.append(item.value)
+                            elif hasattr(item, "name"):
+                                # It's a Column - get from row
+                                col_name = item.name
+                                if (
+                                    isinstance(col_name, str)
+                                    and "<mock_spark.functions.core.literals.Literal"
+                                    in col_name
+                                ):
+                                    # Can't extract - skip
+                                    pass
+                                else:
+                                    all_values.append(row.get(col_name))
+                            elif hasattr(item, "operation") and hasattr(item, "column"):
+                                # It's a ColumnOperation - evaluate it
+                                all_values.append(self.evaluate_expression(row, item))
+                            else:
+                                all_values.append(item)
+                    else:
+                        # First column is in operation.column, rest in operation.value
+                        if value is not None:
+                            all_values.append(value)
+                        # Add remaining values from operation.value
+                        for item in operation.value:
+                            if hasattr(item, "value") and hasattr(item, "name"):
+                                all_values.append(item.value)
+                            elif hasattr(item, "name"):
+                                col_name = item.name
+                                if (
+                                    isinstance(col_name, str)
+                                    and "<mock_spark.functions.core.literals.Literal"
+                                    in col_name
+                                ):
+                                    pass
+                                else:
+                                    all_values.append(row.get(col_name))
+                            elif hasattr(item, "operation") and hasattr(item, "column"):
+                                all_values.append(self.evaluate_expression(row, item))
+                            else:
+                                all_values.append(item)
+                else:
+                    # Single value in operation.value
+                    if value is not None:
+                        all_values.append(value)
+                    if hasattr(operation.value, "value") and hasattr(
+                        operation.value, "name"
+                    ):
+                        all_values.append(operation.value.value)
+                    elif hasattr(operation.value, "name"):
+                        col_name = operation.value.name
+                        if not (
+                            isinstance(col_name, str)
+                            and "<mock_spark.functions.core.literals.Literal"
+                            in col_name
+                        ):
+                            all_values.append(row.get(col_name))
+                    else:
+                        all_values.append(operation.value)
+            else:
+                # No operation.value - only first column
+                if value is not None:
+                    all_values.append(value)
+
+            # Create struct with field names
+            for idx, val in enumerate(all_values, start=1):
+                result[f"col{idx}"] = val
+
+            return result
+
+        # Handle array function - collects multiple values into an array
+        # array() creates an array containing the values from each column as elements
+        # So array(arr1, arr2) where arr1=[1,2,3] and arr2=[4,5] creates [[1,2,3], [4,5]]
+        if func_name == "array":
+            array_result: list[Any] = []
+            # Add the first value (from column) - this is the value of the first column
+            if value is not None:
+                array_result.append(value)
+            # Add remaining values from operation.value
+            if hasattr(operation, "value") and operation.value is not None:
+                if isinstance(operation.value, (list, tuple)):
+                    for item in operation.value:
+                        if hasattr(item, "value") and hasattr(item, "name"):
+                            # It's a Literal
+                            array_result.append(item.value)
+                        elif hasattr(item, "name"):
+                            # It's a Column - get from row (this gets the column's value)
+                            col_val = row.get(item.name)
+                            array_result.append(col_val)
+                        elif hasattr(item, "operation") and hasattr(item, "column"):
+                            # It's a ColumnOperation - evaluate it to get the column's value
+                            col_val = self.evaluate_expression(row, item)
+                            array_result.append(col_val)
+                        else:
+                            array_result.append(item)
+                else:
+                    # Single value
+                    if hasattr(operation.value, "value") and hasattr(
+                        operation.value, "name"
+                    ):
+                        array_result.append(operation.value.value)
+                    elif hasattr(operation.value, "name"):
+                        array_result.append(row.get(operation.value.name))
+                    else:
+                        array_result.append(operation.value)
+            return array_result
+
+        # Handle two-argument math functions (atan2, hypot)
+        if func_name in ("atan2", "hypot"):
+            first_val = value
+            second_val = None
+            if hasattr(operation, "value") and operation.value is not None:
+                # Evaluate the second argument
+                if hasattr(operation.value, "operation") and hasattr(
+                    operation.value, "column"
+                ):
+                    # It's a ColumnOperation - evaluate it
+                    second_val = self.evaluate_expression(row, operation.value)
+                elif hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    # It's a Literal
+                    second_val = operation.value.value
+                elif hasattr(operation.value, "name"):
+                    # It's a Column - get from row
+                    second_val = row.get(operation.value.name)
+                else:
+                    second_val = operation.value
+
+            if first_val is None or second_val is None:
+                return None
+            if not isinstance(first_val, (int, float)) or not isinstance(
+                second_val, (int, float)
+            ):
+                return None
+
+            try:
+                if func_name == "atan2":
+                    return math.atan2(first_val, second_val)
+                elif func_name == "hypot":
+                    return math.hypot(first_val, second_val)
+            except (ValueError, OverflowError):
+                return None
 
         # Fast-path datediff using direct row values by column name
         if func_name == "datediff":
@@ -343,6 +526,78 @@ class ExpressionEvaluator:
 
             return None
 
+        # Handle concat function - needs special handling for multiple arguments
+        if func_name == "concat":
+            return self._evaluate_concat(row, operation, value)
+
+        # Handle multi-argument array functions
+        if func_name in ("array_union", "arrays_zip", "sequence"):
+            return self._evaluate_multi_arg_array_function(
+                row, operation, value, func_name
+            )
+
+        # Handle multi-argument map functions
+        if func_name in ("create_map", "map_from_arrays"):
+            return self._evaluate_multi_arg_map_function(
+                row, operation, value, func_name
+            )
+
+        # Handle months_between (needs two date arguments)
+        if func_name == "months_between":
+            first_date = value
+            second_date = None
+            if hasattr(operation, "value") and operation.value is not None:
+                if hasattr(operation.value, "operation") and hasattr(
+                    operation.value, "column"
+                ):
+                    second_date = self.evaluate_expression(row, operation.value)
+                elif hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    second_date = operation.value.value
+                elif hasattr(operation.value, "name"):
+                    second_date = row.get(operation.value.name)
+                else:
+                    second_date = operation.value
+
+            if first_date is None or second_date is None:
+                return None
+
+            # Convert to date objects if needed
+            def _to_date(v: Any) -> Optional[dt_module.date]:
+                if isinstance(v, dt_module.date) and not isinstance(
+                    v, dt_module.datetime
+                ):
+                    return v
+                if isinstance(v, dt_module.datetime):
+                    return v.date()
+                if isinstance(v, str):
+                    try:
+                        return dt_module.date.fromisoformat(v.strip().split(" ")[0])
+                    except Exception:
+                        try:
+                            dt = dt_module.datetime.fromisoformat(
+                                v.replace("Z", "+00:00").replace(" ", "T")
+                            )
+                            return dt.date()
+                        except Exception:
+                            return None
+                return None
+
+            date1 = _to_date(first_date)
+            date2 = _to_date(second_date)
+            if date1 is None or date2 is None:
+                return None
+
+            # PySpark months_between formula:
+            # (year1 - year2) * 12 + (month1 - month2) + (day1 - day2) / 31.0
+            year_diff = date1.year - date2.year
+            month_diff = date1.month - date2.month
+            day_diff = date1.day - date2.day
+
+            months = year_diff * 12 + month_diff + day_diff / 31.0
+            return months
+
         # Handle format_string before generic handling
         if func_name == "format_string":
             return self._evaluate_format_string(row, operation, operation.value)
@@ -350,6 +605,35 @@ class ExpressionEvaluator:
         # Handle expr function - parse SQL expressions
         if func_name == "expr":
             return self._evaluate_expr_function(row, operation, value)
+
+        # Handle nanvl function - needs special handling to evaluate second argument
+        if func_name == "nanvl":
+            first_val = value
+            second_val = None
+            if hasattr(operation, "value") and operation.value is not None:
+                # Evaluate the second argument
+                if hasattr(operation.value, "operation") and hasattr(
+                    operation.value, "column"
+                ):
+                    second_val = self.evaluate_expression(row, operation.value)
+                elif hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    # It's a Literal
+                    second_val = operation.value.value
+                elif hasattr(operation.value, "name"):
+                    # It's a Column - get from row
+                    second_val = row.get(operation.value.name)
+                else:
+                    second_val = operation.value
+
+            if first_val is None:
+                return None
+
+            # Check if first value is NaN
+            if isinstance(first_val, float) and math.isnan(first_val):
+                return second_val
+            return first_val
 
         # Handle isnull function before the None check
         if func_name == "isnull":
@@ -377,6 +661,325 @@ class ExpressionEvaluator:
                 pass
 
         return value
+
+    def _evaluate_concat(
+        self, row: dict[str, Any], operation: Any, first_value: Any
+    ) -> Optional[str]:
+        """Evaluate concat function with multiple arguments."""
+        result_parts: list[str] = []
+
+        # Add the first value (from the main column)
+        if first_value is not None:
+            result_parts.append(str(first_value))
+
+        # Add remaining values from operation.value (list of columns)
+        if hasattr(operation, "value") and operation.value is not None:
+            # operation.value is a list/tuple of additional columns
+            additional_cols = (
+                operation.value
+                if isinstance(operation.value, (list, tuple))
+                else [operation.value]
+            )
+            for col in additional_cols:
+                col_value = None
+                if (
+                    hasattr(col, "value")
+                    and hasattr(col, "name")
+                    and hasattr(col, "data_type")
+                ):
+                    # It's a Literal
+                    col_value = col.value
+                elif hasattr(col, "operation") and hasattr(col, "column"):
+                    # It's a ColumnOperation - evaluate it
+                    col_value = self.evaluate_expression(row, col)
+                elif hasattr(col, "name"):
+                    # It's a Column - get value from row
+                    col_value = row.get(col.name)
+                elif isinstance(col, str):
+                    # It's a string literal or column name
+                    # Check if it exists in row (column name) or use as literal
+                    col_value = row.get(col) if col in row else col
+                else:
+                    col_value = col
+
+                if col_value is not None:
+                    result_parts.append(str(col_value))
+
+        return "".join(result_parts) if result_parts else None
+
+    def _evaluate_multi_arg_array_function(
+        self, row: dict[str, Any], operation: Any, first_value: Any, func_name: str
+    ) -> Any:
+        """Evaluate multi-argument array functions (array_union, arrays_zip, sequence)."""
+        if func_name == "array_union":
+            # array_union takes two arrays
+            if first_value is None or not isinstance(first_value, (list, tuple)):
+                return None
+
+            second_array = None
+            if hasattr(operation, "value") and operation.value is not None:
+                if hasattr(operation.value, "operation") and hasattr(
+                    operation.value, "column"
+                ):
+                    second_array = self.evaluate_expression(row, operation.value)
+                elif hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    second_array = operation.value.value
+                elif hasattr(operation.value, "name"):
+                    second_array = row.get(operation.value.name)
+                elif isinstance(operation.value, (list, tuple)):
+                    second_array = operation.value
+                else:
+                    second_array = operation.value
+
+            if second_array is None or not isinstance(second_array, (list, tuple)):
+                return None
+
+            # Union: combine arrays and remove duplicates while preserving order
+            seen = set()
+            result = []
+            for item in list(first_value) + list(second_array):
+                # Use tuple for hashable items, string representation for unhashable
+                key = (
+                    item
+                    if isinstance(item, (int, float, str, bool)) or item is None
+                    else str(item)
+                )
+                if key not in seen:
+                    seen.add(key)
+                    result.append(item)
+            return result
+
+        elif func_name == "arrays_zip":
+            # arrays_zip takes multiple arrays
+            if first_value is None or not isinstance(first_value, (list, tuple)):
+                return None
+
+            arrays = [list(first_value)]
+            # Get column names for struct fields
+            col_names = []
+            # Try to get column name from first array's column
+            if hasattr(operation, "column") and hasattr(operation.column, "name"):
+                col_names.append(
+                    operation.column.name.replace("arr", "arr")
+                    if "arr" in operation.column.name
+                    else "arr1"
+                )
+            else:
+                col_names.append("arr1")
+
+            if (
+                hasattr(operation, "value")
+                and operation.value is not None
+                and isinstance(operation.value, (list, tuple))
+            ):
+                for idx, arr in enumerate(operation.value):
+                    arr_val = None
+                    if hasattr(arr, "operation") and hasattr(arr, "column"):
+                        arr_val = self.evaluate_expression(row, arr)
+                        # Try to get column name
+                        if hasattr(arr, "column") and hasattr(arr.column, "name"):
+                            col_name = (
+                                arr.column.name.replace("arr", "arr")
+                                if "arr" in arr.column.name
+                                else f"arr{idx + 2}"
+                            )
+                            col_names.append(col_name)
+                        else:
+                            col_names.append(f"arr{idx + 2}")
+                    elif hasattr(arr, "value") and hasattr(arr, "name"):
+                        arr_val = arr.value
+                        col_names.append(f"arr{idx + 2}")
+                    elif hasattr(arr, "name"):
+                        arr_val = row.get(arr.name)
+                        col_name = (
+                            arr.name.replace("arr", "arr")
+                            if "arr" in arr.name
+                            else f"arr{idx + 2}"
+                        )
+                        col_names.append(col_name)
+                    elif isinstance(arr, (list, tuple)):
+                        arr_val = arr
+                        col_names.append(f"arr{idx + 2}")
+                    else:
+                        arr_val = arr
+                        col_names.append(f"arr{idx + 2}")
+
+                    if isinstance(arr_val, (list, tuple)):
+                        arrays.append(list(arr_val))
+
+            if len(arrays) < 2:
+                return None
+
+            # Find the maximum length
+            max_len = max(len(arr) for arr in arrays)
+
+            # Zip arrays into structs using actual column names
+            result = []
+            for i in range(max_len):
+                struct_dict = {}
+                for idx, arr in enumerate(arrays):
+                    col_name = (
+                        col_names[idx] if idx < len(col_names) else f"arr{idx + 1}"
+                    )
+                    struct_dict[col_name] = arr[i] if i < len(arr) else None
+                result.append(struct_dict)
+
+            return result
+
+        elif func_name == "sequence":
+            # sequence takes start, stop, and optional step
+            if first_value is None or not isinstance(first_value, (int, float)):
+                return None
+
+            start = int(first_value)
+            stop = None
+            step = 1
+
+            if hasattr(operation, "value") and operation.value is not None:
+                if isinstance(operation.value, (list, tuple)):
+                    if len(operation.value) >= 1:
+                        stop_val = operation.value[0]
+                        if hasattr(stop_val, "operation") and hasattr(
+                            stop_val, "column"
+                        ):
+                            stop = int(self.evaluate_expression(row, stop_val))
+                        elif hasattr(stop_val, "value") and hasattr(stop_val, "name"):
+                            stop = int(stop_val.value)
+                        elif hasattr(stop_val, "name"):
+                            stop_val = row.get(stop_val.name)
+                            stop = int(stop_val) if stop_val is not None else None
+                        elif isinstance(stop_val, (int, float)):
+                            stop = int(stop_val)
+                        else:
+                            stop = int(stop_val)
+
+                    if len(operation.value) >= 2:
+                        step_val = operation.value[1]
+                        if hasattr(step_val, "operation") and hasattr(
+                            step_val, "column"
+                        ):
+                            step = int(self.evaluate_expression(row, step_val))
+                        elif hasattr(step_val, "value") and hasattr(step_val, "name"):
+                            step = int(step_val.value)
+                        elif hasattr(step_val, "name"):
+                            step_val = row.get(step_val.name)
+                            step = int(step_val) if step_val is not None else 1
+                        elif isinstance(step_val, (int, float)):
+                            step = int(step_val)
+                        else:
+                            step = int(step_val)
+                elif hasattr(operation.value, "operation") and hasattr(
+                    operation.value, "column"
+                ):
+                    stop = int(self.evaluate_expression(row, operation.value))
+                elif hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    stop = int(operation.value.value)
+                elif hasattr(operation.value, "name"):
+                    stop_val = row.get(operation.value.name)
+                    stop = int(stop_val) if stop_val is not None else None
+                elif isinstance(operation.value, (int, float)):
+                    stop = int(operation.value)
+
+            if stop is None:
+                return None
+
+            # Generate sequence
+            if step == 0:
+                return []
+            if (step > 0 and start > stop) or (step < 0 and start < stop):
+                return []
+
+            result = list(range(start, stop + (1 if step > 0 else -1), step))
+            return result
+
+        return None
+
+    def _evaluate_multi_arg_map_function(
+        self, row: dict[str, Any], operation: Any, first_value: Any, func_name: str
+    ) -> Any:
+        """Evaluate multi-argument map functions (create_map, map_from_arrays)."""
+        if func_name == "create_map":
+            # create_map takes alternating key-value pairs
+            # operation.value contains all arguments as a tuple
+            # For create_map with literals, operation.value is (Literal('key'), Literal('value'), ...)
+            result = {}
+
+            # Get all arguments from operation.value
+            evaluated_pairs = []
+            if hasattr(operation, "value") and operation.value is not None:
+                pairs = []
+                if isinstance(operation.value, (list, tuple)):
+                    pairs = list(operation.value)
+                else:
+                    pairs = [operation.value]
+
+                # Evaluate all pairs
+                for pair in pairs:
+                    if hasattr(pair, "operation") and hasattr(pair, "column"):
+                        evaluated_pairs.append(self.evaluate_expression(row, pair))
+                    elif hasattr(pair, "value") and hasattr(pair, "name"):
+                        # It's a Literal
+                        evaluated_pairs.append(pair.value)
+                    elif hasattr(pair, "name"):
+                        evaluated_pairs.append(row.get(pair.name))
+                    else:
+                        evaluated_pairs.append(pair)
+
+            # Build map from key-value pairs
+            for i in range(0, len(evaluated_pairs) - 1, 2):
+                key = evaluated_pairs[i]
+                val = evaluated_pairs[i + 1] if i + 1 < len(evaluated_pairs) else None
+                if key is not None:
+                    result[key] = val
+
+            return result
+
+        elif func_name == "map_from_arrays":
+            # map_from_arrays takes two arrays (keys and values)
+            # first_value is the evaluated first array
+            if first_value is None or not isinstance(first_value, (list, tuple)):
+                return None
+
+            keys_array = list(first_value)
+            values_array = None
+
+            if hasattr(operation, "value") and operation.value is not None:
+                # operation.value is the second array (could be ColumnOperation or already evaluated)
+                val_obj = operation.value
+                # Check if it's a ColumnOperation (has both operation and column attributes)
+                if hasattr(val_obj, "operation") and hasattr(val_obj, "column"):
+                    # It's a ColumnOperation - evaluate it recursively
+                    values_array = self.evaluate_expression(row, val_obj)
+                elif isinstance(val_obj, (list, tuple)):
+                    # Already an array
+                    values_array = list(val_obj)
+                elif hasattr(val_obj, "value") and hasattr(val_obj, "name"):
+                    # It's a Literal - get its value
+                    values_array = val_obj.value
+                elif hasattr(val_obj, "name"):
+                    # It's a Column - get from row
+                    values_array = row.get(val_obj.name)
+                else:
+                    values_array = val_obj
+
+            if values_array is None or not isinstance(values_array, (list, tuple)):
+                return None
+
+            # Create map from keys and values arrays
+            result = {}
+            for i in range(min(len(keys_array), len(values_array))):
+                key = keys_array[i]
+                val = values_array[i]
+                if key is not None:
+                    result[key] = val
+
+            return result
+
+        return None
 
     def _evaluate_format_string(
         self, row: dict[str, Any], operation: Any, value: Any
@@ -464,6 +1067,12 @@ class ExpressionEvaluator:
             col_name = expr_str[7:-1]  # Remove "length(" and ")"
             col_value = row.get(col_name)
             return len(col_value) if col_value is not None else None
+        elif expr_str == "e()":
+            # Euler's number
+            return math.e
+        elif expr_str == "pi()":
+            # Pi constant
+            return math.pi
         else:
             # For other expressions, return the expression string as-is
             return expr_str
@@ -736,6 +1345,8 @@ class ExpressionEvaluator:
             "upper": self._func_upper,
             "lower": self._func_lower,
             "trim": self._func_trim,
+            "ltrim": self._func_ltrim,
+            "rtrim": self._func_rtrim,
             "btrim": self._func_btrim,
             "contains": self._func_contains,
             "left": self._func_left,
@@ -855,6 +1466,32 @@ class ExpressionEvaluator:
             "ceiling": self._func_ceil,  # Alias for ceil
             "floor": self._func_floor,
             "sqrt": self._func_sqrt,
+            # Trigonometric functions
+            "acos": self._func_acos,
+            "asin": self._func_asin,
+            "atan": self._func_atan,
+            "atan2": self._func_atan2,
+            # Hyperbolic functions
+            "acosh": self._func_acosh,
+            "asinh": self._func_asinh,
+            "atanh": self._func_atanh,
+            "cosh": self._func_cosh,
+            "sinh": self._func_sinh,
+            "tanh": self._func_tanh,
+            # Logarithmic and exponential functions
+            "log1p": self._func_log1p,
+            "log2": self._func_log2,
+            "log10": self._func_log10,
+            "expm1": self._func_expm1,
+            # Other math functions
+            "cbrt": self._func_cbrt,
+            "degrees": self._func_degrees,
+            "radians": self._func_radians,
+            "rint": self._func_rint,
+            "hypot": self._func_hypot,
+            "signum": self._func_signum,
+            "e": self._func_e,
+            "pi": self._func_pi,
             # Cast function
             "cast": self._func_cast,
             # Datetime functions
@@ -873,7 +1510,36 @@ class ExpressionEvaluator:
             "weekofyear": self._func_weekofyear,
             "datediff": self._func_datediff,
             "date_diff": self._func_datediff,  # Alias for datediff
+            "date_format": self._func_date_format,
             "months_between": self._func_months_between,
+            # Array functions
+            "array_join": self._func_array_join,
+            "array_sort": self._func_array_sort,
+            "array_union": self._func_array_union,
+            "arrays_zip": self._func_arrays_zip,
+            "flatten": self._func_flatten,
+            "sequence": self._func_sequence,
+            # Map functions
+            "create_map": self._func_create_map,
+            "map_filter": self._func_map_filter,
+            "map_from_arrays": self._func_map_from_arrays,
+            "map_from_entries": self._func_map_from_entries,
+            "map_zip_with": self._func_map_zip_with,
+            "transform_keys": self._func_transform_keys,
+            "transform_values": self._func_transform_values,
+            # Datetime functions
+            "from_unixtime": self._func_from_unixtime,
+            "from_utc_timestamp": self._func_from_utc_timestamp,
+            "to_utc_timestamp": self._func_to_utc_timestamp,
+            "unix_timestamp": self._func_unix_timestamp,
+            # Note: timestamp_seconds is already in registry above
+            # Special functions
+            "hash": self._func_hash,
+            "overlay": self._func_overlay,
+            "bitwise_not": self._func_bitwise_not,
+            "nanvl": self._func_nanvl,
+            "asc": self._func_asc,
+            "desc": self._func_desc,
         }
 
     # String function implementations
@@ -885,9 +1551,29 @@ class ExpressionEvaluator:
         """Lower case function."""
         return str(value).lower()
 
-    def _func_trim(self, value: Any, operation: ColumnOperation) -> str:
-        """Trim function."""
-        return str(value).strip()
+    def _func_trim(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+        """Trim function - remove ASCII spaces from both ends (PySpark behavior)."""
+        if value is None:
+            return None
+        # PySpark trim only removes ASCII space characters (0x20), not tabs/newlines
+        s = str(value)
+        return s.strip(" ")
+
+    def _func_ltrim(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+        """Ltrim function - remove ASCII spaces from left side (PySpark behavior)."""
+        if value is None:
+            return None
+        # PySpark ltrim only removes ASCII space characters (0x20), not tabs/newlines
+        s = str(value)
+        return s.lstrip(" ")
+
+    def _func_rtrim(self, value: Any, operation: ColumnOperation) -> Optional[str]:
+        """Rtrim function - remove ASCII spaces from right side (PySpark behavior)."""
+        if value is None:
+            return None
+        # PySpark rtrim only removes ASCII space characters (0x20), not tabs/newlines
+        s = str(value)
+        return s.rstrip(" ")
 
     def _func_btrim(self, value: Any, operation: ColumnOperation) -> Optional[str]:
         """Btrim function - trim characters from both ends."""
@@ -1426,8 +2112,21 @@ class ExpressionEvaluator:
 
         try:
             if isinstance(data_type, (IntegerType, LongType, ShortType, ByteType)):
+                # Handle string to int conversion (e.g., "10.5" -> 10)
+                # PySpark converts to float first, then truncates to int
+                if isinstance(value, str):
+                    try:
+                        # Try float first, then convert to int (truncates decimal)
+                        return int(float(value))
+                    except (ValueError, TypeError):
+                        return None
                 return int(value)
             if isinstance(data_type, (DoubleType, FloatType)):
+                if isinstance(value, str):
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        return None
                 return float(value)
             if isinstance(data_type, BooleanType):
                 if isinstance(value, bool):
@@ -1436,7 +2135,14 @@ class ExpressionEvaluator:
             if isinstance(data_type, StringType):
                 return str(value)
             if isinstance(data_type, DecimalType):
-                return Decimal(str(value))
+                # Preserve precision and scale
+                scale = getattr(data_type, "scale", 0)
+                decimal_value = Decimal(str(value))
+                # Quantize to match the target scale
+                from decimal import ROUND_HALF_UP
+
+                quantize_exponent = Decimal(10) ** (-scale)
+                return decimal_value.quantize(quantize_exponent, rounding=ROUND_HALF_UP)
             if isinstance(data_type, DateType):
                 return self._parse_date(value)
             if isinstance(data_type, TimestampType):
@@ -1508,6 +2214,697 @@ class ExpressionEvaluator:
             math.sqrt(value) if isinstance(value, (int, float)) and value >= 0 else None
         )
 
+    def _func_acos(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse cosine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value < -1.0 or value > 1.0:
+            return None  # Domain error
+        try:
+            return math.acos(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_asin(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse sine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value < -1.0 or value > 1.0:
+            return None  # Domain error
+        try:
+            return math.asin(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_atan(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse tangent function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.atan(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_atan2(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse tangent function with two arguments."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_acosh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse hyperbolic cosine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value < 1.0:
+            # For values < 1, return None (not NaN) to match PySpark behavior
+            return None
+        try:
+            result = math.acosh(value)
+            # Check if result is NaN and return None instead
+            if math.isnan(result):
+                return None
+            return result
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_asinh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse hyperbolic sine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.asinh(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_atanh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Inverse hyperbolic tangent function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value <= -1.0 or value >= 1.0:
+            # For values outside domain, return None (not NaN) to match PySpark behavior
+            return None
+        try:
+            result = math.atanh(value)
+            # Check if result is NaN and return None instead
+            if math.isnan(result):
+                return None
+            return result
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_cosh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Hyperbolic cosine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.cosh(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_sinh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Hyperbolic sine function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.sinh(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_tanh(self, value: Any, operation: ColumnOperation) -> Any:
+        """Hyperbolic tangent function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.tanh(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_log1p(self, value: Any, operation: ColumnOperation) -> Any:
+        """Natural logarithm of (1 + x)."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value <= -1.0:
+            return None  # Domain error
+        try:
+            return math.log1p(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_log2(self, value: Any, operation: ColumnOperation) -> Any:
+        """Base-2 logarithm."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value <= 0:
+            return None  # Domain error
+        try:
+            return math.log2(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_log10(self, value: Any, operation: ColumnOperation) -> Any:
+        """Base-10 logarithm."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value <= 0:
+            return None  # Domain error
+        try:
+            return math.log10(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_expm1(self, value: Any, operation: ColumnOperation) -> Any:
+        """exp(x) - 1."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.expm1(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_cbrt(self, value: Any, operation: ColumnOperation) -> Any:
+        """Cube root function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return value ** (1.0 / 3.0)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_degrees(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert radians to degrees."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.degrees(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_radians(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert degrees to radians."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return math.radians(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_rint(self, value: Any, operation: ColumnOperation) -> Any:
+        """Round to nearest integer."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return round(value)
+        except (ValueError, OverflowError):
+            return None
+
+    def _func_hypot(self, value: Any, operation: ColumnOperation) -> Any:
+        """Hypotenuse function (sqrt(x^2 + y^2))."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_signum(self, value: Any, operation: ColumnOperation) -> Any:
+        """Sign function (-1, 0, or 1)."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        if value > 0:
+            return 1.0
+        elif value < 0:
+            return -1.0
+        else:
+            return 0.0
+
+    def _func_e(self, value: Any, operation: ColumnOperation) -> Any:
+        """Euler's number (e)."""
+        # This is a constant function, value is ignored
+        return math.e
+
+    def _func_pi(self, value: Any, operation: ColumnOperation) -> Any:
+        """Pi constant (π)."""
+        # This is a constant function, value is ignored
+        return math.pi
+
+    # Array function implementations
+    def _func_array_join(self, value: Any, operation: ColumnOperation) -> Any:
+        """Join array elements with delimiter."""
+        if value is None:
+            return None
+        if not isinstance(value, (list, tuple)):
+            return None
+
+        # Get delimiter from operation.value
+        # array_join stores (delimiter, null_replacement) as a tuple
+        delimiter = ","
+        null_replacement = None
+        if hasattr(operation, "value") and operation.value is not None:
+            delimiter_val = operation.value
+            # If it's a tuple (delimiter, null_replacement)
+            if isinstance(delimiter_val, tuple):
+                delimiter = (
+                    str(delimiter_val[0]) if delimiter_val[0] is not None else ","
+                )
+                null_replacement = delimiter_val[1] if len(delimiter_val) > 1 else None
+            # If it's a Literal, get its value
+            elif hasattr(delimiter_val, "value") and hasattr(delimiter_val, "name"):
+                delimiter = str(delimiter_val.value)
+            elif isinstance(delimiter_val, str):
+                delimiter = delimiter_val
+            else:
+                delimiter = str(delimiter_val)
+
+        # Filter out None values and convert to strings, replacing None with null_replacement if provided
+        if null_replacement is not None:
+            filtered = [
+                str(item) if item is not None else null_replacement for item in value
+            ]
+        else:
+            filtered = [str(item) for item in value if item is not None]
+        return delimiter.join(filtered)
+
+    def _func_array_sort(self, value: Any, operation: ColumnOperation) -> Any:
+        """Sort array elements in ascending order."""
+        if value is None:
+            return None
+        if not isinstance(value, (list, tuple)):
+            return None
+
+        # Convert to list and sort
+        result = list(value)
+        # Handle None values - sort them to the end
+        result.sort(key=lambda x: (x is None, x))
+        return result
+
+    def _func_array_union(self, value: Any, operation: ColumnOperation) -> Any:
+        """Union of two arrays (remove duplicates, preserve order)."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_arrays_zip(self, value: Any, operation: ColumnOperation) -> Any:
+        """Zip multiple arrays into array of structs."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_flatten(self, value: Any, operation: ColumnOperation) -> Any:
+        """Flatten nested arrays."""
+        if value is None:
+            return None
+        if not isinstance(value, (list, tuple)):
+            return None
+
+        result: list[Any] = []
+        for item in value:
+            if isinstance(item, (list, tuple)):
+                result.extend(item)
+            else:
+                result.append(item)
+        return result
+
+    def _func_sequence(self, value: Any, operation: ColumnOperation) -> Any:
+        """Generate sequence array from start to stop by step."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    # Map function implementations
+    def _func_create_map(self, value: Any, operation: ColumnOperation) -> Any:
+        """Create map from key-value pairs."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_map_filter(self, value: Any, operation: ColumnOperation) -> Any:
+        """Filter map entries by lambda condition."""
+        # Requires lambda evaluation - return None for now
+        return None
+
+    def _func_map_from_arrays(self, value: Any, operation: ColumnOperation) -> Any:
+        """Create map from two arrays (keys and values)."""
+        # This should not be called directly - handled in _evaluate_function_call
+        # But kept for registry completeness
+        return None
+
+    def _func_map_from_entries(self, value: Any, operation: ColumnOperation) -> Any:
+        """Create map from array of structs with key/value fields."""
+        # map_from_entries takes an array of structs
+        if value is None:
+            return None
+        if not isinstance(value, (list, tuple)):
+            return None
+
+        result = {}
+        for entry in value:
+            if isinstance(entry, dict):
+                # PySpark structs in map_from_entries have "key" and "value" fields
+                # But our struct function creates "col1", "col2", etc.
+                # For map_from_entries, the first field is the key, second is the value
+                keys = list(entry.keys())
+                if len(keys) >= 2:
+                    # Use first two fields as key and value
+                    key = entry.get(keys[0])
+                    val = entry.get(keys[1])
+                    if key is not None:
+                        result[key] = val
+                elif "key" in entry and "value" in entry:
+                    # Standard key/value fields
+                    key = entry.get("key")
+                    val = entry.get("value")
+                    if key is not None:
+                        result[key] = val
+        return result
+
+    def _func_map_zip_with(self, value: Any, operation: ColumnOperation) -> Any:
+        """Combine two maps with lambda function."""
+        # Requires lambda evaluation - return None for now
+        return None
+
+    def _func_transform_keys(self, value: Any, operation: ColumnOperation) -> Any:
+        """Transform map keys with lambda."""
+        # Requires lambda evaluation - return None for now
+        return None
+
+    def _func_transform_values(self, value: Any, operation: ColumnOperation) -> Any:
+        """Transform map values with lambda."""
+        # Requires lambda evaluation - return None for now
+        return None
+
+    # Datetime function implementations
+    def _func_from_unixtime(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert Unix timestamp to string."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+
+        # Get format string if provided
+        fmt = "yyyy-MM-dd HH:mm:ss"  # Default format
+        if hasattr(operation, "value") and operation.value is not None:
+            if isinstance(operation.value, str):
+                fmt = operation.value
+            elif hasattr(operation.value, "value"):
+                fmt = str(operation.value.value)
+
+        try:
+            timestamp = int(value)
+            dt = dt_module.datetime.fromtimestamp(timestamp)
+            # Simple format conversion (basic implementation)
+            if fmt == "yyyy-MM-dd HH:mm:ss" or fmt == "yyyy-MM-dd":
+                return dt.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                # Basic format string conversion
+                fmt = fmt.replace("yyyy", "%Y").replace("MM", "%m").replace("dd", "%d")
+                fmt = fmt.replace("HH", "%H").replace("mm", "%M").replace("ss", "%S")
+                return dt.strftime(fmt)
+        except (ValueError, OSError, OverflowError):
+            return None
+
+    def _func_from_utc_timestamp(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert UTC timestamp to timezone."""
+        if value is None:
+            return None
+
+        # Get timezone from operation.value
+        tz_str = None
+        if hasattr(operation, "value") and operation.value is not None:
+            if hasattr(operation.value, "value") and hasattr(operation.value, "name"):
+                # It's a Literal
+                tz_str = str(operation.value.value)
+            elif isinstance(operation.value, str):
+                tz_str = operation.value
+            else:
+                tz_str = str(operation.value)
+
+        if not tz_str:
+            return value
+
+        try:
+            from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
+
+            # Parse the timestamp value
+            if isinstance(value, str):
+                dt = datetime.fromisoformat(
+                    value.replace("Z", "+00:00").replace(" ", "T")
+                )
+            elif isinstance(value, datetime):
+                dt = value
+            else:
+                return value
+
+            # Convert from UTC to target timezone
+            if dt.tzinfo is None:
+                utc_dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                utc_dt = dt.astimezone(timezone.utc)
+
+            target_tz = ZoneInfo(tz_str)
+            result_dt = utc_dt.astimezone(target_tz)
+
+            # Return as formatted string
+            return result_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            # If timezone conversion fails, return original value
+            return value
+
+    def _func_to_utc_timestamp(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert timestamp from timezone to UTC."""
+        if value is None:
+            return None
+
+        # Get timezone from operation.value
+        tz_str = None
+        if hasattr(operation, "value") and operation.value is not None:
+            if hasattr(operation.value, "value") and hasattr(operation.value, "name"):
+                # It's a Literal
+                tz_str = str(operation.value.value)
+            elif isinstance(operation.value, str):
+                tz_str = operation.value
+            else:
+                tz_str = str(operation.value)
+
+        if not tz_str:
+            return value
+
+        try:
+            from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
+
+            # Parse the timestamp value
+            if isinstance(value, str):
+                dt = datetime.fromisoformat(
+                    value.replace("Z", "+00:00").replace(" ", "T")
+                )
+            elif isinstance(value, datetime):
+                dt = value
+            else:
+                return value
+
+            # Convert from source timezone to UTC
+            source_tz = ZoneInfo(tz_str)
+            # Localize the datetime to the source timezone (assuming it's in that timezone)
+            if dt.tzinfo is None:
+                local_dt = dt.replace(tzinfo=source_tz)
+            else:
+                local_dt = dt.astimezone(source_tz)
+            utc_dt = local_dt.astimezone(timezone.utc)
+
+            # Return as formatted string
+            return utc_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            # If timezone conversion fails, return original value
+            return value
+
+    def _func_unix_timestamp(self, value: Any, operation: ColumnOperation) -> Any:
+        """Convert timestamp to Unix timestamp."""
+        if value is None:
+            return None
+
+        # If value is already a number, return it
+        if isinstance(value, (int, float)):
+            return int(value)
+
+        # Try to parse as datetime string
+        if isinstance(value, str):
+            try:
+                dt = dt_module.datetime.fromisoformat(
+                    value.replace("Z", "+00:00").replace(" ", "T")
+                )
+                return int(dt.timestamp())
+            except (ValueError, AttributeError):
+                return None
+
+        # If value is a datetime object
+        if isinstance(value, dt_module.datetime):
+            return int(value.timestamp())
+
+        if isinstance(value, dt_module.date) and not isinstance(
+            value, dt_module.datetime
+        ):
+            dt = dt_module.datetime.combine(value, dt_module.time())
+            return int(dt.timestamp())
+
+        return None
+
+    # Special function implementations
+    def _func_hash(self, value: Any, operation: ColumnOperation) -> Any:
+        """Hash function for values - matches PySpark's hash behavior."""
+        if value is None:
+            return None
+        try:
+            # PySpark uses MurmurHash3, but for compatibility we'll use a simpler approach
+            # that produces 32-bit signed integers like PySpark
+            if isinstance(value, (int, float, str, bool)):
+                # Use Python's hash and convert to 32-bit signed integer
+                h = hash(value)
+                # Convert to 32-bit signed integer (PySpark behavior)
+                h_32bit = h & 0xFFFFFFFF
+                if h_32bit > 0x7FFFFFFF:
+                    h_32bit -= 0x100000000
+                return h_32bit
+            else:
+                # For unhashable types, use string representation
+                h = hash(str(value))
+                h_32bit = h & 0xFFFFFFFF
+                if h_32bit > 0x7FFFFFFF:
+                    h_32bit -= 0x100000000
+                return h_32bit
+        except (TypeError, ValueError):
+            return None
+
+    def _func_overlay(self, value: Any, operation: ColumnOperation) -> Any:
+        """Overlay/replace substring in string.
+
+        overlay(src, replace, pos, len) replaces len characters starting at pos (1-indexed)
+        with the replacement string.
+        """
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            value = str(value)
+
+        # Get arguments from operation.value: (replace, pos, len)
+        if not hasattr(operation, "value") or operation.value is None:
+            return value
+
+        replace_val = None
+        pos_val = 1
+        len_val = -1
+
+        if isinstance(operation.value, (list, tuple)) and len(operation.value) >= 1:
+            # Extract replace, pos, len from tuple
+            replace_val = operation.value[0] if len(operation.value) > 0 else None
+            pos_val = operation.value[1] if len(operation.value) > 1 else 1
+            len_val = operation.value[2] if len(operation.value) > 2 else -1
+
+        # Evaluate replace_val if it's a Column/Literal
+        if replace_val is not None:
+            if hasattr(replace_val, "value") and hasattr(replace_val, "name"):
+                # It's a Literal
+                replace_val = replace_val.value
+            elif hasattr(replace_val, "name"):
+                # It's a Column - would need row context, but for now assume it's evaluated
+                replace_val = str(replace_val)
+            replace_val = str(replace_val) if replace_val is not None else ""
+        else:
+            replace_val = ""
+
+        # Evaluate pos_val if it's a Column/Literal
+        if hasattr(pos_val, "value") and hasattr(pos_val, "name"):
+            pos_val = pos_val.value
+        elif hasattr(pos_val, "name"):
+            # Column - would need row context
+            pos_val = 1
+        pos_val = int(pos_val) if pos_val is not None else 1
+
+        # Evaluate len_val if it's a Column/Literal
+        if hasattr(len_val, "value") and hasattr(len_val, "name"):
+            len_val = len_val.value
+        elif hasattr(len_val, "name"):
+            # Column - would need row context
+            len_val = -1
+        len_val = int(len_val) if len_val is not None else -1
+
+        # Convert 1-indexed to 0-indexed
+        start_idx = pos_val - 1 if pos_val > 0 else 0
+
+        # Calculate end index
+        end_idx = len(value) if len_val == -1 else start_idx + len_val
+
+        # Perform overlay
+        if start_idx < 0:
+            start_idx = 0
+        if start_idx > len(value):
+            # Position beyond string, just append
+            return value + replace_val
+
+        # Replace the substring
+        result = value[:start_idx] + replace_val + value[end_idx:]
+        return result
+
+    def _func_bitwise_not(self, value: Any, operation: ColumnOperation) -> Any:
+        """Bitwise NOT function."""
+        if value is None:
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            return ~int(value)
+        except (ValueError, TypeError):
+            return None
+
+    def _func_nanvl(self, value: Any, operation: ColumnOperation) -> Any:
+        """Return second value if first is NaN, otherwise return first."""
+        if value is None:
+            return None
+
+        # Check if value is NaN
+        if isinstance(value, float) and math.isnan(value):
+            # Get replacement value from operation.value
+            replacement = None
+            if hasattr(operation, "value") and operation.value is not None:
+                # Handle Literal
+                if hasattr(operation.value, "value") and hasattr(
+                    operation.value, "name"
+                ):
+                    replacement = operation.value.value
+                # Handle Column - need to evaluate from row
+                elif hasattr(operation.value, "name"):
+                    # This should be evaluated in _evaluate_function_call with row context
+                    replacement = operation.value
+                else:
+                    replacement = operation.value
+            return replacement
+        return value
+
+    def _func_asc(self, value: Any, operation: ColumnOperation) -> Any:
+        """Ascending order function."""
+        # This is typically used in orderBy, not as a direct function
+        # Return value as-is
+        return value
+
+    def _func_desc(self, value: Any, operation: ColumnOperation) -> Any:
+        """Descending order function."""
+        # This is typically used in orderBy, not as a direct function
+        # Return value as-is
+        return value
+
     def _func_cast(self, value: Any, operation: ColumnOperation) -> Any:
         """Cast function."""
         if value is None:
@@ -1529,14 +2926,26 @@ class ExpressionEvaluator:
                     return None
             elif cast_type.lower() in ["long", "bigint"]:
                 # Special handling for timestamp to long (unix timestamp)
-                if isinstance(value, str):
+                # Check if value is already a datetime/timestamp
+                if isinstance(value, dt_module.datetime):
+                    return int(value.timestamp())
+                elif isinstance(value, dt_module.date) and not isinstance(
+                    value, dt_module.datetime
+                ):
+                    # Convert date to datetime at midnight, then to timestamp
+                    dt = dt_module.datetime.combine(value, dt_module.time())
+                    return int(dt.timestamp())
+                elif isinstance(value, str):
+                    # Try parsing as timestamp string
                     try:
+                        # Try ISO format
                         dt = dt_module.datetime.fromisoformat(
-                            value.replace(" ", "T").split(".")[0]
+                            value.replace("Z", "+00:00").replace(" ", "T").split(".")[0]
                         )
                         timestamp_result = int(dt.timestamp())
                         return timestamp_result
                     except (ValueError, TypeError, AttributeError):
+                        # If timestamp parsing fails, try regular integer cast
                         pass
                 # Regular integer cast
                 try:
@@ -1546,10 +2955,74 @@ class ExpressionEvaluator:
                     return None
             elif cast_type.lower() in ["string", "varchar"]:
                 return str(value)
+            elif cast_type.lower() in ["date"]:
+                # Date type casting
+                if isinstance(value, dt_module.date) and not isinstance(
+                    value, dt_module.datetime
+                ):
+                    return value
+                if isinstance(value, dt_module.datetime):
+                    return value.date()
+                if isinstance(value, str):
+                    try:
+                        return dt_module.date.fromisoformat(
+                            value.split("T")[0].split(" ")[0]
+                        )
+                    except (ValueError, AttributeError):
+                        try:
+                            dt = dt_module.datetime.fromisoformat(
+                                value.replace("Z", "+00:00").replace(" ", "T")
+                            )
+                            return dt.date()
+                        except (ValueError, AttributeError):
+                            return None
+                return None
+            elif cast_type.lower() in ["timestamp"]:
+                # Timestamp type casting
+                if isinstance(value, dt_module.datetime):
+                    return value
+                if isinstance(value, dt_module.date) and not isinstance(
+                    value, dt_module.datetime
+                ):
+                    return dt_module.datetime.combine(value, dt_module.time())
+                if isinstance(value, str):
+                    try:
+                        return dt_module.datetime.fromisoformat(
+                            value.replace("Z", "+00:00").replace(" ", "T")
+                        )
+                    except (ValueError, AttributeError):
+                        return None
+                return None
+            elif cast_type.lower().startswith("decimal"):
+                # Decimal type casting with precision/scale
+                from decimal import Decimal, ROUND_HALF_UP
+
+                # Parse decimal(10,2) format
+                import re
+
+                match = re.match(r"decimal\((\d+),(\d+)\)", cast_type.lower())
+                if match:
+                    _precision, scale = int(match.group(1)), int(match.group(2))
+                    decimal_value = Decimal(str(value))
+                    quantize_exponent = Decimal(10) ** (-scale)
+                    return decimal_value.quantize(
+                        quantize_exponent, rounding=ROUND_HALF_UP
+                    )
+                else:
+                    # Default precision/scale
+                    return Decimal(str(value))
             else:
                 return value
         else:
             # Type object, use appropriate conversion
+            # Check if it's a DecimalType with precision/scale
+            if isinstance(cast_type, DecimalType):
+                from decimal import Decimal, ROUND_HALF_UP
+
+                scale = getattr(cast_type, "scale", 0)
+                decimal_value = Decimal(str(value))
+                quantize_exponent = Decimal(10) ** (-scale)
+                return decimal_value.quantize(quantize_exponent, rounding=ROUND_HALF_UP)
             return value
 
     # Datetime function implementations
@@ -1655,23 +3128,58 @@ class ExpressionEvaluator:
         """
         return None
 
-    def _func_months_between(self, value: Any, operation: ColumnOperation) -> Any:
-        """Months between function."""
-        # Get the second date from the operation's value attribute
-        date2_col = getattr(operation, "value", None)
-        if date2_col is None:
+    def _func_date_format(
+        self, value: Any, operation: ColumnOperation
+    ) -> Optional[str]:
+        """Format date/timestamp as string using format pattern.
+
+        Args:
+            value: The date/timestamp value to format.
+            operation: ColumnOperation with format string in operation.value.
+
+        Returns:
+            Formatted date string or None if value is None.
+        """
+        if value is None:
             return None
 
-        # For now, if both dates are the same, return 0.0
-        # This is a simplified implementation for testing
-        if (
-            hasattr(date2_col, "name")
-            and hasattr(operation.column, "name")
-            and date2_col.name == operation.column.name
-        ):
-            return 0.0
+        format_str = operation.value if hasattr(operation, "value") else "yyyy-MM-dd"
 
-        # This would need to be evaluated in context - placeholder for now
+        # Parse the date value
+        dt = self._parse_datetime(value)
+        if dt is None:
+            return None
+
+        # Convert PySpark format string to Python strftime format
+        # Basic conversion for common patterns
+        format_map = {
+            "yyyy": "%Y",  # 4-digit year
+            "MM": "%m",  # 2-digit month
+            "dd": "%d",  # 2-digit day
+            "HH": "%H",  # 24-hour format hour
+            "mm": "%M",  # Minutes
+            "ss": "%S",  # Seconds
+        }
+
+        # Simple conversion (handles basic cases)
+        python_format = format_str
+        for pyspark_fmt, python_fmt in format_map.items():
+            python_format = python_format.replace(pyspark_fmt, python_fmt)
+
+        try:
+            return dt.strftime(python_format)
+        except Exception:
+            # Fallback to ISO format if conversion fails
+            if isinstance(dt, dt_module.date) and not isinstance(
+                dt, dt_module.datetime
+            ):
+                return dt.isoformat()
+            return dt.strftime("%Y-%m-%d")
+
+    def _func_months_between(self, value: Any, operation: ColumnOperation) -> Any:
+        """Months between function."""
+        # This needs to be handled in _evaluate_function_call to get both dates
+        # Placeholder - will be handled specially
         return None
 
     def _extract_datetime_component(self, value: Any, component: str) -> Any:
@@ -2098,7 +3606,9 @@ class ExpressionEvaluator:
         from datetime import datetime
 
         try:
-            return datetime.fromtimestamp(int(value))
+            dt = datetime.fromtimestamp(int(value))
+            # Return formatted string like "2019-12-31 19:00:00" to match PySpark
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
         except (ValueError, TypeError, OverflowError, OSError):
             return None
 

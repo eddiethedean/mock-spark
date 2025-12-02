@@ -671,3 +671,31 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         table._metadata.update(metadata_updates)
         table._metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    def create_temp_view(self, name: str, dataframe: Any) -> None:
+        """Create a temporary view from a DataFrame.
+
+        Args:
+            name: Name of the temporary view.
+            dataframe: DataFrame to create view from.
+        """
+        # Create a schema and table for the temporary view
+        schema = "default"
+        self.create_schema(schema)
+
+        # Convert DataFrame data to table format
+        # Materialize the DataFrame if it has lazy operations
+        if hasattr(dataframe, "_materialize_if_lazy"):
+            dataframe = dataframe._materialize_if_lazy()
+
+        data = list(dataframe.data)  # Ensure it's a list
+        schema_obj = dataframe.schema
+
+        # Create the table - pass fields, not the schema object
+        fields = schema_obj.fields if hasattr(schema_obj, "fields") else schema_obj
+
+        # Create the table using the public API
+        self.create_table(schema, name, fields)
+
+        # Insert the data using the public API
+        self.insert_data(schema, name, data)

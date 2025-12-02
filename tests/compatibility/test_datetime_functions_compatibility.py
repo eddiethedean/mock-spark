@@ -139,34 +139,11 @@ class TestDatetimeFunctionsCompatibility:
         expected = load_expected_output("datetime", "date_sub")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_months_between_function(self, mock_spark_session):
         """Test months_between function against expected output."""
-        test_data = [
-            {
-                "id": 1,
-                "name": "Alice",
-                "hire_date": "2020-01-15",
-                "birth_date": "1990-05-20",
-            },
-            {
-                "id": 2,
-                "name": "Bob",
-                "hire_date": "2019-03-10",
-                "birth_date": "1985-12-03",
-            },
-            {
-                "id": 3,
-                "name": "Charlie",
-                "hire_date": "2021-07-22",
-                "birth_date": "1992-08-14",
-            },
-        ]
-
-        df = mock_spark_session.createDataFrame(test_data)
-        result = df.select(F.months_between(df.hire_date, df.birth_date))
-
         expected = load_expected_output("datetime", "months_between")
+        df = mock_spark_session.createDataFrame(expected["input_data"])
+        result = df.select(F.months_between(df.date, F.lit("2019-01-01")))
         assert_dataframes_equal(result, expected)
 
     def test_date_format_function(self, mock_spark_session):

@@ -6,6 +6,7 @@ following the Single Responsibility Principle.
 """
 
 from typing import Any
+import sys
 
 
 class WindowFunctionHandler:
@@ -553,8 +554,14 @@ class WindowFunctionHandler:
             # Determine the window for this row
             if rows_between:
                 start_offset, end_offset = rows_between
-                window_start = max(0, i + start_offset)
-                window_end = min(len(indices), i + end_offset + 1)
+                # Handle unboundedFollowing (sys.maxsize)
+                if end_offset == sys.maxsize:
+                    # rowsBetween(currentRow, unboundedFollowing): from current row to end
+                    window_start = i + start_offset
+                    window_end = len(indices)
+                else:
+                    window_start = max(0, i + start_offset)
+                    window_end = min(len(indices), i + end_offset + 1)
             else:
                 # Default: all rows up to current row
                 window_start = 0

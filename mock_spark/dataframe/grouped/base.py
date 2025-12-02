@@ -42,17 +42,48 @@ class GroupedData:
         self.group_columns = group_columns
 
     def agg(
-        self, *exprs: Union[str, Column, ColumnOperation, AggregateFunction]
+        self,
+        *exprs: Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]],
     ) -> "DataFrame":
         """Aggregate grouped data.
 
         Args:
-            *exprs: Aggregation expressions.
+            *exprs: Aggregation expressions or dictionary mapping column names to aggregation functions.
 
         Returns:
             New DataFrame with aggregated results.
         """
         from ...functions.core.literals import Literal
+        from ...functions import F
+
+        # Handle dictionary syntax: {"col": "agg_func"}
+        if len(exprs) == 1 and isinstance(exprs[0], dict):
+            agg_dict = exprs[0]
+            converted_exprs: list[
+                Union[str, Column, ColumnOperation, AggregateFunction]
+            ] = []
+            for col_name, agg_func in agg_dict.items():
+                if agg_func == "sum":
+                    converted_exprs.append(F.sum(col_name))
+                elif agg_func == "avg" or agg_func == "mean":
+                    converted_exprs.append(F.avg(col_name))
+                elif agg_func == "max":
+                    converted_exprs.append(F.max(col_name))
+                elif agg_func == "min":
+                    converted_exprs.append(F.min(col_name))
+                elif agg_func == "count":
+                    # For dict syntax, count(column) should be named just "count" not "count(column)"
+                    count_expr = F.count(col_name)
+                    # Set alias to "count" to match PySpark behavior
+                    converted_exprs.append(count_expr.alias("count"))
+                elif agg_func == "stddev":
+                    converted_exprs.append(F.stddev(col_name))
+                elif agg_func == "variance":
+                    converted_exprs.append(F.variance(col_name))
+                else:
+                    # Fallback to string expression
+                    converted_exprs.append(f"{agg_func}({col_name})")
+            exprs = tuple(converted_exprs)
 
         # Materialize the DataFrame if it has queued operations
         if self.df._operations_queue:
@@ -84,8 +115,26 @@ class GroupedData:
                     if expr.startswith("count("):
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif hasattr(expr, "function_name"):
-                    # Handle AggregateFunction
+                elif isinstance(expr, Literal):
+                    # For literals in aggregation, just use their value
+                    lit_expr = expr
+                    # Use the literal's name as key if it has an alias
+                    result_key = getattr(lit_expr, "name", str(lit_expr.value))
+                    result_row[result_key] = lit_expr.value
+                elif isinstance(expr, ColumnOperation):
+                    # Handle ColumnOperation first (before AggregateFunction check)
+                    # ColumnOperation has function_name but should be handled differently
+                    result_key, result_value = self._evaluate_column_expression(
+                        expr, group_rows
+                    )
+                    # Check if this is a count function
+                    if hasattr(expr, "operation") and expr.operation == "count":
+                        non_nullable_keys.add(result_key)
+                    result_row[result_key] = result_value
+                elif hasattr(expr, "function_name") and not isinstance(
+                    expr, ColumnOperation
+                ):
+                    # Handle AggregateFunction (but not ColumnOperation)
                     result_key, result_value = self._evaluate_aggregate_function(
                         cast("AggregateFunction", expr), group_rows
                     )
@@ -93,18 +142,15 @@ class GroupedData:
                     if expr.function_name == "count":
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif isinstance(expr, Literal):
-                    # For literals in aggregation, just use their value
-                    lit_expr = expr
-                    # Use the literal's name as key if it has an alias
-                    result_key = getattr(lit_expr, "name", str(lit_expr.value))
-                    result_row[result_key] = lit_expr.value
-                elif hasattr(expr, "name"):
-                    # Handle Column or ColumnOperation
+                elif hasattr(expr, "name") and isinstance(expr, Column):
+                    # Handle Column (but not ColumnOperation, which is handled above)
                     result_key, result_value = self._evaluate_column_expression(
                         expr, group_rows
                     )
                     result_row[result_key] = result_value
+                elif isinstance(expr, dict):
+                    # Skip dict expressions - should have been converted already
+                    pass
 
             result_data.append(result_row)
 
@@ -571,6 +617,8 @@ class GroupedData:
                 result_key = alias_name if alias_name else expr._generate_name()
                 return result_key, len(group_rows)
             else:
+                # For count(column), PySpark names it "count" not "count(column)" in some contexts
+                # But we'll use the alias if provided, otherwise use count(column) format
                 result_key = alias_name if alias_name else f"count({col_name})"
                 return result_key, len(group_rows)
         elif func_name == "max":
@@ -655,10 +703,10 @@ class GroupedData:
                 and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"stddev({col_name})"
-            if values:
-                return result_key, statistics.stdev(values) if len(values) > 1 else 0.0
-            else:
+            # PySpark returns None (not 0.0) when there's only one value
+            if len(values) <= 1:
                 return result_key, None
+            return result_key, statistics.stdev(values)
         elif func_name == "product":
             # product(col) - multiply all values
             values = []
@@ -709,12 +757,10 @@ class GroupedData:
                 and isinstance(row.get(col_name), (int, float))
             ]
             result_key = alias_name if alias_name else f"variance({col_name})"
-            if values:
-                return result_key, (
-                    statistics.variance(values) if len(values) > 1 else 0.0
-                )
-            else:
+            # PySpark returns None (not 0.0) when there's only one value
+            if len(values) <= 1:
                 return result_key, None
+            return result_key, statistics.variance(values)
         elif func_name == "skewness":
             values = [
                 row.get(col_name)
@@ -1137,6 +1183,70 @@ class GroupedData:
         Returns:
             Tuple of (result_key, result_value).
         """
+        # Check if it's a ColumnOperation with an operation
+        if isinstance(expr, ColumnOperation) and hasattr(expr, "operation"):
+            operation = expr.operation
+            if operation == "count":
+                # Count non-null values in the column
+                col_name = (
+                    expr.column.name
+                    if hasattr(expr.column, "name")
+                    else str(expr.column)
+                )
+                count_value = sum(
+                    1 for row in group_rows if row.get(col_name) is not None
+                )
+                return expr.name, count_value
+            elif operation == "sum":
+                col_name = (
+                    expr.column.name
+                    if hasattr(expr.column, "name")
+                    else str(expr.column)
+                )
+                values = [
+                    row.get(col_name, 0)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                return expr.name, sum(values) if values else 0
+            elif operation == "avg":
+                col_name = (
+                    expr.column.name
+                    if hasattr(expr.column, "name")
+                    else str(expr.column)
+                )
+                values = [
+                    row.get(col_name, 0)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                return expr.name, sum(values) / len(values) if values else 0
+            elif operation == "max":
+                col_name = (
+                    expr.column.name
+                    if hasattr(expr.column, "name")
+                    else str(expr.column)
+                )
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                return expr.name, max(values) if values else None
+            elif operation == "min":
+                col_name = (
+                    expr.column.name
+                    if hasattr(expr.column, "name")
+                    else str(expr.column)
+                )
+                values = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None
+                ]
+                return expr.name, min(values) if values else None
+
+        # Fallback to name-based parsing for string expressions
         expr_name = expr.name
         if expr_name.startswith("sum("):
             col_name = expr_name[4:-1]
@@ -1155,7 +1265,11 @@ class GroupedData:
             ]
             return expr_name, sum(values) / len(values) if values else 0
         elif expr_name.startswith("count("):
-            return expr_name, len(group_rows)
+            # Extract column name from count(column_name)
+            col_name = expr_name[6:-1]  # Remove "count(" and ")"
+            # Count non-null values in the specified column
+            count_value = sum(1 for row in group_rows if row.get(col_name) is not None)
+            return expr_name, count_value
         elif expr_name.startswith("max("):
             col_name = expr_name[4:-1]
             values = [

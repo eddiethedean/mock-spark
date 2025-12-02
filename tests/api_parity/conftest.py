@@ -49,11 +49,32 @@ def pyspark_spark():
         pytest.skip("PySpark not available")
 
     try:
+        # Configure PySpark to avoid network binding issues
+        # Use local mode explicitly and set bind address to localhost
+        from pyspark import SparkConf
+
+        conf = SparkConf()
+        conf.set("spark.master", "local[*]")
+        conf.set("spark.driver.bindAddress", "127.0.0.1")
+        conf.set("spark.driver.host", "127.0.0.1")
+        conf.set(
+            "spark.sql.execution.arrow.pyspark.enabled", "false"
+        )  # Avoid Arrow issues
+        conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "1000")
+        # Disable UI to avoid port conflicts
+        conf.set("spark.ui.enabled", "false")
+        # Set app name
+        conf.setAppName("parity_test")
+
         # Try to create a session to check if PySpark can actually run
-        session = PySparkSession.builder.appName("parity_test").getOrCreate()
+        session = PySparkSession.builder.config(conf=conf).getOrCreate()
         # Test that the session actually works
         session.createDataFrame([{"test": 1}]).collect()
-        return session
+
+        yield session
+
+        # Cleanup: stop the session after all tests
+        session.stop()
     except Exception as e:
         pytest.skip(f"PySpark session creation failed: {e}")
 
@@ -177,15 +198,52 @@ def compare_dataframes(mock_df, pyspark_df, tolerance: float = 1e-6):
     )
 
     # Compare data
-    mock_data = mock_df.collect()
-    pyspark_data = pyspark_df.collect()
+    # Sort rows by all columns to handle different row orders (joins don't guarantee order)
+    # Use a stable sort key that handles None values and different row types
+    def sort_key_mock(row):
+        # MockSpark rows are dict-like
+        values = []
+        for col in sorted(mock_columns):  # Sort columns for consistent ordering
+            val = row.get(col) if isinstance(row, dict) else getattr(row, col, None)
+            # Convert None to a sortable value
+            if val is None:
+                values.append("")
+            elif isinstance(val, (int, float)):
+                values.append(val)
+            else:
+                values.append(str(val))
+        return tuple(values)
+
+    def sort_key_pyspark(row):
+        # PySpark rows are object-like with attribute access
+        values = []
+        for col in sorted(pyspark_columns):  # Sort columns for consistent ordering
+            try:
+                val = getattr(row, col)
+            except AttributeError:
+                val = None
+            # Convert None to a sortable value
+            if val is None:
+                values.append("")
+            elif isinstance(val, (int, float)):
+                values.append(val)
+            else:
+                values.append(str(val))
+        return tuple(values)
+
+    mock_data = sorted(mock_df.collect(), key=sort_key_mock)
+    pyspark_data = sorted(pyspark_df.collect(), key=sort_key_pyspark)
 
     assert len(mock_data) == len(pyspark_data), "Data length mismatch"
 
     for i, (mock_row, pyspark_row) in enumerate(zip(mock_data, pyspark_data)):
         for col in mock_columns:
             mock_val = mock_row[col]
-            pyspark_val = pyspark_row[col]
+            pyspark_val = (
+                getattr(pyspark_row, col)
+                if hasattr(pyspark_row, col)
+                else pyspark_row[col]
+            )
 
             if isinstance(mock_val, float) and isinstance(pyspark_val, float):
                 assert abs(mock_val - pyspark_val) < tolerance, (

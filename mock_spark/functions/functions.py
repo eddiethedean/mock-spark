@@ -271,6 +271,21 @@ class Functions:
         return StringFunctions.rlike(column, pattern)
 
     @staticmethod
+    def isin(column: Union[Column, str], values: list[Any]) -> ColumnOperation:
+        """Check if column value is in list of values.
+
+        Args:
+            column: The column to check.
+            values: List of values to check against.
+
+        Returns:
+            ColumnOperation representing the isin function.
+        """
+        if isinstance(column, str):
+            column = Column(column)
+        return column.isin(values)
+
+    @staticmethod
     def replace(column: Union[Column, str], old: str, new: str) -> ColumnOperation:
         """Replace occurrences of substring in string."""
         return StringFunctions.replace(column, old, new)
@@ -1830,15 +1845,38 @@ class Functions:
         if not cols:
             raise ValueError("struct requires at least one column")
 
-        # Use first column as base
-        base_col = cols[0] if isinstance(cols[0], Column) else Column(str(cols[0]))
+        # Check if first column is a Literal - if so, store all columns in value
+        from .core.literals import Literal
 
-        return ColumnOperation(
-            base_col,
-            "struct",
-            value=cols[1:] if len(cols) > 1 else None,
-            name="struct(...)",
-        )
+        # Generate name with actual column/literal values
+        col_names = []
+        for col in cols:
+            if isinstance(col, Literal):
+                col_names.append(str(col.value))
+            elif hasattr(col, "name"):
+                col_names.append(col.name)
+            else:
+                col_names.append(str(col))
+        struct_name = f"struct({', '.join(col_names)})"
+
+        if isinstance(cols[0], Literal):
+            # Use a dummy column and store all columns in value
+            base_col = Column("__struct_dummy__")
+            return ColumnOperation(
+                base_col,
+                "struct",
+                value=cols,  # Store all columns including the first one
+                name=struct_name,
+            )
+        else:
+            # Use first column as base
+            base_col = cols[0] if isinstance(cols[0], Column) else Column(str(cols[0]))
+            return ColumnOperation(
+                base_col,
+                "struct",
+                value=cols[1:] if len(cols) > 1 else None,
+                name=struct_name,
+            )
 
     @staticmethod
     def named_struct(*cols: Any) -> ColumnOperation:

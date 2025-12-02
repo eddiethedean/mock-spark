@@ -43,7 +43,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.dayofmonth(df.date))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_from_unixtime(self, spark):
         """Test from_unixtime function."""
         expected = load_expected_output("datetime", "from_unixtime")
@@ -51,7 +50,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.from_unixtime(F.lit(1577836800)))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_from_utc_timestamp(self, spark):
         """Test from_utc_timestamp function."""
         expected = load_expected_output("datetime", "from_utc_timestamp")
@@ -89,7 +87,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.last_day(df.date))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_months_between_extended(self, spark):
         """Test months_between function."""
         expected = load_expected_output("datetime", "months_between")
@@ -97,7 +94,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.months_between(df.date, F.lit("2019-01-01")))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_timestamp_seconds(self, spark):
         """Test timestamp_seconds function."""
         expected = load_expected_output("datetime", "timestamp_seconds")
@@ -113,7 +109,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.to_timestamp(df.timestamp))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_to_utc_timestamp(self, spark):
         """Test to_utc_timestamp function."""
         expected = load_expected_output("datetime", "to_utc_timestamp")
@@ -121,7 +116,6 @@ class TestDatetimeFunctionsExtendedCompatibility:
         result = df.select(F.to_utc_timestamp(df.timestamp, F.lit("America/New_York")))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="not yet implemented")
     def test_unix_timestamp_extended(self, spark):
         """Test unix_timestamp function."""
         expected = load_expected_output("datetime", "unix_timestamp")
