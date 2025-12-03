@@ -2607,7 +2607,11 @@ class ExpressionEvaluator:
 
     # Datetime function implementations
     def _func_from_unixtime(self, value: Any, operation: ColumnOperation) -> Any:
-        """Convert Unix timestamp to string."""
+        """Convert Unix timestamp to string.
+        
+        Unix timestamps are interpreted as UTC and converted to local timezone
+        to match PySpark behavior. The result matches the session timezone.
+        """
         if value is None:
             return None
         if not isinstance(value, (int, float)):
@@ -2622,16 +2626,23 @@ class ExpressionEvaluator:
                 fmt = str(operation.value.value)
 
         try:
+            from datetime import timezone
+            
             timestamp = int(value)
-            dt = dt_module.datetime.fromtimestamp(timestamp)
+            # Interpret unix timestamp as UTC and convert to local timezone
+            # This matches PySpark's behavior where timestamps are in session timezone
+            dt_utc = dt_module.datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            # Convert to local timezone (naive datetime for compatibility)
+            dt_local = dt_utc.astimezone().replace(tzinfo=None)
+            
             # Simple format conversion (basic implementation)
             if fmt == "yyyy-MM-dd HH:mm:ss" or fmt == "yyyy-MM-dd":
-                return dt.strftime("%Y-%m-%d %H:%M:%S")
+                return dt_local.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 # Basic format string conversion
                 fmt = fmt.replace("yyyy", "%Y").replace("MM", "%m").replace("dd", "%d")
                 fmt = fmt.replace("HH", "%H").replace("mm", "%M").replace("ss", "%S")
-                return dt.strftime(fmt)
+                return dt_local.strftime(fmt)
         except (ValueError, OSError, OverflowError):
             return None
 
@@ -3600,15 +3611,24 @@ class ExpressionEvaluator:
         return int(time.mktime(dt.timetuple()) * 1000000)
 
     def _func_timestamp_seconds(self, value: Any, operation: ColumnOperation) -> Any:
-        """Timestamp_seconds function - create timestamp from unix seconds."""
+        """Timestamp_seconds function - create timestamp from unix seconds.
+        
+        Unix timestamps are interpreted as UTC and converted to local timezone
+        to match PySpark behavior. The result matches the session timezone.
+        """
         if value is None:
             return None
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         try:
-            dt = datetime.fromtimestamp(int(value))
-            # Return formatted string like "2019-12-31 19:00:00" to match PySpark
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = int(value)
+            # Interpret unix timestamp as UTC and convert to local timezone
+            # This matches PySpark's behavior where timestamps are in session timezone
+            dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            # Convert to local timezone (naive datetime for compatibility)
+            dt_local = dt_utc.astimezone().replace(tzinfo=None)
+            # Return formatted string to match PySpark
+            return dt_local.strftime("%Y-%m-%d %H:%M:%S")
         except (ValueError, TypeError, OverflowError, OSError):
             return None
 
