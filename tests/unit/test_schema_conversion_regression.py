@@ -5,6 +5,12 @@ Tests that table creation with Spark StructType properly validates and converts 
 """
 
 import pytest
+
+try:
+    from sqlalchemy import MetaData
+except ImportError:
+    MetaData = None  # type: ignore
+
 from mock_spark import SparkSession
 from mock_spark.spark_types import (
     StructType,
@@ -14,10 +20,17 @@ from mock_spark.spark_types import (
     DoubleType,
     BooleanType,
 )
-from mock_spark.storage.sqlalchemy_helpers import create_table_from_mock_schema
-from sqlalchemy import MetaData
+
+try:
+    from mock_spark.storage.sqlalchemy_helpers import create_table_from_mock_schema
+except ImportError:
+    create_table_from_mock_schema = None  # type: ignore
 
 
+@pytest.mark.skipif(
+    MetaData is None or create_table_from_mock_schema is None,
+    reason="sqlalchemy not available",
+)
 class TestSchemaConversionRegression:
     """Test schema conversion for table creation."""
 
