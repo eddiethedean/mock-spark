@@ -2608,7 +2608,7 @@ class ExpressionEvaluator:
     # Datetime function implementations
     def _func_from_unixtime(self, value: Any, operation: ColumnOperation) -> Any:
         """Convert Unix timestamp to string.
-        
+
         Unix timestamps are interpreted as UTC and converted to local timezone
         to match PySpark behavior. The result matches the session timezone.
         """
@@ -2627,14 +2627,14 @@ class ExpressionEvaluator:
 
         try:
             from datetime import timezone
-            
+
             timestamp = int(value)
             # Interpret unix timestamp as UTC and convert to local timezone
             # This matches PySpark's behavior where timestamps are in session timezone
             dt_utc = dt_module.datetime.fromtimestamp(timestamp, tz=timezone.utc)
             # Convert to local timezone (naive datetime for compatibility)
             dt_local = dt_utc.astimezone().replace(tzinfo=None)
-            
+
             # Simple format conversion (basic implementation)
             if fmt == "yyyy-MM-dd HH:mm:ss" or fmt == "yyyy-MM-dd":
                 return dt_local.strftime("%Y-%m-%d %H:%M:%S")
@@ -3612,7 +3612,7 @@ class ExpressionEvaluator:
 
     def _func_timestamp_seconds(self, value: Any, operation: ColumnOperation) -> Any:
         """Timestamp_seconds function - create timestamp from unix seconds.
-        
+
         Unix timestamps are interpreted as UTC and converted to local timezone
         to match PySpark behavior. The result matches the session timezone.
         """
