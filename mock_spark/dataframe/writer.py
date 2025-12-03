@@ -468,6 +468,22 @@ class DataFrameWriter:
         """
         self.format("json").options(**options).save(path)
 
+    def delta(self, path: str, **options: Any) -> None:
+        """Save DataFrame in Delta Lake format.
+
+        This is a convenience method equivalent to:
+        df.write.format("delta").save(path)
+
+        Args:
+            path: Path to save the Delta Lake table.
+            **options: Additional options for Delta Lake format.
+
+        Example:
+            >>> df.write.delta("/path/to/delta_table")
+            >>> df.write.delta("/path/to/delta_table", mergeSchema=True)
+        """
+        self.format("delta").options(**options).save(path)
+
     def csv(self, path: str, **options: Any) -> None:
         """Save DataFrame in CSV format.
 

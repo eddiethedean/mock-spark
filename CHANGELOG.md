@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.9.0 — 2025-12-02
+
+### Added
+- Complete implementation of all 11 window functions with proper partitioning and ordering support:
+  - `row_number()`, `rank()`, `dense_rank()` - ranking functions
+  - `cume_dist()`, `percent_rank()` - distribution functions
+  - `lag()`, `lead()` - offset functions
+  - `first_value()`, `last_value()`, `nth_value()` - value functions
+  - `ntile()` - bucket function
+- Python fallback mechanism for window functions not natively supported in Polars backend (cume_dist, percent_rank, nth_value, ntile).
+- Enhanced window function evaluation with proper tie handling for rank-based calculations.
+
+### Fixed
+- Fixed `nth_value()` to return NULL for rows before the nth position, matching PySpark behavior.
+- Fixed `cume_dist()` and `percent_rank()` calculations to correctly handle ties using rank-based calculations.
+- Fixed window function results alignment when DataFrame is sorted after evaluation.
+- Fixed mypy type error in `MiscellaneousOperations` by accessing columns via schema instead of direct property access.
+- Fixed syntax errors in `window_execution.py` that prevented proper module import.
+
+### Changed
+- Window functions now use Python evaluation fallback when Polars backend doesn't support them, ensuring correct PySpark-compatible behavior.
+- Improved window function partitioning and ordering logic to handle edge cases (single-row partitions, ties, etc.).
+
+### Testing
+- All 11 window function compatibility tests now passing (previously 7 passing, 4 skipped).
+- Full test suite: 1088 tests passing with 47 expected skips.
+
 ## 3.7.0 — 2025-01-XX
 
 ### Added

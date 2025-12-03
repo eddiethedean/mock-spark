@@ -356,34 +356,22 @@ class PolarsWindowHandler:
             else:
                 raise ValueError("LAST/LAST_VALUE window function requires a column")
         elif function_name == "CUME_DIST":
-            # CUME_DIST is not directly available in Polars, use approximation
-            if partition_by:
-                if order_by:
-                    return pl.int_range(pl.len()).over(
-                        partition_by, order_by=order_by
-                    ) / pl.len().over(partition_by)
-                else:
-                    return pl.int_range(pl.len()).over(partition_by) / pl.len().over(
-                        partition_by
-                    )
-            else:
-                return pl.int_range(pl.len()) / pl.len()
+            # CUME_DIST requires rank-based calculation with tie handling
+            # Polars approximations don't match PySpark behavior, use Python fallback
+            raise ValueError(
+                "CUME_DIST requires Python evaluation for correct tie handling"
+            )
         elif function_name == "PERCENT_RANK":
-            # PERCENT_RANK is not directly available in Polars, use approximation
-            if partition_by:
-                if order_by:
-                    rank_expr = (
-                        pl.int_range(pl.len()).over(partition_by, order_by=order_by) - 1
-                    )
-                    count_expr = pl.len().over(partition_by) - 1
-                    return rank_expr / count_expr
-                else:
-                    rank_expr = pl.int_range(pl.len()).over(partition_by) - 1
-                    count_expr = pl.len().over(partition_by) - 1
-                    return rank_expr / count_expr
-            else:
-                rank_expr = pl.int_range(pl.len()) - 1
-                count_expr = pl.len() - 1
-                return rank_expr / count_expr
+            # PERCENT_RANK requires rank-based calculation with tie handling
+            # Polars approximations don't match PySpark behavior, use Python fallback
+            raise ValueError(
+                "PERCENT_RANK requires Python evaluation for correct tie handling"
+            )
+        elif function_name == "NTH_VALUE":
+            # NTH_VALUE is not directly available in Polars, use Python fallback
+            raise ValueError("NTH_VALUE requires Python evaluation")
+        elif function_name == "NTILE":
+            # NTILE is not directly available in Polars, use Python fallback
+            raise ValueError("NTILE requires Python evaluation")
         else:
             raise ValueError(f"Unsupported window function: {function_name}")

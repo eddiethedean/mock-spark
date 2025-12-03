@@ -121,154 +121,632 @@ class WindowFunction:
             return [None] * len(data)
 
     def _evaluate_row_number(self, data: list[dict[str, Any]]) -> list[int]:
-        """Evaluate row_number() window function."""
-        return list(range(1, len(data) + 1))
-
-    def _evaluate_rank(self, data: list[dict[str, Any]]) -> list[int]:
-        """Evaluate rank() window function."""
+        """Evaluate row_number() window function with proper partitioning and ordering."""
         if not data:
             return []
 
-        # Get the ordering columns from window spec
-        order_columns = getattr(self.window_spec, "_order_by", [])
-        if not order_columns:
-            # If no ordering, return row numbers
-            return list(range(1, len(data) + 1))
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
 
-        # Extract the first ordering column (for simplicity)
-        order_col = order_columns[0]
-        col_name = order_col.name if hasattr(order_col, "name") else str(order_col)
-
-        # Get values for ranking
-        values = []
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
         for i, row in enumerate(data):
-            value = row.get(col_name)
-            values.append((value, i))  # (value, original_index)
-
-        # Check if ordering is descending
-        is_desc = False
-        if hasattr(order_col, "operation") and order_col.operation == "desc":
-            is_desc = True
-
-        # Sort by value (check for DESC)
-        if is_desc:
-            values.sort(
-                key=lambda x: x[0] if x[0] is not None else float("-inf"), reverse=True
-            )
-        else:
-            values.sort(key=lambda x: x[0] if x[0] is not None else float("inf"))
-
-        # Assign ranks (PySpark rank behavior: same rank for ties, skip ranks after ties)
-        ranks = [0] * len(data)
-        current_rank = 1
-
-        for i, (value, original_idx) in enumerate(values):
-            if i == 0:
-                ranks[original_idx] = current_rank
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
             else:
-                prev_value = values[i - 1][0]
-                if value != prev_value:
-                    # Different value, assign new rank
-                    current_rank = i + 1
-                # Same value gets the same rank (no increment)
-                ranks[original_idx] = current_rank
+                partition_key = None  # Single partition
 
-        return ranks
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [0] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Assign row numbers (1-indexed) within partition
+            for rank, idx in enumerate(sorted_indices, start=1):
+                results[idx] = rank
+
+        return results
+
+    def _sort_indices_by_columns(
+        self, data: list[dict[str, Any]], indices: list[int], order_by_cols: list[Any]
+    ) -> list[int]:
+        """Sort indices by order_by columns."""
+
+        def sort_key(idx: int) -> tuple[Any, ...]:
+            row = data[idx]
+            key_values = []
+            for col in order_by_cols:
+                # Extract column name
+                if hasattr(col, "column") and hasattr(col.column, "name"):
+                    col_name = col.column.name
+                    is_desc = getattr(col, "operation", None) == "desc"
+                elif hasattr(col, "name"):
+                    col_name = col.name
+                    is_desc = getattr(col, "operation", None) == "desc"
+                else:
+                    col_name = str(col)
+                    is_desc = False
+
+                value = row.get(col_name)
+                # Handle None values - put them at the end for ascending, at start for descending
+                if value is None:
+                    key_values.append((float("inf") if not is_desc else float("-inf"),))
+                else:
+                    key_values.append((value,))
+
+            return tuple(key_values)
+
+        # Check if any column has desc operation
+        has_desc = any(
+            (hasattr(col, "operation") and col.operation == "desc")
+            or (
+                hasattr(col, "column")
+                and hasattr(col.column, "operation")
+                and col.column.operation == "desc"
+            )
+            for col in order_by_cols
+        )
+
+        return sorted(indices, key=sort_key, reverse=has_desc)
+
+    def _evaluate_rank(self, data: list[dict[str, Any]]) -> list[int]:
+        """Evaluate rank() window function with proper partitioning and ordering."""
+        if not data:
+            return []
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [0] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Assign ranks with gaps for ties
+            current_rank = 1
+            for i, idx in enumerate(sorted_indices):
+                if i > 0:
+                    # Check if current row has different values than previous
+                    prev_idx = sorted_indices[i - 1]
+                    if self._rows_differ_by_order_cols(
+                        data[idx], data[prev_idx], order_by_cols
+                    ):
+                        current_rank = i + 1
+                else:
+                    current_rank = 1
+
+                results[idx] = current_rank
+
+        return results
+
+    def _rows_differ_by_order_cols(
+        self, row1: dict[str, Any], row2: dict[str, Any], order_by_cols: list[Any]
+    ) -> bool:
+        """Check if two rows differ by order_by columns."""
+        if not order_by_cols:
+            return False
+
+        for col in order_by_cols:
+            if hasattr(col, "column") and hasattr(col.column, "name"):
+                col_name = col.column.name
+            elif hasattr(col, "name"):
+                col_name = col.name
+            else:
+                col_name = str(col)
+
+            val1 = row1.get(col_name)
+            val2 = row2.get(col_name)
+            if val1 != val2:
+                return True
+
+        return False
 
     def _evaluate_dense_rank(self, data: list[dict[str, Any]]) -> list[int]:
-        """Evaluate dense_rank() window function."""
-        # Simple dense rank implementation - returns row numbers for now
-        return list(range(1, len(data) + 1))
+        """Evaluate dense_rank() window function with proper partitioning and ordering."""
+        if not data:
+            return []
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [0] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Assign dense ranks without gaps for ties
+            current_rank = 1
+            previous_values = None
+
+            for idx in sorted_indices:
+                if order_by_cols:
+                    current_values = tuple(
+                        data[idx].get(
+                            col.column.name
+                            if hasattr(col, "column") and hasattr(col.column, "name")
+                            else col.name
+                            if hasattr(col, "name")
+                            else str(col)
+                        )
+                        for col in order_by_cols
+                    )
+                else:
+                    current_values = None
+
+                if previous_values is not None and current_values != previous_values:
+                    current_rank += 1
+
+                results[idx] = current_rank
+                previous_values = current_values
+
+        return results
 
     def _evaluate_lag(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate lag() window function."""
-        results: list[Any] = [None]  # First row has no previous value
-        for i in range(1, len(data)):
-            # Get the column value from the previous row
-            if self.column_name and self.column_name in data[i - 1]:
-                results.append(data[i - 1][self.column_name])
+        """Evaluate lag() window function with proper partitioning and ordering."""
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
             else:
-                results.append(None)
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Apply lag within sorted partition
+            for i, idx in enumerate(sorted_indices):
+                source_idx = i - self.offset
+                if source_idx >= 0:
+                    actual_idx = sorted_indices[source_idx]
+                    results[idx] = data[actual_idx].get(self.column_name, self.default)
+                else:
+                    results[idx] = self.default
+
         return results
 
     def _evaluate_lead(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate lead() window function."""
-        results: list[Any] = []
-        for i in range(len(data) - 1):
-            # Get the column value from the next row
-            if self.column_name and self.column_name in data[i + 1]:
-                results.append(data[i + 1][self.column_name])
+        """Evaluate lead() window function with proper partitioning and ordering."""
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
             else:
-                results.append(None)
-        results.append(None)  # Last row has no next value
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Apply lead within sorted partition
+            for i, idx in enumerate(sorted_indices):
+                source_idx = i + self.offset
+                if source_idx < len(sorted_indices):
+                    actual_idx = sorted_indices[source_idx]
+                    results[idx] = data[actual_idx].get(self.column_name, self.default)
+                else:
+                    results[idx] = self.default
+
         return results
 
     def _evaluate_nth_value(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate nth_value() window function."""
-        # For simplicity, return the first value for all rows
-        if not data:
-            return []
-        return [data[0]] * len(data)
+        """Evaluate nth_value() window function with proper partitioning and ordering."""
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
+
+        # Extract n from function value
+        n = getattr(self.function, "value", 1)
+        if not isinstance(n, int) or n < 1:
+            return [None] * len(data)
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Get nth value (1-indexed, so n-1 in 0-indexed list)
+            # PySpark's nth_value returns the nth value only for rows at or after the nth position
+            # For rows before the nth position, it returns NULL
+            for i, idx in enumerate(sorted_indices):
+                if i >= n - 1:  # Current row is at or after nth position
+                    nth_idx = sorted_indices[n - 1]
+                    results[idx] = data[nth_idx].get(self.column_name)
+                else:
+                    # Row is before nth position, return NULL
+                    results[idx] = None
+
+        return results
 
     def _evaluate_ntile(self, data: list[dict[str, Any]]) -> list[int]:
-        """Evaluate ntile() window function."""
+        """Evaluate ntile() window function with proper partitioning and ordering."""
         if not data:
             return []
-        # For simplicity, return equal distribution
-        n = len(data)
-        return list(range(1, n + 1))
+
+        # Extract n (number of buckets) from function value
+        n = getattr(self.function, "value", 2)
+        if not isinstance(n, int) or n < 1:
+            return [1] * len(data)
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [1] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            partition_size = len(sorted_indices)
+            if partition_size == 0:
+                continue
+
+            # Calculate bucket size (may have remainder)
+            bucket_size = partition_size / n
+            remainder = partition_size % n
+
+            # Assign buckets
+            current_bucket = 1
+            items_in_current_bucket = 0
+            bucket_capacity = int(bucket_size) + (
+                1 if current_bucket <= remainder else 0
+            )
+
+            for idx in sorted_indices:
+                results[idx] = current_bucket
+                items_in_current_bucket += 1
+
+                # Move to next bucket if current is full
+                if items_in_current_bucket >= bucket_capacity and current_bucket < n:
+                    current_bucket += 1
+                    items_in_current_bucket = 0
+                    bucket_capacity = int(bucket_size) + (
+                        1 if current_bucket <= remainder else 0
+                    )
+
+        return results
 
     def _evaluate_cume_dist(self, data: list[dict[str, Any]]) -> list[float]:
-        """Evaluate cume_dist() window function."""
+        """Evaluate cume_dist() window function with proper partitioning and ordering."""
         if not data:
             return []
-        n = len(data)
-        return [i / n for i in range(1, n + 1)]
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [0.0] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            n = len(sorted_indices)
+            if n == 0:
+                continue
+
+            # For cume_dist: number of rows with value <= current row's value / total rows
+            # Since rows are already sorted, we can use position-based calculation
+            # For rows with the same value, they all get the same cume_dist (the max position)
+            for i, idx in enumerate(sorted_indices):
+                current_row = data[idx]
+                # Find the last row with the same value as current row
+                last_same_idx = i
+                for j in range(i + 1, len(sorted_indices)):
+                    other_idx = sorted_indices[j]
+                    other_row = data[other_idx]
+                    # If other row has same value as current, update last_same_idx
+                    if not self._rows_differ_by_order_cols(
+                        current_row, other_row, order_by_cols
+                    ):
+                        last_same_idx = j
+                    else:
+                        break  # Rows are sorted, so no more matches
+
+                # cume_dist = (position of last row with same value + 1) / total
+                # Position is 0-indexed, so we add 1 to get 1-indexed position
+                results[idx] = (last_same_idx + 1) / n
+
+        return results
+
+    def _row_less_or_equal(
+        self, row1: dict[str, Any], row2: dict[str, Any], order_by_cols: list[Any]
+    ) -> bool:
+        """Check if row1 <= row2 by order_by columns."""
+        if not order_by_cols:
+            return True  # All rows are equal if no ordering
+
+        for col in order_by_cols:
+            if hasattr(col, "column") and hasattr(col.column, "name"):
+                col_name = col.column.name
+                is_desc = getattr(col, "operation", None) == "desc"
+            elif hasattr(col, "name"):
+                col_name = col.name
+                is_desc = getattr(col, "operation", None) == "desc"
+            else:
+                col_name = str(col)
+                is_desc = False
+
+            val1 = row1.get(col_name)
+            val2 = row2.get(col_name)
+
+            # Handle None values
+            if val1 is None and val2 is None:
+                continue
+            if val1 is None:
+                return not is_desc  # None is last for ascending, first for descending
+            if val2 is None:
+                return is_desc
+
+            # Compare values
+            if is_desc:
+                if val1 > val2:
+                    return False
+                elif val1 < val2:
+                    return True
+            else:
+                if val1 < val2:
+                    return True
+                elif val1 > val2:
+                    return False
+
+        return True  # All values equal
 
     def _evaluate_percent_rank(self, data: list[dict[str, Any]]) -> list[float]:
-        """Evaluate percent_rank() window function."""
+        """Evaluate percent_rank() window function with proper partitioning and ordering."""
         if not data:
             return []
-        n = len(data)
-        return [i / (n - 1) if n > 1 else 0.0 for i in range(n)]
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
+
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [0.0] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            n = len(sorted_indices)
+            if n == 1:
+                # Single row partition: percent_rank = 0.0
+                results[sorted_indices[0]] = 0.0
+            else:
+                # Calculate ranks first (for percent_rank formula)
+                ranks = [0] * n
+                current_rank = 1
+                for i, idx in enumerate(sorted_indices):
+                    if i > 0:
+                        prev_idx = sorted_indices[i - 1]
+                        if self._rows_differ_by_order_cols(
+                            data[idx], data[prev_idx], order_by_cols
+                        ):
+                            current_rank = i + 1
+                    else:
+                        current_rank = 1
+                    ranks[i] = current_rank
+
+                # Calculate percent_rank: (rank - 1) / (n - 1)
+                # n > 1 is guaranteed here due to the if n == 1 check above
+                for i, idx in enumerate(sorted_indices):
+                    results[idx] = (ranks[i] - 1) / (n - 1)
+
+        return results
 
     def _evaluate_first(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate first() window function."""
-        if not data:
-            return []
-
-        # Get the column name from the function
-        col_name = self.column_name
-        if not col_name:
-            return [None] * len(data)
-
-        # Get the first value
-        first_value = None
-        for row in data:
-            if col_name in row and row[col_name] is not None:
-                first_value = row[col_name]
-                break
-
-        return [first_value] * len(data)
+        """Evaluate first() window function with proper partitioning and ordering."""
+        # first() behaves the same as first_value() for window functions
+        return self._evaluate_first_value(data)
 
     def _evaluate_last(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate last() window function."""
-        if not data:
-            return []
-
-        # Get the column name from the function
-        col_name = self.column_name
-        if not col_name:
-            return [None] * len(data)
-
-        # Get the last value
-        last_value = None
-        for row in reversed(data):
-            if col_name in row and row[col_name] is not None:
-                last_value = row[col_name]
-                break
-
-        return [last_value] * len(data)
+        """Evaluate last() window function with proper partitioning and ordering."""
+        # last() behaves the same as last_value() for window functions
+        return self._evaluate_last_value(data)
 
     def _evaluate_sum(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate sum() window function."""
@@ -323,43 +801,97 @@ class WindowFunction:
         return result
 
     def _evaluate_first_value(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate first_value() window function."""
-        if not data:
-            return []
+        """Evaluate first_value() window function with proper partitioning and ordering."""
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
 
-        # Get the column name from the function
-        col_name = self.column_name
-        if not col_name:
-            return [None] * len(data)
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
 
-        # Get the first value in the window (respecting ordering if present)
-        # For simplicity, we'll use the first non-null value in the window
-        first_value = None
-        for row in data:
-            if col_name in row and row[col_name] is not None:
-                first_value = row[col_name]
-                break
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
 
-        # Return the first value for all rows in the window
-        return [first_value] * len(data)
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Get first value in sorted partition
+            if sorted_indices:
+                first_idx = sorted_indices[0]
+                first_value = data[first_idx].get(self.column_name)
+
+                # Assign first value to all rows in partition
+                for idx in partition_indices:
+                    results[idx] = first_value
+
+        return results
 
     def _evaluate_last_value(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate last_value() window function."""
-        if not data:
-            return []
+        """Evaluate last_value() window function with proper partitioning and ordering."""
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
 
-        # Get the column name from the function
-        col_name = self.column_name
-        if not col_name:
-            return [None] * len(data)
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
 
-        # Get the last value in the window (respecting ordering if present)
-        # For simplicity, we'll use the last non-null value in the window
-        last_value = None
-        for row in reversed(data):
-            if col_name in row and row[col_name] is not None:
-                last_value = row[col_name]
-                break
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None
 
-        # Return the last value for all rows in the window
-        return [last_value] * len(data)
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Get last value in sorted partition
+            if sorted_indices:
+                last_idx = sorted_indices[-1]
+                last_value = data[last_idx].get(self.column_name)
+
+                # Assign last value to all rows in partition
+                for idx in partition_indices:
+                    results[idx] = last_value
+
+        return results

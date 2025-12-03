@@ -711,8 +711,19 @@ class PolarsOperationExecutor:
             elif sort_cols and all(isinstance(c, str) for c in sort_cols):
                 df = df.sort(sort_cols)
 
-            window_expr = self.window_handler.translate_window_function(expression, df)
-            result = df.with_columns(window_expr.alias(column_name))
+            try:
+                window_expr = self.window_handler.translate_window_function(
+                    expression, df
+                )
+                result = df.with_columns(window_expr.alias(column_name))
+            except ValueError:
+                # Fallback to Python evaluation for unsupported window functions
+                # Convert Polars DataFrame to list of dicts for Python evaluation
+                data = df.to_dicts()
+                # Evaluate window function using Python implementation
+                results = expression.evaluate(data)
+                # Add results as new column
+                result = df.with_columns(pl.Series(column_name, results))
 
             # For lag/lead, ensure result maintains sort order
             # CRITICAL: Must sort result to preserve correct window function values

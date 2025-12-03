@@ -5,7 +5,7 @@ This mixin provides transformation operations that can be mixed into
 the DataFrame class to add transformation capabilities.
 """
 
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast, overload
 
 from ...functions import Column, ColumnOperation, Literal
 from ...spark_types import StructType, StructField
@@ -26,6 +26,23 @@ class TransformationOperations(Generic[SupportsDF]):
         _operations_queue: list[tuple[str, Any]]
         _watermark_col: Optional[str]
         _watermark_delay: Optional[str]
+
+    @overload
+    def select(self: SupportsDF, *columns: str) -> SupportsDF:
+        """Select columns by name."""
+        ...
+
+    @overload
+    def select(self: SupportsDF, *columns: Column) -> SupportsDF:
+        """Select columns using Column objects."""
+        ...
+
+    @overload
+    def select(
+        self: SupportsDF, *columns: Union[str, Column, Literal, Any]
+    ) -> SupportsDF:
+        """Select columns from the DataFrame."""
+        ...
 
     def select(
         self: SupportsDF, *columns: Union[str, Column, Literal, Any]

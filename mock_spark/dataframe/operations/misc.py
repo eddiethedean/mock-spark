@@ -895,7 +895,9 @@ class MiscellaneousOperations:
             >>> df.melt(ids=["id"], values=["A", "B"]).show()
         """
         id_cols = ids or []
-        value_cols = values or [c for c in self.columns if c not in id_cols]
+        # Access columns via schema since MiscellaneousOperations doesn't have columns property
+        all_columns = [field.name for field in self.schema.fields]
+        value_cols = values or [c for c in all_columns if c not in id_cols]
 
         result_data = []
         for row in self.data:
@@ -935,11 +937,150 @@ class MiscellaneousOperations:
         )
 
     # Utility Operations
-    def explain(self) -> None:
-        """Explain execution plan."""
-        print("DataFrame Execution Plan:")
-        print("  DataFrame")
-        print("    MockDataSource")
+    def explain(
+        self,
+        extended: bool = False,
+        codegen: bool = False,
+        cost: bool = False,
+        formatted: bool = False,
+        mode: Optional[str] = None,
+    ) -> Optional[str]:
+        """Explain the execution plan.
+
+        In mock-spark, this provides a simplified execution plan showing
+        DataFrame operations in a readable format.
+
+        Args:
+            extended: If True, show extended plan with more details (default: False)
+            codegen: If True, show code generation info (default: False, not implemented)
+            cost: If True, show cost estimates (default: False, not implemented)
+            formatted: If True, return formatted string (default: False)
+            mode: Optional mode for output. If "graph", returns graphviz DOT format.
+                  If None, uses default text format.
+
+        Returns:
+            If formatted=True or mode="graph", returns the plan as a string.
+            Otherwise, prints the plan and returns None.
+
+        Example:
+            >>> df.explain()
+            >>> df.explain(extended=True)
+            >>> dot_graph = df.explain(mode="graph")  # Returns DOT format
+        """
+        # Handle graph mode
+        if mode == "graph":
+            return self._generate_graphviz_dot()
+
+        # Build execution plan
+        # Build execution plan
+        plan_lines = []
+        plan_lines.append("== Physical Plan ==")
+
+        # Check if there are pending operations (lazy evaluation)
+        if hasattr(self, "_operations_queue") and self._operations_queue:
+            plan_lines.append("")
+            plan_lines.append("Pending Operations:")
+            for i, (op_name, op_args) in enumerate(self._operations_queue, 1):
+                args_str = self._format_operation_args(op_args)
+                plan_lines.append(f"  {i}. {op_name}({args_str})")
+            plan_lines.append("")
+            plan_lines.append(
+                "Note: Operations are queued and will execute on action (collect, show, etc.)"
+            )
+        else:
+            plan_lines.append("")
+            plan_lines.append("Source Operations:")
+            plan_lines.append("  MockDataSource")
+            plan_lines.append(f"    Rows: {len(self.data)}")
+            # Access columns via schema since MiscellaneousOperations doesn't have columns property
+            column_names = [field.name for field in self.schema.fields]
+            plan_lines.append(f"    Columns: {', '.join(column_names)}")
+
+        if extended:
+            plan_lines.append("")
+            plan_lines.append("Schema:")
+            for field in self.schema.fields:
+                nullable = "nullable" if field.nullable else "not nullable"
+                plan_lines.append(
+                    f"  {field.name}: {field.dataType.__class__.__name__} ({nullable})"
+                )
+
+        if codegen:
+            plan_lines.append("")
+            plan_lines.append("Code Generation: Not implemented in mock-spark")
+
+        if cost:
+            plan_lines.append("")
+            plan_lines.append("Cost Estimates: Not implemented in mock-spark")
+
+        plan_str = "\n".join(plan_lines)
+
+        if formatted or mode == "graph":
+            return plan_str
+        else:
+            print(plan_str)
+            return None
+
+    def _generate_graphviz_dot(self) -> str:
+        """Generate graphviz DOT format for query plan visualization.
+
+        Returns:
+            Graphviz DOT format string representing the execution plan.
+        """
+        dot_lines = []
+        dot_lines.append("digraph ExecutionPlan {")
+        dot_lines.append("  rankdir=TB;")
+        dot_lines.append("  node [shape=box, style=rounded];")
+        dot_lines.append("")
+
+        # Add source node
+        dot_lines.append(f'  source [label="MockDataSource\\nRows: {len(self.data)}"];')
+
+        # Add operation nodes if there are pending operations
+        if hasattr(self, "_operations_queue") and self._operations_queue:
+            prev_node = "source"
+            for i, (op_name, op_args) in enumerate(self._operations_queue):
+                node_id = f"op_{i}"
+                args_str = self._format_operation_args(op_args)
+                label = f"{op_name}({args_str})"
+                # Escape special characters for DOT
+                label = label.replace('"', '\\"').replace("\n", "\\n")
+                dot_lines.append(f'  {node_id} [label="{label}"];')
+                dot_lines.append(f"  {prev_node} -> {node_id};")
+                prev_node = node_id
+
+            # Add output node
+            dot_lines.append('  output [label="Output"];')
+            dot_lines.append(f"  {prev_node} -> output;")
+        else:
+            # Direct connection from source to output
+            dot_lines.append('  output [label="Output"];')
+            dot_lines.append("  source -> output;")
+
+        dot_lines.append("}")
+        return "\n".join(dot_lines)
+
+    def _format_operation_args(self, args: Any) -> str:
+        """Format operation arguments for display in explain plan."""
+        if isinstance(args, (list, tuple)):
+            if len(args) == 0:
+                return ""
+            # Format first few args
+            formatted = []
+            for arg in args[:3]:  # Show first 3 args
+                if isinstance(arg, str):
+                    formatted.append(f'"{arg}"')
+                elif hasattr(arg, "name"):  # Column object
+                    formatted.append(f"col({arg.name})")
+                else:
+                    formatted.append(str(arg)[:20])  # Truncate long strings
+            if len(args) > 3:
+                formatted.append(f"... ({len(args) - 3} more)")
+            return ", ".join(formatted)
+        elif isinstance(args, str):
+            return f'"{args}"'
+        else:
+            return str(args)[:50]  # Truncate long strings
 
     def toDF(self: SupportsDataFrameOps, *cols: str) -> SupportsDataFrameOps:
         """Rename columns of DataFrame (all PySpark versions).

@@ -31,10 +31,46 @@ class AnalysisException(SparkException):
         stackTrace: Optional[Any] = None,
         error_code: Optional[str] = None,
         context: Optional[dict[str, Any]] = None,
+        error_class: Optional[str] = None,
+        message_parameters: Optional[dict[str, Any]] = None,
     ):
         super().__init__(message, stackTrace)
         self.error_code = error_code
         self.context = context or {}
+        self.error_class = error_class
+        self.message_parameters = message_parameters or {}
+        self._hint: Optional[str] = None
+
+        # Add helpful migration hints for common errors
+        message_lower = str(message).lower()
+        if (
+            "table or view not found" in message_lower
+            or "table" in message_lower
+            and "not found" in message_lower
+        ):
+            self._hint = (
+                "In mock-spark, ensure tables are created using "
+                "spark.sql('CREATE TABLE ...') or storage API. "
+                "For PySpark compatibility, use standard SQL commands."
+            )
+        elif "database" in message_lower and "not found" in message_lower:
+            self._hint = (
+                "In mock-spark, create databases using "
+                "spark.sql('CREATE DATABASE ...') or spark.storage.create_schema(...). "
+                "For PySpark compatibility, use standard SQL commands."
+            )
+        elif "column" in message_lower and "not found" in message_lower:
+            self._hint = (
+                "Check that the column name is spelled correctly and exists in the DataFrame. "
+                "Use df.printSchema() to see available columns."
+            )
+
+    def __str__(self) -> str:
+        """String representation including migration hints if available."""
+        message = super().__str__()
+        if self._hint:
+            return f"{message}\n\nHint: {self._hint}"
+        return message
 
 
 class ParseException(AnalysisException):

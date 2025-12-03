@@ -75,10 +75,10 @@ if hasattr(Functions, "__init__"):
     def _deprecated_functions_init(self: Any, *args: Any, **kwargs: Any) -> Any:
         """Warn when Functions() is instantiated directly."""
         warnings.warn(
-            "Direct instantiation of Functions() is deprecated. "
-            "Use 'from mock_spark.sql import functions as F' or "
-            "'from mock_spark.sql.functions import col, ...' instead. "
-            "This matches PySpark's behavior where functions is a module, not a class.",
+            "Functions() is deprecated. Use 'from mock_spark.sql import functions as F' instead. "
+            "This matches PySpark where functions is a module, not a class. "
+            "Migration: Replace 'Functions()' with 'from mock_spark.sql import functions as F'. "
+            "Example: Instead of 'f = Functions(); f.col(\"name\")', use 'from mock_spark.sql import functions as F; F.col(\"name\")'.",
             DeprecationWarning,
             stacklevel=2,
         )

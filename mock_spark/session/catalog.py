@@ -517,6 +517,87 @@ class Catalog:
         # Mock implementation - in real Spark this would recover partitions
         pass
 
+    def getDatabase(self, dbName: str) -> Database:
+        """Get database information.
+
+        Args:
+            dbName: Database name.
+
+        Returns:
+            Database object with database information.
+
+        Raises:
+            IllegalArgumentException: If database name is invalid.
+            AnalysisException: If database doesn't exist.
+
+        Example:
+            >>> db = catalog.getDatabase("test_db")
+            >>> print(db.name)
+            test_db
+        """
+        if not isinstance(dbName, str):
+            raise IllegalArgumentException("Database name must be a string")
+
+        if not dbName:
+            raise IllegalArgumentException("Database name cannot be empty")
+
+        if not self.storage.schema_exists(dbName):
+            raise AnalysisException(f"Database '{dbName}' does not exist")
+
+        return Database(dbName)
+
+    def getTable(self, tableName: str, dbName: Optional[str] = None) -> Table:
+        """Get table information.
+
+        Args:
+            tableName: Table name or qualified name (schema.table).
+            dbName: Optional database name. Uses current database if None.
+
+        Returns:
+            Table object with table information.
+
+        Raises:
+            IllegalArgumentException: If table name is invalid.
+            AnalysisException: If table doesn't exist.
+
+        Example:
+            >>> table = catalog.getTable("users", "test_db")
+            >>> print(table.name)
+            users
+            >>> print(table.database)
+            test_db
+        """
+        if not isinstance(tableName, str):
+            raise IllegalArgumentException("Table name must be a string")
+
+        if not tableName:
+            raise IllegalArgumentException("Table name cannot be empty")
+
+        # Handle qualified table names (schema.table)
+        if "." in tableName and dbName is None:
+            parts = tableName.split(".", 1)
+            if len(parts) == 2:
+                dbName, tableName = parts
+            else:
+                raise IllegalArgumentException(
+                    f"Invalid qualified table name: {tableName}"
+                )
+        elif dbName is None:
+            dbName = self.storage.get_current_schema()
+
+        if not isinstance(dbName, str):
+            raise IllegalArgumentException("Database name must be a string")
+
+        if not dbName:
+            raise IllegalArgumentException("Database name cannot be empty")
+
+        # Check if table exists
+        if not self.storage.table_exists(dbName, tableName):
+            qualified_name = f"{dbName}.{tableName}" if dbName else tableName
+            raise AnalysisException(f"Table '{qualified_name}' does not exist")
+
+        return Table(tableName, dbName)
+
     def clearCache(self) -> None:
         """Clear cache."""
         # Mock implementation - in real Spark this would clear the cache
