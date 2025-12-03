@@ -112,7 +112,9 @@ class SparkSession:
         self._catalog = Catalog(self.storage)
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
-        self._version = "3.5.0"  # Mock version
+        from ..._version import __version__
+
+        self._version = __version__  # Use centralized version
 
         self._sql_executor = SQLExecutor(cast("ISession", self))
 
@@ -467,6 +469,9 @@ class SparkSession:
         """Stop the session and clean up resources."""
         # Delegate to SessionLifecycleManager service
         self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
+        # Clear singleton if this is the active singleton session
+        if SparkSession._singleton_session is self:
+            SparkSession._singleton_session = None
 
     def __enter__(self) -> "SparkSession":
         """Context manager entry."""

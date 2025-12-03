@@ -486,6 +486,10 @@ class SQLExecutor:
 
         Returns:
             Empty DataFrame indicating success.
+
+        Raises:
+            AnalysisException: If table already exists and IF NOT EXISTS is not specified.
+            QueryExecutionException: If schema parsing fails.
         """
         components = ast.components
         object_type = components.get("object_type", "TABLE").upper()
@@ -499,8 +503,46 @@ class SQLExecutor:
                 object_name, ignoreIfExists=ignore_if_exists
             )
         elif object_type == "TABLE":
-            # Mock table creation
-            pass
+            # Parse schema and table name
+            schema_name = components.get("schema_name")
+            table_name = object_name
+            if schema_name is None:
+                schema_name = self.session.storage.get_current_schema()
+
+            # Check if table exists
+            if self.session.storage.table_exists(schema_name, table_name):
+                if not ignore_if_exists:
+                    from ...errors import AnalysisException
+
+                    raise AnalysisException(
+                        f"Table {schema_name}.{table_name} already exists"
+                    )
+                # Table exists and IF NOT EXISTS is specified, skip creation
+                return cast("IDataFrame", DataFrame([], StructType([])))
+
+            # Parse column definitions
+            column_definitions = components.get("column_definitions", "")
+            if not column_definitions:
+                from ...errors import QueryExecutionException
+
+                raise QueryExecutionException(
+                    "CREATE TABLE requires column definitions"
+                )
+
+            # Parse DDL schema using DDL adapter
+            from ...core.ddl_adapter import parse_ddl_schema
+
+            try:
+                schema = parse_ddl_schema(column_definitions)
+            except Exception as e:
+                from ...errors import QueryExecutionException
+
+                raise QueryExecutionException(
+                    f"Failed to parse table schema: {str(e)}"
+                ) from e
+
+            # Create table in storage backend
+            self.session.storage.create_table(schema_name, table_name, schema.fields)
 
         # Return empty DataFrame to indicate success
         return cast("IDataFrame", DataFrame([], StructType([])))
@@ -513,6 +555,9 @@ class SQLExecutor:
 
         Returns:
             Empty DataFrame indicating success.
+
+        Raises:
+            AnalysisException: If table does not exist and IF EXISTS is not specified.
         """
         components = ast.components
         object_type = components.get("object_type", "TABLE").upper()
@@ -526,15 +571,27 @@ class SQLExecutor:
                 object_name, ignoreIfNotExists=ignore_if_not_exists
             )
         elif object_type == "TABLE":
-            # Mock table drop
-            pass
+            # Parse schema and table name
+            schema_name = components.get("schema_name")
+            table_name = object_name
+            if schema_name is None:
+                schema_name = self.session.storage.get_current_schema()
+
+            # Check if table exists
+            if not self.session.storage.table_exists(schema_name, table_name):
+                if not ignore_if_not_exists:
+                    from ...errors import AnalysisException
+
+                    raise AnalysisException(
+                        f"Table {schema_name}.{table_name} does not exist"
+                    )
+                # Table doesn't exist and IF EXISTS is specified, skip drop
+                return cast("IDataFrame", DataFrame([], StructType([])))
+
+            # Drop table from storage backend
+            self.session.storage.drop_table(schema_name, table_name)
 
         # Return empty DataFrame to indicate success
-        from ...dataframe import DataFrame
-        from ...spark_types import StructType
-
-        from typing import cast
-
         return cast("IDataFrame", DataFrame([], StructType([])))
 
     def _execute_insert(self, ast: SQLAST) -> IDataFrame:
@@ -545,14 +602,138 @@ class SQLExecutor:
 
         Returns:
             Empty DataFrame indicating success.
-        """
-        # Mock implementation
-        from ...dataframe import DataFrame
-        from ...spark_types import StructType
 
+        Raises:
+            AnalysisException: If table does not exist.
+            QueryExecutionException: If INSERT parsing or execution fails.
+        """
+        from ...errors import AnalysisException, QueryExecutionException
+
+        components = ast.components
+        table_name = components.get("table_name", "unknown")
+        schema_name = components.get("schema_name")
+        insert_type = components.get("type", "unknown")
+
+        if schema_name is None:
+            schema_name = self.session.storage.get_current_schema()
+
+        # Check if table exists
+        if not self.session.storage.table_exists(schema_name, table_name):
+            raise AnalysisException(f"Table {schema_name}.{table_name} does not exist")
+
+        # Get table schema
+        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+        if not isinstance(table_schema, StructType):
+            raise QueryExecutionException(
+                f"Failed to get schema for table {schema_name}.{table_name}"
+            )
+
+        data: list[dict[str, Any]] = []
+
+        if insert_type == "VALUES":
+            # Parse VALUES-based INSERT
+            values = components.get("values", [])
+            columns = components.get("columns", [])
+
+            # If columns specified, use them; otherwise use all table columns in order
+            target_columns = columns or [field.name for field in table_schema.fields]
+
+            # Convert string values to Python types
+            for row_values in values:
+                row_dict: dict[str, Any] = {}
+                for i, value_str in enumerate(row_values):
+                    if i >= len(target_columns):
+                        break  # Skip extra values
+                    col_name = target_columns[i]
+                    # Parse value (handle strings, numbers, null, booleans)
+                    parsed_value = self._parse_sql_value(value_str.strip())
+                    row_dict[col_name] = parsed_value
+
+                # Fill missing columns with None
+                for field in table_schema.fields:
+                    if field.name not in row_dict:
+                        row_dict[field.name] = None
+
+                data.append(row_dict)
+
+        elif insert_type == "SELECT":
+            # Execute SELECT query and get DataFrame
+            select_query = components.get("select_query", "")
+            if not select_query:
+                raise QueryExecutionException(
+                    "SELECT query is missing in INSERT ... SELECT"
+                )
+
+            # Execute SELECT query
+            select_df = self.session.sql(f"SELECT {select_query}")
+            # Convert DataFrame to list of dictionaries
+            data = [
+                dict(row) if hasattr(row, "__dict__") else row
+                for row in select_df.collect()
+            ]
+
+        else:
+            raise QueryExecutionException(f"Unsupported INSERT type: {insert_type}")
+
+        # Validate and coerce data
+        if data:
+            from ...core.data_validation import DataValidator
+
+            validator = DataValidator(
+                table_schema,
+                validation_mode="relaxed",
+                enable_coercion=True,
+            )
+            data = validator.coerce(data)
+
+        # Insert data into storage backend
+        if data:
+            self.session.storage.insert_data(schema_name, table_name, data)
+
+        # Return empty DataFrame to indicate success
         from typing import cast
 
         return cast("IDataFrame", DataFrame([], StructType([])))
+
+    def _parse_sql_value(self, value_str: str) -> Any:
+        """Parse a SQL value string into Python type.
+
+        Args:
+            value_str: SQL value string (e.g., "123", "'text'", "NULL", "true")
+
+        Returns:
+            Parsed Python value
+        """
+        value_str = value_str.strip()
+
+        # Handle NULL
+        if value_str.upper() == "NULL" or value_str == "":
+            return None
+
+        # Handle quoted strings
+        if (value_str.startswith("'") and value_str.endswith("'")) or (
+            value_str.startswith('"') and value_str.endswith('"')
+        ):
+            return value_str[1:-1]  # Remove quotes
+
+        # Handle booleans
+        if value_str.upper() == "TRUE":
+            return True
+        if value_str.upper() == "FALSE":
+            return False
+
+        # Handle numbers
+        try:
+            # Try integer first
+            if "." not in value_str and "e" not in value_str.lower():
+                return int(value_str)
+            # Try float
+            return float(value_str)
+        except ValueError:
+            pass
+
+        # Default: return as string
+        return value_str
 
     def _execute_update(self, ast: SQLAST) -> IDataFrame:
         """Execute UPDATE query.
@@ -562,8 +743,148 @@ class SQLExecutor:
 
         Returns:
             Empty DataFrame indicating success.
+
+        Raises:
+            AnalysisException: If table does not exist.
+            QueryExecutionException: If UPDATE execution fails.
         """
-        # Mock implementation
+        components = ast.components
+        table_name = components.get("table_name", "unknown")
+        schema_name = components.get("schema_name")
+        set_clauses = components.get("set_clauses", [])
+        where_conditions = components.get("where_conditions", [])
+
+        if schema_name is None:
+            schema_name = self.session.storage.get_current_schema()
+
+        # Build qualified table name
+        qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
+
+        # Check if table exists
+        if not self.session.storage.table_exists(schema_name, table_name):
+            from ...errors import AnalysisException
+
+            raise AnalysisException(f"Table {qualified_name} does not exist")
+
+        # Get table data and schema directly (avoid DataFrame operations that use lazy evaluation)
+        rows = self.session.storage.get_data(schema_name, table_name)
+        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+
+        # Import required modules
+        import re
+        from types import SimpleNamespace
+
+        # Helper function to evaluate condition for a row
+        def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
+            """Evaluate WHERE condition for a single row."""
+            context = dict(row)
+            row_ns = SimpleNamespace(**row)
+            context["target"] = row_ns
+            try:
+                return bool(eval(condition, {"__builtins__": {}}, context))
+            except Exception:
+                return False
+
+        # Normalize WHERE condition if present
+        normalized_condition = None
+        if where_conditions:
+            where_expr = where_conditions[0]
+            # Normalize SQL expression to Python-compatible syntax
+            normalized_condition = re.sub(
+                r"\bAND\b", "and", where_expr, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"\bOR\b", "or", normalized_condition, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"\bNOT\b", "not", normalized_condition, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"(?<![<>!=])=(?!=)", "==", normalized_condition
+            )
+
+        # Helper function to parse and evaluate SET value
+        def evaluate_set_value(value_expr: Any, row: dict[str, Any]) -> Any:
+            """Parse and evaluate SET clause value."""
+            if isinstance(value_expr, str):
+                expr = value_expr.strip()
+                # Handle string literals
+                if (expr.startswith("'") and expr.endswith("'")) or (
+                    expr.startswith('"') and expr.endswith('"')
+                ):
+                    return expr[1:-1]
+                # Handle NULL
+                elif expr.upper() == "NULL":
+                    return None
+                # Handle booleans
+                elif expr.upper() == "TRUE":
+                    return True
+                elif expr.upper() == "FALSE":
+                    return False
+                # Handle numbers
+                elif expr.replace(".", "", 1).replace("-", "", 1).isdigit():
+                    if "." in expr:
+                        return float(expr)
+                    else:
+                        return int(expr)
+                # Try to evaluate as expression (column reference or simple expression)
+                else:
+                    context = dict(row)
+                    row_ns = SimpleNamespace(**row)
+                    context["target"] = row_ns
+                    # Normalize expression
+                    normalized = re.sub(r"(?<![<>!=])=(?!=)", "==", expr)
+                    try:
+                        return eval(normalized, {"__builtins__": {}}, context)
+                    except Exception:
+                        # If evaluation fails, return as string
+                        return expr
+            return value_expr
+
+        # Apply UPDATE to rows
+        updated_rows: list[dict[str, Any]] = []
+        for row in rows:
+            # Check if row matches WHERE condition
+            if normalized_condition:
+                should_update = evaluate_condition(row, normalized_condition)
+            else:
+                # No WHERE clause - update all rows
+                should_update = True
+
+            if not should_update:
+                # Keep row unchanged
+                updated_rows.append(row)
+                continue
+
+            # Update row with SET clauses
+            new_row = dict(row)
+            for set_clause in set_clauses:
+                column = set_clause.get("column")
+                value_expr = set_clause.get("value")
+
+                if not column:
+                    continue
+
+                # Evaluate and set new value
+                new_value = evaluate_set_value(value_expr, row)
+                new_row[column] = new_value
+
+            updated_rows.append(new_row)
+
+        # Overwrite table with updated data
+        if updated_rows:
+            # Create DataFrame with updated data
+            updated_dataframe = self.session.createDataFrame(updated_rows, table_schema)
+            # Overwrite table
+            updated_dataframe.write.format("delta").mode("overwrite").saveAsTable(
+                qualified_name
+            )
+        else:
+            # Empty result - clear table
+            empty_df = self.session.createDataFrame([], table_schema)
+            empty_df.write.format("delta").mode("overwrite").saveAsTable(qualified_name)
+
+        # Return empty DataFrame to indicate success
         from ...dataframe import DataFrame
         from ...spark_types import StructType
 
@@ -579,11 +900,90 @@ class SQLExecutor:
 
         Returns:
             Empty DataFrame indicating success.
-        """
-        # Mock implementation
-        from ...dataframe import DataFrame
 
-        return DataFrame([], StructType([]))  # type: ignore[return-value]
+        Raises:
+            AnalysisException: If table does not exist.
+        """
+        from ...errors import AnalysisException
+        import re
+        from types import SimpleNamespace
+
+        components = ast.components
+        table_name = components.get("table_name", "unknown")
+        schema_name = components.get("schema_name")
+        where_conditions = components.get("where_conditions", [])
+
+        if schema_name is None:
+            schema_name = self.session.storage.get_current_schema()
+
+        # Build qualified table name
+        qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
+
+        # Check if table exists
+        if not self.session.storage.table_exists(schema_name, table_name):
+            raise AnalysisException(f"Table {qualified_name} does not exist")
+
+        # Get table data and schema
+        rows = self.session.storage.get_data(schema_name, table_name)
+        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+
+        # Normalize WHERE condition if present
+        normalized_condition = None
+        if where_conditions:
+            where_expr = where_conditions[0]
+            # Normalize SQL expression to Python-compatible syntax
+            normalized_condition = re.sub(
+                r"\bAND\b", "and", where_expr, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"\bOR\b", "or", normalized_condition, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"\bNOT\b", "not", normalized_condition, flags=re.IGNORECASE
+            )
+            normalized_condition = re.sub(
+                r"(?<![<>!=])=(?!=)", "==", normalized_condition
+            )
+
+        # Helper function to evaluate condition for a row
+        def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
+            """Evaluate WHERE condition for a single row."""
+            context = dict(row)
+            row_ns = SimpleNamespace(**row)
+            context["target"] = row_ns
+            try:
+                return bool(eval(condition, {"__builtins__": {}}, context))
+            except Exception:
+                return False
+
+        # Filter rows - keep rows that DON'T match WHERE condition
+        if normalized_condition:
+            remaining_rows = [
+                row for row in rows if not evaluate_condition(row, normalized_condition)
+            ]
+        else:
+            # No WHERE clause - delete all rows (truncate table)
+            remaining_rows = []
+
+        # Overwrite table with remaining data
+        if remaining_rows:
+            # Create DataFrame with remaining data
+            remaining_dataframe = self.session.createDataFrame(
+                remaining_rows, table_schema
+            )
+            # Overwrite table
+            remaining_dataframe.write.format("delta").mode("overwrite").saveAsTable(
+                qualified_name
+            )
+        else:
+            # Empty result - clear table
+            empty_df = self.session.createDataFrame([], table_schema)
+            empty_df.write.format("delta").mode("overwrite").saveAsTable(qualified_name)
+
+        # Return empty DataFrame to indicate success
+        from typing import cast
+
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def _execute_show(self, ast: SQLAST) -> IDataFrame:
         """Execute SHOW query.

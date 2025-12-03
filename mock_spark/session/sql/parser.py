@@ -540,6 +540,33 @@ class SQLParser:
                 "definition": query,
             }
 
+        # Parse CREATE TABLE [IF NOT EXISTS] [schema.]table_name (column_definitions)
+        create_table_match = re.match(
+            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)\s*\((.*?)\)",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if create_table_match:
+            table_name = create_table_match.group(1).strip("`")
+            column_definitions = create_table_match.group(2).strip()
+            if_not_exists = "IF NOT EXISTS" in query.upper()
+
+            # Parse schema.table or just table
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
+            else:
+                schema = None  # Will use current schema
+                table = table_name
+
+            return {
+                "object_type": "TABLE",
+                "object_name": table,
+                "schema_name": schema,
+                "column_definitions": column_definitions,
+                "ignore_if_exists": if_not_exists,
+                "definition": query,
+            }
+
         # Default for other CREATE statements
         return {
             "object_type": "TABLE",
@@ -575,6 +602,30 @@ class SQLParser:
                 "ignore_if_not_exists": ignore_if_not_exists,  # Renamed for clarity
             }
 
+        # Parse DROP TABLE [IF EXISTS] [schema.]table_name
+        drop_table_match = re.match(
+            r"DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([`\w.]+)",
+            query,
+            re.IGNORECASE,
+        )
+        if drop_table_match:
+            table_name = drop_table_match.group(1).strip("`")
+            ignore_if_not_exists = "IF EXISTS" in query.upper()
+
+            # Parse schema.table or just table
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
+            else:
+                schema = None  # Will use current schema
+                table = table_name
+
+            return {
+                "object_type": "TABLE",
+                "object_name": table,
+                "schema_name": schema,
+                "ignore_if_not_exists": ignore_if_not_exists,
+            }
+
         # Default for other DROP statements
         return {
             "object_type": "TABLE",
@@ -590,8 +641,100 @@ class SQLParser:
         Returns:
             Dictionary of INSERT components.
         """
-        # Mock implementation
-        return {"table_name": "unknown", "columns": [], "values": []}
+        import re
+
+        # Parse INSERT INTO [schema.]table_name [(columns)] VALUES (values) or SELECT ...
+        insert_match = re.match(
+            r"INSERT\s+INTO\s+([`\w.]+)(?:\s*\(([^)]+)\))?\s*(VALUES|SELECT)",
+            query,
+            re.IGNORECASE,
+        )
+        if not insert_match:
+            return {
+                "table_name": "unknown",
+                "columns": [],
+                "values": [],
+                "type": "unknown",
+            }
+
+        table_name = insert_match.group(1).strip("`")
+        columns_str = insert_match.group(2)
+        insert_type = insert_match.group(3).upper()
+
+        # Parse schema.table or just table
+        if "." in table_name:
+            schema, table = table_name.split(".", 1)
+        else:
+            schema = None  # Will use current schema
+            table = table_name
+
+        # Parse column list if specified
+        columns = []
+        if columns_str:
+            columns = [col.strip().strip("`") for col in columns_str.split(",")]
+
+        if insert_type == "VALUES":
+            # Parse VALUES clause - handle multiple rows
+            values_match = re.search(
+                r"VALUES\s+(.+)$", query, re.IGNORECASE | re.DOTALL
+            )
+            if values_match:
+                values_str = values_match.group(1).strip()
+                # Parse individual value rows: (val1, val2), (val3, val4)
+                # This is a simplified parser - handles basic cases
+                values = []
+                # Find all value tuples
+                value_tuples = re.findall(r"\(([^)]+)\)", values_str)
+                for tuple_str in value_tuples:
+                    # Parse individual values (handles strings, numbers, null)
+                    # Split by comma but respect quoted strings
+                    row_values = []
+                    current_value = ""
+                    in_quotes = False
+                    quote_char = None
+                    for char in tuple_str:
+                        if char in ("'", '"') and (not in_quotes or char == quote_char):
+                            in_quotes = not in_quotes
+                            quote_char = char if in_quotes else None
+                            current_value += char
+                        elif char == "," and not in_quotes:
+                            row_values.append(current_value.strip())
+                            current_value = ""
+                        else:
+                            current_value += char
+                    if current_value:
+                        row_values.append(current_value.strip())
+                    values.append(row_values)
+                return {
+                    "table_name": table,
+                    "schema_name": schema,
+                    "columns": columns,
+                    "values": values,
+                    "type": "VALUES",
+                }
+
+        elif insert_type == "SELECT":
+            # Extract SELECT query part
+            select_match = re.search(
+                r"SELECT\s+(.+)$", query, re.IGNORECASE | re.DOTALL
+            )
+            if select_match:
+                select_query = select_match.group(1).strip()
+                return {
+                    "table_name": table,
+                    "schema_name": schema,
+                    "columns": columns,
+                    "select_query": select_query,
+                    "type": "SELECT",
+                }
+
+        return {
+            "table_name": table,
+            "schema_name": schema,
+            "columns": [],
+            "values": [],
+            "type": "unknown",
+        }
 
     def _parse_update_query(self, query: str) -> dict[str, Any]:
         """Parse UPDATE query components.
@@ -602,8 +745,71 @@ class SQLParser:
         Returns:
             Dictionary of UPDATE components.
         """
-        # Mock implementation
-        return {"table_name": "unknown", "set_clauses": [], "where_conditions": []}
+        import re
+
+        # Parse UPDATE [schema.]table_name SET column = value [, column = value ...] [WHERE condition]
+        update_match = re.match(
+            r"UPDATE\s+([`\w.]+)\s+SET\s+(.+?)(?:\s+WHERE\s+(.+))?$",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not update_match:
+            return {"table_name": "unknown", "set_clauses": [], "where_conditions": []}
+
+        table_name = update_match.group(1).strip("`")
+        set_clause = update_match.group(2).strip()
+        where_clause = update_match.group(3) if update_match.group(3) else None
+
+        # Parse schema.table or just table
+        if "." in table_name:
+            schema, table = table_name.split(".", 1)
+        else:
+            schema = None  # Will use current schema
+            table = table_name
+
+        # Parse SET clauses: column = value, column2 = value2
+        set_clauses = []
+        # Split by comma but respect quoted strings and nested expressions
+        current_clause = ""
+        in_quotes = False
+        quote_char = None
+        paren_depth = 0
+
+        for char in set_clause:
+            if char in ("'", '"') and (not in_quotes or char == quote_char):
+                in_quotes = not in_quotes
+                quote_char = char if in_quotes else None
+                current_clause += char
+            elif char == "(" and not in_quotes:
+                paren_depth += 1
+                current_clause += char
+            elif char == ")" and not in_quotes:
+                paren_depth -= 1
+                current_clause += char
+            elif char == "," and not in_quotes and paren_depth == 0:
+                set_clauses.append(current_clause.strip())
+                current_clause = ""
+            else:
+                current_clause += char
+
+        if current_clause:
+            set_clauses.append(current_clause.strip())
+
+        # Parse each SET clause into column = value pairs
+        parsed_set_clauses = []
+        for clause in set_clauses:
+            if "=" in clause:
+                parts = clause.split("=", 1)
+                column = parts[0].strip().strip("`")
+                value = parts[1].strip()
+                parsed_set_clauses.append({"column": column, "value": value})
+
+        return {
+            "table_name": table,
+            "schema_name": schema,
+            "set_clauses": parsed_set_clauses,
+            "where_conditions": [where_clause] if where_clause else [],
+        }
 
     def _parse_delete_query(self, query: str) -> dict[str, Any]:
         """Parse DELETE query components.
@@ -614,8 +820,32 @@ class SQLParser:
         Returns:
             Dictionary of DELETE components.
         """
-        # Mock implementation
-        return {"table_name": "unknown", "where_conditions": []}
+        import re
+
+        # Parse DELETE FROM [schema.]table_name [WHERE condition]
+        delete_match = re.match(
+            r"DELETE\s+FROM\s+([`\w.]+)(?:\s+WHERE\s+(.+))?$",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not delete_match:
+            return {"table_name": "unknown", "where_conditions": []}
+
+        table_name = delete_match.group(1).strip("`")
+        where_clause = delete_match.group(2) if delete_match.group(2) else None
+
+        # Parse schema.table or just table
+        if "." in table_name:
+            schema, table = table_name.split(".", 1)
+        else:
+            schema = None  # Will use current schema
+            table = table_name
+
+        return {
+            "table_name": table,
+            "schema_name": schema,
+            "where_conditions": [where_clause] if where_clause else [],
+        }
 
     def _parse_merge_query(self, query: str) -> dict[str, Any]:
         """Parse MERGE INTO query components.

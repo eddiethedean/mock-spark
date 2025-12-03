@@ -336,6 +336,7 @@ class DataFrame(
         """
         from .schema.schema_manager import SchemaManager
 
+        # Use _schema directly to avoid recursion (schema property calls this method)
         return SchemaManager.project_schema_with_operations(
             self._schema, self._operations_queue
         )
