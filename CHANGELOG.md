@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.9.1 — 2025-01-XX
+
+### Fixed
+- Fixed timezone handling in `from_unixtime()` and `timestamp_seconds()` functions to interpret Unix timestamps as UTC and convert to local timezone, matching PySpark behavior.
+- Fixed CI performance test job to handle cases where no performance tests are found (exit code 5).
+
+### Changed
+- Improved CI test execution with parallel test runs using pytest-xdist, significantly reducing CI execution time.
+- Added `pytest-xdist>=3.0.0` to dev dependencies for parallel test execution.
+
+### Testing
+- All compatibility tests now passing with proper timezone handling.
+- CI tests now run in parallel across 4 test groups (unit, compatibility, performance, documentation).
+
 ## 3.9.0 — 2025-12-02
 
 ### Added
