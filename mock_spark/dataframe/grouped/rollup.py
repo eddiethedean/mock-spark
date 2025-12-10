@@ -163,7 +163,7 @@ class RollupGroupedData(GroupedData):
         from ..dataframe import DataFrame
 
         if not result_data:
-            return DataFrame(result_data, StructType([]))
+            return DataFrame(result_data, StructType([]), self.df.storage)
 
         fields = []
         for key, value in result_data[0].items():
@@ -212,4 +212,4 @@ class RollupGroupedData(GroupedData):
                         )
                     )
         schema = StructType(fields)
-        return DataFrame(result_data, schema)
+        return DataFrame(result_data, schema, self.df.storage)

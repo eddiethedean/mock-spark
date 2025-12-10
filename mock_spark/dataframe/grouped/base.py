@@ -241,7 +241,7 @@ class GroupedData:
                             StructField(key, long_data_type, nullable=nullable)
                         )
             schema = StructType(fields)
-            return DataFrame(result_data, schema)
+            return DataFrame(result_data, schema, self.df.storage)
         else:
             # Empty result - but we still need to preserve schema
             # Build schema from group columns and aggregation expressions
@@ -401,7 +401,7 @@ class GroupedData:
                         )
 
             schema = StructType(fields)
-            return DataFrame(result_data, schema)
+            return DataFrame(result_data, schema, self.df.storage)
 
     def _evaluate_string_expression(
         self, expr: str, group_rows: list[dict[str, Any]]

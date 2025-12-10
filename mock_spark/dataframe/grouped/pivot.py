@@ -118,9 +118,9 @@ class PivotGroupedData:
                 else:
                     fields.append(StructField(key, StringType()))
             schema = StructType(fields)
-            return DataFrame(result_data, schema)
+            return DataFrame(result_data, schema, self.df.storage)
         else:
-            return DataFrame(result_data, StructType([]))
+            return DataFrame(result_data, StructType([]), self.df.storage)
 
     def _evaluate_string_expression(
         self, expr: str, group_rows: list[dict[str, Any]]
