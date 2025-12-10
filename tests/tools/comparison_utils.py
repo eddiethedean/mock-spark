@@ -518,12 +518,6 @@ def _compare_values(
                 f"Numerical mismatch in {context}: mock={mock_val}, expected={expected_val}, diff={diff}"
             )
 
-        if mock_num == expected_num:
-            return True, ""
-        return False, (
-            f"Numerical mismatch in {context}: mock={mock_val}, expected={expected_val}"
-        )
-
     if mock_val == expected_val:
         return True, ""
 

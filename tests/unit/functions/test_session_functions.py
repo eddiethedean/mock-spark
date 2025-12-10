@@ -34,32 +34,32 @@ class TestSessionFunctions:
 
     def test_current_database_uses_active_session(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_database()).collect()[0][0]
+        result = df.select(F.current_database()).collect()[0][0]  # type: ignore[operator]
         assert result == "analytics"
 
     def test_current_schema_aliases_current_database(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_schema()).collect()[0][0]
+        result = df.select(F.current_schema()).collect()[0][0]  # type: ignore[operator]
         assert result == "analytics"
 
     def test_current_catalog_returns_default(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_catalog()).collect()[0][0]
+        result = df.select(F.current_catalog()).collect()[0][0]  # type: ignore[operator]
         assert result == "spark_catalog"
 
     def test_current_user_reflects_spark_context_user(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_user()).collect()[0][0]
+        result = df.select(F.current_user()).collect()[0][0]  # type: ignore[operator]
         assert result == getpass.getuser()
 
     def test_current_helpers_are_session_isolated(self) -> None:
         """Ensure session-aware helpers reflect each session's catalog state."""
         primary_row = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(  # type: ignore[misc]
-                F.current_database(),
-                F.current_catalog(),
-                F.current_user(),
+            .select(
+                F.current_database(),  # type: ignore[operator]
+                F.current_catalog(),  # type: ignore[operator]
+                F.current_user(),  # type: ignore[operator]
             )
             .collect()[0]
         )
@@ -73,10 +73,10 @@ class TestSessionFunctions:
             SparkSession._singleton_session = other_session
             secondary_row = (
                 other_session.createDataFrame([{"value": 1}])
-                .select(  # type: ignore[misc]
-                    F.current_database(),
-                    F.current_catalog(),
-                    F.current_user(),
+                .select(
+                    F.current_database(),  # type: ignore[operator]
+                    F.current_catalog(),  # type: ignore[operator]
+                    F.current_user(),  # type: ignore[operator]
                 )
                 .collect()[0]
             )
@@ -92,7 +92,7 @@ class TestSessionFunctions:
 
         reaffirm = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(F.current_database())
+            .select(F.current_database())  # type: ignore[operator]
             .collect()[0][0]
         )
         assert reaffirm == "analytics"
@@ -101,10 +101,10 @@ class TestSessionFunctions:
         """`current_*` helpers stay consistent across catalog lifecycle events."""
         initial_row = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(  # type: ignore[misc]
-                F.current_database(),
-                F.current_schema(),
-                F.current_catalog(),
+            .select(
+                F.current_database(),  # type: ignore[operator]
+                F.current_schema(),  # type: ignore[operator]
+                F.current_catalog(),  # type: ignore[operator]
             )
             .collect()[0]
         )
@@ -119,10 +119,10 @@ class TestSessionFunctions:
 
         post_reset_row = (
             self.spark.createDataFrame([{"value": 2}])
-            .select(  # type: ignore[misc]
-                F.current_database(),
-                F.current_schema(),
-                F.current_catalog(),
+            .select(
+                F.current_database(),  # type: ignore[operator]
+                F.current_schema(),  # type: ignore[operator]
+                F.current_catalog(),  # type: ignore[operator]
             )
             .collect()[0]
         )

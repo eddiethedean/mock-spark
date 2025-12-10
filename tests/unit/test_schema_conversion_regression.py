@@ -9,7 +9,7 @@ import pytest
 try:
     from sqlalchemy import MetaData
 except ImportError:
-    MetaData = None  # type: ignore
+    MetaData = None
 
 from mock_spark import SparkSession
 from mock_spark.spark_types import (
