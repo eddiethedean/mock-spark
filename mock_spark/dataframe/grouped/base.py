@@ -14,6 +14,13 @@ from ...functions import (
     AggregateFunction,
 )
 from ...core.exceptions.analysis import AnalysisException
+from ...core.type_utils import (
+    is_literal as is_literal_type,
+    is_column,
+    is_column_operation,
+    get_expression_name,
+    get_expression_value,
+)
 
 from ..protocols import SupportsDataFrameOps
 
@@ -53,7 +60,6 @@ class GroupedData:
         Returns:
             New DataFrame with aggregated results.
         """
-        from ...functions.core.literals import Literal
         from ...functions import F
 
         # Handle dictionary syntax: {"col": "agg_func"}
@@ -115,25 +121,25 @@ class GroupedData:
                     if expr.startswith("count("):
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif isinstance(expr, Literal):
+                elif isinstance(expr, dict):
+                    # Handle dict expressions (for pivot operations)
+                    result_row.update(expr)
+                elif is_literal_type(expr):
                     # For literals in aggregation, just use their value
-                    lit_expr = expr
-                    # Use the literal's name as key if it has an alias
-                    result_key = getattr(lit_expr, "name", str(lit_expr.value))
-                    result_row[result_key] = lit_expr.value
-                elif isinstance(expr, ColumnOperation):
+                    # Note: Literal may be passed at runtime even if not in type annotation
+                    result_key = get_expression_name(expr)
+                    result_row[result_key] = get_expression_value(expr)
+                elif is_column_operation(expr):
                     # Handle ColumnOperation first (before AggregateFunction check)
                     # ColumnOperation has function_name but should be handled differently
                     result_key, result_value = self._evaluate_column_expression(
-                        expr, group_rows
+                        cast("Union[Column, ColumnOperation]", expr), group_rows
                     )
                     # Check if this is a count function
                     if hasattr(expr, "operation") and expr.operation == "count":
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif hasattr(expr, "function_name") and not isinstance(
-                    expr, ColumnOperation
-                ):
+                elif hasattr(expr, "function_name") and not is_column_operation(expr):
                     # Handle AggregateFunction (but not ColumnOperation)
                     result_key, result_value = self._evaluate_aggregate_function(
                         cast("AggregateFunction", expr), group_rows
@@ -142,10 +148,10 @@ class GroupedData:
                     if expr.function_name == "count":
                         non_nullable_keys.add(result_key)
                     result_row[result_key] = result_value
-                elif hasattr(expr, "name") and isinstance(expr, Column):
+                elif is_column(expr):
                     # Handle Column (but not ColumnOperation, which is handled above)
                     result_key, result_value = self._evaluate_column_expression(
-                        expr, group_rows
+                        cast("Union[Column, ColumnOperation]", expr), group_rows
                     )
                     result_row[result_key] = result_value
                 elif isinstance(expr, dict):
@@ -170,8 +176,8 @@ class GroupedData:
         # (used in both branches)
         literal_keys: set[str] = set()
         for expr in exprs:
-            if isinstance(expr, Literal):
-                lit_key = getattr(expr, "name", str(expr.value))
+            if is_literal_type(expr):
+                lit_key = get_expression_name(expr)
                 literal_keys.add(lit_key)
 
         # Create schema based on the first result row and expression types
@@ -306,10 +312,10 @@ class GroupedData:
                                 nullable=nullable,
                             )
                         )
-                elif isinstance(expr, Literal):
+                elif is_literal_type(expr):
                     # Handle literals
-                    lit_key = getattr(expr, "name", str(expr.value))
-                    lit_value = expr.value
+                    lit_key = get_expression_name(expr)
+                    lit_value = get_expression_value(expr)
                     if isinstance(lit_value, bool):
                         fields.append(
                             StructField(
@@ -489,8 +495,10 @@ class GroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
+                        from ...core.protocols import ColumnExpression  # noqa: TC001
+
                         expr_result = self.df._evaluate_column_expression(
-                            row_data, expr.column
+                            row_data, cast("ColumnExpression", expr.column)
                         )
                         if expr_result is not None:
                             # Coerce booleans to ints to mirror Spark when user casts
@@ -554,8 +562,10 @@ class GroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
+                        from ...core.protocols import ColumnExpression  # noqa: TC001
+
                         expr_result = self.df._evaluate_column_expression(
-                            row_data, expr.column
+                            row_data, cast("ColumnExpression", expr.column)
                         )
                         if expr_result is not None:
                             if isinstance(expr_result, bool):
@@ -628,8 +638,10 @@ class GroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
+                        from ...core.protocols import ColumnExpression  # noqa: TC001
+
                         expr_result = self.df._evaluate_column_expression(
-                            row_data, expr.column
+                            row_data, cast("ColumnExpression", expr.column)
                         )
                         if expr_result is not None:
                             values.append(expr_result)
@@ -653,8 +665,10 @@ class GroupedData:
                 values = []
                 for row_data in group_rows:
                     try:
+                        from ...core.protocols import ColumnExpression  # noqa: TC001
+
                         expr_result = self.df._evaluate_column_expression(
-                            row_data, expr.column
+                            row_data, cast("ColumnExpression", expr.column)
                         )
                         if expr_result is not None:
                             values.append(expr_result)

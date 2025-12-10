@@ -33,6 +33,7 @@ Example:
 from typing import Union, Optional
 from mock_spark.functions.base import Column, ColumnOperation
 from mock_spark.functions.core.literals import Literal
+from mock_spark.core.type_utils import normalize_date_input, get_expression_name
 
 
 class DateTimeFunctions:
@@ -1268,9 +1269,11 @@ class DateTimeFunctions:
 
     @staticmethod
     def make_date(
-        year: Union[Column, int],
-        month: Union[Column, int],
-        day: Union[Column, int],
+        year: Union[
+            Column, int, str, Literal
+        ],  # str and Literal may be passed at runtime
+        month: Union[Column, int, str, Literal],
+        day: Union[Column, int, str, Literal],
     ) -> ColumnOperation:
         """Construct a date from year, month, day integers (PySpark 3.0+).
 
@@ -1285,22 +1288,17 @@ class DateTimeFunctions:
         Example:
             >>> df.select(F.make_date(F.lit(2024), F.lit(3), F.lit(15)))
         """
-        year_col: Union[Column, Literal]
-        if isinstance(year, int):
-            year_col = Literal(year)
-        elif isinstance(year, str):
-            year_col = Column(year)  # ColumnOperation may be passed as str
-        elif isinstance(year, (Column, Literal)):
-            year_col = year
-        else:
-            # For other types (ColumnOperation, etc.), create Column from name
-            year_col = Column(str(year))
+        # normalize_date_input and get_expression_name are imported at module level
+
+        year_col = normalize_date_input(year)
+        month_col = normalize_date_input(month)
+        day_col = normalize_date_input(day)
 
         return ColumnOperation(
             year_col,
             "make_date",
-            value=(month, day),
-            name=f"make_date({year_col.name if hasattr(year_col, 'name') else year_col})",
+            value=(month_col, day_col),
+            name=f"make_date({get_expression_name(year_col)}, {get_expression_name(month_col)}, {get_expression_name(day_col)})",
         )
 
     @staticmethod
@@ -1357,7 +1355,7 @@ class DateTimeFunctions:
         elif isinstance(end, Column):
             # Already a Column, use as-is
             end_col = end
-        elif isinstance(end, Literal):
+        elif isinstance(end, Literal):  # type: ignore[unreachable]
             # Already a Literal, use as-is
             end_col = end
         else:
@@ -1376,7 +1374,7 @@ class DateTimeFunctions:
         elif isinstance(start, Column):
             # Already a Column, use as-is
             start_col = start
-        elif isinstance(start, Literal):
+        elif isinstance(start, Literal):  # type: ignore[unreachable]
             # Already a Literal, use as-is
             start_col = start
         else:
@@ -1459,7 +1457,7 @@ class DateTimeFunctions:
             timestamp_col = timestamp
         else:
             # For ColumnOperation or other types, create Column from name
-            timestamp_col = Column(str(timestamp))
+            timestamp_col = Column(str(timestamp))  # type: ignore[unreachable]
 
         # Get name safely
         timestamp_name = (
@@ -1551,39 +1549,12 @@ class DateTimeFunctions:
         Example:
             >>> df.select(F.timestamp_seconds(F.col("seconds")))
         """
-        from mock_spark.functions.core.literals import Literal
 
         # Normalize input - preserve Literal, convert int/str to Column
-        col_obj: Union[Column, Literal]
-        if isinstance(col, int):
-            # Convert int to Literal to preserve the value
-            col_obj = Literal(col)
-        elif isinstance(col, str):
-            col_obj = Column(col)
-        elif isinstance(col, Literal):
-            # Keep Literal as-is (important - don't convert to Column)
-            col_obj = col
-        elif isinstance(col, Column):
-            # Already a Column, keep as-is
-            col_obj = col
-        else:
-            # For ColumnOperation or other types, try to extract value or use as Column
-            if hasattr(col, "value"):
-                # It might be a ColumnOperation wrapping a Literal
-                if isinstance(col.value, (int, float)):
-                    col_obj = Literal(col.value)
-                else:
-                    col_obj = Column(str(col))
-            else:
-                col_obj = Column(str(col))
+        col_obj = normalize_date_input(col)
 
         # Extract value/name for ColumnOperation name generation
-        if isinstance(col_obj, Literal) and hasattr(col_obj, "value"):
-            col_name = str(col_obj.value)
-        elif hasattr(col_obj, "name"):
-            col_name = col_obj.name
-        else:
-            col_name = str(col_obj)
+        col_name = get_expression_name(col_obj)
 
         return ColumnOperation(
             col_obj,

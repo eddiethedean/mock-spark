@@ -7,6 +7,7 @@ This module contains conditional functions including CASE WHEN expressions.
 from typing import Any, Optional, Union, TYPE_CHECKING, cast
 from mock_spark.functions.base import Column, ColumnOperation
 from mock_spark.core.condition_evaluator import ConditionEvaluator
+from mock_spark.core.type_utils import get_expression_name
 
 if TYPE_CHECKING:
     from mock_spark.spark_types import DataType
@@ -393,19 +394,9 @@ class ConditionalFunctions:
         # Create operation with first column as base
         operation = ColumnOperation(mock_columns[0], "coalesce", mock_columns[1:])
         # Generate column name, handling Literals specially
-        name_parts = []
-        for c in mock_columns:
-            if hasattr(c, "value") and hasattr(c, "_name"):  # Literal
-                from mock_spark.functions.core.literals import Literal
+        # get_expression_name is imported at module level
 
-                if isinstance(c, Literal):
-                    name_parts.append(str(c.value))
-                else:
-                    name_parts.append(str(c))
-            elif hasattr(c, "name"):
-                name_parts.append(c.name)
-            else:
-                name_parts.append(str(c))
+        name_parts = [get_expression_name(c) for c in mock_columns]
         operation.name = f"coalesce({', '.join(name_parts)})"
         return operation
 
@@ -478,7 +469,7 @@ class ConditionalFunctions:
 
     @staticmethod
     def assert_true(
-        condition: Union[Column, ColumnOperation],
+        condition: Union[Column, ColumnOperation, str],  # str may be passed at runtime
     ) -> ColumnOperation:
         """Assert that a condition is true, raises error if false.
 
@@ -491,11 +482,43 @@ class ConditionalFunctions:
         Example:
             >>> df.select(F.assert_true(F.col("value") > 0))
         """
+        from mock_spark.functions import Column, ColumnOperation
+        from mock_spark.core.type_utils import (
+            is_column,
+            is_column_operation,
+            get_expression_name,
+        )
+
+        if is_column(condition):
+            col = condition
+            value = None
+        elif is_column_operation(condition):
+            # Type guard narrows condition to ColumnOperation
+            col = cast("ColumnOperation", condition).column
+            value = condition
+        elif isinstance(condition, str):
+            col = Column(condition)
+            value = None
+        else:
+            # For other types, try to get column attribute if it exists
+            col = getattr(condition, "column", condition)
+            value = condition
+
+        name_str = (
+            get_expression_name(condition)
+            if not isinstance(condition, str)
+            else condition
+        )
+
+        # Ensure col is a Column for ColumnOperation constructor
+        if not isinstance(col, Column):
+            col = Column(str(col))
+
         return ColumnOperation(
-            condition if isinstance(condition, Column) else condition.column,
+            col,
             "assert_true",
-            condition if not isinstance(condition, Column) else None,
-            name=f"assert_true({condition if isinstance(condition, str) else getattr(condition, 'name', 'condition')})",
+            value,
+            name=f"assert_true({name_str})",
         )
 
     # Priority 2: Conditional/Null Functions

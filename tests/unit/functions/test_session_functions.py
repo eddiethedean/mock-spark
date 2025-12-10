@@ -15,7 +15,7 @@ class TestSessionFunctions:
     """Verify session-aware helpers reflect Spark session state."""
 
     def setup_method(self) -> None:
-        SparkSession._singleton_session = None  # type: ignore[attr-defined]
+        SparkSession._singleton_session = None
         assert SparkSession.builder is not None  # Type guard for mypy
         self.spark = SparkSession.builder.appName(
             "session-functions-test"
@@ -30,36 +30,36 @@ class TestSessionFunctions:
             self.spark.catalog.dropDatabase("analytics", ignoreIfNotExists=True)
         finally:
             self.spark.stop()
-            SparkSession._singleton_session = None  # type: ignore[attr-defined]
+            SparkSession._singleton_session = None
 
     def test_current_database_uses_active_session(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_database()).collect()[0][0]  # type: ignore[operator]
+        result = df.select(F.current_database()).collect()[0][0]
         assert result == "analytics"
 
     def test_current_schema_aliases_current_database(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_schema()).collect()[0][0]  # type: ignore[operator]
+        result = df.select(F.current_schema()).collect()[0][0]
         assert result == "analytics"
 
     def test_current_catalog_returns_default(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_catalog()).collect()[0][0]  # type: ignore[operator]
+        result = df.select(F.current_catalog()).collect()[0][0]
         assert result == "spark_catalog"
 
     def test_current_user_reflects_spark_context_user(self) -> None:
         df = self.spark.createDataFrame([{"value": 1}])
-        result = df.select(F.current_user()).collect()[0][0]  # type: ignore[operator]
+        result = df.select(F.current_user()).collect()[0][0]
         assert result == getpass.getuser()
 
     def test_current_helpers_are_session_isolated(self) -> None:
         """Ensure session-aware helpers reflect each session's catalog state."""
         primary_row = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(
-                F.current_database(),  # type: ignore[operator]
-                F.current_catalog(),  # type: ignore[operator]
-                F.current_user(),  # type: ignore[operator]
+            .select(  # type: ignore[misc]
+                F.current_database(),
+                F.current_catalog(),
+                F.current_user(),
             )
             .collect()[0]
         )
@@ -73,10 +73,10 @@ class TestSessionFunctions:
             SparkSession._singleton_session = other_session
             secondary_row = (
                 other_session.createDataFrame([{"value": 1}])
-                .select(
-                    F.current_database(),  # type: ignore[operator]
-                    F.current_catalog(),  # type: ignore[operator]
-                    F.current_user(),  # type: ignore[operator]
+                .select(  # type: ignore[misc]
+                    F.current_database(),
+                    F.current_catalog(),
+                    F.current_user(),
                 )
                 .collect()[0]
             )
@@ -92,7 +92,7 @@ class TestSessionFunctions:
 
         reaffirm = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(F.current_database())  # type: ignore[operator]
+            .select(F.current_database())
             .collect()[0][0]
         )
         assert reaffirm == "analytics"
@@ -101,10 +101,10 @@ class TestSessionFunctions:
         """`current_*` helpers stay consistent across catalog lifecycle events."""
         initial_row = (
             self.spark.createDataFrame([{"value": 1}])
-            .select(
-                F.current_database(),  # type: ignore[operator]
-                F.current_schema(),  # type: ignore[operator]
-                F.current_catalog(),  # type: ignore[operator]
+            .select(  # type: ignore[misc]
+                F.current_database(),
+                F.current_schema(),
+                F.current_catalog(),
             )
             .collect()[0]
         )
@@ -119,10 +119,10 @@ class TestSessionFunctions:
 
         post_reset_row = (
             self.spark.createDataFrame([{"value": 2}])
-            .select(
-                F.current_database(),  # type: ignore[operator]
-                F.current_schema(),  # type: ignore[operator]
-                F.current_catalog(),  # type: ignore[operator]
+            .select(  # type: ignore[misc]
+                F.current_database(),
+                F.current_schema(),
+                F.current_catalog(),
             )
             .collect()[0]
         )
@@ -132,11 +132,11 @@ class TestSessionFunctions:
         assert post_reset_row[2] == "spark_catalog"
 
     def test_error_when_no_active_session(self) -> None:
-        SparkSession._singleton_session = None  # type: ignore[attr-defined]
+        SparkSession._singleton_session = None
         from mock_spark.errors import PySparkValueError
 
         try:
             with pytest.raises(PySparkValueError):
                 F.current_database()  # type: ignore[operator]
         finally:
-            SparkSession._singleton_session = self.spark  # type: ignore[attr-defined]
+            SparkSession._singleton_session = self.spark

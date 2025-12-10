@@ -40,12 +40,17 @@ class PolarsExporter:
             return pl.DataFrame(schema_dict)
 
         # Convert to list of dicts if needed
-        if isinstance(data[0], dict):
-            return pl.DataFrame(data)
-        else:
-            # Convert Row objects to dicts
-            dict_data = [dict(row) for row in data]
-            return pl.DataFrame(dict_data)
+        # Check first element to determine if conversion is needed
+        from ...core.type_utils import is_row
+
+        first_item = data[0]
+        if isinstance(first_item, dict):  # type: ignore[unreachable]
+            return pl.DataFrame(data)  # type: ignore[unreachable]
+        # Convert Row objects to dicts
+        # Row objects can be converted to dict using dict() constructor
+        # Note: Row and dict can coexist at runtime even though mypy flags this
+        dict_data = [dict(row) if is_row(row) else row for row in data]
+        return pl.DataFrame(dict_data)
 
     def to_pandas(self, df: "DataFrame") -> Any:
         """Convert DataFrame to Pandas DataFrame.

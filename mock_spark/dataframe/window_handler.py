@@ -442,8 +442,9 @@ class WindowFunctionHandler:
                     value = row.get(order_col_name)
                     current_values.append(value)
 
-                if previous_values is not None and current_values != previous_values:
-                    current_rank += 1
+                if previous_values is not None:  # noqa: SIM102
+                    if current_values != previous_values:  # type: ignore[unreachable]
+                        current_rank += 1
 
                 data[idx][col_name] = current_rank
                 previous_values = current_values

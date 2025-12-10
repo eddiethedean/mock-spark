@@ -617,12 +617,11 @@ class Row:
                 data_dict: Union[dict[str, Any], OrderedDict[str, Any]]
                 if isinstance(self.data, list):
                     data_dict = OrderedDict(self.data)
+                elif isinstance(self.data, dict):
+                    data_dict = dict(self.data)
                 else:
-                    # self.data is dict-like or list
-                    if isinstance(self.data, dict):
-                        data_dict = dict(self.data)
-                    else:
-                        data_dict = dict(self.data)
+                    # self.data is dict-like (has items() method)
+                    data_dict = dict(self.data)  # type: ignore[unreachable]
                 for key, value in data_dict.items():
                     if not hasattr(other, key) or getattr(other, key) != value:
                         return False

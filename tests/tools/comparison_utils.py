@@ -286,7 +286,7 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
     for col in columns:
         value = None
         try:
-            value = row[col]  # type: ignore[index]
+            value = row[col]
         except Exception:
             value = getattr(row, col, None)
         result[col] = value

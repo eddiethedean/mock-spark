@@ -1,34 +1,28 @@
 """
-Aggregation operations mixin for DataFrame.
+Aggregation service for DataFrame operations.
 
-This mixin provides aggregation operations that can be mixed into
-the DataFrame class to add aggregation capabilities.
+This service provides aggregation operations using composition instead of mixin inheritance.
 """
 
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from ...core.exceptions.operation import SparkColumnNotFoundError
 from ...functions import Column, ColumnOperation, AggregateFunction
 from ..grouped import GroupedData
-from ..protocols import SupportsDataFrameOps
 
 if TYPE_CHECKING:
-    from ...spark_types import StructType
+    from ..dataframe import DataFrame
+    from ..protocols import SupportsDataFrameOps
 
-SupportsDF = TypeVar("SupportsDF", bound=SupportsDataFrameOps)
 
+class AggregationService:
+    """Service providing aggregation operations for DataFrame."""
 
-class AggregationOperations(Generic[SupportsDF]):
-    """Mixin providing aggregation operations for DataFrame."""
+    def __init__(self, df: "DataFrame"):
+        """Initialize aggregation service with DataFrame instance."""
+        self._df = df
 
-    if TYPE_CHECKING:
-        schema: StructType
-        data: list[dict[str, Any]]
-        _operations_queue: list[tuple[str, Any]]
-
-        def _queue_op(self, operation: str, payload: Any) -> SupportsDataFrameOps: ...
-
-    def groupBy(self: SupportsDF, *columns: Union[str, Column]) -> GroupedData:
+    def groupBy(self, *columns: Union[str, Column]) -> GroupedData:
         """Group DataFrame by columns for aggregation operations.
 
         Args:
@@ -50,15 +44,16 @@ class AggregationOperations(Generic[SupportsDF]):
 
         # Validate that all columns exist
         for col_name in col_names:
-            if col_name not in [field.name for field in self.schema.fields]:
-                available_columns = [field.name for field in self.schema.fields]
+            if col_name not in [field.name for field in self._df.schema.fields]:
+                available_columns = [field.name for field in self._df.schema.fields]
                 raise SparkColumnNotFoundError(col_name, available_columns)
 
-        return GroupedData(self, col_names)
+        # Cast to SupportsDataFrameOps to satisfy type checker
+        # DataFrame implements the protocol at runtime, but mypy can't verify
+        # due to minor signature differences (e.g., approxQuantile accepts list[str])
+        return GroupedData(cast("SupportsDataFrameOps", self._df), col_names)
 
-    def groupby(
-        self: SupportsDF, *cols: Union[str, Column], **kwargs: Any
-    ) -> GroupedData:
+    def groupby(self, *cols: Union[str, Column], **kwargs: Any) -> GroupedData:
         """Lowercase alias for groupBy() (all PySpark versions).
 
         Args:
@@ -68,11 +63,9 @@ class AggregationOperations(Generic[SupportsDF]):
         Returns:
             GroupedData object
         """
-        return cast("GroupedData", self.groupBy(*cols, **kwargs))
+        return self.groupBy(*cols, **kwargs)
 
-    def rollup(
-        self: SupportsDF, *columns: Union[str, Column]
-    ) -> Any:  # Returns RollupGroupedData
+    def rollup(self, *columns: Union[str, Column]) -> Any:  # Returns RollupGroupedData
         """Create rollup grouped data for hierarchical grouping.
 
         Args:
@@ -93,17 +86,16 @@ class AggregationOperations(Generic[SupportsDF]):
 
         # Validate that all columns exist
         for col_name in col_names:
-            if col_name not in [field.name for field in self.schema.fields]:
-                available_columns = [field.name for field in self.schema.fields]
+            if col_name not in [field.name for field in self._df.schema.fields]:
+                available_columns = [field.name for field in self._df.schema.fields]
                 raise SparkColumnNotFoundError(col_name, available_columns)
 
         from ..grouped.rollup import RollupGroupedData
 
-        return RollupGroupedData(self, col_names)
+        # Cast to SupportsDataFrameOps to satisfy type checker
+        return RollupGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
 
-    def cube(
-        self: SupportsDF, *columns: Union[str, Column]
-    ) -> Any:  # Returns CubeGroupedData
+    def cube(self, *columns: Union[str, Column]) -> Any:  # Returns CubeGroupedData
         """Create cube grouped data for multi-dimensional grouping.
 
         Args:
@@ -124,17 +116,18 @@ class AggregationOperations(Generic[SupportsDF]):
 
         # Validate that all columns exist
         for col_name in col_names:
-            if col_name not in [field.name for field in self.schema.fields]:
-                available_columns = [field.name for field in self.schema.fields]
+            if col_name not in [field.name for field in self._df.schema.fields]:
+                available_columns = [field.name for field in self._df.schema.fields]
                 raise SparkColumnNotFoundError(col_name, available_columns)
 
         from ..grouped.cube import CubeGroupedData
 
-        return CubeGroupedData(self, col_names)
+        # Cast to SupportsDataFrameOps to satisfy type checker
+        return CubeGroupedData(cast("SupportsDataFrameOps", self._df), col_names)
 
     def agg(
-        self: SupportsDF, *exprs: Union[str, Column, ColumnOperation, dict[str, str]]
-    ) -> SupportsDF:
+        self, *exprs: Union[str, Column, ColumnOperation, dict[str, str]]
+    ) -> "SupportsDataFrameOps":
         """Aggregate DataFrame without grouping (global aggregation).
 
         Args:
@@ -175,9 +168,9 @@ class AggregationOperations(Generic[SupportsDF]):
                     # Fallback to string expression
                     converted_exprs.append(f"{agg_func}({col_name})")
             # Create a grouped data object with empty group columns for global aggregation
-            grouped = GroupedData(self, [])
-            return cast("SupportsDF", grouped.agg(*converted_exprs))
+            grouped = GroupedData(cast("SupportsDataFrameOps", self._df), [])
+            return cast("SupportsDataFrameOps", grouped.agg(*converted_exprs))
 
         # Create a grouped data object with empty group columns for global aggregation
-        grouped = GroupedData(self, [])
-        return cast("SupportsDF", grouped.agg(*exprs))
+        grouped = GroupedData(cast("SupportsDataFrameOps", self._df), [])
+        return cast("SupportsDataFrameOps", grouped.agg(*exprs))

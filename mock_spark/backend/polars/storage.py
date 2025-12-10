@@ -170,7 +170,9 @@ class PolarsTable(ITable):
             if col_name in df.columns:
                 df = df.filter(pl.col(col_name) == value)
 
-        return df.to_dicts()
+        from typing import cast
+
+        return cast("list[dict[str, Any]]", df.to_dicts())
 
     def count(self) -> int:
         """Count rows in table.

@@ -301,7 +301,7 @@ class ColumnValidator:
                         ColumnValidator.validate_column_exists(
                             schema, expression._original_column.name, operation
                         )
-                elif isinstance(expression._original_column, ColumnOperation):
+                elif isinstance(expression._original_column, ColumnOperation):  # type: ignore[unreachable]
                     ColumnValidator.validate_expression_columns(
                         schema,
                         expression._original_column,

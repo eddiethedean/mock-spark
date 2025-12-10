@@ -146,7 +146,7 @@ class SQLExecutor:
                 try:
                     df1_any = self.session.table(table_name)
                     df1: DataFrame
-                    if not isinstance(df1_any, DataFrame):
+                    if not isinstance(df1_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
 
                         schema = (
@@ -156,14 +156,14 @@ class SQLExecutor:
                         )
                         df1 = DataFrame(df1_any.collect(), schema)
                     else:
-                        df1 = df1_any
+                        df1 = df1_any  # type: ignore[unreachable]
 
                     # Get second table
                     join_info = joins[0]
                     table2_name = join_info["table"]
                     df2_any = self.session.table(table2_name)
                     df2: DataFrame
-                    if not isinstance(df2_any, DataFrame):
+                    if not isinstance(df2_any, DataFrame):  # type: ignore[unreachable]
                         from ...spark_types import StructType
 
                         schema = (
@@ -173,7 +173,7 @@ class SQLExecutor:
                         )
                         df2 = DataFrame(df2_any.collect(), schema)
                     else:
-                        df2 = df2_any
+                        df2 = df2_any  # type: ignore[unreachable]
 
                     # Parse join condition (e.g., "u.id = d.id")
                     join_condition = join_info.get("condition", "")
@@ -197,11 +197,11 @@ class SQLExecutor:
                             if table1_col and table2_col:
                                 # Perform join
                                 join_col = df1[table1_col] == df2[table2_col]
-                                df = df1.join(df2, join_col, "inner")  # type: ignore[arg-type]
+                                df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
                             else:
                                 # Fallback: try direct column names
                                 join_col = df1[col1] == df2[col2]
-                                df = df1.join(df2, join_col, "inner")  # type: ignore[arg-type]
+                                df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
                         else:
                             # Fallback: try to join on common column names
                             common_cols = set(df1.columns) & set(df2.columns)
@@ -210,12 +210,24 @@ class SQLExecutor:
                                 join_condition = (
                                     df1[join_col_name] == df2[join_col_name]
                                 )
-                                df = df1.join(df2, join_condition, "inner")  # type: ignore[arg-type]
+                                df = cast(
+                                    "DataFrame",
+                                    df1.join(cast("SupportsDataFrameOps", df2), join_condition, "inner"),
+                                )
                             else:
-                                df = df1.crossJoin(df2)
+                                # Cast df2 to SupportsDataFrameOps to satisfy type checker
+                                # DataFrame implements the protocol at runtime
+                                df = cast(
+                                    "DataFrame",
+                                    df1.crossJoin(cast("SupportsDataFrameOps", df2)),
+                                )
                     else:
                         # No condition - cross join
-                        df = df1.crossJoin(df2)
+                        # Cast df2 to SupportsDataFrameOps to satisfy type checker
+                        df = cast(
+                            "DataFrame",
+                            df1.crossJoin(cast("SupportsDataFrameOps", df2)),
+                        )
                 except Exception:
                     from ...dataframe import DataFrame
                     from ...spark_types import StructType
@@ -230,8 +242,8 @@ class SQLExecutor:
                     # Convert IDataFrame to DataFrame if needed
                     from ...dataframe import DataFrame
 
-                    if isinstance(df_any, DataFrame):
-                        df = df_any
+                    if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
+                        df = df_any  # type: ignore[unreachable]
                     else:
                         # df_any may be an IDataFrame; construct DataFrame from its public API
                         from ...spark_types import StructType
@@ -328,7 +340,7 @@ class SQLExecutor:
                         parts = [p.strip() for p in inner.split("*")]
                         if len(parts) == 2:
                             col_expr = F.col(parts[0]) * F.col(parts[1])
-                            expr = F.sum(col_expr.name)  # type: ignore[arg-type]
+                            expr = F.sum(col_expr.name)
                         else:
                             # More complex expression - try to parse
                             expr = F.sum(inner)  # Fallback
@@ -343,7 +355,7 @@ class SQLExecutor:
                         parts = [p.strip() for p in inner.split("*")]
                         if len(parts) == 2:
                             col_expr = F.col(parts[0]) * F.col(parts[1])
-                            expr = F.avg(col_expr.name)  # type: ignore[arg-type]
+                            expr = F.avg(col_expr.name)
                         else:
                             expr = F.avg(inner)
                     else:

@@ -54,10 +54,10 @@ class DataFrameFactory:
         if (
             schema is not None
             and not isinstance(schema, (StructType, str, list))
-            and hasattr(schema, "fields")
+            and hasattr(schema, "fields")  # type: ignore[unreachable]
         ):
             # This is likely a PySpark StructType - convert it
-            schema = self._convert_pyspark_struct_type(schema)
+            schema = self._convert_pyspark_struct_type(schema)  # type: ignore[unreachable]
 
         # Handle DDL schema strings
         if isinstance(schema, str):
@@ -138,7 +138,7 @@ class DataFrameFactory:
         # IMPORTANT: When explicit schema is provided with empty data, preserve it!
         if not isinstance(schema, StructType):
             # This should never happen, but provide a fallback
-            schema = StructType([])
+            schema = StructType([])  # type: ignore[unreachable]
 
         # Validate that schema is properly initialized with fields attribute
         # This ensures empty DataFrames with explicit schemas preserve column information

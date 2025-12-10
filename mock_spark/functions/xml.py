@@ -33,7 +33,9 @@ class XMLFunctions:
         )
 
     @staticmethod
-    def to_xml(col: Union[Column, ColumnOperation]) -> ColumnOperation:
+    def to_xml(
+        col: Union[Column, ColumnOperation, str],
+    ) -> ColumnOperation:  # str may be passed at runtime
         """Convert struct column to XML string.
 
         Args:
@@ -46,10 +48,17 @@ class XMLFunctions:
             >>> df.select(F.to_xml(F.struct(F.col("name"), F.col("age"))))
         """
         if isinstance(col, str):
-            col = Column(col)
+            col_obj: Union[Column, ColumnOperation] = Column(col)
+        elif isinstance(col, (Column, ColumnOperation)):
+            col_obj = col
+        else:
+            # For other types, convert to Column
+            col_obj = Column(str(col))  # type: ignore[unreachable]
+
+        base_col = col_obj if isinstance(col_obj, Column) else col_obj.column
 
         return ColumnOperation(
-            col if isinstance(col, Column) else col.column,
+            base_col,
             "to_xml",
             col if isinstance(col, ColumnOperation) else None,
             name=f"to_xml({getattr(col, 'name', 'struct')})",

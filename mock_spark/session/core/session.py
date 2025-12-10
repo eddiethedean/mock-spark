@@ -397,7 +397,7 @@ class SparkSession:
 
         # Ensure schema is not None
         if table_schema is None:
-            from ...spark_types import StructType
+            from ...spark_types import StructType  # type: ignore[unreachable]
 
             table_schema = StructType([])
         else:

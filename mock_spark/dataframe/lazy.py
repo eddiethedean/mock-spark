@@ -784,7 +784,9 @@ class LazyEvaluationEngine:
                 elif op_name == "groupBy":
                     current_ops = cast("SupportsDataFrameOps", current)
                     grouped = current_ops.groupBy(*op_val)  # Returns GroupedData
-                    current = cast("DataFrame", grouped)  # type: ignore[assignment]
+                    # GroupedData is not a DataFrame, but we handle it in the next iteration
+                    # This cast is intentional for the lazy evaluation flow
+                    current = cast("DataFrame", grouped)
                 elif op_name == "join":
                     other_df, on, how = op_val
                     # Manual join implementation

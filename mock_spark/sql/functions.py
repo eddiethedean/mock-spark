@@ -85,4 +85,4 @@ if hasattr(Functions, "__init__"):
         return _original_functions_init(self, *args, **kwargs)
 
     # Monkey-patch Functions.__init__ to add deprecation warning
-    Functions.__init__ = _deprecated_functions_init  # type: ignore[assignment]
+    Functions.__init__ = _deprecated_functions_init  # type: ignore[method-assign]

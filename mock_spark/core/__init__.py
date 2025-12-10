@@ -12,6 +12,16 @@ from .interfaces.storage import IStorageManager, ITable, ISchema
 from .interfaces.functions import IFunction, IColumnFunction, IAggregateFunction
 from .schema_inference import SchemaInferenceEngine, infer_schema_from_data
 from .data_validation import DataValidator, validate_data, coerce_data
+from .type_utils import (
+    is_column,
+    is_column_operation,
+    is_literal,
+    is_row,
+    get_expression_name,
+    get_expression_value,
+    normalize_to_column_expression,
+    normalize_date_input,
+)
 from .protocols import (
     ColumnLike,
     OperationLike,
@@ -55,4 +65,13 @@ __all__ = [
     "DataValidator",
     "validate_data",
     "coerce_data",
+    # Type Utilities
+    "is_column",
+    "is_column_operation",
+    "is_literal",
+    "is_row",
+    "get_expression_name",
+    "get_expression_value",
+    "normalize_to_column_expression",
+    "normalize_date_input",
 ]

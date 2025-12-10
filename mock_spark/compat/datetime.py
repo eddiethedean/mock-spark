@@ -82,7 +82,7 @@ def to_date_str(
     # Type narrowing: check if column is PySpark column at runtime
     if PySparkColumn is not None and isinstance(column, PySparkColumn):
         # PySparkColumn is part of ColumnLike union, so this is valid
-        return column
+        return cast("Union[ColumnOperation, ColumnLike]", column)
 
     to_date_op = _ensure_to_date_operation(column)
     formatted = F.date_format(cast("Column", to_date_op), fmt)
@@ -99,7 +99,7 @@ def to_timestamp_str(
     # Type narrowing: check if column is PySpark column at runtime
     if PySparkColumn is not None and isinstance(column, PySparkColumn):
         # PySparkColumn is part of ColumnLike union, so this is valid
-        return column
+        return cast("Union[ColumnOperation, ColumnLike]", column)
 
     to_timestamp_op = _ensure_to_timestamp_operation(column, source_format)
     formatted = F.date_format(cast("Column", to_timestamp_op), fmt)

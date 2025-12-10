@@ -1718,7 +1718,9 @@ class ExpressionEvaluator:
             parts = str(value).split(delimiter)
             # part is 1-indexed
             if 1 <= part <= len(parts):
-                return parts[part - 1]
+                from typing import cast
+
+                return cast("Optional[str]", parts[part - 1])
             return None
         return None
 
@@ -2039,7 +2041,7 @@ class ExpressionEvaluator:
     ) -> Optional[dict[str, Any]]:
         """Coerce dictionaries into StructType layout."""
         if not isinstance(schema, StructType):
-            return None
+            return None  # type: ignore[unreachable]
 
         if data is None:
             return {field.name: None for field in schema.fields}
@@ -3190,7 +3192,7 @@ class ExpressionEvaluator:
             if isinstance(dt, dt_module.date) and not isinstance(
                 dt, dt_module.datetime
             ):
-                return dt.isoformat()
+                return dt.isoformat()  # type: ignore[unreachable]
             return dt.strftime("%Y-%m-%d")
 
     def _func_months_between(self, value: Any, operation: ColumnOperation) -> Any:
@@ -3326,7 +3328,9 @@ class ExpressionEvaluator:
             format_str = operation.value[0]
             args = operation.value[1:] if len(operation.value) > 1 else []
             try:
-                return format_str % tuple(args)
+                from typing import cast
+
+                return cast("str", format_str % tuple(args))
             except (TypeError, ValueError):
                 return None
         return None

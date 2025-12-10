@@ -155,6 +155,24 @@ module = [
 ]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = [
+    "mock_spark.functions.conditional",
+    "mock_spark.functions.datetime",
+    "mock_spark.dataframe.grouped.base",
+    "mock_spark.backend.polars.export",
+    "mock_spark.functions.functions",
+    "mock_spark.dataframe.operations.set_operations",
+    "mock_spark.core.schema_inference",
+    "mock_spark.core.data_validation",
+    "mock_spark.functions.window_execution",
+    "mock_spark.dataframe.window_handler",
+    "mock_spark.spark_types",
+    "mock_spark.optimizer.query_optimizer",
+    "mock_spark.dataframe.writer",
+]
+warn_unreachable = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

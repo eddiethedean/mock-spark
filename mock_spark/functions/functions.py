@@ -62,7 +62,7 @@ class Functions:
         if session is not None:
             return session
 
-        active = SparkSession._singleton_session  # type: ignore[attr-defined]
+        active = SparkSession._singleton_session
         if active is not None:
             return active
 
@@ -1846,20 +1846,15 @@ class Functions:
             raise ValueError("struct requires at least one column")
 
         # Check if first column is a Literal - if so, store all columns in value
-        from .core.literals import Literal
 
         # Generate name with actual column/literal values
-        col_names = []
-        for col in cols:
-            if isinstance(col, Literal):
-                col_names.append(str(col.value))
-            elif hasattr(col, "name"):
-                col_names.append(col.name)
-            else:
-                col_names.append(str(col))
+        from mock_spark.core.type_utils import get_expression_name, is_literal
+
+        col_names = [get_expression_name(col) for col in cols]
         struct_name = f"struct({', '.join(col_names)})"
 
-        if isinstance(cols[0], Literal):
+        # Check if first column is a Literal (runtime check, not in type annotation)
+        if is_literal(cols[0]):
             # Use a dummy column and store all columns in value
             base_col = Column("__struct_dummy__")
             return ColumnOperation(

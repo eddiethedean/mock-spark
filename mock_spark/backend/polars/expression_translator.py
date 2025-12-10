@@ -891,7 +891,7 @@ class PolarsExpressionTranslator:
                         if result is None:
                             result = pl.when(n_expr == i).then(col)
                         else:
-                            result = result.when(n_expr == i).then(col)
+                            result = result.when(n_expr == i).then(col)  # type: ignore[unreachable]
                     return (
                         result.otherwise(None) if result is not None else pl.lit(None)
                     )
@@ -1108,7 +1108,7 @@ class PolarsExpressionTranslator:
                     # Use map_elements to handle both formats
                     def parse_and_format(val: str) -> Optional[str]:
                         if val is None:
-                            return None
+                            return None  # type: ignore[unreachable]
                         from datetime import datetime
 
                         # Try datetime format first

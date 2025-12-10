@@ -115,7 +115,7 @@ class SchemaInferenceEngine:
                 normalized_row = {key: row.get(key, None) for key in sorted_keys}
                 normalized_data.append(normalized_row)
             else:
-                normalized_data.append(row)
+                normalized_data.append(row)  # type: ignore[unreachable]
 
         return schema, normalized_data
 
@@ -244,6 +244,6 @@ def normalize_data_for_schema(
             normalized_row = {key: row.get(key, None) for key in sorted_keys}
             normalized_data.append(normalized_row)
         else:
-            normalized_data.append(row)
+            normalized_data.append(row)  # type: ignore[unreachable]
 
     return normalized_data

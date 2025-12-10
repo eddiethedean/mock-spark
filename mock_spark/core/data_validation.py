@@ -132,7 +132,8 @@ class DataValidator:
 
         for row in data:
             if not isinstance(row, dict):
-                coerced.append(row)  # Leave non-dict rows as-is
+                # Leave non-dict rows as-is
+                coerced.append(row)  # type: ignore[unreachable]
                 continue
 
             new_row: dict[str, Any] = {}

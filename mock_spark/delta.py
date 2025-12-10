@@ -336,7 +336,9 @@ class DeltaTable:
             from .spark_types import StructType
 
             return StructType([])
-        return schema
+        from typing import cast
+
+        return cast("StructType", schema)
 
     def _evaluate_row_condition(
         self, normalized_expression: str, row: dict[str, Any], alias: str

@@ -66,7 +66,11 @@ class DataFrameAttributeHandler:
             pass
 
         # If not a column, raise SparkColumnNotFoundError for better error messages
-        available_cols = getattr(obj, "columns", [])
+        # Use object.__getattribute__ to avoid recursion when accessing columns property
+        try:
+            available_cols = object.__getattribute__(obj, "columns")
+        except AttributeError:
+            available_cols = []
         from ..core.exceptions.operation import SparkColumnNotFoundError
 
         raise SparkColumnNotFoundError(name, available_cols)

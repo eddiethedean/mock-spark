@@ -163,7 +163,7 @@ class ComparisonOperations:
             )
         else:
             # If pattern is a Column, create a binary operation
-            from ...functions.base import Column
+            from ...functions.base import Column  # type: ignore[unreachable]
 
             if isinstance(pattern, Column):
                 return ColumnOperation(

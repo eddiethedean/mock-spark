@@ -27,8 +27,12 @@ class SetOperations:
                 elif isinstance(row.data, list):
                     # List of (key, value) tuples
                     row_dict = dict(row.data)
-                elif hasattr(row.data, "_data_dict"):
-                    row_dict = row.data._data_dict
+                else:
+                    # Check for _data_dict attribute for other row-like objects
+                    if hasattr(row.data, "_data_dict"):  # type: ignore[unreachable]
+                        row_dict = row.data._data_dict
+                    else:
+                        row_dict = {}
             elif hasattr(row, "__dict__"):
                 row_dict = row.__dict__
 
@@ -109,10 +113,10 @@ class SetOperations:
                 elif isinstance(row.data, list):
                     # List of (key, value) tuples
                     result_data.append(dict(row.data))
+                elif hasattr(row.data, "items"):  # type: ignore[unreachable]
+                    result_data.append(dict(row.data))
                 else:
-                    result_data.append(
-                        dict(row.data) if hasattr(row.data, "items") else {}
-                    )
+                    result_data.append({})
             elif hasattr(row, "__dict__"):
                 result_data.append(row.__dict__)
             else:

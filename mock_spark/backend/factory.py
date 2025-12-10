@@ -6,7 +6,7 @@ enabling dependency injection and easier testing.
 """
 
 import importlib.util
-from typing import Optional, Any
+from typing import Optional, Any, cast
 from .protocols import StorageBackend, DataMaterializer, ExportBackend
 
 
@@ -57,12 +57,15 @@ class BackendFactory:
                     "use the Polars backend."
                 )
 
-            from mock_spark.backend.duckdb.storage import DuckDBStorageManager  # type: ignore
+            from mock_spark.backend.duckdb.storage import DuckDBStorageManager
 
-            return DuckDBStorageManager(
-                db_path=db_path,
-                max_memory=max_memory,
-                allow_disk_spillover=allow_disk_spillover,
+            return cast(
+                "StorageBackend",
+                DuckDBStorageManager(
+                    db_path=db_path,
+                    max_memory=max_memory,
+                    allow_disk_spillover=allow_disk_spillover,
+                ),
             )
         elif backend_type == "memory":
             from mock_spark.storage.backends.memory import MemoryStorageManager
@@ -108,9 +111,9 @@ class BackendFactory:
                     "use the Polars backend."
                 )
 
-            from mock_spark.backend.duckdb.materializer import DuckDBMaterializer  # type: ignore
+            from mock_spark.backend.duckdb.materializer import DuckDBMaterializer
 
-            return DuckDBMaterializer()
+            return cast("DataMaterializer", DuckDBMaterializer())
         elif backend_type == "memory":
             # For memory backend, use Polars materializer
             from .polars.materializer import PolarsMaterializer
@@ -148,9 +151,9 @@ class BackendFactory:
                     "use the Polars backend."
                 )
 
-            from mock_spark.backend.duckdb.export import DuckDBExporter  # type: ignore
+            from mock_spark.backend.duckdb.export import DuckDBExporter
 
-            return DuckDBExporter()
+            return cast("ExportBackend", DuckDBExporter())
         elif backend_type == "memory":
             # For memory backend, use Polars exporter
             from .polars.export import PolarsExporter

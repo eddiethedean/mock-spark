@@ -7,7 +7,7 @@ and provides utilities for caching and accessing them during tests.
 
 import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 from functools import lru_cache
 
 
@@ -58,7 +58,7 @@ class ExpectedOutputLoader:
             cache_key = f"{category}/{test_name}/{pyspark_version}"
             self._cache[cache_key] = data
 
-            return data
+            return cast("dict[str, Any]", data)
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in expected output file {file_path}: {e}")
 
@@ -147,7 +147,7 @@ class ExpectedOutputLoader:
 
         try:
             with open(metadata_file) as f:
-                return json.load(f)
+                return cast("dict[str, Any]", json.load(f))
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 

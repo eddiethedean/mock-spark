@@ -45,17 +45,17 @@ class Operation:
 
     def __post_init__(self) -> None:
         if self.predicates is None:
-            self.predicates = []
+            self.predicates = []  # type: ignore[unreachable]
         if self.join_conditions is None:
-            self.join_conditions = []
+            self.join_conditions = []  # type: ignore[unreachable]
         if self.group_by_columns is None:
-            self.group_by_columns = []
+            self.group_by_columns = []  # type: ignore[unreachable]
         if self.order_by_columns is None:
-            self.order_by_columns = []
+            self.order_by_columns = []  # type: ignore[unreachable]
         if self.window_specs is None:
-            self.window_specs = []
+            self.window_specs = []  # type: ignore[unreachable]
         if self.metadata is None:
-            self.metadata = {}
+            self.metadata = {}  # type: ignore[unreachable]
 
 
 class OptimizationRule(ABC):
@@ -468,7 +468,7 @@ class QueryOptimizer:
                 and identifier in hints
                 and isinstance(hints[identifier], dict)
             ):
-                return hints[identifier]
+                return cast("dict[str, Any]", hints[identifier])
         return None
 
     def _resolve_partition_columns(
