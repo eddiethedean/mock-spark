@@ -290,7 +290,7 @@ class LimitPushdownRule(OptimizationRule):
         min_limit = None
         for op in operations:
             if op.type == OperationType.LIMIT and op.limit_count is not None:  # noqa: SIM102
-                if min_limit is None or op.limit_count < min_limit:  # type: ignore[unreachable]
+                if min_limit is None or op.limit_count < min_limit:
                     min_limit = op.limit_count
 
         if min_limit is None:

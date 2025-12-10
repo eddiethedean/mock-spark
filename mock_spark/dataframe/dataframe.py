@@ -729,10 +729,10 @@ class DataFrame:
             from ..functions import Column
 
             return Column(key)
-        elif isinstance(key, (list, tuple)):
+        elif isinstance(key, (list, tuple)):  # type: ignore[unreachable]
             # Multiple column selection - return DataFrame with selected columns
             return self.select(*key)
-        elif isinstance(key, slice):
+        elif isinstance(key, slice):  # type: ignore[unreachable]
             # Slice selection - return DataFrame with selected columns
             all_cols = [field.name for field in self.schema.fields]
             selected = all_cols[key]

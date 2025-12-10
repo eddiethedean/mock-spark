@@ -44,8 +44,8 @@ class PolarsExporter:
         from ...core.type_utils import is_row
 
         first_item = data[0]
-        if isinstance(first_item, dict):  # type: ignore[unreachable]
-            return pl.DataFrame(data)  # type: ignore[unreachable]
+        if isinstance(first_item, dict):
+            return pl.DataFrame(data)
         # Convert Row objects to dicts
         # Row objects can be converted to dict using dict() constructor
         # Note: Row and dict can coexist at runtime even though mypy flags this

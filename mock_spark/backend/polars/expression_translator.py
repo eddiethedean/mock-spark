@@ -891,7 +891,7 @@ class PolarsExpressionTranslator:
                         if result is None:
                             result = pl.when(n_expr == i).then(col)
                         else:
-                            result = result.when(n_expr == i).then(col)  # type: ignore[unreachable]
+                            result = result.when(n_expr == i).then(col)
                     return (
                         result.otherwise(None) if result is not None else pl.lit(None)
                     )
