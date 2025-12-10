@@ -212,7 +212,11 @@ class SQLExecutor:
                                 )
                                 df = cast(
                                     "DataFrame",
-                                    df1.join(cast("SupportsDataFrameOps", df2), join_condition, "inner"),
+                                    df1.join(
+                                        cast("SupportsDataFrameOps", df2),
+                                        join_condition,
+                                        "inner",
+                                    ),
                                 )
                             else:
                                 # Cast df2 to SupportsDataFrameOps to satisfy type checker
