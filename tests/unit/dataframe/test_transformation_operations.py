@@ -247,7 +247,9 @@ class TestTransformationOperations:
 
     def test_dropDuplicates_empty_dataframe(self, spark):
         """Test dropDuplicates on empty DataFrame."""
-        df = spark.createDataFrame([])
+        from mock_spark.spark_types import StructType
+
+        df = spark.createDataFrame([], StructType([]))
         result = df.dropDuplicates()
 
         assert result.count() == 0

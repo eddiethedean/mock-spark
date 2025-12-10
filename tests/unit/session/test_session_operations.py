@@ -82,7 +82,9 @@ class TestSessionOperations:
 
     def test_createDataFrame_empty(self, spark):
         """Test creating empty DataFrame."""
-        df = spark.createDataFrame([])
+        from mock_spark.spark_types import StructType
+
+        df = spark.createDataFrame([], StructType([]))
 
         assert df.count() == 0
         assert len(df.columns) == 0

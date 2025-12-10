@@ -59,6 +59,40 @@ schema = StructType([
 ])
 
 df = spark.createDataFrame(data, schema)
+
+# Empty DataFrames require explicit StructType schema (PySpark compatibility)
+# ❌ This will raise ValueError:
+# df = spark.createDataFrame([], ['col1', 'col2'])
+
+# ✅ Correct way:
+from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+empty_schema = StructType([
+    StructField("col1", StringType(), True),
+    StructField("col2", IntegerType(), True)
+])
+df = spark.createDataFrame([], empty_schema)
+```
+
+### Set Operations
+
+```python
+# Union operations require compatible schemas (PySpark compatibility)
+df1 = spark.createDataFrame([("a", 1)], ["col1", "col2"])
+df2 = spark.createDataFrame([("b", 2)], ["col1", "col2"])
+
+# ✅ Compatible schemas - same column names and compatible types
+result = df1.union(df2)
+
+# ❌ This will raise AnalysisException (different column counts):
+# df3 = spark.createDataFrame([("c",)], ["col1"])
+# result = df1.union(df3)
+
+# Numeric type promotion is allowed (IntegerType -> LongType -> FloatType -> DoubleType)
+schema1 = StructType([StructField("value", IntegerType(), True)])
+schema2 = StructType([StructField("value", LongType(), True)])
+df1 = spark.createDataFrame([(1,)], schema1)
+df2 = spark.createDataFrame([(2,)], schema2)
+result = df1.union(df2)  # ✅ Works - numeric types are compatible
 ```
 
 ### Column Access

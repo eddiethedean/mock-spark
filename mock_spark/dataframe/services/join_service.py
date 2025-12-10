@@ -86,7 +86,47 @@ class JoinService:
         )
 
     def union(self, other: SupportsDataFrameOps) -> "SupportsDataFrameOps":
-        """Union with another DataFrame."""
+        """Union with another DataFrame.
+
+        Raises:
+            AnalysisException: If DataFrames have incompatible schemas
+        """
+        from ...core.exceptions.analysis import AnalysisException
+        from ...dataframe.operations.set_operations import SetOperations
+
+        # Validate schema compatibility before queuing (PySpark compatibility)
+        # PySpark raises exceptions immediately, not lazily
+        self_schema = self._df.schema
+        other_schema = other.schema
+
+        # Check column count
+        if len(self_schema.fields) != len(other_schema.fields):
+            raise AnalysisException(
+                f"Union can only be performed on tables with the same number of columns, "
+                f"but the first table has {len(self_schema.fields)} columns and "
+                f"the second table has {len(other_schema.fields)} columns"
+            )
+
+        # Check column names and types
+        for i, (field1, field2) in enumerate(
+            zip(self_schema.fields, other_schema.fields)
+        ):
+            if field1.name != field2.name:
+                raise AnalysisException(
+                    f"Union can only be performed on tables with compatible column names. "
+                    f"Column {i} name mismatch: '{field1.name}' vs '{field2.name}'"
+                )
+
+            # Type compatibility check
+            if not SetOperations._are_types_compatible(
+                field1.dataType, field2.dataType
+            ):
+                raise AnalysisException(
+                    f"Union can only be performed on tables with compatible column types. "
+                    f"Column '{field1.name}' type mismatch: "
+                    f"{field1.dataType} vs {field2.dataType}"
+                )
+
         return self._df._queue_op("union", other)
 
     def unionByName(
@@ -102,32 +142,57 @@ class JoinService:
 
         Returns:
             New DataFrame with combined data.
+
+        Raises:
+            AnalysisException: If DataFrames have incompatible column types
         """
+        from ...core.exceptions.analysis import AnalysisException
+        from ...dataframe.operations.set_operations import SetOperations
+
         # Get column names from both DataFrames
-        self_cols = {field.name for field in self._df.schema.fields}
-        other_cols = {field.name for field in other.schema.fields}
+        self_cols: set[str] = {field.name for field in self._df.schema.fields}
+        other_cols: set[str] = {field.name for field in other.schema.fields}
 
         # Check for missing columns
-        missing_in_other = self_cols - other_cols
-        missing_in_self = other_cols - self_cols
+        missing_in_other: set[str] = self_cols - other_cols
+        missing_in_self: set[str] = other_cols - self_cols
 
         if not allowMissingColumns and (missing_in_other or missing_in_self):
-            from ...core.exceptions.analysis import AnalysisException
-
             raise AnalysisException(
                 f"Union by name failed: missing columns in one of the DataFrames. "
                 f"Missing in other: {missing_in_other}, Missing in self: {missing_in_self}"
             )
 
+        # Check type compatibility for columns that exist in both schemas
+        common_cols: set[str] = self_cols & other_cols
+        for col_name in common_cols:
+            # Find the field in both schemas
+            self_field: StructField = next(
+                f for f in self._df.schema.fields if f.name == col_name
+            )
+            other_field: StructField = next(
+                f for f in other.schema.fields if f.name == col_name
+            )
+
+            # Check type compatibility
+            if not SetOperations._are_types_compatible(
+                self_field.dataType, other_field.dataType
+            ):
+                raise AnalysisException(
+                    f"Union can only be performed on tables with compatible column types. "
+                    f"Column '{col_name}' type mismatch: "
+                    f"{self_field.dataType} vs {other_field.dataType}"
+                )
+
         # Get all unique column names in order
-        all_cols = list(self_cols.union(other_cols))
+        all_cols: list[str] = list(self_cols.union(other_cols))
 
         # Create combined data with all columns
-        combined_data = []
+        combined_data: list[dict[str, Any]] = []
 
         # Add rows from self DataFrame
         for row in self._df.data:
-            new_row = {}
+            new_row: dict[str, Any] = {}
             for col in all_cols:
                 if col in row:
                     new_row[col] = row[col]
@@ -137,31 +202,47 @@ class JoinService:
 
         # Add rows from other DataFrame
         for row in other.data:
-            new_row = {}
+            other_new_row: dict[str, Any] = {}
             for col in all_cols:
                 if col in row:
-                    new_row[col] = row[col]
+                    other_new_row[col] = row[col]
                 else:
-                    new_row[col] = None  # Missing column filled with null
-            combined_data.append(new_row)
+                    other_new_row[col] = None  # Missing column filled with null
+            combined_data.append(other_new_row)
 
         # Create new schema with all columns
-
-        new_fields = []
+        # For common columns, use the type from the first DataFrame
+        # For nullable flags, result is nullable if either input is nullable
+        new_fields: list[StructField] = []
         for col in all_cols:
             # Try to get the data type from the original schema, default to StringType
             field_type: DataType = StringType()
+            nullable: bool = True
             for field in self._df.schema.fields:
                 if field.name == col:
                     field_type = field.dataType
+                    nullable = field.nullable
                     break
             # If not found in self schema, check other schema
             if isinstance(field_type, StringType):
                 for field in other.schema.fields:
                     if field.name == col:
                         field_type = field.dataType
+                        nullable = field.nullable
                         break
-            new_fields.append(StructField(col, field_type))
+            # For common columns, ensure nullable is True if either is nullable
+            if col in common_cols:
+                self_field_for_nullable: StructField = next(
+                    f for f in self._df.schema.fields if f.name == col
+                )
+                other_field_for_nullable: StructField = next(
+                    f for f in other.schema.fields if f.name == col
+                )
+                nullable = bool(
+                    self_field_for_nullable.nullable
+                    or other_field_for_nullable.nullable
+                )
+            new_fields.append(StructField(col, field_type, nullable))
 
         new_schema = StructType(new_fields)
         from ..dataframe import DataFrame

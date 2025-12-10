@@ -65,7 +65,20 @@ class DataFrameFactory:
 
             schema = parse_ddl_schema(schema)
 
-        # Handle list of column names as schema
+        # Validate empty DataFrame schema requirements (PySpark compatibility)
+        if not data:
+            if schema is None:
+                raise ValueError("can not infer schema from empty dataset")
+            elif isinstance(schema, list):
+                raise ValueError(
+                    "can not infer schema from empty dataset. "
+                    "Please provide a StructType schema instead of a column name list."
+                )
+            elif not isinstance(schema, StructType):
+                raise TypeError(f"schema must be StructType, got {type(schema)}")
+            # If schema is StructType, allow it (valid case)
+
+        # Handle list of column names as schema (only for non-empty data)
         if isinstance(schema, list):
             # Convert tuples to dictionaries using provided column names first
             if data and isinstance(data[0], tuple):
@@ -90,9 +103,10 @@ class DataFrameFactory:
 
         if schema is None:
             # Infer schema from data using SchemaInferenceEngine
+            # Note: Empty data case is already handled above
             if not data:
-                # For empty dataset, create empty schema
-                schema = StructType([])
+                # This should not happen due to validation above, but keep as safety
+                raise ValueError("can not infer schema from empty dataset")
             else:
                 # Check if data is in expected format
                 sample_row = data[0]

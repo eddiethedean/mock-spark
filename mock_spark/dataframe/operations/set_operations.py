@@ -2,7 +2,17 @@
 
 from typing import Any, TYPE_CHECKING
 
-from ...spark_types import Row
+from ...spark_types import (
+    Row,
+    DataType,
+    StringType,
+    IntegerType,
+    LongType,
+    FloatType,
+    DoubleType,
+    ShortType,
+    ByteType,
+)
 
 if TYPE_CHECKING:
     from ...spark_types import StructType
@@ -88,6 +98,42 @@ class SetOperations:
         return rows1 + rows2
 
     @staticmethod
+    def _are_types_compatible(type1: DataType, type2: DataType) -> bool:
+        """Check if two types are compatible for union operations.
+
+        PySpark allows some type promotions (e.g., IntegerType -> LongType),
+        but generally requires exact matches or compatible numeric types.
+
+        Args:
+            type1: First data type
+            type2: Second data type
+
+        Returns:
+            True if types are compatible, False otherwise
+        """
+        # Exact match
+        if type1 == type2:
+            return True
+
+        # Numeric type compatibility
+        # PySpark allows numeric promotions: Byte -> Short -> Integer -> Long -> Float -> Double
+        numeric_types: tuple[type[DataType], ...] = (
+            ByteType,
+            ShortType,
+            IntegerType,
+            LongType,
+            FloatType,
+            DoubleType,
+        )
+        if isinstance(type1, numeric_types) and isinstance(type2, numeric_types):
+            # All numeric types are compatible for union (PySpark promotes to wider type)
+            return True
+
+        # String types are generally compatible
+        # For other types, require exact match
+        return isinstance(type1, StringType) and isinstance(type2, StringType)
+
+    @staticmethod
     def union(
         data1: list[dict[str, Any]],
         schema1: "StructType",
@@ -95,7 +141,40 @@ class SetOperations:
         schema2: "StructType",
         storage: Any,
     ) -> tuple[list[dict[str, Any]], "StructType"]:
-        """Union two DataFrames with their data and schemas."""
+        """Union two DataFrames with their data and schemas.
+
+        Raises:
+            AnalysisException: If DataFrames have incompatible schemas
+        """
+        from ...core.exceptions.analysis import AnalysisException
+
+        # Validate schema compatibility
+        # Check column count
+        if len(schema1.fields) != len(schema2.fields):
+            raise AnalysisException(
+                f"Union can only be performed on tables with the same number of columns, "
+                f"but the first table has {len(schema1.fields)} columns and "
+                f"the second table has {len(schema2.fields)} columns"
+            )
+
+        # Check column names and types
+        for i, (field1, field2) in enumerate(zip(schema1.fields, schema2.fields)):
+            if field1.name != field2.name:
+                raise AnalysisException(
+                    f"Union can only be performed on tables with compatible column names. "
+                    f"Column {i} name mismatch: '{field1.name}' vs '{field2.name}'"
+                )
+
+            # Type compatibility check
+            if not SetOperations._are_types_compatible(
+                field1.dataType, field2.dataType
+            ):
+                raise AnalysisException(
+                    f"Union can only be performed on tables with compatible column types. "
+                    f"Column '{field1.name}' type mismatch: "
+                    f"{field1.dataType} vs {field2.dataType}"
+                )
+
         # Convert data to Row objects for union
         rows1 = [Row(row) for row in data1]
         rows2 = [Row(row) for row in data2]
@@ -122,7 +201,7 @@ class SetOperations:
             else:
                 result_data.append(dict(row) if hasattr(row, "items") else {})
 
-        # Return the schema from the first DataFrame (assuming they're compatible)
+        # Return the schema from the first DataFrame (schemas are compatible)
         return result_data, schema1
 
     @staticmethod

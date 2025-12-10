@@ -455,7 +455,20 @@ class TestAggregatedDataFrameCatalogRegistration:
 
     def test_empty_aggregated_dataframe(self, spark):
         """Test aggregated DataFrame with empty source data."""
-        source = spark.createDataFrame([], ["user_id", "value"])
+        from mock_spark.spark_types import (
+            StructType,
+            StructField,
+            StringType,
+            IntegerType,
+        )
+
+        schema = StructType(
+            [
+                StructField("user_id", StringType(), True),
+                StructField("value", IntegerType(), True),
+            ]
+        )
+        source = spark.createDataFrame([], schema)
 
         # Create aggregated DataFrame (will be empty)
         agg_df = source.groupBy("user_id").agg(F.count("*").alias("count"))
