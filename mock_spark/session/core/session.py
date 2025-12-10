@@ -114,7 +114,7 @@ class SparkSession:
         self._conf = Configuration()
         from ..._version import __version__
 
-        self._version = __version__  # Use centralized version
+        self._version: str = __version__  # Use centralized version
 
         self._sql_executor = SQLExecutor(cast("ISession", self))
 
@@ -387,9 +387,25 @@ class SparkSession:
 
         # Check if table exists
         if not self.storage.table_exists(schema, table):
-            from mock_spark.errors import AnalysisException
+            # Fallback: Try to get table schema directly
+            # This handles edge cases where storage has the table but table_exists() check fails
+            # This can happen immediately after saveAsTable() if there's a brief synchronization delay
+            try:
+                table_schema = self.storage.get_table_schema(schema, table)
+                if table_schema is not None and len(table_schema.fields) > 0:
+                    # Table exists in storage but wasn't detected by table_exists()
+                    # This is acceptable - proceed with reading the table
+                    pass  # Continue to read the table below
+                else:
+                    # Table doesn't exist - raise exception
+                    from mock_spark.errors import AnalysisException
 
-            raise AnalysisException(f"Table or view not found: {table_name}")
+                    raise AnalysisException(f"Table or view not found: {table_name}")
+            except Exception:
+                # Schema retrieval failed - table doesn't exist
+                from mock_spark.errors import AnalysisException
+
+                raise AnalysisException(f"Table or view not found: {table_name}")
 
         # Get table data and schema
         table_data = self.storage.get_data(schema, table)
@@ -443,7 +459,7 @@ class SparkSession:
 
             table_schema = StructType(updated_fields)
 
-        return DataFrame(table_data, table_schema, self.storage)  # type: ignore[return-value]
+        return cast("IDataFrame", DataFrame(table_data, table_schema, self.storage))
 
     def range(
         self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None

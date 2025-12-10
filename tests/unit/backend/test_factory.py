@@ -8,13 +8,7 @@ import pytest
 import tempfile
 import contextlib
 
-# Skip if factory module doesn't exist
-try:
-    from mock_spark.backend.factory import BackendFactory
-except ImportError:
-    pytest.skip(
-        "backend.factory module not available in this version", allow_module_level=True
-    )
+from mock_spark.backend.factory import BackendFactory
 
 
 def setup_module(module):

@@ -80,9 +80,10 @@ def to_date_str(
     """
 
     # Type narrowing: check if column is PySpark column at runtime
-    if PySparkColumn is not None and isinstance(column, PySparkColumn):
+    # Mypy thinks this is unreachable, but it can be true at runtime when PySpark is available
+    if PySparkColumn is not None and isinstance(column, PySparkColumn):  # type: ignore[unreachable]
         # PySparkColumn is part of ColumnLike union, so this is valid
-        return cast("Union[ColumnOperation, ColumnLike]", column)
+        return cast("Union[ColumnOperation, ColumnLike]", column)  # type: ignore[unreachable]
 
     to_date_op = _ensure_to_date_operation(column)
     formatted = F.date_format(cast("Column", to_date_op), fmt)
@@ -97,9 +98,10 @@ def to_timestamp_str(
     """Format ``to_timestamp`` outputs as strings when using Mock Spark."""
 
     # Type narrowing: check if column is PySpark column at runtime
-    if PySparkColumn is not None and isinstance(column, PySparkColumn):
+    # Mypy thinks this is unreachable, but it can be true at runtime when PySpark is available
+    if PySparkColumn is not None and isinstance(column, PySparkColumn):  # type: ignore[unreachable]
         # PySparkColumn is part of ColumnLike union, so this is valid
-        return cast("Union[ColumnOperation, ColumnLike]", column)
+        return cast("Union[ColumnOperation, ColumnLike]", column)  # type: ignore[unreachable]
 
     to_timestamp_op = _ensure_to_timestamp_operation(column, source_format)
     formatted = F.date_format(cast("Column", to_timestamp_op), fmt)

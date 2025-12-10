@@ -343,34 +343,10 @@ class DataFrameWriter:
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data)
 
-        # Ensure table is immediately accessible in catalog (Issue #3 fix)
-        # This synchronizes catalog and storage - table must be available right after saveAsTable
-        if not self.storage.table_exists(schema, table):
-            # If table_exists returns False but we just created/inserted data, there's a sync issue
-            # Try to rehydrate from disk if using persistent storage
-            if hasattr(self.storage, "_rehydrate_from_disk"):
-                self.storage._rehydrate_from_disk()
-
-            # Verify table is now accessible
-            if not self.storage.table_exists(schema, table):
-                # Last resort: try to get table schema directly
-                try:
-                    table_schema = self.storage.get_table_schema(schema, table)
-                    if table_schema is None:
-                        # Table doesn't exist - this is an error
-                        from ..errors import AnalysisException  # type: ignore[unreachable]
-
-                        raise AnalysisException(
-                            f"Table '{schema}.{table}' was not properly created in storage. "
-                            f"Table registration failed after saveAsTable()."
-                        )
-                except Exception as e:
-                    # Table doesn't exist - this is an error
-                    from ..errors import AnalysisException
-
-                    raise AnalysisException(
-                        f"Table '{schema}.{table}' was not properly created in storage: {e}"
-                    ) from e
+        # CRITICAL: Ensure table is immediately accessible in catalog
+        # This synchronizes catalog and storage - table must be available right after saveAsTable()
+        # This is required for PySpark compatibility where tables are immediately queryable
+        self._ensure_table_immediately_accessible(schema, table)
 
         # Set Delta-specific metadata
         if is_delta:
@@ -730,3 +706,70 @@ class DataFrameWriter:
             merged_df = cast("SupportsDataFrameOps", merged_df).select(*all_columns)
 
         return merged_df, merged_schema
+
+    def _ensure_table_immediately_accessible(self, schema: str, table: str) -> None:
+        """Ensure table is immediately accessible after saveAsTable().
+
+        This method performs comprehensive verification to ensure the table
+        is immediately queryable via spark.table() after saveAsTable() completes.
+        This is critical for PySpark compatibility.
+
+        Args:
+            schema: Schema/database name
+            table: Table name
+
+        Raises:
+            AnalysisException: If table is not immediately accessible
+        """
+        # Check 1: Verify table_exists() returns True (primary check)
+        if self.storage.table_exists(schema, table):
+            # Verify we can get schema (ensures table is fully registered)
+            try:
+                table_schema = self.storage.get_table_schema(schema, table)
+                if table_schema is not None:
+                    # Table is visible and has schema - success
+                    return
+            except Exception:
+                # Schema retrieval failed, but table_exists returned True
+                # Continue to next check
+                pass
+
+        # Check 2: Try to get schema directly (fallback for edge cases)
+        # This handles cases where storage has the table but table_exists() check fails
+        try:
+            table_schema = self.storage.get_table_schema(schema, table)
+            if table_schema is not None and len(table_schema.fields) > 0:
+                # Table exists in storage and has schema - it's queryable
+                return
+        except Exception:
+            pass
+
+        # Check 3: Verify table appears in list_tables() (comprehensive check)
+        try:
+            table_list = self.storage.list_tables(schema)
+            if table in table_list:
+                # Table is in the list - it's visible
+                return
+        except Exception:
+            pass
+
+        # Check 4: Try to rehydrate from disk if using persistent storage
+        # This handles cases where persistent storage needs to refresh its state
+        if hasattr(self.storage, "_rehydrate_from_disk"):
+            try:
+                self.storage._rehydrate_from_disk()
+                # Retry table_exists after rehydration
+                if self.storage.table_exists(schema, table):
+                    return
+            except Exception:
+                pass
+
+        # All checks failed - table is not immediately accessible
+        qualified_name = f"{schema}.{table}" if schema else table
+        from ..errors import AnalysisException
+
+        raise AnalysisException(
+            f"Table '{qualified_name}' is not immediately accessible after saveAsTable(). "
+            f"This indicates a catalog synchronization issue. The table may have been created "
+            f"in storage but is not yet visible in the catalog."
+        )

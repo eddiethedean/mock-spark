@@ -93,6 +93,7 @@ class UnifiedStorageManager(IStorageManager):
         """
         self.backend = backend
         self._table_metadata: dict[str, TableMetadata] = {}
+        self._current_schema: str = "default"
         try:
             self._current_schema = backend.get_current_schema()
         except Exception:  # pragma: no cover - backend without state support

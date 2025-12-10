@@ -4,14 +4,7 @@ Unit tests for collection handler.
 
 import pytest
 
-# Skip if collection_handler module doesn't exist
-try:
-    from mock_spark.dataframe.collection_handler import CollectionHandler
-except ImportError:
-    pytest.skip(
-        "dataframe.collection_handler module not available in this version",
-        allow_module_level=True,
-    )
+from mock_spark.dataframe.collection_handler import CollectionHandler
 from mock_spark.spark_types import (
     StructType,
     StructField,

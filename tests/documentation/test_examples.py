@@ -69,7 +69,7 @@ def _validate_optional_dependency(package: str) -> Version | None:
     return installed_version
 
 
-@pytest.fixture(scope="session", autouse=True)  # type: ignore[untyped-decorator]
+@pytest.fixture(scope="session", autouse=True)  # type: ignore[misc]
 def _ensure_documentation_dependencies() -> None:
     """Fail fast (or skip) if optional docs dependencies are missing or stale."""
     versions: dict[str, Version] = {}

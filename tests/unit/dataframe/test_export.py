@@ -2,13 +2,12 @@
 Unit tests for DataFrame export utilities.
 """
 
-import importlib.util
 import pytest
 from mock_spark import SparkSession
 from mock_spark.dataframe.export import DataFrameExporter
 
-# Check if pandas is available
-_pandas_available = importlib.util.find_spec("pandas") is not None
+# Try to import pandas - will skip tests if not available
+pandas = pytest.importorskip("pandas")
 
 
 @pytest.mark.unit
@@ -17,8 +16,6 @@ class TestDataFrameExporter:
 
     def test_to_pandas_basic(self):
         """Test converting DataFrame to pandas."""
-        if not _pandas_available:
-            pytest.skip("pandas not installed")
 
         spark = SparkSession("test")
         df = spark.createDataFrame(
@@ -37,8 +34,6 @@ class TestDataFrameExporter:
 
     def test_to_pandas_empty_dataframe(self):
         """Test converting empty DataFrame to pandas."""
-        if not _pandas_available:
-            pytest.skip("pandas not installed")
 
         spark = SparkSession("test")
         df = spark.createDataFrame([], "id INT, name STRING")
@@ -55,19 +50,12 @@ class TestDataFrameExporter:
         spark = SparkSession("test")
         df = spark.createDataFrame([{"id": 1}])
 
-        # If pandas is installed, this should work
-        # If not, it will raise ImportError
-        if _pandas_available:
-            result = DataFrameExporter.to_pandas(df)
-            assert result is not None
-        else:
-            with pytest.raises(ImportError, match="pandas is required"):
-                DataFrameExporter.to_pandas(df)
+        # pandas should be available (in dev dependencies)
+        result = DataFrameExporter.to_pandas(df)
+        assert result is not None
 
     def test_to_pandas_with_lazy_evaluation(self):
         """Test to_pandas handles lazy evaluation."""
-        if not _pandas_available:
-            pytest.skip("pandas not installed")
 
         from mock_spark import F
 
