@@ -710,7 +710,7 @@ class DataFrame:
         )
 
     def __getitem__(
-        self, key: Union[str, int, slice]
+        self, key: Union[str, int, slice, list[str], tuple[str, ...]]
     ) -> Union[Column, "SupportsDataFrameOps"]:
         """Access column by name using dictionary-style syntax.
 
@@ -729,10 +729,10 @@ class DataFrame:
             from ..functions import Column
 
             return Column(key)
-        elif isinstance(key, (list, tuple)):  # type: ignore[unreachable]
+        elif isinstance(key, (list, tuple)):
             # Multiple column selection - return DataFrame with selected columns
             return self.select(*key)
-        elif isinstance(key, slice):  # type: ignore[unreachable]
+        elif isinstance(key, slice):
             # Slice selection - return DataFrame with selected columns
             all_cols = [field.name for field in self.schema.fields]
             selected = all_cols[key]
