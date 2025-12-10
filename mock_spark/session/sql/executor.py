@@ -214,7 +214,7 @@ class SQLExecutor:
                                     "DataFrame",
                                     df1.join(
                                         cast("SupportsDataFrameOps", df2),
-                                        join_condition,
+                                        join_condition,  # type: ignore[arg-type]
                                         "inner",
                                     ),
                                 )
