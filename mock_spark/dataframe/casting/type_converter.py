@@ -1,6 +1,8 @@
 """Type conversion utilities for DataFrame operations."""
 
-from typing import Any
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any, Union
 
 from ...spark_types import (
     ArrayType,
@@ -22,7 +24,21 @@ class TypeConverter:
     """Handles type conversion operations for DataFrame."""
 
     @staticmethod
-    def cast_to_type(value: Any, target_type: DataType) -> Any:
+    def cast_to_type(
+        value: Any, target_type: DataType
+    ) -> Union[
+        str,
+        int,
+        float,
+        bool,
+        None,
+        date,
+        datetime,
+        Decimal,
+        list[Any],
+        dict[Any, Any],
+        Any,
+    ]:
         """Cast a value to the specified target type."""
         if value is None:
             return None
@@ -132,6 +148,8 @@ class TypeConverter:
                 }
             return {value: None}
         else:
+            # Unknown type - return value as-is (could be any type)
+            # Any is already included in Union type, so this is acceptable
             return value
 
     @staticmethod

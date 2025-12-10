@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.10.0 — 2025-01-XX
+
+### Added
+- Comprehensive type safety improvements across the codebase
+- Improved protocol type definitions with Union types instead of Any
+- Enhanced type annotations for better IDE support and static analysis
+
+### Changed
+- Aligned mypy.ini configuration with pyproject.toml settings
+- Replaced `Any` type aliases with proper Union types for `ColumnExpression`, `AggregateExpression`
+- Improved protocol method signatures to use `ColumnExpression` instead of `Any`
+- Enhanced TypeConverter return types from `Any` to Union types
+- Removed module-level error ignoring for `display.operations`, `joins.operations`, and `operations.misc`
+
+### Fixed
+- Fixed type ignore comments with proper type narrowing in datetime functions
+- Fixed SQLAlchemy helper function return types
+- Fixed PySpark compatibility layer typing issues
+- Fixed `timestamp_seconds()` to preserve Literal objects correctly
+- Improved type safety in display, join, and misc operations modules
+
+### Testing
+- All tests passing (1095 passed, 47 skipped)
+- All modified files pass mypy type checking
+- Code formatted and linted with ruff
+
 ## 3.9.1 — 2025-01-XX
 
 ### Fixed

@@ -136,6 +136,13 @@ class ExpressionEvaluator:
         elif op in ["==", "!=", "<", ">", "<=", ">="]:
             return self._evaluate_comparison_operation(row, operation)
 
+        # Handle cast operations explicitly (Issue #5 fix)
+        elif op == "cast":
+            # Evaluate the column/value being cast
+            cast_value = self.evaluate_expression(row, operation.column)
+            # Use _func_cast to perform the actual casting
+            return self._func_cast(cast_value, operation)
+
         # Handle function calls - check if it's a known function
         elif op in self._function_registry:
             return self._evaluate_function_call(row, operation)
@@ -3025,16 +3032,15 @@ class ExpressionEvaluator:
             else:
                 return value
         else:
-            # Type object, use appropriate conversion
-            # Check if it's a DecimalType with precision/scale
-            if isinstance(cast_type, DecimalType):
-                from decimal import Decimal, ROUND_HALF_UP
+            # Type object (DataType), use TypeConverter for proper conversion
+            # This handles StringType, IntegerType, LongType, DoubleType, BooleanType, etc.
+            from ..casting.type_converter import TypeConverter
 
-                scale = getattr(cast_type, "scale", 0)
-                decimal_value = Decimal(str(value))
-                quantize_exponent = Decimal(10) ** (-scale)
-                return decimal_value.quantize(quantize_exponent, rounding=ROUND_HALF_UP)
-            return value
+            try:
+                return TypeConverter.cast_to_type(value, cast_type)
+            except Exception:
+                # Fallback: return value unchanged if cast fails
+                return value
 
     # Datetime function implementations
     def _func_to_date(self, value: Any, operation: ColumnOperation) -> Any:

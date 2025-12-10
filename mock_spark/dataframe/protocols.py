@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - fallback for older versions
 
 if TYPE_CHECKING:
     from ..spark_types import Row, StructType
+    from ..core.protocols import ColumnExpression
 
 
 class HasSchema(Protocol):
@@ -83,7 +84,7 @@ class CollectionSupport(Protocol):
 
     def collect(self) -> list[Any]: ...
 
-    def orderBy(self, *columns: Any, **kwargs: Any) -> Self: ...
+    def orderBy(self, *columns: "ColumnExpression", **kwargs: Any) -> Self: ...
 
     def count(self) -> int: ...
 
@@ -91,9 +92,9 @@ class CollectionSupport(Protocol):
 class LogicalOpSupport(Protocol):
     """Objects that provide logical dataframe operations used by mixins."""
 
-    def select(self, *columns: Any, **kwargs: Any) -> Self: ...
+    def select(self, *columns: "ColumnExpression", **kwargs: Any) -> Self: ...
 
-    def filter(self, condition: Any) -> Self: ...
+    def filter(self, condition: "ColumnExpression") -> Self: ...
 
     def distinct(self) -> Self: ...
 
@@ -103,13 +104,13 @@ class LogicalOpSupport(Protocol):
 
     def union(self, other: Any) -> Self: ...
 
-    def groupBy(self, *columns: Any, **kwargs: Any) -> Any: ...
+    def groupBy(self, *columns: "ColumnExpression", **kwargs: Any) -> Any: ...
 
 
 class MutationSupport(Protocol):
     """Objects that provide mutation and advanced DataFrame operations."""
 
-    def withColumn(self, col_name: str, col: Any) -> Self: ...
+    def withColumn(self, col_name: str, col: "ColumnExpression") -> Self: ...
 
     def withColumns(self, cols_map: dict[str, Any]) -> Self: ...
 
@@ -147,8 +148,8 @@ class MutationSupport(Protocol):
     def freqItems(self, cols: list[str], support: Optional[float] = None) -> Self: ...
 
     def approxQuantile(
-        self, col: Any, probabilities: list[float], relativeError: float
-    ) -> Any: ...
+        self, col: "ColumnExpression", probabilities: list[float], relativeError: float
+    ) -> list[float]: ...
 
     def cov(self, col1: str, col2: str) -> float: ...
 
@@ -192,13 +193,17 @@ class MutationSupport(Protocol):
 
     def offset(self, n: int) -> Self: ...
 
-    def repartition(self, numPartitions: int, *cols: Any) -> Self: ...
+    def repartition(self, numPartitions: int, *cols: "ColumnExpression") -> Self: ...
 
     def coalesce(self, numPartitions: int) -> Self: ...
 
-    def repartitionByRange(self, numPartitions: Any, *cols: Any) -> Self: ...
+    def repartitionByRange(
+        self, numPartitions: int, *cols: "ColumnExpression"
+    ) -> Self: ...
 
-    def sortWithinPartitions(self, *cols: Any, **kwargs: Any) -> Self: ...
+    def sortWithinPartitions(
+        self, *cols: "ColumnExpression", **kwargs: Any
+    ) -> Self: ...
 
     def toLocalIterator(self, prefetchPartitions: bool = False) -> Iterator["Row"]: ...
 
@@ -245,14 +250,14 @@ class SupportsDataFrameOps(
 
     def _validate_expression_columns(
         self,
-        expression: Any,
+        expression: "ColumnExpression",
         operation: str,
         in_lazy_materialization: bool = False,
     ) -> None: ...
 
     def _validate_filter_expression(
         self,
-        condition: Any,
+        condition: "ColumnExpression",
         operation: str,
         has_pending_joins: bool = False,
     ) -> None: ...
@@ -264,7 +269,7 @@ class SupportsDataFrameOps(
     def _evaluate_column_expression(
         self,
         row: dict[str, Any],
-        column_expression: Any,
+        column_expression: "ColumnExpression",
     ) -> Any: ...
 
 
@@ -386,7 +391,7 @@ class ValidationHandler(Protocol):
     def validate_filter_expression(
         self,
         schema: "StructType",
-        condition: Any,
+        condition: "ColumnExpression",
         operation: str,
         has_pending_joins: bool = False,
     ) -> None:
@@ -396,7 +401,7 @@ class ValidationHandler(Protocol):
     def validate_expression_columns(
         self,
         schema: "StructType",
-        expression: Any,
+        expression: "ColumnExpression",
         operation: str,
         in_lazy_materialization: bool = False,
     ) -> None:
@@ -408,17 +413,19 @@ class ConditionHandler(Protocol):
     """Protocol for condition evaluation."""
 
     def apply_condition(
-        self, data: list[dict[str, Any]], condition: Any
+        self, data: list[dict[str, Any]], condition: "ColumnExpression"
     ) -> list[dict[str, Any]]:
         """Filter data based on condition."""
         ...
 
-    def evaluate_condition(self, row: dict[str, Any], condition: Any) -> bool:
+    def evaluate_condition(
+        self, row: dict[str, Any], condition: "ColumnExpression"
+    ) -> bool:
         """Evaluate condition for a single row."""
         ...
 
     def evaluate_column_expression(
-        self, row: dict[str, Any], column_expression: Any
+        self, row: dict[str, Any], column_expression: "ColumnExpression"
     ) -> Any:
         """Evaluate column expression."""
         ...
@@ -428,7 +435,7 @@ class ConditionHandler(Protocol):
         ...
 
     def _evaluate_case_when_condition(
-        self, row: dict[str, Any], condition: Any
+        self, row: dict[str, Any], condition: "ColumnExpression"
     ) -> bool:
         """Helper for case when condition evaluation."""
         ...

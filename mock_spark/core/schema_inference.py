@@ -28,6 +28,7 @@ from ..spark_types import (
     BinaryType,
     DateType,
     TimestampType,
+    NullType,
 )
 
 
@@ -124,6 +125,7 @@ class SchemaInferenceEngine:
         Infer MockSpark data type from a Python value.
 
         Type mapping (matching PySpark):
+        - None → NullType
         - bool → BooleanType
         - int → LongType (NOT IntegerType!)
         - float → DoubleType (NOT FloatType!)
@@ -137,6 +139,9 @@ class SchemaInferenceEngine:
         Returns:
             MockSpark data type
         """
+        # Handle None values first (Issue #1 fix)
+        if value is None:
+            return NullType()
         # Check bool BEFORE int (bool is subclass of int in Python)
         if isinstance(value, bool):
             return BooleanType()

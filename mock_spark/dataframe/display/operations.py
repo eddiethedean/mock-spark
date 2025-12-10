@@ -169,39 +169,63 @@ class DisplayOperations:
 
     def collect(self) -> list[Row]:
         """Collect all data as list of Row objects."""
+        from typing import cast
+
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            return self._get_collection_handler().collect(
+            result = self._get_collection_handler().collect(
                 materialized.data, materialized.schema
             )
-        return self._get_collection_handler().collect(self.data, self.schema)
+            # Protocol method returns list[Row] but mypy infers as Any
+            return cast("list[Row]", result)
+        result = self._get_collection_handler().collect(self.data, self.schema)
+        # Protocol method returns list[Row] but mypy infers as Any
+        return cast("list[Row]", result)
 
     def take(self, n: int) -> list[Row]:
         """Take first n rows as list of Row objects."""
+        from typing import cast
+
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            return self._get_collection_handler().take(
+            result = self._get_collection_handler().take(
                 materialized.data, materialized.schema, n
             )
-        return self._get_collection_handler().take(self.data, self.schema, n)
+            # Protocol method returns list[Row] but mypy infers as Any
+            return cast("list[Row]", result)
+        result = self._get_collection_handler().take(self.data, self.schema, n)
+        # Protocol method returns list[Row] but mypy infers as Any
+        return cast("list[Row]", result)
 
     def head(self, n: int = 1) -> Union[Row, list[Row], None]:
         """Return first n rows."""
+        from typing import cast
+
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            return self._get_collection_handler().head(
+            result = self._get_collection_handler().head(
                 materialized.data, materialized.schema, n
             )
-        return self._get_collection_handler().head(self.data, self.schema, n)
+            # Protocol method returns Union but mypy sees it as Any
+            return cast("Union[Row, list[Row], None]", result)
+        result = self._get_collection_handler().head(self.data, self.schema, n)
+        # Protocol method returns Union but mypy sees it as Any
+        return cast("Union[Row, list[Row], None]", result)
 
     def tail(self, n: int = 1) -> Union[Row, list[Row], None]:
         """Return last n rows."""
+        from typing import cast
+
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            return self._get_collection_handler().tail(
+            result = self._get_collection_handler().tail(
                 materialized.data, materialized.schema, n
             )
-        return self._get_collection_handler().tail(self.data, self.schema, n)
+            # Protocol method returns Union but mypy sees it as Any
+            return cast("Union[Row, list[Row], None]", result)
+        result = self._get_collection_handler().tail(self.data, self.schema, n)
+        # Protocol method returns Union but mypy sees it as Any
+        return cast("Union[Row, list[Row], None]", result)
 
     def toPandas(self) -> Any:
         """Convert to pandas DataFrame (requires pandas as optional dependency)."""

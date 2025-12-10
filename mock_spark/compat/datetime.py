@@ -24,13 +24,13 @@ PySparkColumn: Optional[type[PySparkColumnType]]
 _ALLOW_PYSPARK_IMPORT = os.environ.get("MOCK_SPARK_ENABLE_PYSPARK_SHIMS", "0") == "1"
 if _ALLOW_PYSPARK_IMPORT and importlib.util.find_spec("pyspark.sql.column") is not None:
     try:  # pragma: no cover - optional dependency
-        from pyspark.sql.column import Column as _RuntimePySparkColumn  # type: ignore
+        from pyspark.sql.column import Column as _RuntimePySparkColumn
     except Exception:  # pragma: no cover - PySpark not available or broken
         PySparkColumn = None
     else:
         PySparkColumn = cast(
             "Optional[type[PySparkColumnType]]",
-            _RuntimePySparkColumn,  # type: ignore[arg-type]
+            _RuntimePySparkColumn,
         )
 else:
     PySparkColumn = None
@@ -79,7 +79,9 @@ def to_date_str(
     ``date_format`` while preserving the original alias.
     """
 
-    if _is_pyspark_column(column):  # type: ignore[arg-type]
+    # Type narrowing: check if column is PySpark column at runtime
+    if PySparkColumn is not None and isinstance(column, PySparkColumn):
+        # PySparkColumn is part of ColumnLike union, so this is valid
         return column
 
     to_date_op = _ensure_to_date_operation(column)
@@ -94,7 +96,9 @@ def to_timestamp_str(
 ) -> Union[ColumnOperation, ColumnLike]:
     """Format ``to_timestamp`` outputs as strings when using Mock Spark."""
 
-    if _is_pyspark_column(column):  # type: ignore[arg-type]
+    # Type narrowing: check if column is PySpark column at runtime
+    if PySparkColumn is not None and isinstance(column, PySparkColumn):
+        # PySparkColumn is part of ColumnLike union, so this is valid
         return column
 
     to_timestamp_op = _ensure_to_timestamp_operation(column, source_format)
@@ -102,26 +106,28 @@ def to_timestamp_str(
     return formatted.alias(to_timestamp_op.name)
 
 
-def normalize_date_value(value: object) -> Optional[str]:
+def normalize_date_value(value: object) -> Optional[Union[str, object]]:
     """Convert Python ``date`` values to ISO strings while leaving others intact."""
 
     if value is None:
         return None
     if isinstance(value, date) and not isinstance(value, datetime):
         return value.isoformat()
-    return value  # type: ignore[return-value]
+    # Return value as-is if not a date (could be str, int, etc.)
+    return value
 
 
 def normalize_timestamp_value(
     value: object, fmt: str = "%Y-%m-%d %H:%M:%S"
-) -> Optional[str]:
+) -> Optional[Union[str, object]]:
     """Convert Python ``datetime`` values to formatted strings."""
 
     if value is None:
         return None
     if isinstance(value, datetime):
         return value.strftime(fmt)
-    return value  # type: ignore[return-value]
+    # Return value as-is if not a datetime (could be str, int, etc.)
+    return value
 
 
 def normalize_collected_datetimes(

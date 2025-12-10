@@ -169,7 +169,9 @@ class SQLAlchemyQueryBuilder:
 
         operation_func = operation_map.get(op.operation)
         if operation_func:
-            return operation_func(left, right)  # type: ignore[no-untyped-call]
+            # Type checker can't infer lambda return types, but we know they return SQLAlchemy expressions
+            result: Any = operation_func(left, right)
+            return result
 
         return literal(str(op))
 
@@ -189,10 +191,8 @@ class SQLAlchemyQueryBuilder:
             "date": Date,
             "timestamp": DateTime,
         }
-        if isinstance(target_type, str):
-            sa_type = type_map.get(target_type.lower(), String)()
-        else:
-            sa_type = String()  # fallback
+        # target_type is always str based on function signature
+        sa_type = type_map.get(target_type.lower(), String)()
         return sa_cast(column, sa_type)
 
     def _value_to_sqlalchemy(self, value: Any) -> Any:
@@ -252,21 +252,21 @@ class SQLAlchemyQueryBuilder:
         # Handle window frames (ROWS BETWEEN, RANGE BETWEEN)
         if hasattr(window_spec, "_rows_between") and window_spec._rows_between:
             start, end = window_spec._rows_between
-            # SQLAlchemy handles rows between with range_ parameter
-            kwargs["rows"] = (  # type: ignore[assignment]
-                self._frame_bound_to_sqlalchemy(start),
-                self._frame_bound_to_sqlalchemy(end),
-            )
+            # SQLAlchemy handles rows between - convert bounds and create tuple
+            start_bound = self._frame_bound_to_sqlalchemy(start)
+            end_bound = self._frame_bound_to_sqlalchemy(end)
+            # SQLAlchemy accepts tuple[Optional[int], Optional[int]] for rows
+            kwargs["rows"] = (start_bound, end_bound)  # type: ignore[assignment]
         elif hasattr(window_spec, "_range_between") and window_spec._range_between:
             start, end = window_spec._range_between
-            kwargs["range_"] = (  # type: ignore[assignment]
-                self._frame_bound_to_sqlalchemy(start),
-                self._frame_bound_to_sqlalchemy(end),
-            )
+            start_bound = self._frame_bound_to_sqlalchemy(start)
+            end_bound = self._frame_bound_to_sqlalchemy(end)
+            # SQLAlchemy accepts tuple[Optional[int], Optional[int]] for range_
+            kwargs["range_"] = (start_bound, end_bound)  # type: ignore[assignment]
 
         return kwargs
 
-    def _frame_bound_to_sqlalchemy(self, bound: Any) -> Any:
+    def _frame_bound_to_sqlalchemy(self, bound: Any) -> Optional[int]:
         """Convert a window frame bound to SQLAlchemy representation."""
         if hasattr(bound, "__name__"):
             bound_name = bound.__name__.upper()
@@ -275,8 +275,13 @@ class SQLAlchemyQueryBuilder:
             elif "CURRENT" in bound_name:
                 return 0  # Current row
             elif hasattr(bound, "value"):
-                return bound.value
-        return bound
+                value = bound.value
+                return int(value) if value is not None else None
+        # For integer literals or other numeric types, convert to int
+        if isinstance(bound, (int, float)):
+            return int(bound)
+        # Default: return None for unknown types
+        return None
 
     def build_select(self) -> Any:  # Can be Select or CompoundSelect
         """Build the final SQLAlchemy Select statement."""

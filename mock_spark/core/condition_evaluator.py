@@ -102,6 +102,15 @@ class ConditionEvaluator:
                 return None
 
             try:
+                # Handle DataType objects (Issue #5 fix)
+                from mock_spark.dataframe.casting.type_converter import TypeConverter
+                from mock_spark.spark_types import DataType
+
+                if isinstance(target_type, DataType):
+                    # Use TypeConverter for proper DataType handling
+                    return TypeConverter.cast_to_type(value, target_type)
+
+                # Handle string type names (legacy support)
                 if target_type == "long" or target_type == "bigint":
                     # Convert to Unix timestamp if it's a datetime string
                     if isinstance(value, str) and ("-" in value or ":" in value):

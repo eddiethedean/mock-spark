@@ -1289,9 +1289,12 @@ class DateTimeFunctions:
         if isinstance(year, int):
             year_col = Literal(year)
         elif isinstance(year, str):
-            year_col = Column(year)
-        else:
+            year_col = Column(year)  # ColumnOperation may be passed as str
+        elif isinstance(year, (Column, Literal)):
             year_col = year
+        else:
+            # For other types (ColumnOperation, etc.), create Column from name
+            year_col = Column(str(year))
 
         return ColumnOperation(
             year_col,
@@ -1341,6 +1344,7 @@ class DateTimeFunctions:
             >>> df.select(F.datediff(F.col('end_date'), F.lit('2024-01-01')))
         """
         # Handle Literal objects
+
         end_col: Union[Literal, Column]
         if isinstance(end, Literal):
             # For literals, use the literal as-is
@@ -1350,8 +1354,15 @@ class DateTimeFunctions:
             # If it contains dashes and looks like a date, treat as literal
             # Simple heuristic: "YYYY-MM-DD"
             end_col = Literal(end) if "-" in end and len(end) == 10 else Column(end)
+        elif isinstance(end, Column):
+            # Already a Column, use as-is
+            end_col = end
+        elif isinstance(end, Literal):
+            # Already a Literal, use as-is
+            end_col = end
         else:
-            end_col = end  # type: ignore[assignment]
+            # Fallback: for ColumnOperation or other types, create Column from name
+            end_col = Column(str(end))
 
         start_col: Union[Literal, Column]
         if isinstance(start, Literal):
@@ -1362,8 +1373,15 @@ class DateTimeFunctions:
                 start_col = Literal(start)
             else:
                 start_col = Column(start)
+        elif isinstance(start, Column):
+            # Already a Column, use as-is
+            start_col = start
+        elif isinstance(start, Literal):
+            # Already a Literal, use as-is
+            start_col = start
         else:
-            start_col = start  # type: ignore[assignment]
+            # Fallback: for ColumnOperation or other types, create Column from name
+            start_col = Column(str(start))
 
         end_name = (
             end_col.name
@@ -1430,18 +1448,31 @@ class DateTimeFunctions:
         Example:
             >>> df.select(F.unix_timestamp(F.col('timestamp'), 'yyyy-MM-dd'))
         """
-        if timestamp is None:
-            from mock_spark.functions.core.literals import Literal
+        from mock_spark.functions.core.literals import Literal
 
-            timestamp = Literal("current_timestamp")  # type: ignore[assignment]
+        timestamp_col: Union[Literal, Column]
+        if timestamp is None:
+            timestamp_col = Literal("current_timestamp")
         elif isinstance(timestamp, str):
-            timestamp = Column(timestamp)
+            timestamp_col = Column(timestamp)
+        elif isinstance(timestamp, (Column, Literal)):
+            timestamp_col = timestamp
+        else:
+            # For ColumnOperation or other types, create Column from name
+            timestamp_col = Column(str(timestamp))
+
+        # Get name safely
+        timestamp_name = (
+            timestamp_col.name
+            if hasattr(timestamp_col, "name")
+            else "current_timestamp"
+        )
 
         return ColumnOperation(
-            timestamp,
+            timestamp_col,
             "unix_timestamp",
             value=format,
-            name=f"unix_timestamp({timestamp.name if hasattr(timestamp, 'name') else 'current_timestamp'}, {format})",  # type: ignore[union-attr]
+            name=f"unix_timestamp({timestamp_name}, {format})",
         )
 
     @staticmethod
@@ -1520,24 +1551,42 @@ class DateTimeFunctions:
         Example:
             >>> df.select(F.timestamp_seconds(F.col("seconds")))
         """
-        if isinstance(col, str):
-            col = Column(col)
-        elif isinstance(col, int):
-            from mock_spark.functions.core.literals import Literal
+        from mock_spark.functions.core.literals import Literal
 
-            col = Literal(col)  # type: ignore[assignment]
-
-        # Extract value from Literal for name generation
-        if hasattr(col, "value") and hasattr(col, "data_type"):
-            # It's a Literal - use its value in the name
-            col_name = str(col.value)
-        elif hasattr(col, "name"):
-            col_name = col.name
+        # Normalize input - preserve Literal, convert int/str to Column
+        col_obj: Union[Column, Literal]
+        if isinstance(col, int):
+            # Convert int to Literal to preserve the value
+            col_obj = Literal(col)
+        elif isinstance(col, str):
+            col_obj = Column(col)
+        elif isinstance(col, Literal):
+            # Keep Literal as-is (important - don't convert to Column)
+            col_obj = col
+        elif isinstance(col, Column):
+            # Already a Column, keep as-is
+            col_obj = col
         else:
-            col_name = str(col)
+            # For ColumnOperation or other types, try to extract value or use as Column
+            if hasattr(col, "value"):
+                # It might be a ColumnOperation wrapping a Literal
+                if isinstance(col.value, (int, float)):
+                    col_obj = Literal(col.value)
+                else:
+                    col_obj = Column(str(col))
+            else:
+                col_obj = Column(str(col))
+
+        # Extract value/name for ColumnOperation name generation
+        if isinstance(col_obj, Literal) and hasattr(col_obj, "value"):
+            col_name = str(col_obj.value)
+        elif hasattr(col_obj, "name"):
+            col_name = col_obj.name
+        else:
+            col_name = str(col_obj)
 
         return ColumnOperation(
-            col,
+            col_obj,
             "timestamp_seconds",
             name=f"timestamp_seconds({col_name})",
         )

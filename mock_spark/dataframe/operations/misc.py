@@ -303,10 +303,10 @@ class MiscellaneousOperations:
             # No numeric columns found
             from ..dataframe import DataFrame
 
-        return cast(
-            "SupportsDataFrameOps",
-            DataFrame([], self.schema, self.storage),
-        )
+            return cast(
+                "SupportsDataFrameOps",
+                DataFrame([], self.schema, self.storage),
+            )
 
         # Calculate statistics for each column
         result_data = []
@@ -389,10 +389,10 @@ class MiscellaneousOperations:
             # No numeric columns found
             from ..dataframe import DataFrame
 
-        return cast(
-            "SupportsDataFrameOps",
-            DataFrame([], self.schema, self.storage),
-        )
+            return cast(
+                "SupportsDataFrameOps",
+                DataFrame([], self.schema, self.storage),
+            )
 
         # Calculate statistics for each column
         result_data = []
@@ -599,8 +599,9 @@ class MiscellaneousOperations:
         if not pairs:
             return 0.0
 
-        values1 = [float(p[0]) for p in pairs]  # type: ignore
-        values2 = [float(p[1]) for p in pairs]  # type: ignore
+        # Extract values, ensuring they're not None
+        values1 = [float(p[0]) for p in pairs if p[0] is not None]
+        values2 = [float(p[1]) for p in pairs if p[1] is not None]
 
         from mock_spark.utils.statistics import covariance
 
@@ -1139,7 +1140,8 @@ class MiscellaneousOperations:
         from ..dataframe import DataFrame
 
         result = DataFrame(self.data, self.schema, self.storage)
-        result._alias = alias  # type: ignore
+        # Store alias dynamically (not in type definition)
+        setattr(result, "_alias", alias)
         return cast(
             "SupportsDataFrameOps",
             result,
@@ -1175,9 +1177,9 @@ class MiscellaneousOperations:
             DataFrame with watermark defined (mock: returns self unchanged)
         """
         # In mock implementation, watermarks don't affect behavior
-        # Store for potential future use
-        self._watermark_col = eventTime  # type: ignore
-        self._watermark_delay = delayThreshold  # type: ignore
+        # Store for potential future use (dynamically, not in type definition)
+        setattr(self, "_watermark_col", eventTime)
+        setattr(self, "_watermark_delay", delayThreshold)
         return self
 
     def sameSemantics(self: SupportsDataFrameOps, other: "DataFrame") -> bool:
@@ -1238,11 +1240,15 @@ class MiscellaneousOperations:
             New DataFrame repartitioned by range (mock: sorted)
         """
         # For mock purposes, sort by columns to simulate range partitioning
+        from typing import cast
+
         if isinstance(numPartitions, int):
-            return self.orderBy(*cols)
+            result = self.orderBy(*cols)
+            return cast("SupportsDataFrameOps", result)
         else:
             # numPartitions is actually the first column
-            return self.orderBy(numPartitions, *cols)
+            result = self.orderBy(numPartitions, *cols)
+            return cast("SupportsDataFrameOps", result)
 
     def sortWithinPartitions(
         self: SupportsDataFrameOps, *cols: Union[str, "Column"], **kwargs: Any
@@ -1257,7 +1263,10 @@ class MiscellaneousOperations:
             New DataFrame sorted within partitions (mock: equivalent to orderBy)
         """
         # For mock purposes, treat as regular sort since we have single partition
-        return self.orderBy(*cols, **kwargs)
+        from typing import cast
+
+        result = self.orderBy(*cols, **kwargs)
+        return cast("SupportsDataFrameOps", result)
 
     def toLocalIterator(
         self: SupportsDataFrameOps, prefetchPartitions: bool = False

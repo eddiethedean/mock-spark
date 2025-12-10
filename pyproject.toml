@@ -1,10 +1,10 @@
- [build-system]
+[build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mock-spark"
-version = "3.9.1"
+version = "3.10.0"
 description = "Lightning-fast PySpark testing without JVM - 10x faster with 100% API compatibility"
 readme = "README.md"
 license = {text = "MIT"}
@@ -151,9 +151,6 @@ warn_unreachable = false
 [[tool.mypy.overrides]]
 module = [
     "mock_spark.dataframe.transformations.operations",
-    "mock_spark.dataframe.operations.misc",
-    "mock_spark.dataframe.joins.operations",
-    "mock_spark.dataframe.display.operations",
     "mock_spark.dataframe.aggregations.operations",
 ]
 ignore_errors = true

@@ -40,7 +40,8 @@ from mock_spark.errors import AnalysisException, IllegalArgumentException
 if TYPE_CHECKING:
     from mock_spark.backend.protocols import StorageBackend
     from .dataframe import DataFrame
-    from ..spark_types import StructType
+
+from ..spark_types import StructType
 
 
 class DataFrameWriter:
@@ -212,6 +213,9 @@ class DataFrameWriter:
         is_delta = self.format_name == "delta"
         table_exists = self.storage.table_exists(schema, table)
 
+        # Initialize DataFrame to write (may be modified by schema merging)
+        df_to_write = self.df
+
         # Handle different save modes
         if self.save_mode == "error":
             if table_exists:
@@ -238,9 +242,26 @@ class DataFrameWriter:
                     # Preserve version history
                     preserved_history = meta.get("version_history", [])
 
+            # Handle overwriteSchema option (Issue #2 fix)
+            overwrite_schema = self._options.get("overwriteSchema", "false")
+            if isinstance(overwrite_schema, bool):
+                overwrite_schema_enabled = overwrite_schema
+            else:
+                overwrite_schema_enabled = str(overwrite_schema).lower() == "true"
+
+            schema_to_use = self.df.schema
+
+            if table_exists and overwrite_schema_enabled:
+                # Read existing schema and merge with current schema (Issue #4 fix)
+                existing_schema = self.storage.get_table_schema(schema, table)
+                if existing_schema and isinstance(existing_schema, StructType):
+                    df_to_write, schema_to_use = self._merge_schemas_for_overwrite(
+                        existing_schema, self.df
+                    )
+
             if table_exists:
                 self.storage.drop_table(schema, table)
-            self.storage.create_table(schema, table, self.df.schema.fields)
+            self.storage.create_table(schema, table, schema_to_use.fields)
 
             # Store next version and history for Delta tables
             if is_delta:
@@ -316,31 +337,40 @@ class DataFrameWriter:
                             f"New columns: {self.df.schema.fieldNames()}."
                         )
 
-        # Insert data
-        data = self.df.collect()
+        # Insert data (use merged DataFrame if schema merging occurred)
+        data = df_to_write.collect()
         # Convert Row objects to dictionaries
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data)
 
-        # Ensure table is properly registered in storage after creation
-        # This synchronizes catalog and storage
+        # Ensure table is immediately accessible in catalog (Issue #3 fix)
+        # This synchronizes catalog and storage - table must be available right after saveAsTable
         if not self.storage.table_exists(schema, table):
-            # If table_exists returns False but we just created it, there's a sync issue
-            # Re-check by attempting to query the table
-            try:
-                # Try to get table schema as a verification
-                table_schema = self.storage.get_table_schema(schema, table)
-                if table_schema is None:
-                    # Table exists in storage but not properly registered - force registration
-                    # This shouldn't happen, but handle it gracefully
-                    pass
-            except Exception:
-                # Table doesn't exist - this is an error
-                from ..errors import AnalysisException
+            # If table_exists returns False but we just created/inserted data, there's a sync issue
+            # Try to rehydrate from disk if using persistent storage
+            if hasattr(self.storage, "_rehydrate_from_disk"):
+                self.storage._rehydrate_from_disk()
 
-                raise AnalysisException(
-                    f"Table '{schema}.{table}' was not properly created in storage"
-                )
+            # Verify table is now accessible
+            if not self.storage.table_exists(schema, table):
+                # Last resort: try to get table schema directly
+                try:
+                    table_schema = self.storage.get_table_schema(schema, table)
+                    if table_schema is None:
+                        # Table doesn't exist - this is an error
+                        from ..errors import AnalysisException
+
+                        raise AnalysisException(
+                            f"Table '{schema}.{table}' was not properly created in storage. "
+                            f"Table registration failed after saveAsTable()."
+                        )
+                except Exception as e:
+                    # Table doesn't exist - this is an error
+                    from ..errors import AnalysisException
+
+                    raise AnalysisException(
+                        f"Table '{schema}.{table}' was not properly created in storage: {e}"
+                    ) from e
 
         # Set Delta-specific metadata
         if is_delta:
@@ -647,3 +677,52 @@ class DataFrameWriter:
         if isinstance(value, bool):
             return value
         return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+    def _merge_schemas_for_overwrite(
+        self, existing_schema: StructType, current_df: DataFrame
+    ) -> tuple[DataFrame, StructType]:
+        """
+        Merge existing table schema with current DataFrame schema for overwrite mode.
+
+        This implements Delta Lake's schema evolution:
+        - Preserves all columns from existing schema
+        - Adds new columns from current DataFrame
+        - Fills missing columns with null values of the correct type
+
+        Args:
+            existing_schema: Schema of existing table
+            current_df: Current DataFrame to write
+
+        Returns:
+            Tuple of (merged_dataframe, merged_schema)
+        """
+        # Merge schemas: preserve existing columns, add new ones
+        merged_schema = existing_schema.merge_with(current_df.schema)
+
+        # Identify missing columns in current DataFrame
+        existing_columns = set(existing_schema.fieldNames())
+        current_columns = set(current_df.schema.fieldNames())
+        missing_columns = existing_columns - current_columns
+
+        # Add missing columns with null values to DataFrame
+        merged_df = current_df
+        if missing_columns:
+            from ..functions import Functions
+
+            for col_name in sorted(missing_columns):
+                # Get the field from existing schema
+                field = existing_schema.get_field_by_name(col_name)
+                if field is not None:
+                    # Add column with null values of the correct type
+                    field_data_type = field.dataType
+                    merged_df = merged_df.withColumn(
+                        col_name, Functions.lit(None).cast(field_data_type)
+                    )
+
+            # Reorder columns: existing first, then new (sorted)
+            all_columns = list(existing_schema.fieldNames()) + sorted(
+                current_columns - existing_columns
+            )
+            merged_df = merged_df.select(*all_columns)
+
+        return merged_df, merged_schema

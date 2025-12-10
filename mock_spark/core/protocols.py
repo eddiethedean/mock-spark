@@ -5,7 +5,7 @@ This module defines structural typing protocols (PEP 544) for better
 type safety and clearer contracts without tight coupling.
 """
 
-from typing import Protocol, Any, runtime_checkable
+from typing import Protocol, Any, Union, runtime_checkable
 
 
 @runtime_checkable
@@ -106,7 +106,15 @@ class SchemaLike(Protocol):
         ...
 
 
-# Type aliases for common unions
-ColumnExpression = Any  # Can be ColumnLike, OperationLike, LiteralLike, or str
-AggregateExpression = Any  # Can be string name or column operation
-WindowExpression = Any  # Window function with spec
+# Type aliases for common unions (improved type safety)
+# Use string literals for forward references to avoid import cycles
+ColumnExpression = Union[
+    ColumnLike,
+    OperationLike,
+    LiteralLike,
+    str,
+]  # Can also include Column, ColumnOperation, Literal at runtime
+AggregateExpression = Union[
+    str, OperationLike, ColumnLike
+]  # Can be string name or column operation
+WindowExpression = Any  # WindowFunction is complex - keep as Any for now
