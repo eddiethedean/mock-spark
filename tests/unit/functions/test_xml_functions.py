@@ -11,7 +11,14 @@ from mock_spark.functions.xml import XMLFunctions
 class TestXMLFunctions:
     """Test XML parsing and manipulation functions."""
 
-    def test_from_xml_with_schema(self):
+    @pytest.fixture
+    def spark(self):
+        """Create a SparkSession for testing."""
+        from mock_spark import SparkSession
+
+        return SparkSession("test")
+
+    def test_from_xml_with_schema(self, spark):
         """Test from_xml with schema."""
         schema = "name STRING, age INT"
         result = XMLFunctions.from_xml(F.col("xml"), schema)
@@ -23,18 +30,18 @@ class TestXMLFunctions:
         result = XMLFunctions.from_xml("xml", "schema")
         assert result.operation == "from_xml"
 
-    def test_to_xml_with_column(self):
+    def test_to_xml_with_column(self, spark):
         """Test to_xml with column."""
         result = XMLFunctions.to_xml(F.col("struct_col"))
         assert result.operation == "to_xml"
 
-    def test_to_xml_with_column_operation(self):
+    def test_to_xml_with_column_operation(self, spark):
         """Test to_xml with column operation."""
         struct_expr = F.struct(F.col("name"), F.col("age"))
         result = XMLFunctions.to_xml(struct_expr)
         assert result.operation == "to_xml"
 
-    def test_schema_of_xml(self):
+    def test_schema_of_xml(self, spark):
         """Test schema_of_xml."""
         result = XMLFunctions.schema_of_xml(F.col("xml"))
         assert result.operation == "schema_of_xml"
@@ -44,7 +51,7 @@ class TestXMLFunctions:
         result = XMLFunctions.schema_of_xml("xml")
         assert result.operation == "schema_of_xml"
 
-    def test_xpath(self):
+    def test_xpath(self, spark):
         """Test xpath extraction."""
         result = XMLFunctions.xpath(F.col("xml"), "/root/item")
         assert result.operation == "xpath"
@@ -55,42 +62,42 @@ class TestXMLFunctions:
         result = XMLFunctions.xpath("xml", "/root/item")
         assert result.operation == "xpath"
 
-    def test_xpath_boolean(self):
+    def test_xpath_boolean(self, spark):
         """Test xpath_boolean."""
         result = XMLFunctions.xpath_boolean(F.col("xml"), "/root/active='true'")
         assert result.operation == "xpath_boolean"
 
-    def test_xpath_double(self):
+    def test_xpath_double(self, spark):
         """Test xpath_double."""
         result = XMLFunctions.xpath_double(F.col("xml"), "/root/value")
         assert result.operation == "xpath_double"
 
-    def test_xpath_float(self):
+    def test_xpath_float(self, spark):
         """Test xpath_float."""
         result = XMLFunctions.xpath_float(F.col("xml"), "/root/price")
         assert result.operation == "xpath_float"
 
-    def test_xpath_int(self):
+    def test_xpath_int(self, spark):
         """Test xpath_int."""
         result = XMLFunctions.xpath_int(F.col("xml"), "/root/age")
         assert result.operation == "xpath_int"
 
-    def test_xpath_long(self):
+    def test_xpath_long(self, spark):
         """Test xpath_long."""
         result = XMLFunctions.xpath_long(F.col("xml"), "/root/value")
         assert result.operation == "xpath_long"
 
-    def test_xpath_short(self):
+    def test_xpath_short(self, spark):
         """Test xpath_short."""
         result = XMLFunctions.xpath_short(F.col("xml"), "/root/count")
         assert result.operation == "xpath_short"
 
-    def test_xpath_string(self):
+    def test_xpath_string(self, spark):
         """Test xpath_string."""
         result = XMLFunctions.xpath_string(F.col("xml"), "/root/name")
         assert result.operation == "xpath_string"
 
-    def test_xpath_functions_with_complex_paths(self):
+    def test_xpath_functions_with_complex_paths(self, spark):
         """Test xpath functions with complex XPath expressions."""
         # Test nested paths
         result = XMLFunctions.xpath_string(F.col("xml"), "/root/person/name")

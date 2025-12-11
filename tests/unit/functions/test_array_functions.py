@@ -25,7 +25,7 @@ class TestArrayFunctions:
             {"name": "Charlie", "tags": ["a", "b"], "numbers": [7, 8]},
         ]
 
-    def test_array_distinct_with_column(self):
+    def test_array_distinct_with_column(self, spark):
         """Test array_distinct with Column."""
         col = F.col("tags")
         result = ArrayFunctions.array_distinct(col)
@@ -38,7 +38,7 @@ class TestArrayFunctions:
         assert result.operation == "array_distinct"
         assert result.name == "array_distinct(tags)"
 
-    def test_array_intersect_with_columns(self):
+    def test_array_intersect_with_columns(self, spark):
         """Test array_intersect with two columns."""
         col1 = F.col("tags1")
         col2 = F.col("tags2")
@@ -50,64 +50,64 @@ class TestArrayFunctions:
         result = ArrayFunctions.array_intersect("tags1", "tags2")
         assert result.operation == "array_intersect"
 
-    def test_array_union(self):
+    def test_array_union(self, spark):
         """Test array_union function."""
         result = ArrayFunctions.array_union(F.col("arr1"), F.col("arr2"))
         assert result.operation == "array_union"
 
-    def test_array_except(self):
+    def test_array_except(self, spark):
         """Test array_except function."""
         result = ArrayFunctions.array_except(F.col("arr1"), F.col("arr2"))
         assert result.operation == "array_except"
 
-    def test_array_position_with_value(self):
+    def test_array_position_with_value(self, spark):
         """Test array_position function."""
         result = ArrayFunctions.array_position(F.col("tags"), "target")
         assert result.operation == "array_position"
         assert result.value == "target"
 
-    def test_array_remove_with_value(self):
+    def test_array_remove_with_value(self, spark):
         """Test array_remove function."""
         result = ArrayFunctions.array_remove(F.col("tags"), "remove_me")
         assert result.operation == "array_remove"
         assert result.value == "remove_me"
 
-    def test_array_compact(self):
+    def test_array_compact(self, spark):
         """Test array_compact function."""
         result = ArrayFunctions.array_compact(F.col("tags"))
         assert result.operation == "array_compact"
 
-    def test_slice(self):
+    def test_slice(self, spark):
         """Test slice function."""
         result = ArrayFunctions.slice(F.col("arr"), 2, 3)
         assert result.operation == "slice"
         assert result.value == (2, 3)
 
-    def test_element_at(self):
+    def test_element_at(self, spark):
         """Test element_at function."""
         result = ArrayFunctions.element_at(F.col("arr"), 1)
         assert result.operation == "element_at"
         assert result.value == 1
 
-    def test_array_append(self):
+    def test_array_append(self, spark):
         """Test array_append function."""
         result = ArrayFunctions.array_append(F.col("arr"), 10)
         assert result.operation == "array_append"
         assert result.value == 10
 
-    def test_array_prepend(self):
+    def test_array_prepend(self, spark):
         """Test array_prepend function."""
         result = ArrayFunctions.array_prepend(F.col("arr"), 0)
         assert result.operation == "array_prepend"
         assert result.value == 0
 
-    def test_array_insert(self):
+    def test_array_insert(self, spark):
         """Test array_insert function."""
         result = ArrayFunctions.array_insert(F.col("arr"), 2, 99)
         assert result.operation == "array_insert"
         assert result.value == (2, 99)
 
-    def test_array_size(self):
+    def test_array_size(self, spark):
         """Test array_size function."""
         result = ArrayFunctions.array_size(F.col("arr"))
         assert result.operation == "array_size"
@@ -143,37 +143,37 @@ class TestArrayFunctions:
         result = ArrayFunctions.size(F.col("tags"))
         assert result.operation == "size"
 
-    def test_flatten(self):
+    def test_flatten(self, spark):
         """Test flatten function."""
         result = ArrayFunctions.flatten(F.col("nested_arrays"))
         assert result.operation == "flatten"
 
-    def test_reverse(self):
+    def test_reverse(self, spark):
         """Test reverse function."""
         result = ArrayFunctions.reverse(F.col("arr"))
         assert result.operation == "reverse"
 
-    def test_arrays_overlap(self):
+    def test_arrays_overlap(self, spark):
         """Test arrays_overlap function."""
         result = ArrayFunctions.arrays_overlap(F.col("arr1"), F.col("arr2"))
         assert result.operation == "arrays_overlap"
 
-    def test_posexplode(self):
+    def test_posexplode(self, spark):
         """Test posexplode function."""
         result = ArrayFunctions.posexplode(F.col("arr"))
         assert result.operation == "posexplode"
 
-    def test_posexplode_outer(self):
+    def test_posexplode_outer(self, spark):
         """Test posexplode_outer function."""
         result = ArrayFunctions.posexplode_outer(F.col("arr"))
         assert result.operation == "posexplode_outer"
 
-    def test_arrays_zip_with_single_column(self):
+    def test_arrays_zip_with_single_column(self, spark):
         """Test arrays_zip with a single column."""
         result = ArrayFunctions.arrays_zip(F.col("arr"))
         assert result.operation == "arrays_zip"
 
-    def test_arrays_zip_with_multiple_columns(self):
+    def test_arrays_zip_with_multiple_columns(self, spark):
         """Test arrays_zip with multiple columns."""
         result = ArrayFunctions.arrays_zip(F.col("arr1"), F.col("arr2"), F.col("arr3"))
         assert result.operation == "arrays_zip"
@@ -183,22 +183,22 @@ class TestArrayFunctions:
         result = ArrayFunctions.sequence(1, 10, 2)
         assert result.operation == "sequence"
 
-    def test_sequence_with_column(self):
+    def test_sequence_with_column(self, spark):
         """Test sequence function with column start."""
         result = ArrayFunctions.sequence(F.col("start"), 10, 1)
         assert result.operation == "sequence"
 
-    def test_shuffle(self):
+    def test_shuffle(self, spark):
         """Test shuffle function."""
         result = ArrayFunctions.shuffle(F.col("arr"))
         assert result.operation == "shuffle"
 
-    def test_array_function_with_single_column(self):
+    def test_array_function_with_single_column(self, spark):
         """Test array function with single column."""
         result = ArrayFunctions.array(F.col("a"))
         assert result.operation == "array"
 
-    def test_array_function_with_multiple_columns(self):
+    def test_array_function_with_multiple_columns(self, spark):
         """Test array function with multiple columns."""
         result = ArrayFunctions.array(F.col("a"), F.col("b"), F.col("c"))
         assert result.operation == "array"
@@ -208,35 +208,35 @@ class TestArrayFunctions:
         with pytest.raises(ValueError, match="array requires at least one column"):
             ArrayFunctions.array()
 
-    def test_array_repeat(self):
+    def test_array_repeat(self, spark):
         """Test array_repeat function."""
         result = ArrayFunctions.array_repeat(F.col("value"), 3)
         assert result.operation == "array_repeat"
         assert result.value == 3
 
-    def test_sort_array_ascending(self):
+    def test_sort_array_ascending(self, spark):
         """Test sort_array with ascending=True."""
         result = ArrayFunctions.sort_array(F.col("values"), asc=True)
         assert result.operation == "array_sort"
         assert result.value
 
-    def test_sort_array_descending(self):
+    def test_sort_array_descending(self, spark):
         """Test sort_array with ascending=False."""
         result = ArrayFunctions.sort_array(F.col("values"), asc=False)
         assert result.operation == "array_sort"
         assert not result.value
 
-    def test_array_agg(self):
+    def test_array_agg(self, spark):
         """Test array_agg aggregate function."""
         result = ArrayFunctions.array_agg(F.col("name"))
         assert result.function_name == "array_agg"
 
-    def test_cardinality(self):
+    def test_cardinality(self, spark):
         """Test cardinality function."""
         result = ArrayFunctions.cardinality(F.col("array_col"))
         assert result.operation == "size"
 
-    def test_transform_with_lambda(self):
+    def test_transform_with_lambda(self, spark):
         """Test transform with lambda function."""
 
         def func(x):
@@ -249,7 +249,7 @@ class TestArrayFunctions:
 
         assert isinstance(result.value, MockLambdaExpression)
 
-    def test_filter_with_lambda(self):
+    def test_filter_with_lambda(self, spark):
         """Test filter with lambda function."""
 
         def func(x):
@@ -258,7 +258,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.filter(F.col("numbers"), func)
         assert result.operation == "filter"
 
-    def test_exists_with_lambda(self):
+    def test_exists_with_lambda(self, spark):
         """Test exists with lambda function."""
 
         def func(x):
@@ -267,7 +267,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.exists(F.col("numbers"), func)
         assert result.operation == "exists"
 
-    def test_forall_with_lambda(self):
+    def test_forall_with_lambda(self, spark):
         """Test forall with lambda function."""
 
         def func(x):
@@ -276,7 +276,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.forall(F.col("numbers"), func)
         assert result.operation == "forall"
 
-    def test_aggregate_with_lambda(self):
+    def test_aggregate_with_lambda(self, spark):
         """Test aggregate with lambda function."""
 
         def merge_func(acc, x):
@@ -285,7 +285,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.aggregate(F.col("nums"), 0, merge_func)
         assert result.operation == "aggregate"
 
-    def test_aggregate_with_finish(self):
+    def test_aggregate_with_finish(self, spark):
         """Test aggregate with finish function."""
 
         def merge_func(acc, x):
@@ -297,7 +297,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.aggregate(F.col("nums"), 0, merge_func, finish_func)
         assert result.operation == "aggregate"
 
-    def test_zip_with_with_lambda(self):
+    def test_zip_with_with_lambda(self, spark):
         """Test zip_with with lambda function."""
 
         def merge_func(x, y):
