@@ -27,12 +27,46 @@ from collections.abc import ItemsView, Iterator, KeysView, ValuesView
 from typing import Any, Optional, Union
 from dataclasses import dataclass
 
+# Try to import PySpark types for compatibility
+try:
+    from pyspark.sql.types import (
+        DataType as PySparkDataType,
+        StructType as PySparkStructType,
+        StructField as PySparkStructField,
+        StringType as PySparkStringType,
+        IntegerType as PySparkIntegerType,
+        LongType as PySparkLongType,
+        DoubleType as PySparkDoubleType,
+        BooleanType as PySparkBooleanType,
+        DateType as PySparkDateType,
+        TimestampType as PySparkTimestampType,
+    )
 
-class DataType:
+    PYSPARK_AVAILABLE = True
+except ImportError:
+    PYSPARK_AVAILABLE = False
+    # Create dummy base classes for type hints
+    PySparkDataType = object
+    PySparkStructType = object
+    PySparkStructField = object
+    PySparkStringType = object
+    PySparkIntegerType = object
+    PySparkLongType = object
+    PySparkDoubleType = object
+    PySparkBooleanType = object
+    PySparkDateType = object
+    PySparkTimestampType = object
+
+
+_DataTypeBase = PySparkDataType if PYSPARK_AVAILABLE else object
+
+
+class DataType(_DataTypeBase):  # type: ignore[misc,valid-type]
     """Base class for mock data types.
 
     Provides the foundation for all data types in the Mock Spark type system.
     Supports nullable/non-nullable semantics and PySpark-compatible type names.
+    Inherits from PySpark DataType when available for compatibility.
 
     Attributes:
         nullable: Whether the data type allows null values.
@@ -45,6 +79,12 @@ class DataType:
     """
 
     def __init__(self, nullable: bool = True):
+        if PYSPARK_AVAILABLE:
+            # Call PySpark parent constructor if available
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                super().__init__()
         self.nullable = nullable
 
     def __eq__(self, other: Any) -> bool:
@@ -59,13 +99,18 @@ class DataType:
         return hash((self.__class__.__name__, self.nullable))
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(nullable={self.nullable})"
+        # Always include nullable in representation for consistency
+        if hasattr(self, "nullable"):
+            return f"{self.__class__.__name__}(nullable={self.nullable})"
+        else:
+            # Fallback if nullable not set (shouldn't happen)
+            return f"{self.__class__.__name__}()"
 
     def typeName(self) -> str:
         """Get PySpark-compatible type name."""
         type_mapping = {
             "StringType": "string",
-            "IntegerType": "int",
+            "IntegerType": "int",  # Fixed: was "integer", should be "int"
             "LongType": "bigint",
             "DoubleType": "double",
             "BooleanType": "boolean",
@@ -93,45 +138,109 @@ class DataType:
 
 
 class StringType(DataType):
-    """Mock StringType."""
+    """Mock StringType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    This avoids the singleton issue while maintaining compatibility.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize StringType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class IntegerType(DataType):
-    """Mock IntegerType."""
+    """Mock IntegerType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize IntegerType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class LongType(DataType):
-    """Mock LongType."""
+    """Mock LongType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize LongType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class DoubleType(DataType):
-    """Mock DoubleType."""
+    """Mock DoubleType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize DoubleType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class BooleanType(DataType):
-    """Mock BooleanType."""
+    """Mock BooleanType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize BooleanType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class DateType(DataType):
-    """Mock DateType."""
+    """Mock DateType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize DateType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class TimestampType(DataType):
-    """Mock TimestampType."""
+    """Mock TimestampType.
 
-    pass
+    Inherits from DataType which inherits from PySpark DataType when available.
+    """
+
+    def __init__(self, nullable: bool = True):
+        """Initialize TimestampType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class DecimalType(DataType):
@@ -178,31 +287,61 @@ class MapType(DataType):
 class BinaryType(DataType):
     """Mock BinaryType for binary data."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize BinaryType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class NullType(DataType):
     """Mock NullType for null values."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize NullType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class FloatType(DataType):
     """Mock FloatType for single precision floating point numbers."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize FloatType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class ShortType(DataType):
     """Mock ShortType for short integers."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize ShortType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class ByteType(DataType):
     """Mock ByteType for byte values."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize ByteType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class CharType(DataType):
@@ -230,7 +369,13 @@ class VarcharType(DataType):
 class TimestampNTZType(DataType):
     """Mock TimestampNTZType for timestamp without timezone."""
 
-    pass
+    def __init__(self, nullable: bool = True):
+        """Initialize TimestampNTZType.
+
+        Args:
+            nullable: Whether the type allows null values.
+        """
+        super().__init__(nullable)
 
 
 class IntervalType(DataType):
@@ -276,8 +421,11 @@ class DayTimeIntervalType(DataType):
 
 
 @dataclass
-class StructField:
-    """Mock StructField for schema definition."""
+class StructField(PySparkStructField if PYSPARK_AVAILABLE else object):  # type: ignore[misc]
+    """Mock StructField for schema definition.
+
+    Inherits from PySpark StructField when available for compatibility.
+    """
 
     name: str
     dataType: DataType
@@ -308,18 +456,50 @@ class StructField:
         return f"StructField(name='{self.name}', dataType={self.dataType}, nullable={self.nullable}{default_str})"
 
 
-class StructType(DataType):
-    """Mock StructType for schema definition."""
+class StructType(
+    PySparkStructType if PYSPARK_AVAILABLE else DataType  # type: ignore[misc]
+):
+    """Mock StructType for schema definition.
+
+    Inherits from PySpark StructType when available for compatibility.
+    """
 
     def __init__(
         self, fields: Optional[list[StructField]] = None, nullable: bool = True
     ):
-        super().__init__(nullable)
-        self.fields = fields or []
-        if fields:
-            self._field_map = {field.name: field for field in self.fields}
+        if PYSPARK_AVAILABLE:
+            # PySpark StructType expects fields as first argument
+            # Convert mock-spark StructFields to PySpark StructFields if needed
+            if fields:
+                # PySpark StructType will handle the fields
+                try:
+                    super().__init__(fields)
+                    # Ensure fields attribute exists (PySpark might set it differently)
+                    if (
+                        not hasattr(self, "fields")
+                        or getattr(self, "fields", None) != fields
+                    ):
+                        object.__setattr__(self, "fields", (fields or []))
+                except Exception:
+                    # If PySpark init fails, fall back to our implementation
+                    if not hasattr(self, "fields"):
+                        object.__setattr__(self, "fields", (fields or []))
+                    DataType.__init__(self, nullable)
+            else:
+                super().__init__([])
+                self.fields: list[StructField] = []
+            # Always initialize _field_map after fields are set
+            if hasattr(self, "fields") and self.fields:
+                self._field_map = {field.name: field for field in self.fields}
+            else:
+                self._field_map = {}
         else:
-            self._field_map = {}
+            DataType.__init__(self, nullable)
+            self.fields = fields or []
+            if fields:
+                self._field_map = {field.name: field for field in self.fields}
+            else:
+                self._field_map = {}
 
     def __getitem__(self, index: int) -> StructField:
         return self.fields[index]

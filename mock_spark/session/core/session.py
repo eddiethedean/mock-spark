@@ -72,6 +72,7 @@ class SparkSession:
         storage_backend: Optional[StorageBackend] = None,
         backend_type: Optional[str] = None,
         db_path: Optional[str] = None,
+        performance_mode: str = "fast",
     ):
         """Initialize SparkSession.
 
@@ -96,6 +97,8 @@ class SparkSession:
                     between session restarts. Use persistent storage for incremental pipeline testing.
         """
         self.app_name = app_name
+        self.performance_mode = performance_mode
+        self._jvm_overhead = 0.001 if performance_mode == "realistic" else 0.00001
         resolved_backend_type = resolve_backend_type(backend_type)
         self.backend_type = resolved_backend_type
         # Use dependency injection for storage backend
@@ -152,6 +155,17 @@ class SparkSession:
         # Register this session as active
         SparkSession._active_sessions.append(self)
         SparkSession._singleton_session = self
+
+    def _simulate_jvm_overhead(self, operations: int = 1) -> None:
+        """Simulate JVM overhead for realistic performance.
+
+        Args:
+            operations: Number of operations to simulate overhead for.
+        """
+        if self.performance_mode == "realistic":
+            import time
+
+            time.sleep(self._jvm_overhead * operations)
 
     @property
     def appName(self) -> str:

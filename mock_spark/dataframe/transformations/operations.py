@@ -217,10 +217,10 @@ class TransformationOperations(Generic[SupportsDF]):
 
                     if alias:
                         expr_col = F.expr(colname).alias(alias)
-                        columns.append(expr_col)
+                        columns.append(expr_col)  # type: ignore[arg-type]
                     else:
                         expr_col = F.expr(colname)
-                        columns.append(expr_col)
+                        columns.append(expr_col)  # type: ignore[arg-type]
             else:
                 # No alias
                 if is_simple_column_name(text):
@@ -229,7 +229,7 @@ class TransformationOperations(Generic[SupportsDF]):
                     # Complex expression without alias
                     from ...functions import F
 
-                    columns.append(F.expr(text))
+                    columns.append(F.expr(text))  # type: ignore[arg-type]
 
         return cast("SupportsDF", self.select(*columns))
 

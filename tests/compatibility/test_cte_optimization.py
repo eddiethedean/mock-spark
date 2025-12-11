@@ -23,12 +23,28 @@ class TestCTEOptimizationCompatibility:
 
     def test_complex_cte_chain_with_datetime(self, spark):
         """Test complex CTE chain with datetime parsing operations."""
+        from mock_spark.spark_types import (
+            StructType,
+            StructField,
+            StringType,
+            LongType,
+        )
+
         test_data = [
             {"id": 1, "timestamp_str": "2025-10-29T10:30:45.123456", "value": 100},
             {"id": 2, "timestamp_str": "2025-10-29T14:20:30", "value": 200},
         ]
 
-        df = spark.createDataFrame(test_data)
+        # Use explicit schema to ensure timestamp_str is StringType, not TimestampType
+        schema = StructType(
+            [
+                StructField("id", LongType(), True),
+                StructField("timestamp_str", StringType(), True),
+                StructField("value", LongType(), True),
+            ]
+        )
+
+        df = spark.createDataFrame(test_data, schema=schema)
 
         # Complex chain: filter -> withColumn (datetime) -> withColumn (calculation) -> select
         with warnings.catch_warnings():

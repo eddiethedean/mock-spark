@@ -143,6 +143,10 @@ class DataFrame:
             # All columns from schema are materialized when DataFrame is created from data
             self._materialized_columns = set(self._schema.fieldNames())
 
+        # Caching state tracking for PySpark compatibility
+        # When a DataFrame is cached, string concatenation with + operator returns None
+        self._is_cached: bool = False
+
         # Initialize service classes for composition-based architecture
         from .services import (
             TransformationService,
@@ -207,13 +211,16 @@ class DataFrame:
         if self._condition_handler is None:
             from .condition_handler import ConditionHandler
 
-            self._condition_handler = ConditionHandler()
+            self._condition_handler = ConditionHandler(dataframe_context=self)
         return self._condition_handler
 
     def _get_expression_evaluator(self) -> ExpressionEvaluator:
         """Get or create the expression evaluator."""
         if self._expression_evaluator is None:
-            self._expression_evaluator = ExpressionEvaluator()
+            self._expression_evaluator = ExpressionEvaluator(dataframe_context=self)
+        elif self._expression_evaluator._dataframe_context is not self:
+            # Update context if DataFrame changed
+            self._expression_evaluator._dataframe_context = self
         return self._expression_evaluator
 
     def _mark_materialized(self) -> None:
@@ -469,8 +476,55 @@ class DataFrame:
 
     def count(self) -> int:
         """Count number of rows."""
+        # Materialize if needed
+        if self._operations_queue:
+            materialized = self._materialize_if_lazy()
+            # Update schema and data from materialized DataFrame
+            self._schema = materialized.schema
+            self.data = materialized.data
+            self._operations_queue = []
+            # Preserve cached state
+            self._is_cached = getattr(materialized, "_is_cached", False)
         self._mark_materialized()
         return self._display.count()
+
+    def cache(self) -> "SupportsDataFrameOps":
+        """Cache the DataFrame for reuse.
+
+        In PySpark, caching a DataFrame that uses string concatenation with +
+        operator causes the concatenation to return None/null values.
+        This method marks the DataFrame as cached to match that behavior.
+
+        Returns:
+            Self (cached DataFrame).
+        """
+        # Mark as cached BEFORE materialization so post-processing can detect it
+        self._is_cached = True
+
+        # Materialize if needed before caching
+        if self._operations_queue:
+            materialized = self._materialize_if_lazy()
+            # Update self with materialized data
+            self.data = materialized.data
+            self._schema = materialized.schema
+            self._operations_queue = []
+            # Ensure cached state is preserved
+            self._is_cached = True
+
+        self._mark_materialized()
+        return cast("SupportsDataFrameOps", self)
+
+    def persist(self, storageLevel: Any = None) -> "SupportsDataFrameOps":
+        """Persist the DataFrame with the given storage level.
+
+        Args:
+            storageLevel: Storage level (ignored in mock, but kept for API compatibility).
+
+        Returns:
+            Self (persisted DataFrame).
+        """
+        # Same behavior as cache for mock implementation
+        return self.cache()
 
     def isEmpty(self) -> bool:
         """Check if DataFrame is empty."""
@@ -799,7 +853,7 @@ class DataFrame:
         Raises:
             TypeError: If operation type requirements are not met
         """
-        from mock_spark.spark_types import StringType, DateType, TimestampType
+        from mock_spark.spark_types import StringType, DateType
 
         # Check if this is a to_timestamp or to_date operation
         if hasattr(col, "function_name") and col.function_name in (
@@ -824,11 +878,31 @@ class DataFrame:
                 input_type = schema_field.dataType
                 func_name = col.function_name
 
-                # to_timestamp accepts StringType or TimestampType (already a timestamp)
+                # Check if there's a cast operation that converts to string
+                # For to_timestamp, if the column is cast to string, that's acceptable
+                actual_input_type = input_type
+                if (
+                    hasattr(col, "column")
+                    and hasattr(col.column, "operation")
+                    and col.column.operation == "cast"
+                ):
+                    # Check if cast target is string
+                    cast_target = col.column.value
+                    if (
+                        isinstance(cast_target, str)
+                        and cast_target.lower() in ["string", "varchar"]
+                    ) or (
+                        hasattr(cast_target, "__name__")
+                        and cast_target.__name__ == "StringType"
+                    ):
+                        actual_input_type = StringType()
+
+                # to_timestamp requires StringType input (PySpark compatibility)
+                # If column is already datetime type, to_timestamp() fails
                 if func_name == "to_timestamp":
-                    if not isinstance(input_type, (StringType, TimestampType)):
+                    if not isinstance(actual_input_type, StringType):
                         raise TypeError(
-                            f"{func_name}() requires StringType or TimestampType input, got {input_type}. "
+                            f"{func_name}() requires StringType input, got {input_type}. "
                             f"Cast the column to string first: F.col('{col_name}').cast('string')"
                         )
                 # to_date accepts StringType or DateType (already a date)

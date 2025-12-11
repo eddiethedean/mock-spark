@@ -54,9 +54,14 @@ class ExpressionEvaluator:
     - Type casting operations
     """
 
-    def __init__(self) -> None:
-        """Initialize evaluator with function registry."""
+    def __init__(self, dataframe_context: Optional[Any] = None) -> None:
+        """Initialize evaluator with function registry.
+
+        Args:
+            dataframe_context: Optional DataFrame context for checking cached state.
+        """
         self._function_registry = self._build_function_registry()
+        self._dataframe_context = dataframe_context
 
     @profiled("expression.evaluate_expression", category="expression")
     def evaluate_expression(self, row: dict[str, Any], expression: Any) -> Any:
@@ -182,6 +187,19 @@ class ExpressionEvaluator:
             return None
 
         if operation.operation == "+":
+            # PySpark compatibility: String concatenation with + operator returns None
+            # when DataFrame is cached. Check if both operands are strings and DataFrame is cached.
+            is_string_concatenation = isinstance(left_value, str) and isinstance(
+                right_value, str
+            )
+            if (
+                is_string_concatenation
+                and self._dataframe_context is not None
+                and hasattr(self._dataframe_context, "_is_cached")
+                and self._dataframe_context._is_cached
+            ):
+                # Return None to match PySpark behavior
+                return None
             return left_value + right_value
         elif operation.operation == "-":
             return left_value - right_value
@@ -274,7 +292,8 @@ class ExpressionEvaluator:
         # Handle struct function - collects multiple values into a struct/dict
         if func_name == "struct":
             result = {}
-            all_values = []
+            all_values: list[Any] = []
+            all_names: list[str] = []  # Store column names for struct fields
 
             # Check if operation.value contains all columns (when first is Literal)
             # or if we need to get first from column
@@ -293,6 +312,11 @@ class ExpressionEvaluator:
                             if hasattr(item, "value") and hasattr(item, "name"):
                                 # It's a Literal
                                 all_values.append(self._get_literal_value(item))
+                                all_names.append(
+                                    item.name
+                                    if hasattr(item, "name")
+                                    else f"col{len(all_names) + 1}"
+                                )
                             elif hasattr(item, "name"):
                                 # It's a Column - get from row
                                 col_name = item.name
@@ -305,19 +329,40 @@ class ExpressionEvaluator:
                                     pass
                                 else:
                                     all_values.append(row.get(col_name))
+                                    all_names.append(col_name)
                             elif hasattr(item, "operation") and hasattr(item, "column"):
                                 # It's a ColumnOperation - evaluate it
                                 all_values.append(self.evaluate_expression(row, item))
+                                # Get the original column name if possible
+                                if hasattr(item, "column") and hasattr(
+                                    item.column, "name"
+                                ):
+                                    all_names.append(item.column.name)
+                                else:
+                                    all_names.append(f"col{len(all_names) + 1}")
                             else:
                                 all_values.append(item)
+                                all_names.append(f"col{len(all_names) + 1}")
                     else:
                         # First column is in operation.column, rest in operation.value
                         if value is not None:
                             all_values.append(value)
+                            # Get first column name
+                            if hasattr(operation, "column") and hasattr(
+                                operation.column, "name"
+                            ):
+                                all_names.append(operation.column.name)
+                            else:
+                                all_names.append(f"col{len(all_names) + 1}")
                         # Add remaining values from operation.value
                         for item in operation.value:
                             if hasattr(item, "value") and hasattr(item, "name"):
                                 all_values.append(self._get_literal_value(item))
+                                all_names.append(
+                                    item.name
+                                    if hasattr(item, "name")
+                                    else f"col{len(all_names) + 1}"
+                                )
                             elif hasattr(item, "name"):
                                 col_name = item.name
                                 if (
@@ -328,10 +373,19 @@ class ExpressionEvaluator:
                                     pass
                                 else:
                                     all_values.append(row.get(col_name))
+                                    all_names.append(col_name)
                             elif hasattr(item, "operation") and hasattr(item, "column"):
                                 all_values.append(self.evaluate_expression(row, item))
+                                # Get the original column name if possible
+                                if hasattr(item, "column") and hasattr(
+                                    item.column, "name"
+                                ):
+                                    all_names.append(item.column.name)
+                                else:
+                                    all_names.append(f"col{len(all_names) + 1}")
                             else:
                                 all_values.append(item)
+                                all_names.append(f"col{len(all_names) + 1}")
                 else:
                     # Single value in operation.value
                     if value is not None:
@@ -355,9 +409,12 @@ class ExpressionEvaluator:
                 if value is not None:
                     all_values.append(value)
 
-            # Create struct with field names
-            for idx, val in enumerate(all_values, start=1):
-                result[f"col{idx}"] = val
+            # Create struct with field names - use original column names if available
+            for idx, val in enumerate(all_values):
+                if idx < len(all_names):
+                    result[all_names[idx]] = val
+                else:
+                    result[f"col{idx + 1}"] = val
 
             return result
 

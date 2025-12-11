@@ -354,6 +354,14 @@ class ColumnOperation(ColumnOperatorMixin):
         # If there's an alias, use it
         if hasattr(self, "_alias_name") and self._alias_name:
             return self._alias_name
+        # For cast operations, PySpark keeps the original column name
+        if (
+            self.operation == "cast"
+            and hasattr(self, "column")
+            and hasattr(self.column, "name")
+        ):
+            col_name = getattr(self.column, "name", "")
+            return col_name if isinstance(col_name, str) else str(col_name)
         # If _name was explicitly set (e.g., by datetime functions), use it
         if self._name and self._name != self._generate_name():
             return self._name
@@ -450,6 +458,7 @@ class ColumnOperation(ColumnOperatorMixin):
         if hasattr(self.column, "name"):
             column_ref = self.column.name
         else:
+            # For ColumnOperation or other types, use string representation
             column_ref = str(self.column)
 
         if self.operation == "bitwise_not":
@@ -468,21 +477,21 @@ class ColumnOperation(ColumnOperatorMixin):
         elif self.operation == ">=":
             return f"{column_ref} >= {value_str}"
         elif self.operation == "+":
-            return f"({self.column.name} + {value_str})"
+            return f"({column_ref} + {value_str})"
         elif self.operation == "-":
-            return f"({self.column.name} - {value_str})"
+            return f"({column_ref} - {value_str})"
         elif self.operation == "*":
-            return f"({self.column.name} * {value_str})"
+            return f"({column_ref} * {value_str})"
         elif self.operation == "/":
-            return f"({self.column.name} / {value_str})"
+            return f"({column_ref} / {value_str})"
         elif self.operation == "%":
-            return f"({self.column.name} % {value_str})"
+            return f"({column_ref} % {value_str})"
         elif self.operation == "&":
-            return f"({self.column.name} & {value_str})"
+            return f"({column_ref} & {value_str})"
         elif self.operation == "|":
-            return f"({self.column.name} | {value_str})"
-        elif self.operation == "!" or self.operation == "!":
-            return f"(CASE WHEN {self.column.name} THEN FALSE ELSE TRUE END)"
+            return f"({column_ref} | {value_str})"
+        elif self.operation == "!":
+            return f"(CASE WHEN {column_ref} THEN FALSE ELSE TRUE END)"
         elif self.operation == "isnull":
             return f"{self.column.name} IS NULL"
         elif self.operation == "isnotnull":

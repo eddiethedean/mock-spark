@@ -51,10 +51,23 @@ def pyspark_spark():
     try:
         # Configure PySpark to avoid network binding issues
         # Use local mode explicitly and set bind address to localhost
+        import os
+        import sys
         from pyspark import SparkConf
 
+        # Set SPARK_LOCAL_IP to avoid hostname resolution issues
+        if "SPARK_LOCAL_IP" not in os.environ:
+            os.environ["SPARK_LOCAL_IP"] = "127.0.0.1"
+
+        # Set Python paths to ensure workers use the same Python version as driver
+        python_executable = sys.executable
+        os.environ["PYSPARK_PYTHON"] = python_executable
+        os.environ["PYSPARK_DRIVER_PYTHON"] = python_executable
+
         conf = SparkConf()
-        conf.set("spark.master", "local[*]")
+        conf.set(
+            "spark.master", "local[1]"
+        )  # Use single thread to avoid Python version issues
         conf.set("spark.driver.bindAddress", "127.0.0.1")
         conf.set("spark.driver.host", "127.0.0.1")
         conf.set(
@@ -65,6 +78,9 @@ def pyspark_spark():
         conf.set("spark.ui.enabled", "false")
         # Set app name
         conf.setAppName("parity_test")
+        # Additional settings to avoid conflicts in parallel test execution
+        conf.set("spark.sql.adaptive.enabled", "false")
+        conf.set("spark.sql.adaptive.coalescePartitions.enabled", "false")
 
         # Try to create a session to check if PySpark can actually run
         session = PySparkSession.builder.config(conf=conf).getOrCreate()

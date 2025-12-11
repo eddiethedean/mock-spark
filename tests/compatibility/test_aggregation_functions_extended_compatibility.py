@@ -96,7 +96,6 @@ class TestAggregationFunctionsExtendedCompatibility:
         result = df.agg(F.skewness("salary"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="stddev alias returns wrong field name (uses stddev_samp)")
     def test_stddev(self, spark):
         """Test stddev aggregation."""
         expected = load_expected_output("aggregations", "stddev")
@@ -132,7 +131,6 @@ class TestAggregationFunctionsExtendedCompatibility:
         result = df.agg(F.var_samp("salary"))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="variance not yet implemented correctly")
     def test_variance(self, spark):
         """Test variance aggregation."""
         expected = load_expected_output("aggregations", "variance")

@@ -550,11 +550,13 @@ class StringFunctions:
         if isinstance(column, str):
             column = Column(column)
 
+        # PySpark format: regexp_replace(column, pattern, replacement, pos)
+        # Default pos is 1, so we include it in the name
         operation = ColumnOperation(
             column,
             "regexp_replace",
             (pattern, replacement),
-            name=f"regexp_replace({column.name}, '{pattern}', '{replacement}')",
+            name=f"regexp_replace({column.name}, {pattern}, {replacement}, 1)",
         )
         return operation
 
@@ -951,11 +953,15 @@ class StringFunctions:
             else:
                 columns.append(col)
 
+        # Generate proper name with all column names
+        col_names = [col.name if hasattr(col, "name") else str(col) for col in columns]
+        name = f"concat_ws({sep}, {', '.join(col_names)})"
+
         return ColumnOperation(
             columns[0] if columns else Column(""),
             "concat_ws",
             value=(sep, columns[1:] if len(columns) > 1 else []),
-            name=f"concat_ws({sep}, ...)",
+            name=name,
         )
 
     @staticmethod

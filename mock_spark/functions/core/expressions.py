@@ -11,6 +11,8 @@ from .literals import Literal
 
 if TYPE_CHECKING:
     from ..conditional import CaseWhen
+else:
+    CaseWhen = Any
 
 
 class ExpressionFunctions:
@@ -168,20 +170,61 @@ class ExpressionFunctions:
         return ColumnOperation(column, "isnotnan", None)
 
     @staticmethod
-    def expr(expr: str) -> ColumnOperation:
+    def expr(expr: str) -> Union[ColumnOperation, Column, "CaseWhen", "Literal"]:
         """Create a column expression from SQL string.
 
         Args:
-            expr: SQL expression string.
+            expr: SQL expression string (e.g., "id IS NOT NULL", "age > 18").
+                  Must use SQL syntax, not Python expressions.
 
         Returns:
             ColumnOperation for the expression.
 
         Raises:
             RuntimeError: If no active SparkSession is available
+            ParseException: If SQL syntax is invalid
         """
         ExpressionFunctions._require_active_session(f"expression '{expr}'")
-        return ColumnOperation(None, "expr", expr)
+
+        # Parse SQL expression instead of storing as raw string
+        from .sql_expr_parser import SQLExprParser
+
+        try:
+            parsed = SQLExprParser.parse(expr)
+            # If parsed result is a Column or ColumnOperation, return it
+            if isinstance(parsed, (ColumnOperation, Column)):
+                # Mark as coming from F.expr() for detection in materialization
+                if isinstance(parsed, ColumnOperation):
+                    setattr(parsed, "_from_expr", True)
+                return parsed
+            else:
+                # Literal value or CaseWhen - wrap in ColumnOperation if needed
+                from .literals import Literal
+
+                if isinstance(parsed, Literal):
+                    result = ColumnOperation(None, "lit", parsed)
+                    setattr(result, "_from_expr", True)
+                    return result
+                # CaseWhen or other types - return as-is
+                return parsed
+        except Exception as e:
+            from mock_spark.core.exceptions.analysis import ParseException
+
+            if isinstance(e, ParseException):
+                raise
+            # Fallback to old behavior if parsing fails (for backward compatibility)
+            # But warn that this might not work correctly
+            import warnings
+
+            warnings.warn(
+                f"Failed to parse SQL expression '{expr}'. "
+                f"F.expr() should use SQL syntax (e.g., 'id IS NOT NULL'), "
+                f"not Python expressions (e.g., \"col('id').isNotNull()\"). "
+                f"Error: {str(e)}",
+                UserWarning,
+                stacklevel=2,
+            )
+            return ColumnOperation(None, "expr", expr)
 
     @staticmethod
     def array(*columns: Union[Column, str]) -> ColumnOperation:

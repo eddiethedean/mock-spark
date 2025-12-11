@@ -20,16 +20,25 @@ class ConditionHandler:
     responsibility for condition evaluation operations.
     """
 
-    def __init__(self) -> None:
-        """Initialize the ConditionHandler."""
+    def __init__(self, dataframe_context: Optional[Any] = None) -> None:
+        """Initialize the ConditionHandler.
+
+        Args:
+            dataframe_context: Optional DataFrame context for expression evaluation.
+        """
         self._expression_evaluator: Optional[ExpressionEvaluator] = None
+        self._dataframe_context = dataframe_context
 
     def _get_expression_evaluator(self) -> "ExpressionEvaluator":
         """Lazy initialization of ExpressionEvaluator."""
         if self._expression_evaluator is None:
             from .evaluation.expression_evaluator import ExpressionEvaluator
 
-            self._expression_evaluator = ExpressionEvaluator()
+            # Pass DataFrame context if available
+            dataframe_context = getattr(self, "_dataframe_context", None)
+            self._expression_evaluator = ExpressionEvaluator(
+                dataframe_context=dataframe_context
+            )
         return self._expression_evaluator
 
     def apply_condition(

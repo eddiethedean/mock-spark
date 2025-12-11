@@ -22,7 +22,6 @@ class TestStringFunctionsExtendedCompatibility:
         yield session
         session.stop()
 
-    @pytest.mark.skip(reason="concat_ws not yet implemented correctly")
     def test_concat_ws(self, spark):
         """Test concat_ws function."""
         expected = load_expected_output("functions", "concat_ws")
@@ -71,7 +70,6 @@ class TestStringFunctionsExtendedCompatibility:
         result = df.select(F.base64(df.name))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="initcap not yet implemented correctly")
     def test_initcap(self, spark):
         """Test initcap function."""
         expected = load_expected_output("functions", "initcap")
@@ -154,7 +152,6 @@ class TestStringFunctionsExtendedCompatibility:
         result = df.select(F.xxhash64(df.text))
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(reason="regexp_replace not yet implemented correctly")
     def test_regexp_replace(self, spark):
         """Test regexp_replace function."""
         expected = load_expected_output("functions", "regexp_replace")

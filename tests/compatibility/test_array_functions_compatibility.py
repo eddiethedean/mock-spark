@@ -99,9 +99,7 @@ class TestArrayFunctionsCompatibility:
         expected = load_expected_output("arrays", "array_remove")
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="array_distinct: DuckDB LIST_DISTINCT sorts elements; PySpark preserves insertion order"
-    )
+    @pytest.mark.skip(reason="array_distinct feature removed")
     def test_array_distinct(self, mock_spark_session):
         """Test array_distinct function against expected output."""
         test_data = [

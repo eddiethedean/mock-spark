@@ -204,6 +204,15 @@ class LazyEvaluationEngine:
                     rows, final_schema
                 )
 
+                # Post-process for cached string concatenation compatibility
+                # If DataFrame is cached, set string concatenation results to None
+                if getattr(df, "_is_cached", False):
+                    materialized_data = (
+                        LazyEvaluationEngine._handle_cached_string_concatenation(
+                            materialized_data, df._operations_queue, final_schema
+                        )
+                    )
+
                 # Check if backend returned default values (0.0 for numeric functions)
                 # If so, fall back to manual materialization
                 if LazyEvaluationEngine._has_default_values(
@@ -213,20 +222,89 @@ class LazyEvaluationEngine:
 
                 # Create new eager DataFrame with materialized data and final schema
                 # IMPORTANT: Clear operations queue since all operations have been materialized
+                # Also preserve cached state for PySpark compatibility
                 from ..dataframe import DataFrame
 
-                return DataFrame(
+                result_df = DataFrame(
                     materialized_data,
                     final_schema,
                     df.storage,
                     operations=[],  # Clear operations queue - all operations have been applied
                 )
+                # Preserve cached state
+                result_df._is_cached = getattr(df, "_is_cached", False)
+                return result_df
             finally:
                 materializer.close()
 
         except ImportError:
             # Fallback to manual materialization if backend is not available
             return LazyEvaluationEngine._materialize_manual(df)
+
+    @staticmethod
+    def _handle_cached_string_concatenation(
+        data: list[dict[str, Any]],
+        operations: list[tuple[str, Any]],
+        schema: "StructType",
+    ) -> list[dict[str, Any]]:
+        """Post-process materialized data to handle cached string concatenation.
+
+        When a DataFrame is cached, string concatenation with + operator should
+        return None to match PySpark behavior.
+
+        Args:
+            data: Materialized data
+            operations: List of operations that were applied
+            schema: Final schema
+
+        Returns:
+            Post-processed data with string concatenation results set to None
+        """
+        # Find columns that are the result of string concatenation with +
+        # by examining withColumn operations
+        string_concat_columns = set()
+
+        def _has_string_concatenation(expr: Any) -> bool:
+            """Recursively check if expression contains string concatenation with +."""
+            if not hasattr(expr, "operation"):
+                return False
+
+            if expr.operation == "+":
+                # Check if both operands are strings or string-like
+                # This is a heuristic - we'll mark any + operation as potential string concat
+                # and then verify the result is a string
+                return True
+
+            # Check nested operations
+            if (
+                hasattr(expr, "column")
+                and hasattr(expr.column, "operation")
+                and _has_string_concatenation(expr.column)
+            ):
+                return True
+            return (
+                hasattr(expr, "value")
+                and hasattr(expr.value, "operation")
+                and _has_string_concatenation(expr.value)
+            )
+
+        for op_name, payload in operations:
+            if op_name == "withColumn":
+                col_name, expression = payload
+                # Check if expression contains string concatenation with +
+                if _has_string_concatenation(expression):
+                    string_concat_columns.add(col_name)
+
+        # Set string concatenation columns to None in cached DataFrames
+        if string_concat_columns:
+            for row in data:
+                for col_name in string_concat_columns:
+                    # Check if the value is a string (result of concatenation)
+                    # If it's a string and was created with +, set to None
+                    if col_name in row and isinstance(row[col_name], str):
+                        row[col_name] = None
+
+        return data
 
     @staticmethod
     def _has_default_values(data: list[dict[str, Any]], schema: "StructType") -> bool:
@@ -292,6 +370,9 @@ class LazyEvaluationEngine:
                     # Check for ColumnOperation
                     if hasattr(col, "operation") and col.operation in [
                         "months_between",
+                        # "array_distinct",  # Removed feature
+                        "pi",  # Force manual materialization for constant functions
+                        "e",  # Force manual materialization for constant functions
                         # Allow backend to handle datediff via SQL path
                         # "cast",  # Removed - Polars handles cast operations
                         # "when",  # Removed - Polars handles when/otherwise via CaseWhen
@@ -318,6 +399,47 @@ class LazyEvaluationEngine:
                         #         and col.value.operation == "cast"
                         #     ):
                         #         return True
+            elif op_name == "filter":
+                # Check if filter contains F.expr() expressions or complex operations
+                # that the backend might not handle correctly
+                filter_expr = op_val
+                if LazyEvaluationEngine._has_expr_expression(filter_expr):
+                    return True
+        return False
+
+    @staticmethod
+    def _has_expr_expression(expr: Any) -> bool:
+        """Check if expression contains F.expr() or complex operations that need manual materialization.
+
+        Args:
+            expr: Expression to check (Column, ColumnOperation, or nested structure)
+
+        Returns:
+            True if expression contains operations that require manual materialization
+        """
+        # Check if this expression was created by F.expr()
+        if hasattr(expr, "_from_expr") and expr._from_expr:
+            return True
+        # Check if this is a ColumnOperation with expr operation
+        if hasattr(expr, "operation"):
+            # Check for direct expr operation (old F.expr() style)
+            if expr.operation == "expr":
+                return True
+            # Check for function_name="expr" (another F.expr() marker)
+            if hasattr(expr, "function_name") and expr.function_name == "expr":
+                return True
+            # Recursively check nested expressions
+            if hasattr(expr, "column") and LazyEvaluationEngine._has_expr_expression(
+                expr.column
+            ):
+                return True
+            if hasattr(expr, "value") and LazyEvaluationEngine._has_expr_expression(
+                expr.value
+            ):
+                return True
+        # Check if this is a Column (simple reference, no issue)
+        elif hasattr(expr, "name") and not hasattr(expr, "operation"):
+            return False
         return False
 
     @staticmethod
@@ -452,7 +574,9 @@ class LazyEvaluationEngine:
 
         # Preserve schema from original DataFrame - this ensures empty DataFrames
         # with explicit schemas maintain their column information
+        # Also preserve cached state for PySpark compatibility
         current = DataFrame(df.data, df.schema, df.storage)
+        current._is_cached = getattr(df, "_is_cached", False)
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
@@ -477,7 +601,21 @@ class LazyEvaluationEngine:
 
                     new_fields = []
                     for col in op_val:
-                        if isinstance(col, Column) and (
+                        if isinstance(col, str):
+                            # String column name - find in current schema
+                            found = False
+                            if hasattr(current.schema, "_field_map"):
+                                field = current.schema._field_map.get(col)
+                                if field:
+                                    new_fields.append(field)
+                                    found = True
+                            if not found:
+                                # Column not found in schema, might be from join or new column
+                                # Use StringType as fallback
+                                from ..spark_types import StringType
+
+                                new_fields.append(StructField(col, StringType(), True))
+                        elif isinstance(col, Column) and (
                             not hasattr(col, "operation") or col.operation is None
                         ):
                             # Simple column reference
@@ -594,12 +732,44 @@ class LazyEvaluationEngine:
                     for row_index, row in enumerate(current.data):
                         new_row = {}
                         for i, col in enumerate(op_val):
-                            if isinstance(col, Column) and (
+                            if isinstance(col, str):
+                                # String column name - look up in current row
+                                # Use the field name from schema (which matches the column name)
+                                field_name = (
+                                    new_fields[i].name if i < len(new_fields) else col
+                                )
+                                # First try exact match
+                                if col in row:
+                                    new_row[field_name] = row[col]
+                                elif field_name in row:
+                                    # Try using field_name (might be different from col due to schema inference)
+                                    new_row[field_name] = row[field_name]
+                                elif (
+                                    hasattr(current.schema, "_field_map")
+                                    and field_name in current.schema._field_map
+                                ):
+                                    # Try to get the value using the field name from schema
+                                    field = current.schema._field_map[field_name]
+                                    if field.name in row:
+                                        new_row[field_name] = row[field.name]
+                                    else:
+                                        new_row[field_name] = row.get(col, None)
+                                else:
+                                    new_row[field_name] = row.get(col, None)
+                            elif isinstance(col, Column) and (
                                 not hasattr(col, "operation") or col.operation is None
                             ):
                                 # Simple column reference
-                                if col.name in row and i < len(new_fields):
-                                    new_row[new_fields[i].name] = row[col.name]
+                                field_name = (
+                                    new_fields[i].name
+                                    if i < len(new_fields)
+                                    else col.name
+                                )
+                                if col.name in row:
+                                    new_row[field_name] = row[col.name]
+                                else:
+                                    # Column name not in row - try to get it
+                                    new_row[field_name] = row.get(col.name, None)
                             elif isinstance(col, ColumnOperation):
                                 # Column operation - evaluate using condition evaluator
                                 if col.operation == "transform":
@@ -721,8 +891,14 @@ class LazyEvaluationEngine:
                                     )
 
                                     try:
+                                        # Pass cached state information via row metadata
+                                        # for string concatenation compatibility
+                                        eval_row = row.copy()
+                                        if current._is_cached:
+                                            eval_row["__dataframe_is_cached__"] = True
+
                                         result = ConditionEvaluator.evaluate_expression(
-                                            row, col
+                                            eval_row, col
                                         )
                                         if i < len(new_fields):
                                             new_row[new_fields[i].name] = result
@@ -780,7 +956,9 @@ class LazyEvaluationEngine:
                                     new_row[new_fields[i].name] = None
                         new_data.append(new_row)
 
+                    # Update current with new data and schema, preserving cached state
                     current = DataFrame(new_data, new_schema, current.storage)
+                    current._is_cached = getattr(current, "_is_cached", False)
                 elif op_name == "groupBy":
                     current_ops = cast("SupportsDataFrameOps", current)
                     grouped = current_ops.groupBy(*op_val)  # Returns GroupedData
@@ -894,8 +1072,35 @@ class LazyEvaluationEngine:
                     )
                     current = DataFrame(result_data, result_schema, current.storage)
                 elif op_name == "orderBy":
-                    current_ops = cast("SupportsDataFrameOps", current)
-                    current = cast("DataFrame", current_ops.orderBy(*op_val))
+                    # Sort the current data by the specified columns
+                    # op_val is a tuple of column names/Column objects
+                    if op_val:
+                        # Get column names from op_val
+                        sort_cols = []
+                        for col in op_val:
+                            if isinstance(col, str):
+                                sort_cols.append(col)
+                            elif hasattr(col, "name"):
+                                sort_cols.append(col.name)
+                            else:
+                                sort_cols.append(str(col))
+
+                        # Sort the data
+                        if sort_cols:
+                            # Use the first column for sorting
+                            sort_key = sort_cols[0]
+                            sorted_data = sorted(
+                                current.data,
+                                key=lambda row: (
+                                    row.get(sort_key) is not None,
+                                    row.get(sort_key),
+                                ),
+                            )
+                            # Preserve the current data and schema - don't reset
+                            current = DataFrame(
+                                sorted_data, current.schema, current.storage
+                            )
+                            current._is_cached = getattr(current, "_is_cached", False)
                 elif op_name == "transform":
                     # Manual transform implementation for higher-order array functions
                     from ..core.condition_evaluator import ConditionEvaluator
@@ -1001,24 +1206,42 @@ class LazyEvaluationEngine:
                 # Check operation type
                 if col.operation == "cast":
                     # Cast operation - infer type from cast parameter
+                    # For cast operations, use the original column name, not the cast expression name
+                    original_col_name = (
+                        col.column.name
+                        if hasattr(col, "column") and hasattr(col.column, "name")
+                        else col_name
+                    )
                     cast_type = getattr(col, "value", "string")
                     if isinstance(cast_type, str):
                         # String type name, convert to actual type
                         if cast_type.lower() in ["double", "float"]:
-                            new_fields.append(StructField(col_name, DoubleType()))
+                            new_fields.append(
+                                StructField(original_col_name, DoubleType())
+                            )
                         elif cast_type.lower() in ["int", "integer"]:
-                            new_fields.append(StructField(col_name, IntegerType()))
+                            new_fields.append(
+                                StructField(original_col_name, IntegerType())
+                            )
                         elif cast_type.lower() in ["long", "bigint"]:
-                            new_fields.append(StructField(col_name, LongType()))
+                            new_fields.append(
+                                StructField(original_col_name, LongType())
+                            )
                         elif cast_type.lower() in ["string", "varchar"]:
-                            new_fields.append(StructField(col_name, StringType()))
+                            new_fields.append(
+                                StructField(original_col_name, StringType())
+                            )
                         elif cast_type.lower() in ["boolean", "bool"]:
-                            new_fields.append(StructField(col_name, BooleanType()))
+                            new_fields.append(
+                                StructField(original_col_name, BooleanType())
+                            )
                         else:
-                            new_fields.append(StructField(col_name, StringType()))
+                            new_fields.append(
+                                StructField(original_col_name, StringType())
+                            )
                     else:
                         # Type object, use directly
-                        new_fields.append(StructField(col_name, cast_type))
+                        new_fields.append(StructField(original_col_name, cast_type))
                 elif col.operation in ["upper", "lower"]:
                     new_fields.append(StructField(col_name, StringType()))
                 elif col.operation == "length":

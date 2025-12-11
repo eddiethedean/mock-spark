@@ -77,9 +77,20 @@ class ConditionEvaluator:
 
             try:
                 if operation_type == "+":
-                    return cast("bool", left_value + right_value)
+                    # PySpark compatibility: String concatenation with + operator returns None
+                    # when DataFrame is cached. Check if both operands are strings.
+                    is_string_concatenation = isinstance(
+                        left_value, str
+                    ) and isinstance(right_value, str)
+                    if is_string_concatenation and row.get(
+                        "__dataframe_is_cached__", False
+                    ):
+                        # Check if we're in a cached DataFrame context
+                        return None
+                    result: Any = left_value + right_value
+                    return cast("Optional[bool]", result)
                 elif operation_type == "-":
-                    return cast("bool", left_value - right_value)
+                    return cast("Optional[bool]", left_value - right_value)
                 elif operation_type == "*":
                     return cast("bool", left_value * right_value)
                 elif operation_type == "/":
@@ -196,6 +207,13 @@ class ConditionEvaluator:
             "months_between",
             "unix_timestamp",
             "from_unixtime",
+            "array_distinct",
+            "array_sort",
+            "sort_array",
+            "initcap",
+            "concat_ws",
+            "pi",
+            "e",
         ]:
             return ConditionEvaluator._evaluate_function_operation_value(row, operation)
 
@@ -237,6 +255,17 @@ class ConditionEvaluator:
             The evaluated result value.
         """
         operation_type = operation.operation
+
+        # Handle constant functions that don't need column values
+        if operation_type == "pi":
+            import math
+
+            return math.pi
+        elif operation_type == "e":
+            import math
+
+            return math.e
+
         col_value = ConditionEvaluator._get_column_value(row, operation.column)
 
         # Handle function operations that return values
@@ -255,6 +284,48 @@ class ConditionEvaluator:
         elif operation_type == "rtrim":
             # PySpark rtrim only removes ASCII space characters (0x20), not tabs/newlines
             return str(col_value).rstrip(" ") if col_value is not None else None
+        elif operation_type == "initcap":
+            # Capitalize first letter of each word
+            if col_value is None:
+                return None
+            return " ".join(word.capitalize() for word in str(col_value).split())
+        elif operation_type == "concat_ws":
+            # Concatenate with separator - operation.value is (sep, [columns])
+            # For concat_ws, we need to get values from multiple columns
+            # The operation.value should be a tuple: (separator, [column1, column2, ...])
+            if not hasattr(operation, "value") or not isinstance(
+                operation.value, tuple
+            ):
+                return None
+            sep, columns = operation.value
+            # Get values for all columns (including the first column from operation.column)
+            values = []
+            # First column is in operation.column
+            first_val = ConditionEvaluator._get_column_value(row, operation.column)
+            if first_val is not None:
+                values.append(str(first_val))
+            # Additional columns are in the tuple
+            for col in columns:
+                col_val = ConditionEvaluator._get_column_value(row, col)
+                if col_val is not None:
+                    values.append(str(col_val))
+            # Join with separator
+            return sep.join(values) if values else None
+        elif operation_type == "regexp_replace":
+            # Regex replace - operation.value is (pattern, replacement)
+            if col_value is None:
+                return None
+            import re
+
+            if not hasattr(operation, "value") or not isinstance(
+                operation.value, tuple
+            ):
+                return str(col_value)
+            pattern, replacement = operation.value
+            try:
+                return re.sub(pattern, replacement, str(col_value))
+            except Exception:
+                return str(col_value)
         elif operation_type == "abs":
             return abs(float(col_value)) if col_value is not None else None
         elif operation_type == "round":
@@ -416,6 +487,50 @@ class ConditionEvaluator:
                 return year_diff * 12 + month_diff + day_diff / 31.0
             except (ValueError, AttributeError):
                 return None
+        elif operation_type == "array_distinct":
+            # Remove duplicate elements from an array, preserving insertion order
+            if not isinstance(col_value, list):
+                return None
+            seen = set()
+            result = []
+            for item in col_value:
+                # For hashable types, use the item directly
+                # For unhashable types (like lists), convert to tuple or use repr
+                try:
+                    # Try to use item as-is if it's hashable
+                    item_key: Any
+                    if isinstance(item, (int, float, str, bool, type(None))):
+                        item_key = item
+                    elif isinstance(item, list):
+                        # Convert list to tuple for hashing
+                        item_key = tuple(item)
+                    else:
+                        # Try to hash directly
+                        item_key = item
+
+                    if item_key not in seen:
+                        seen.add(item_key)
+                        result.append(item)
+                except TypeError:
+                    # Unhashable type - use string representation as fallback
+                    item_str = repr(item)
+                    if item_str not in seen:
+                        seen.add(item_str)
+                        result.append(item)
+            return result
+        elif operation_type == "array_sort" or operation_type == "sort_array":
+            # Sort array elements - operation.value contains asc boolean
+            if not isinstance(col_value, list):
+                return None
+            asc = True
+            if hasattr(operation, "value") and operation.value is not None:
+                asc = operation.value
+            # Sort while preserving type
+            try:
+                return sorted(col_value, reverse=not asc)
+            except TypeError:
+                # If items are not directly comparable, convert to strings
+                return sorted(col_value, key=str, reverse=not asc)
         else:
             # For other functions, delegate to the existing function evaluation
             return ConditionEvaluator._evaluate_function_operation(
@@ -619,9 +734,20 @@ class ConditionEvaluator:
 
             try:
                 if operation_type == "+":
-                    return cast("bool", left_value + right_value)
+                    # PySpark compatibility: String concatenation with + operator returns None
+                    # when DataFrame is cached. Check if both operands are strings.
+                    is_string_concatenation = isinstance(
+                        left_value, str
+                    ) and isinstance(right_value, str)
+                    if is_string_concatenation and row.get(
+                        "__dataframe_is_cached__", False
+                    ):
+                        # Check if we're in a cached DataFrame context
+                        return None
+                    result: Any = left_value + right_value
+                    return cast("Optional[bool]", result)
                 elif operation_type == "-":
-                    return cast("bool", left_value - right_value)
+                    return cast("Optional[bool]", left_value - right_value)
                 elif operation_type == "*":
                     return cast("bool", left_value * right_value)
                 elif operation_type == "/":

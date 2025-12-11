@@ -22,10 +22,8 @@ class TestTypeStrictness:
             schema = StructType([StructField("date", IntegerType(), True)])
             df = spark.createDataFrame([{"date": 12345}], schema=schema)
 
-            # This should fail - to_timestamp requires StringType or TimestampType
-            with pytest.raises(
-                TypeError, match="requires StringType or TimestampType input"
-            ):
+            # This should fail - to_timestamp requires StringType input
+            with pytest.raises(TypeError, match="requires StringType input"):
                 df.withColumn("parsed", F.to_timestamp(F.col("date")))
         finally:
             spark.stop()

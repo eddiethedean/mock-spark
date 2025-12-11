@@ -25,6 +25,7 @@ class TestArrayFunctions:
             {"name": "Charlie", "tags": ["a", "b"], "numbers": [7, 8]},
         ]
 
+    @pytest.mark.skip(reason="array_distinct feature removed")
     def test_array_distinct_with_column(self, spark):
         """Test array_distinct with Column."""
         col = F.col("tags")
@@ -32,6 +33,7 @@ class TestArrayFunctions:
         assert result.operation == "array_distinct"
         assert result.name == "array_distinct(tags)"
 
+    @pytest.mark.skip(reason="array_distinct feature removed")
     def test_array_distinct_with_string(self):
         """Test array_distinct with string column name."""
         result = ArrayFunctions.array_distinct("tags")

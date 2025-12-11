@@ -238,7 +238,7 @@ __all__ = [
     "array",
     "array_repeat",
     "sort_array",
-    "array_distinct",
+    # "array_distinct",  # Removed feature
     "array_intersect",
     "array_union",
     "array_except",

@@ -94,7 +94,16 @@ class AggregateFunction:
     def _generate_name(self) -> str:
         """Generate a name for this aggregate function."""
         # PySpark uses 'avg' as column name even when using mean()
-        display_name = "avg" if self.function_name == "mean" else self.function_name
+        # PySpark uses 'stddev_samp' as column name for stddev()
+        # PySpark uses 'var_samp' as column name for variance()
+        if self.function_name == "mean":
+            display_name = "avg"
+        elif self.function_name == "stddev":
+            display_name = "stddev_samp"
+        elif self.function_name == "variance":
+            display_name = "var_samp"
+        else:
+            display_name = self.function_name
 
         if self.column is None:
             # For count(*), PySpark generates just "count", not "count(*)"

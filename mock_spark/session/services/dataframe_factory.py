@@ -80,6 +80,10 @@ class DataFrameFactory:
 
         # Handle list of column names as schema (only for non-empty data)
         if isinstance(schema, list):
+            # PySpark requires explicit schema for empty DataFrames
+            if not data:
+                raise ValueError("can not infer schema from empty dataset")
+
             # Convert tuples to dictionaries using provided column names first
             if data and isinstance(data[0], tuple):
                 reordered_data = []
