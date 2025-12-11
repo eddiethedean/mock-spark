@@ -132,7 +132,12 @@ class SparkQueryExecutionError(SparkException):
 class SparkColumnNotFoundError(SparkException, AttributeError):
     """Raised when a column is not found."""
 
-    def __init__(self, column_name: str, available_columns: list[str], custom_message: Optional[str] = None):
+    def __init__(
+        self,
+        column_name: str,
+        available_columns: list[str],
+        custom_message: Optional[str] = None,
+    ):
         """Initialize column not found error.
 
         Args:

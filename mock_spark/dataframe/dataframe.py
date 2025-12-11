@@ -134,7 +134,7 @@ class DataFrame:
         self.storage: StorageBackend = storage or MemoryStorageManager()
         self._cached_count: Optional[int] = None
         self._operations_queue: list[tuple[str, Any]] = operations or []
-        
+
         # Materialization tracking for column availability
         # For DataFrames created from data, all columns are immediately materialized
         self._materialized: bool = bool(data)
@@ -224,9 +224,9 @@ class DataFrame:
 
     def _get_available_columns(self) -> list[str]:
         """Get columns that are actually available (materialized).
-        
+
         For validation purposes, only return columns that have been materialized.
-        
+
         Returns:
             List of column names that are materialized and available.
         """
@@ -789,9 +789,7 @@ class DataFrame:
         """Enable df.column_name syntax for column access (PySpark compatibility)."""
         return DataFrameAttributeHandler.handle_getattr(self, name)
 
-    def _validate_operation_types(
-        self, col: "ColumnOperation", operation: str
-    ) -> None:
+    def _validate_operation_types(self, col: "ColumnOperation", operation: str) -> None:
         """Validate type requirements for specific operations.
 
         Args:
@@ -825,7 +823,7 @@ class DataFrame:
             if schema_field is not None:
                 input_type = schema_field.dataType
                 func_name = col.function_name
-                
+
                 # to_timestamp accepts StringType or TimestampType (already a timestamp)
                 if func_name == "to_timestamp":
                     if not isinstance(input_type, (StringType, TimestampType)):
@@ -834,12 +832,13 @@ class DataFrame:
                             f"Cast the column to string first: F.col('{col_name}').cast('string')"
                         )
                 # to_date accepts StringType or DateType (already a date)
-                elif func_name == "to_date":
-                    if not isinstance(input_type, (StringType, DateType)):
-                        raise TypeError(
-                            f"{func_name}() requires StringType or DateType input, got {input_type}. "
-                            f"Cast the column to string first: F.col('{col_name}').cast('string')"
-                        )
+                elif func_name == "to_date" and not isinstance(
+                    input_type, (StringType, DateType)
+                ):
+                    raise TypeError(
+                        f"{func_name}() requires StringType or DateType input, got {input_type}. "
+                        f"Cast the column to string first: F.col('{col_name}').cast('string')"
+                    )
 
     def _validate_column_exists(
         self,
@@ -867,7 +866,7 @@ class DataFrame:
                     available_columns,
                     f"Column '{column_name}' exists in logical plan but is not yet materialized. "
                     f"Materialize the DataFrame first using .cache(), .collect(), or by executing an action. "
-                    f"Operation: {operation}"
+                    f"Operation: {operation}",
                 )
             else:
                 # Column doesn't exist at all

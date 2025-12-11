@@ -1294,10 +1294,10 @@ class ExpressionEvaluator:
 
     def _get_literal_value(self, literal: Any) -> Any:
         """Get value from a Literal, resolving lazy literals if needed.
-        
+
         Args:
             literal: Literal object or any value
-            
+
         Returns:
             Resolved literal value
         """

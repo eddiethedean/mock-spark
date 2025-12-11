@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.11.0 — 2025-12-10
+
+### Added
+- Lazy evaluation for session-aware functions (`current_database()`, `current_schema()`, `current_user()`, `current_catalog()`)
+  - Literals now resolve session state at evaluation time, not creation time, matching PySpark behavior
+  - Session-aware functions properly reflect the active session's catalog state during DataFrame operations
+- Session validation for all functions requiring an active SparkSession
+  - Functions now validate session availability at creation time (matching PySpark error behavior)
+  - Improved error messages for missing session scenarios
+- Comprehensive test coverage for session isolation and validation
+  - `test_sparkcontext_validation.py` - validates session dependency requirements
+  - `test_column_availability.py` - tests column materialization behavior
+  - `test_fixture_compatibility.py` - verifies fixture/setup compatibility
+  - `test_function_api_compatibility.py` - validates function API signatures
+  - `test_type_strictness.py` - tests strict type checking for datetime functions
+
+### Changed
+- Session-aware functions now use lazy literal resolution via resolver functions
+- Expression evaluator and Polars translator updated to resolve lazy literals during evaluation
+- Improved type annotations: replaced `callable` with `Callable[[], Any]` for better mypy compatibility
+- Enhanced `SparkColumnNotFoundError` with optional custom message support
+
+### Fixed
+- Fixed `test_current_helpers_are_session_isolated` to properly capture original session before `newSession()`
+- Fixed type checking issues in `TransformationOperations` mixin for `_validate_operation_types` method
+- Fixed strict type validation for `to_timestamp()` and `to_date()` to accept both StringType and native types (TimestampType/DateType)
+- Fixed column availability tracking to correctly update after DataFrame materialization
+- Fixed lazy literal evaluation to resolve session state dynamically at evaluation time
+
+### Testing
+- All 1209 tests passing (46 skipped)
+- All files pass mypy type checking with Python 3.11
+- All files pass ruff format and lint checks
+- Code coverage: 50% overall
+
 ## 3.10.0 — 2025-01-XX
 
 ### Added

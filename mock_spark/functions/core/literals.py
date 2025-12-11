@@ -5,7 +5,7 @@ This module provides Literal class for representing literal values
 in column expressions and transformations.
 """
 
-from typing import Any, Optional, TYPE_CHECKING, cast
+from typing import Any, Callable, Optional, TYPE_CHECKING, cast
 import math
 from ...spark_types import DataType
 from ...core.interfaces.functions import IColumn
@@ -25,7 +25,7 @@ class Literal(IColumn):
         self,
         value: Any,
         data_type: Optional[DataType] = None,
-        resolver: Optional[callable] = None,
+        resolver: Optional[Callable[[], Any]] = None,
     ):
         """Initialize Literal.
 
@@ -38,11 +38,11 @@ class Literal(IColumn):
         self.value = value
         self.data_type = data_type or self._infer_type(value)
         self.column_type = self.data_type  # Add column_type attribute for compatibility
-        
+
         # Support for lazy evaluation of session-aware literals
         self._resolver = resolver
         self._is_lazy = resolver is not None
-        
+
         # Use the actual value as column name for PySpark compatibility
         # Handle boolean values to match PySpark's lowercase representation
         if isinstance(value, bool):
@@ -52,22 +52,22 @@ class Literal(IColumn):
             self._name = "NaN"
         else:
             self._name = str(value)
-    
+
     def _resolve_lazy_value(self) -> Any:
         """Resolve lazy literal value using resolver function.
-        
+
         The resolver function should resolve the session at evaluation time,
         not use a stored session reference.
-        
+
         Returns:
             Resolved value from the session.
         """
         if not self._is_lazy:
             return self.value
-        
+
         if self._resolver is None:
             return self.value
-        
+
         try:
             # Resolver should handle session resolution internally
             return self._resolver()

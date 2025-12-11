@@ -62,7 +62,7 @@ class DateTimeFunctions:
 
         Returns:
             ColumnOperation representing the current_timestamp function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -79,7 +79,7 @@ class DateTimeFunctions:
 
         Returns:
             ColumnOperation representing the current_date function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -765,15 +765,15 @@ class DateTimeFunctions:
 
         Returns:
             ColumnOperation representing the to_date function.
-        
+
         Raises:
             TypeError: If input column type is not StringType
         """
         from mock_spark.spark_types import StringType
-        
+
         if isinstance(column, str):
             column = Column(column)
-        
+
         # PySpark requires string input for to_date
         # Check if we can determine the column type
         input_type = getattr(column, "column_type", None)
@@ -803,15 +803,15 @@ class DateTimeFunctions:
 
         Returns:
             ColumnOperation representing the to_timestamp function.
-        
+
         Raises:
             TypeError: If input column type is not StringType
         """
         from mock_spark.spark_types import StringType
-        
+
         if isinstance(column, str):
             column = Column(column)
-        
+
         # PySpark requires string input for to_timestamp
         # Check if we can determine the column type
         input_type = getattr(column, "column_type", None)
@@ -1224,7 +1224,7 @@ class DateTimeFunctions:
     @staticmethod
     def current_timezone() -> ColumnOperation:
         """Get current timezone.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """

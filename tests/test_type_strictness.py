@@ -6,9 +6,7 @@ matching PySpark's behavior exactly.
 """
 
 import pytest
-from datetime import datetime
 from mock_spark import SparkSession, functions as F
-from mock_spark.spark_types import TimestampType
 
 
 class TestTypeStrictness:
@@ -19,16 +17,15 @@ class TestTypeStrictness:
         spark = SparkSession("test")
         try:
             from mock_spark.spark_types import IntegerType, StructType, StructField
-            
+
             # Create DataFrame with explicit IntegerType schema (not string or timestamp)
             schema = StructType([StructField("date", IntegerType(), True)])
-            df = spark.createDataFrame(
-                [{"date": 12345}],
-                schema=schema
-            )
-            
+            df = spark.createDataFrame([{"date": 12345}], schema=schema)
+
             # This should fail - to_timestamp requires StringType or TimestampType
-            with pytest.raises(TypeError, match="requires StringType or TimestampType input"):
+            with pytest.raises(
+                TypeError, match="requires StringType or TimestampType input"
+            ):
                 df.withColumn("parsed", F.to_timestamp(F.col("date")))
         finally:
             spark.stop()
@@ -39,10 +36,9 @@ class TestTypeStrictness:
         try:
             # Create DataFrame with string column
             df = spark.createDataFrame(
-                [{"date_str": "2023-01-01 12:00:00"}],
-                schema=["date_str"]
+                [{"date_str": "2023-01-01 12:00:00"}], schema=["date_str"]
             )
-            
+
             # This should work
             result = df.withColumn("parsed", F.to_timestamp(F.col("date_str")))
             assert result is not None
@@ -54,16 +50,15 @@ class TestTypeStrictness:
         spark = SparkSession("test")
         try:
             from mock_spark.spark_types import IntegerType, StructType, StructField
-            
+
             # Create DataFrame with explicit IntegerType schema (not string or date)
             schema = StructType([StructField("date", IntegerType(), True)])
-            df = spark.createDataFrame(
-                [{"date": 12345}],
-                schema=schema
-            )
-            
+            df = spark.createDataFrame([{"date": 12345}], schema=schema)
+
             # This should fail - to_date requires StringType or DateType
-            with pytest.raises(TypeError, match="requires StringType or DateType input"):
+            with pytest.raises(
+                TypeError, match="requires StringType or DateType input"
+            ):
                 df.withColumn("parsed", F.to_date(F.col("date")))
         finally:
             spark.stop()
@@ -74,10 +69,9 @@ class TestTypeStrictness:
         try:
             # Create DataFrame with string column
             df = spark.createDataFrame(
-                [{"date_str": "2023-01-01"}],
-                schema=["date_str"]
+                [{"date_str": "2023-01-01"}], schema=["date_str"]
             )
-            
+
             # This should work
             result = df.withColumn("parsed", F.to_date(F.col("date_str")))
             assert result is not None

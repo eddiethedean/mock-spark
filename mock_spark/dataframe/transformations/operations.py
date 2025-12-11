@@ -27,6 +27,10 @@ class TransformationOperations(Generic[SupportsDF]):
         _watermark_col: Optional[str]
         _watermark_delay: Optional[str]
 
+        def _validate_operation_types(
+            self, col: "ColumnOperation", operation: str
+        ) -> None: ...
+
     @overload
     def select(self: SupportsDF, *columns: str) -> SupportsDF:
         """Select columns by name."""
@@ -267,7 +271,9 @@ class TransformationOperations(Generic[SupportsDF]):
             # Complex expression - validate column references
             self._validate_expression_columns(col, "withColumn")
             # Validate type requirements for specific operations
-            self._validate_operation_types(col, "withColumn")
+            # Type check: _validate_operation_types is defined on DataFrame class
+            if hasattr(self, "_validate_operation_types"):
+                getattr(self, "_validate_operation_types")(col, "withColumn")
         # For Literal and other cases, skip validation
 
         return cast("SupportsDF", self._queue_op("withColumn", (col_name, col)))

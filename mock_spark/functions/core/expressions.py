@@ -44,7 +44,7 @@ class ExpressionFunctions:
 
         Returns:
             Column instance.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -62,7 +62,7 @@ class ExpressionFunctions:
 
         Returns:
             Literal instance.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -81,7 +81,7 @@ class ExpressionFunctions:
 
         Returns:
             CaseWhen instance.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -176,7 +176,7 @@ class ExpressionFunctions:
 
         Returns:
             ColumnOperation for the expression.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """

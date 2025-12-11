@@ -72,7 +72,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the count function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -88,7 +88,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the sum function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -104,7 +104,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the avg function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -120,7 +120,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the max function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -136,7 +136,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the min function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -152,7 +152,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the first function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -168,7 +168,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the last function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -184,7 +184,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the collect_list function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -200,7 +200,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the collect_set function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -216,7 +216,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the stddev function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -232,7 +232,7 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the std function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
@@ -248,11 +248,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the product function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('product aggregate function')
+        AggregateFunctions._require_active_session("product aggregate function")
         return AggregateFunction(column, "product", DoubleType())
 
     @staticmethod
@@ -264,11 +264,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the sum_distinct function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('sum_distinct aggregate function')
+        AggregateFunctions._require_active_session("sum_distinct aggregate function")
         return AggregateFunction(column, "sum_distinct", DoubleType())
 
     @staticmethod
@@ -280,11 +280,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the variance function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('variance aggregate function')
+        AggregateFunctions._require_active_session("variance aggregate function")
         return AggregateFunction(column, "variance", DoubleType())
 
     @staticmethod
@@ -296,11 +296,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the skewness function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('skewness aggregate function')
+        AggregateFunctions._require_active_session("skewness aggregate function")
         return AggregateFunction(column, "skewness", DoubleType())
 
     @staticmethod
@@ -312,11 +312,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the kurtosis function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('kurtosis aggregate function')
+        AggregateFunctions._require_active_session("kurtosis aggregate function")
         return AggregateFunction(column, "kurtosis", DoubleType())
 
     @staticmethod
@@ -328,11 +328,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the countDistinct function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('countDistinct aggregate function')
+        AggregateFunctions._require_active_session("countDistinct aggregate function")
         return AggregateFunction(column, "countDistinct", LongType(nullable=False))
 
     @staticmethod
@@ -344,11 +344,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the count_distinct function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('count_distinct aggregate function')
+        AggregateFunctions._require_active_session("count_distinct aggregate function")
         # Call countDistinct directly (same implementation)
         return AggregateFunction(column, "countDistinct", LongType(nullable=False))
 
@@ -365,11 +365,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the percentile_approx function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('percentile_approx aggregate function')
+        AggregateFunctions._require_active_session(
+            "percentile_approx aggregate function"
+        )
         # Store parameters in the name via AggregateFunction's generator (data type only is needed)
         return AggregateFunction(column, "percentile_approx", DoubleType())
 
@@ -385,11 +387,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the corr function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('corr aggregate function')
+        AggregateFunctions._require_active_session("corr aggregate function")
         return AggregateFunction(column1, "corr", DoubleType())
 
     @staticmethod
@@ -404,11 +406,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the covar_samp function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('covar_samp aggregate function')
+        AggregateFunctions._require_active_session("covar_samp aggregate function")
         return AggregateFunction(column1, "covar_samp", DoubleType())
 
     @staticmethod
@@ -420,11 +422,11 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the bool_and function.
-        
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        AggregateFunctions._require_active_session('bool_and aggregate function')
+        AggregateFunctions._require_active_session("bool_and aggregate function")
         return AggregateFunction(column, "bool_and", BooleanType())
 
     @staticmethod
@@ -436,13 +438,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the bool_or function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('bool_or aggregate function')
+
+        AggregateFunctions._require_active_session("bool_or aggregate function")
         return AggregateFunction(column, "bool_or", BooleanType())
 
     @staticmethod
@@ -454,13 +456,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the every function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('every aggregate function')
+
+        AggregateFunctions._require_active_session("every aggregate function")
         return AggregateFunction(column, "bool_and", BooleanType())
 
     @staticmethod
@@ -472,13 +474,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the some function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('some aggregate function')
+
+        AggregateFunctions._require_active_session("some aggregate function")
         return AggregateFunction(column, "bool_or", BooleanType())
 
     @staticmethod
@@ -493,13 +495,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the max_by function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('max_by aggregate function')
+
+        AggregateFunctions._require_active_session("max_by aggregate function")
         if isinstance(column, str):
             column = Column(column)
         # Store ord column in value for handler
@@ -519,13 +521,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the min_by function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('min_by aggregate function')
+
+        AggregateFunctions._require_active_session("min_by aggregate function")
         if isinstance(column, str):
             column = Column(column)
         # Store ord column in value for handler
@@ -542,13 +544,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the count_if function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('count_if aggregate function')
+
+        AggregateFunctions._require_active_session("count_if aggregate function")
         return AggregateFunction(column, "count_if", IntegerType())
 
     @staticmethod
@@ -560,13 +562,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the any_value function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('any_value aggregate function')
+
+        AggregateFunctions._require_active_session("any_value aggregate function")
         return AggregateFunction(column, "any_value", StringType())
 
     @staticmethod
@@ -578,13 +580,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the mean function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('mean aggregate function')
+
+        AggregateFunctions._require_active_session("mean aggregate function")
         return AggregateFunction(column, "mean", DoubleType())
 
     @staticmethod
@@ -596,13 +598,15 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the approx_count_distinct function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('approx_count_distinct aggregate function')
+
+        AggregateFunctions._require_active_session(
+            "approx_count_distinct aggregate function"
+        )
         return AggregateFunction(column, "approx_count_distinct", LongType())
 
     @staticmethod
@@ -614,13 +618,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the stddev_pop function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('stddev_pop aggregate function')
+
+        AggregateFunctions._require_active_session("stddev_pop aggregate function")
         return AggregateFunction(column, "stddev_pop", DoubleType())
 
     @staticmethod
@@ -632,13 +636,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the stddev_samp function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('stddev_samp aggregate function')
+
+        AggregateFunctions._require_active_session("stddev_samp aggregate function")
         return AggregateFunction(column, "stddev_samp", DoubleType())
 
     @staticmethod
@@ -650,13 +654,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the var_pop function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('var_pop aggregate function')
+
+        AggregateFunctions._require_active_session("var_pop aggregate function")
         return AggregateFunction(column, "var_pop", DoubleType())
 
     @staticmethod
@@ -668,13 +672,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the var_samp function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('var_samp aggregate function')
+
+        AggregateFunctions._require_active_session("var_samp aggregate function")
         return AggregateFunction(column, "var_samp", DoubleType())
 
     @staticmethod
@@ -706,13 +710,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the median function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('median aggregate function')
+
+        AggregateFunctions._require_active_session("median aggregate function")
         return AggregateFunction(column, "median", DoubleType())
 
     @staticmethod
@@ -724,13 +728,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the mode function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('mode aggregate function')
+
+        AggregateFunctions._require_active_session("mode aggregate function")
         return AggregateFunction(column, "mode", StringType())
 
     @staticmethod
@@ -802,13 +806,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_avgx function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_avgx aggregate function')
+
+        AggregateFunctions._require_active_session("regr_avgx aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -830,13 +834,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_avgy function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_avgy aggregate function')
+
+        AggregateFunctions._require_active_session("regr_avgy aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -857,13 +861,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_count function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_count aggregate function')
+
+        AggregateFunctions._require_active_session("regr_count aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -886,13 +890,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_intercept function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_intercept aggregate function')
+
+        AggregateFunctions._require_active_session("regr_intercept aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -916,13 +920,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_r2 function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_r2 aggregate function')
+
+        AggregateFunctions._require_active_session("regr_r2 aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -943,13 +947,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_slope function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_slope aggregate function')
+
+        AggregateFunctions._require_active_session("regr_slope aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -970,13 +974,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_sxx function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_sxx aggregate function')
+
+        AggregateFunctions._require_active_session("regr_sxx aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -997,13 +1001,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_sxy function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_sxy aggregate function')
+
+        AggregateFunctions._require_active_session("regr_sxy aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y
@@ -1024,13 +1028,13 @@ class AggregateFunctions:
 
         Returns:
             AggregateFunction representing the regr_syy function.
-        
-        
+
+
         Raises:
             RuntimeError: If no active SparkSession is available
         """
-        
-        AggregateFunctions._require_active_session('regr_syy aggregate function')
+
+        AggregateFunctions._require_active_session("regr_syy aggregate function")
         from mock_spark.functions.base import Column
 
         y_col = Column(y) if isinstance(y, str) else y

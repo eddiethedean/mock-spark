@@ -5,7 +5,6 @@ This test suite verifies that test fixtures and setup code work
 the same way with mock-spark as they do with PySpark.
 """
 
-import pytest
 from mock_spark import SparkSession
 
 
@@ -26,11 +25,11 @@ class TestFixtureCompatibility:
         """Test that multiple sessions can be created in fixtures."""
         spark1 = SparkSession("test1")
         spark2 = SparkSession("test2")
-        
+
         try:
             assert spark1.app_name == "test1"
             assert spark2.app_name == "test2"
-            
+
             # Both should be active
             assert len(SparkSession._active_sessions) == 2
         finally:
@@ -43,17 +42,17 @@ class TestFixtureCompatibility:
             assert spark is not None
             df = spark.createDataFrame([{"id": 1}], ["id"])
             assert df is not None
-        
+
         # Session should be stopped after context exit
         assert spark not in SparkSession._active_sessions
 
     def test_session_cleanup_after_test(self):
         """Test that sessions are properly cleaned up after tests."""
         initial_count = len(SparkSession._active_sessions)
-        
+
         spark = SparkSession("test_cleanup")
         assert len(SparkSession._active_sessions) == initial_count + 1
-        
+
         spark.stop()
         assert len(SparkSession._active_sessions) == initial_count
 

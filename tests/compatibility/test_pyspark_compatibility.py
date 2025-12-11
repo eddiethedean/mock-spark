@@ -73,7 +73,7 @@ class TestFunctionsModuleCompatibility:
         """Test direct import of functions from sql.functions."""
         # This should work like PySpark
         from mock_spark.sql import SparkSession
-        
+
         spark = SparkSession("test")
         try:
             # Test that they work (requires active session)

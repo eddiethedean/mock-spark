@@ -44,7 +44,7 @@ class TestSQLSyntaxCompatibility:
     def test_strptime_format_with_literal_t(self, spark):
         """Test STRPTIME format strings with literal 'T' character."""
         from mock_spark.spark_types import StringType, StructType, StructField
-        
+
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45"},
             {"timestamp_str": "2025-11-01T14:20:30"},
@@ -67,7 +67,7 @@ class TestSQLSyntaxCompatibility:
     def test_strptime_format_with_optional_fractional_seconds(self, spark):
         """Test STRPTIME format strings with optional fractional seconds."""
         from mock_spark.spark_types import StringType, StructType, StructField
-        
+
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45.123456"},
             {"timestamp_str": "2025-10-29T14:20:30"},
