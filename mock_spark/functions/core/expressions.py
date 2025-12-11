@@ -17,6 +17,23 @@ class ExpressionFunctions:
     """Expression functions for creating column expressions."""
 
     @staticmethod
+    def _require_active_session(operation_name: str) -> None:
+        """Require an active SparkSession for the operation.
+
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        from mock_spark.session.core.session import SparkSession
+
+        if not SparkSession._has_active_session():
+            raise RuntimeError(
+                f"Cannot perform {operation_name}: "
+                "No active SparkSession found. "
+                "This operation requires an active SparkSession, similar to PySpark. "
+                "Create a SparkSession first: spark = SparkSession('app_name')"
+            )
+
+    @staticmethod
     def col(name: str) -> Column:
         """Create a column reference.
 
@@ -27,7 +44,11 @@ class ExpressionFunctions:
 
         Returns:
             Column instance.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        ExpressionFunctions._require_active_session(f"column expression '{name}'")
         return Column(name)
 
     @staticmethod
@@ -41,7 +62,11 @@ class ExpressionFunctions:
 
         Returns:
             Literal instance.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        ExpressionFunctions._require_active_session("literal creation")
         return Literal(value)
 
     @staticmethod
@@ -56,7 +81,11 @@ class ExpressionFunctions:
 
         Returns:
             CaseWhen instance.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        ExpressionFunctions._require_active_session("CASE WHEN expression")
         from ..conditional import CaseWhen
 
         return CaseWhen(None, condition, value)
@@ -147,7 +176,11 @@ class ExpressionFunctions:
 
         Returns:
             ColumnOperation for the expression.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        ExpressionFunctions._require_active_session(f"expression '{expr}'")
         return ColumnOperation(None, "expr", expr)
 
     @staticmethod

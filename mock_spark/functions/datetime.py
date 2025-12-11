@@ -40,12 +40,33 @@ class DateTimeFunctions:
     """Collection of datetime functions."""
 
     @staticmethod
+    def _require_active_session(operation_name: str) -> None:
+        """Require an active SparkSession for the operation.
+
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        from mock_spark.session import SparkSession
+
+        if not SparkSession._has_active_session():
+            raise RuntimeError(
+                f"Cannot perform {operation_name}: "
+                "No active SparkSession found. "
+                "This operation requires an active SparkSession, similar to PySpark. "
+                "Create a SparkSession first: spark = SparkSession('app_name')"
+            )
+
+    @staticmethod
     def current_timestamp() -> ColumnOperation:
         """Get current timestamp.
 
         Returns:
             ColumnOperation representing the current_timestamp function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        DateTimeFunctions._require_active_session("current_timestamp function")
         # Create a ColumnOperation without a column (None for functions without input)
         operation = ColumnOperation(
             None, "current_timestamp", name="current_timestamp()"
@@ -58,7 +79,11 @@ class DateTimeFunctions:
 
         Returns:
             ColumnOperation representing the current_date function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        DateTimeFunctions._require_active_session("current_date function")
         # Create a ColumnOperation without a column (None for functions without input)
         operation = ColumnOperation(None, "current_date", name="current_date()")
         return operation
@@ -735,14 +760,28 @@ class DateTimeFunctions:
         """Convert string to date.
 
         Args:
-            column: The column to convert.
+            column: The column to convert (must be StringType).
             format: Optional date format string.
 
         Returns:
             ColumnOperation representing the to_date function.
+        
+        Raises:
+            TypeError: If input column type is not StringType
         """
+        from mock_spark.spark_types import StringType
+        
         if isinstance(column, str):
             column = Column(column)
+        
+        # PySpark requires string input for to_date
+        # Check if we can determine the column type
+        input_type = getattr(column, "column_type", None)
+        if input_type is not None and not isinstance(input_type, StringType):
+            raise TypeError(
+                f"to_date() requires StringType input, got {input_type}. "
+                f"Cast the column to string first: F.col('{column.name}').cast('string')"
+            )
 
         name = (
             f"to_date({column.name}, '{format}')"
@@ -759,14 +798,28 @@ class DateTimeFunctions:
         """Convert string to timestamp.
 
         Args:
-            column: The column to convert.
+            column: The column to convert (must be StringType).
             format: Optional timestamp format string.
 
         Returns:
             ColumnOperation representing the to_timestamp function.
+        
+        Raises:
+            TypeError: If input column type is not StringType
         """
+        from mock_spark.spark_types import StringType
+        
         if isinstance(column, str):
             column = Column(column)
+        
+        # PySpark requires string input for to_timestamp
+        # Check if we can determine the column type
+        input_type = getattr(column, "column_type", None)
+        if input_type is not None and not isinstance(input_type, StringType):
+            raise TypeError(
+                f"to_timestamp() requires StringType input, got {input_type}. "
+                f"Cast the column to string first: F.col('{column.name}').cast('string')"
+            )
 
         # Generate a simple name for the operation
         name = f"to_timestamp_{column.name}"
@@ -1170,7 +1223,12 @@ class DateTimeFunctions:
 
     @staticmethod
     def current_timezone() -> ColumnOperation:
-        """Get current timezone."""
+        """Get current timezone.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        DateTimeFunctions._require_active_session("current_timezone function")
         # Create a literal for functions without column input
         from mock_spark.functions.core.literals import Literal
 

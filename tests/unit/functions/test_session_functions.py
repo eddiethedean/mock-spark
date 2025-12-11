@@ -64,8 +64,9 @@ class TestSessionFunctions:
             .collect()[0]
         )
 
-        other_session = self.spark.newSession()
+        # Capture original session BEFORE newSession (newSession changes the singleton)
         original_session = SparkSession._singleton_session
+        other_session = self.spark.newSession()
         try:
             other_session.catalog.createDatabase("default", ignoreIfExists=True)
             other_session.catalog.setCurrentDatabase("default")

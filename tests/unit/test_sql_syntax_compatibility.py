@@ -43,12 +43,16 @@ class TestSQLSyntaxCompatibility:
 
     def test_strptime_format_with_literal_t(self, spark):
         """Test STRPTIME format strings with literal 'T' character."""
+        from mock_spark.spark_types import StringType, StructType, StructField
+        
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45"},
             {"timestamp_str": "2025-11-01T14:20:30"},
         ]
 
-        df = spark.createDataFrame(test_data)
+        # Explicitly set schema to StringType to avoid type inference issues
+        schema = StructType([StructField("timestamp_str", StringType(), True)])
+        df = spark.createDataFrame(test_data, schema=schema)
 
         # Format with 'T' literal should work without SQL syntax errors
         result = df.withColumn(
@@ -62,12 +66,16 @@ class TestSQLSyntaxCompatibility:
 
     def test_strptime_format_with_optional_fractional_seconds(self, spark):
         """Test STRPTIME format strings with optional fractional seconds."""
+        from mock_spark.spark_types import StringType, StructType, StructField
+        
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45.123456"},
             {"timestamp_str": "2025-10-29T14:20:30"},
         ]
 
-        df = spark.createDataFrame(test_data)
+        # Explicitly set schema to StringType to avoid type inference issues
+        schema = StructType([StructField("timestamp_str", StringType(), True)])
+        df = spark.createDataFrame(test_data, schema=schema)
 
         # Format with optional fractional seconds should work
         result = df.withColumn(

@@ -53,7 +53,7 @@ class WindowFunction:
             and isinstance(function.value, tuple)
             and len(function.value) == 2
         ):
-            # lag/lead store (offset, default_value) as tuple
+            # lag/lead store (offset, default) as tuple
             self.offset = function.value[0]
             self.default = function.value[1]
 

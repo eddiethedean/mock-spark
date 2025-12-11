@@ -112,33 +112,33 @@ class TestArrayFunctions:
         result = ArrayFunctions.array_size(F.col("arr"))
         assert result.operation == "array_size"
 
-    def test_array_sort(self):
+    def test_array_sort(self, spark):
         """Test array_sort function."""
         result = ArrayFunctions.array_sort(F.col("arr"))
         assert result.operation == "array_sort"
 
-    def test_array_contains(self):
+    def test_array_contains(self, spark):
         """Test array_contains function."""
         result = ArrayFunctions.array_contains(F.col("tags"), "spark")
         assert result.operation == "array_contains"
         assert result.value == "spark"
 
-    def test_array_max(self):
+    def test_array_max(self, spark):
         """Test array_max function."""
         result = ArrayFunctions.array_max(F.col("numbers"))
         assert result.operation == "array_max"
 
-    def test_array_min(self):
+    def test_array_min(self, spark):
         """Test array_min function."""
         result = ArrayFunctions.array_min(F.col("numbers"))
         assert result.operation == "array_min"
 
-    def test_explode(self):
+    def test_explode(self, spark):
         """Test explode function."""
         result = ArrayFunctions.explode(F.col("tags"))
         assert result.operation == "explode"
 
-    def test_size(self):
+    def test_size(self, spark):
         """Test size function."""
         result = ArrayFunctions.size(F.col("tags"))
         assert result.operation == "size"

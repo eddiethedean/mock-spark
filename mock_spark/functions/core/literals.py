@@ -21,16 +21,28 @@ class Literal(IColumn):
     and transformations, maintaining compatibility with PySpark's lit function.
     """
 
-    def __init__(self, value: Any, data_type: Optional[DataType] = None):
+    def __init__(
+        self,
+        value: Any,
+        data_type: Optional[DataType] = None,
+        resolver: Optional[callable] = None,
+    ):
         """Initialize Literal.
 
         Args:
             value: The literal value.
             data_type: Optional data type. Inferred from value if not specified.
+            resolver: Optional callable that returns the resolved value at evaluation time.
+                     The resolver should handle session resolution internally.
         """
         self.value = value
         self.data_type = data_type or self._infer_type(value)
         self.column_type = self.data_type  # Add column_type attribute for compatibility
+        
+        # Support for lazy evaluation of session-aware literals
+        self._resolver = resolver
+        self._is_lazy = resolver is not None
+        
         # Use the actual value as column name for PySpark compatibility
         # Handle boolean values to match PySpark's lowercase representation
         if isinstance(value, bool):
@@ -40,6 +52,28 @@ class Literal(IColumn):
             self._name = "NaN"
         else:
             self._name = str(value)
+    
+    def _resolve_lazy_value(self) -> Any:
+        """Resolve lazy literal value using resolver function.
+        
+        The resolver function should resolve the session at evaluation time,
+        not use a stored session reference.
+        
+        Returns:
+            Resolved value from the session.
+        """
+        if not self._is_lazy:
+            return self.value
+        
+        if self._resolver is None:
+            return self.value
+        
+        try:
+            # Resolver should handle session resolution internally
+            return self._resolver()
+        except Exception:
+            # Fallback to stored value if resolution fails
+            return self.value
 
     @property
     def name(self) -> str:
@@ -208,7 +242,11 @@ class Literal(IColumn):
 
     def alias(self, name: str) -> "Literal":
         """Create an alias for the literal."""
-        aliased_literal = Literal(self.value, self.data_type)
+        aliased_literal = Literal(
+            self.value,
+            self.data_type,
+            resolver=self._resolver,
+        )
         aliased_literal._name = name
         return aliased_literal
 

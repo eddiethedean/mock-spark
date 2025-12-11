@@ -261,6 +261,8 @@ class TransformationService:
         elif isinstance(col, ColumnOperation):
             # Complex expression - validate column references
             self._df._validate_expression_columns(col, "withColumn")
+            # Validate type requirements for specific operations
+            self._df._validate_operation_types(col, "withColumn")
         # For Literal and other cases, skip validation
 
         return self._df._queue_op("withColumn", (col_name, col))

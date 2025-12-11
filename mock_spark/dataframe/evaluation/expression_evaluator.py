@@ -292,7 +292,7 @@ class ExpressionEvaluator:
                         for item in operation.value:
                             if hasattr(item, "value") and hasattr(item, "name"):
                                 # It's a Literal
-                                all_values.append(item.value)
+                                all_values.append(self._get_literal_value(item))
                             elif hasattr(item, "name"):
                                 # It's a Column - get from row
                                 col_name = item.name
@@ -317,7 +317,7 @@ class ExpressionEvaluator:
                         # Add remaining values from operation.value
                         for item in operation.value:
                             if hasattr(item, "value") and hasattr(item, "name"):
-                                all_values.append(item.value)
+                                all_values.append(self._get_literal_value(item))
                             elif hasattr(item, "name"):
                                 col_name = item.name
                                 if (
@@ -339,7 +339,7 @@ class ExpressionEvaluator:
                     if hasattr(operation.value, "value") and hasattr(
                         operation.value, "name"
                     ):
-                        all_values.append(operation.value.value)
+                        all_values.append(self._get_literal_value(operation.value))
                     elif hasattr(operation.value, "name"):
                         col_name = operation.value.name
                         if not (
@@ -375,7 +375,7 @@ class ExpressionEvaluator:
                     for item in operation.value:
                         if hasattr(item, "value") and hasattr(item, "name"):
                             # It's a Literal
-                            array_result.append(item.value)
+                            array_result.append(self._get_literal_value(item))
                         elif hasattr(item, "name"):
                             # It's a Column - get from row (this gets the column's value)
                             col_val = row.get(item.name)
@@ -391,7 +391,7 @@ class ExpressionEvaluator:
                     if hasattr(operation.value, "value") and hasattr(
                         operation.value, "name"
                     ):
-                        array_result.append(operation.value.value)
+                        array_result.append(self._get_literal_value(operation.value))
                     elif hasattr(operation.value, "name"):
                         array_result.append(row.get(operation.value.name))
                     else:
@@ -521,7 +521,7 @@ class ExpressionEvaluator:
                         and hasattr(col, "data_type")
                     ):
                         # This is a Literal
-                        col_value = col.value
+                        col_value = self._get_literal_value(col)
                     elif hasattr(col, "name"):
                         col_value = row.get(col.name)
                     elif hasattr(col, "value"):
@@ -561,7 +561,7 @@ class ExpressionEvaluator:
                 elif hasattr(operation.value, "value") and hasattr(
                     operation.value, "name"
                 ):
-                    second_date = operation.value.value
+                    second_date = self._get_literal_value(operation.value)
                 elif hasattr(operation.value, "name"):
                     second_date = row.get(operation.value.name)
                 else:
@@ -695,7 +695,7 @@ class ExpressionEvaluator:
                     and hasattr(col, "data_type")
                 ):
                     # It's a Literal
-                    col_value = col.value
+                    col_value = self._get_literal_value(col)
                 elif hasattr(col, "operation") and hasattr(col, "column"):
                     # It's a ColumnOperation - evaluate it
                     col_value = self.evaluate_expression(row, col)
@@ -732,7 +732,7 @@ class ExpressionEvaluator:
                 elif hasattr(operation.value, "value") and hasattr(
                     operation.value, "name"
                 ):
-                    second_array = operation.value.value
+                    second_array = self._get_literal_value(operation.value)
                 elif hasattr(operation.value, "name"):
                     second_array = row.get(operation.value.name)
                 elif isinstance(operation.value, (list, tuple)):
@@ -884,7 +884,7 @@ class ExpressionEvaluator:
                 elif hasattr(operation.value, "value") and hasattr(
                     operation.value, "name"
                 ):
-                    stop = int(operation.value.value)
+                    stop = int(self._get_literal_value(operation.value))
                 elif hasattr(operation.value, "name"):
                     stop_val = row.get(operation.value.name)
                     stop = int(stop_val) if stop_val is not None else None
@@ -1292,6 +1292,22 @@ class ExpressionEvaluator:
                     return None
         return None
 
+    def _get_literal_value(self, literal: Any) -> Any:
+        """Get value from a Literal, resolving lazy literals if needed.
+        
+        Args:
+            literal: Literal object or any value
+            
+        Returns:
+            Resolved literal value
+        """
+        if hasattr(literal, "value") and hasattr(literal, "name"):
+            # It's a Literal - check if it's lazy
+            if hasattr(literal, "_is_lazy") and literal._is_lazy:
+                return literal._resolve_lazy_value()
+            return literal.value
+        return literal
+
     def _evaluate_value(self, row: dict[str, Any], value: Any) -> Any:
         """Evaluate a value (could be a column reference, literal, or operation)."""
         if hasattr(value, "operation") and hasattr(value, "column"):
@@ -1299,7 +1315,7 @@ class ExpressionEvaluator:
             return self.evaluate_expression(row, value)
         elif hasattr(value, "value") and hasattr(value, "name"):
             # It's a Literal
-            return value.value
+            return self._get_literal_value(value)
         elif hasattr(value, "name"):
             # It's a Column
             return row.get(value.name)
@@ -2632,7 +2648,7 @@ class ExpressionEvaluator:
             if isinstance(operation.value, str):
                 fmt = operation.value
             elif hasattr(operation.value, "value"):
-                fmt = str(operation.value.value)
+                fmt = str(self._get_literal_value(operation.value))
 
         try:
             from datetime import timezone
@@ -2665,7 +2681,7 @@ class ExpressionEvaluator:
         if hasattr(operation, "value") and operation.value is not None:
             if hasattr(operation.value, "value") and hasattr(operation.value, "name"):
                 # It's a Literal
-                tz_str = str(operation.value.value)
+                tz_str = str(self._get_literal_value(operation.value))
             elif isinstance(operation.value, str):
                 tz_str = operation.value
             else:
@@ -2713,7 +2729,7 @@ class ExpressionEvaluator:
         if hasattr(operation, "value") and operation.value is not None:
             if hasattr(operation.value, "value") and hasattr(operation.value, "name"):
                 # It's a Literal
-                tz_str = str(operation.value.value)
+                tz_str = str(self._get_literal_value(operation.value))
             elif isinstance(operation.value, str):
                 tz_str = operation.value
             else:
@@ -2903,7 +2919,7 @@ class ExpressionEvaluator:
                 if hasattr(operation.value, "value") and hasattr(
                     operation.value, "name"
                 ):
-                    replacement = operation.value.value
+                    replacement = self._get_literal_value(operation.value)
                 # Handle Column - need to evaluate from row
                 elif hasattr(operation.value, "name"):
                     # This should be evaluated in _evaluate_function_call with row context

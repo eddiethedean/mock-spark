@@ -134,6 +134,14 @@ class DataFrame:
         self.storage: StorageBackend = storage or MemoryStorageManager()
         self._cached_count: Optional[int] = None
         self._operations_queue: list[tuple[str, Any]] = operations or []
+        
+        # Materialization tracking for column availability
+        # For DataFrames created from data, all columns are immediately materialized
+        self._materialized: bool = bool(data)
+        self._materialized_columns: set[str] = set()
+        if data:
+            # All columns from schema are materialized when DataFrame is created from data
+            self._materialized_columns = set(self._schema.fieldNames())
 
         # Initialize service classes for composition-based architecture
         from .services import (
@@ -207,6 +215,25 @@ class DataFrame:
         if self._expression_evaluator is None:
             self._expression_evaluator = ExpressionEvaluator()
         return self._expression_evaluator
+
+    def _mark_materialized(self) -> None:
+        """Mark DataFrame as materialized."""
+        self._materialized = True
+        # Update materialized columns from current schema
+        self._materialized_columns = set(self._schema.fieldNames())
+
+    def _get_available_columns(self) -> list[str]:
+        """Get columns that are actually available (materialized).
+        
+        For validation purposes, only return columns that have been materialized.
+        
+        Returns:
+            List of column names that are materialized and available.
+        """
+        if self._materialized:
+            return list(self._materialized_columns)
+        # Return only columns from base schema (not from transforms)
+        return [f.name for f in self._schema.fields]
 
     # ============================================================================
     # Delegation methods for service classes
@@ -386,6 +413,13 @@ class DataFrame:
     # Display operations
     def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a clean table format."""
+        # Materialize if needed (this updates the schema)
+        if self._operations_queue:
+            materialized = self._materialize_if_lazy()
+            # Update schema from materialized DataFrame
+            self._schema = materialized.schema
+        # Mark as materialized after show (schema is now updated)
+        self._mark_materialized()
         return self._display.show(n, truncate)
 
     def to_markdown(
@@ -403,10 +437,18 @@ class DataFrame:
 
     def collect(self) -> list["Row"]:
         """Collect all data as list of Row objects."""
+        # Materialize if needed (this updates the schema)
+        if self._operations_queue:
+            materialized = self._materialize_if_lazy()
+            # Update schema from materialized DataFrame
+            self._schema = materialized.schema
+        # Mark as materialized after collection (schema is now updated)
+        self._mark_materialized()
         return self._display.collect()
 
     def take(self, n: int) -> list["Row"]:
         """Take first n rows as list of Row objects."""
+        self._mark_materialized()
         return self._display.take(n)
 
     def head(self, n: int = 1) -> Union["Row", list["Row"], None]:
@@ -427,6 +469,7 @@ class DataFrame:
 
     def count(self) -> int:
         """Count number of rows."""
+        self._mark_materialized()
         return self._display.count()
 
     def isEmpty(self) -> bool:
@@ -746,16 +789,91 @@ class DataFrame:
         """Enable df.column_name syntax for column access (PySpark compatibility)."""
         return DataFrameAttributeHandler.handle_getattr(self, name)
 
+    def _validate_operation_types(
+        self, col: "ColumnOperation", operation: str
+    ) -> None:
+        """Validate type requirements for specific operations.
+
+        Args:
+            col: The ColumnOperation to validate
+            operation: The operation name for error messages
+
+        Raises:
+            TypeError: If operation type requirements are not met
+        """
+        from mock_spark.spark_types import StringType, DateType, TimestampType
+
+        # Check if this is a to_timestamp or to_date operation
+        if hasattr(col, "function_name") and col.function_name in (
+            "to_timestamp",
+            "to_date",
+        ):
+            # Get the input column from the operation
+            input_col = getattr(col, "column", None)
+            if input_col is None:
+                return
+
+            # Get column name
+            col_name = getattr(input_col, "name", None)
+            if col_name is None:
+                return
+
+            # Look up column type from DataFrame schema
+            schema_field = next(
+                (f for f in self.schema.fields if f.name == col_name), None
+            )
+            if schema_field is not None:
+                input_type = schema_field.dataType
+                func_name = col.function_name
+                
+                # to_timestamp accepts StringType or TimestampType (already a timestamp)
+                if func_name == "to_timestamp":
+                    if not isinstance(input_type, (StringType, TimestampType)):
+                        raise TypeError(
+                            f"{func_name}() requires StringType or TimestampType input, got {input_type}. "
+                            f"Cast the column to string first: F.col('{col_name}').cast('string')"
+                        )
+                # to_date accepts StringType or DateType (already a date)
+                elif func_name == "to_date":
+                    if not isinstance(input_type, (StringType, DateType)):
+                        raise TypeError(
+                            f"{func_name}() requires StringType or DateType input, got {input_type}. "
+                            f"Cast the column to string first: F.col('{col_name}').cast('string')"
+                        )
+
     def _validate_column_exists(
         self,
         column_name: str,
         operation: str,
         allow_ambiguous: bool = False,
     ) -> None:
-        """Validate that a column exists in the DataFrame."""
-        self._get_validation_handler().validate_column_exists(
-            self.schema, column_name, operation
-        )
+        """Validate that a column exists in the DataFrame and is materialized.
+
+        Raises:
+            SparkColumnNotFoundError: If column doesn't exist or isn't materialized
+        """
+        from ...core.exceptions.operation import SparkColumnNotFoundError
+
+        # Get available (materialized) columns
+        available_columns = self._get_available_columns()
+
+        if column_name not in available_columns:
+            # Check if column exists in schema (logical plan) but isn't materialized
+            schema_columns = [f.name for f in self.schema.fields]
+            if column_name in schema_columns:
+                # Column exists in logical plan but isn't materialized
+                raise SparkColumnNotFoundError(
+                    column_name,
+                    available_columns,
+                    f"Column '{column_name}' exists in logical plan but is not yet materialized. "
+                    f"Materialize the DataFrame first using .cache(), .collect(), or by executing an action. "
+                    f"Operation: {operation}"
+                )
+            else:
+                # Column doesn't exist at all
+                self._get_validation_handler().validate_column_exists(
+                    self.schema, column_name, operation
+                )
 
     def _validate_columns_exist(self, column_names: list[str], operation: str) -> None:
         """Validate that multiple columns exist in the DataFrame."""

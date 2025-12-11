@@ -128,7 +128,12 @@ class PolarsExpressionTranslator:
         Returns:
             Polars literal expression
         """
-        return pl.lit(lit.value)
+        # Resolve lazy literals (session-aware functions) before translating
+        if hasattr(lit, "_is_lazy") and lit._is_lazy:
+            value = lit._resolve_lazy_value()
+        else:
+            value = lit.value
+        return pl.lit(value)
 
     def _translate_operation(self, op: ColumnOperation) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
@@ -149,7 +154,11 @@ class PolarsExpressionTranslator:
         elif isinstance(column, ColumnOperation):
             left = self._translate_operation(column)
         elif isinstance(column, Literal):
-            left = pl.lit(column.value)
+            # Resolve lazy literals before translating
+            if hasattr(column, "_is_lazy") and column._is_lazy:
+                left = pl.lit(column._resolve_lazy_value())
+            else:
+                left = pl.lit(column.value)
         elif isinstance(column, str):
             left = pl.col(column)
         elif isinstance(column, (int, float, bool)):
@@ -324,7 +333,11 @@ class PolarsExpressionTranslator:
         elif isinstance(value, ColumnOperation):
             right = self._translate_operation(value)
         elif isinstance(value, Literal):
-            right = pl.lit(value.value)
+            # Resolve lazy literals before translating
+            if hasattr(value, "_is_lazy") and value._is_lazy:
+                right = pl.lit(value._resolve_lazy_value())
+            else:
+                right = pl.lit(value.value)
         elif isinstance(value, (int, float, bool, str)):
             right = pl.lit(value)
         elif value is None:
@@ -575,6 +588,9 @@ class PolarsExpressionTranslator:
                 getattr(expr, "function_name", None),
             )
         if isinstance(expr, Literal):
+            # Resolve lazy literals before serializing
+            if hasattr(expr, "_is_lazy") and expr._is_lazy:
+                return ("literal", expr._resolve_lazy_value())
             return ("literal", expr.value)
         if isinstance(expr, tuple):
             return ("tuple",) + tuple(self._serialize_value(item) for item in expr)
@@ -943,7 +959,11 @@ class PolarsExpressionTranslator:
                                     # If it fails, treat as literal
                                     all_cols.append(pl.lit(col))
                         elif hasattr(col, "value"):  # Literal
-                            all_cols.append(pl.lit(col.value))
+                            # Resolve lazy literals before translating
+                            if hasattr(col, "_is_lazy") and col._is_lazy:
+                                all_cols.append(pl.lit(col._resolve_lazy_value()))
+                            else:
+                                all_cols.append(pl.lit(col.value))
                         else:
                             # Column or expression
                             all_cols.append(self.translate(col))

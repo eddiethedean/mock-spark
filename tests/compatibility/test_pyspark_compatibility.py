@@ -72,10 +72,15 @@ class TestFunctionsModuleCompatibility:
     def test_functions_direct_import(self):
         """Test direct import of functions from sql.functions."""
         # This should work like PySpark
-
-        # Test that they work
-        result = col("test")
-        assert result is not None
+        from mock_spark.sql import SparkSession
+        
+        spark = SparkSession("test")
+        try:
+            # Test that they work (requires active session)
+            result = col("test")
+            assert result is not None
+        finally:
+            spark.stop()
 
 
 class TestFunctionsClassDeprecation:

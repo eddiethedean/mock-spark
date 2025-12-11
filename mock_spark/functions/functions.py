@@ -72,13 +72,40 @@ class Functions:
         )
 
     @staticmethod
+    def _require_active_session(operation_name: str) -> None:
+        """Require an active SparkSession for the operation.
+
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        from ..session import SparkSession
+
+        if not SparkSession._has_active_session():
+            raise RuntimeError(
+                f"Cannot perform {operation_name}: "
+                "No active SparkSession found. "
+                "This operation requires an active SparkSession, similar to PySpark. "
+                "Create a SparkSession first: spark = SparkSession('app_name')"
+            )
+
+    @staticmethod
     def col(name: str) -> Column:
-        """Create a column reference."""
+        """Create a column reference.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session(f"column expression '{name}'")
         return Column(name)
 
     @staticmethod
     def lit(value: Any) -> Literal:
-        """Create a literal value."""
+        """Create a literal value.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("literal creation")
         return Literal(value)
 
     @staticmethod
@@ -91,7 +118,11 @@ class Functions:
 
         Returns:
             ColumnOperation representing the cast function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
         """
+        Functions._require_active_session("cast operation")
         if isinstance(column, str):
             column = Column(column)
         return column.cast(data_type)
@@ -99,40 +130,102 @@ class Functions:
     @staticmethod
     def current_catalog(session: Optional["SparkSession"] = None) -> Literal:
         """Return the current catalog name as a literal."""
+        # Validate session at creation time (matches PySpark behavior)
         spark = Functions._resolve_session(session)
-        catalog = getattr(spark.catalog, "currentCatalog", None)
-        catalog_name = catalog() if callable(catalog) else "spark_catalog"
-
-        literal = Literal(catalog_name)
+        
+        # Store the explicit session if provided, otherwise will resolve at evaluation
+        explicit_session = session
+        
+        def resolver() -> str:
+            """Resolve catalog name from session at evaluation time."""
+            from ..session.core.session import SparkSession
+            # Use explicit session if provided, otherwise resolve from singleton
+            if explicit_session is not None:
+                eval_spark = explicit_session
+            else:
+                eval_spark = Functions._resolve_session(None)
+            catalog = getattr(eval_spark.catalog, "currentCatalog", None)
+            return catalog() if callable(catalog) else "spark_catalog"
+        
+        # Create lazy literal that resolves at evaluation time
+        # Don't call resolver() here - it will be called during evaluation
+        literal = Literal("", resolver=resolver)
         literal.name = "current_catalog()"
         return literal
 
     @staticmethod
     def current_database(session: Optional["SparkSession"] = None) -> Literal:
         """Return the current database/schema as a literal."""
+        # Validate session at creation time (matches PySpark behavior)
         spark = Functions._resolve_session(session)
-        current_db = spark.catalog.currentDatabase()
-        literal = Literal(current_db)
+        
+        # Store the explicit session if provided, otherwise will resolve at evaluation
+        explicit_session = session
+        
+        def resolver() -> str:
+            """Resolve database name from session at evaluation time."""
+            from ..session.core.session import SparkSession
+            # Use explicit session if provided, otherwise resolve from singleton
+            if explicit_session is not None:
+                return explicit_session.catalog.currentDatabase()
+            else:
+                eval_spark = Functions._resolve_session(None)
+                return eval_spark.catalog.currentDatabase()
+        
+        # Create lazy literal that resolves at evaluation time
+        # Don't call resolver() here - it will be called during evaluation
+        literal = Literal("", resolver=resolver)
         literal.name = "current_database()"
         return literal
 
     @staticmethod
     def current_schema(session: Optional["SparkSession"] = None) -> Literal:
         """Alias for current_database (Spark SQL compatibility)."""
+        # Validate session at creation time (matches PySpark behavior)
         spark = Functions._resolve_session(session)
-        current_schema = spark.catalog.currentDatabase()
-        literal = Literal(current_schema)
+        
+        # Store the explicit session if provided, otherwise will resolve at evaluation
+        explicit_session = session
+        
+        def resolver() -> str:
+            """Resolve schema name from session at evaluation time."""
+            from ..session.core.session import SparkSession
+            # Use explicit session if provided, otherwise resolve from singleton
+            if explicit_session is not None:
+                return explicit_session.catalog.currentDatabase()
+            else:
+                eval_spark = Functions._resolve_session(None)
+                return eval_spark.catalog.currentDatabase()
+        
+        # Create lazy literal that resolves at evaluation time
+        # Don't call resolver() here - it will be called during evaluation
+        literal = Literal("", resolver=resolver)
         literal.name = "current_schema()"
         return literal
 
     @staticmethod
     def current_user(session: Optional["SparkSession"] = None) -> Literal:
         """Return the current Spark user as a literal."""
+        # Validate session at creation time (matches PySpark behavior)
         spark = Functions._resolve_session(session)
-        spark_user = getattr(spark.sparkContext, "sparkUser", None)
-        user_name = spark_user() if callable(spark_user) else "mock_user"
-
-        literal = Literal(user_name)
+        
+        # Store the explicit session if provided, otherwise will resolve at evaluation
+        explicit_session = session
+        
+        def resolver() -> str:
+            """Resolve user name from session at evaluation time."""
+            from ..session.core.session import SparkSession
+            # Use explicit session if provided, otherwise resolve from singleton
+            if explicit_session is not None:
+                eval_spark = explicit_session
+            else:
+                eval_spark = Functions._resolve_session(None)
+            spark_user = getattr(eval_spark.sparkContext, "sparkUser", None)
+            return spark_user() if callable(spark_user) else "mock_user"
+        
+        # Create lazy literal that resolves at evaluation time
+        # Don't call resolver() here - it will be called during evaluation
+        literal = Literal("", resolver=resolver)
         literal.name = "current_user()"
         return literal
 
@@ -1047,12 +1140,22 @@ class Functions:
     # Datetime functions
     @staticmethod
     def current_timestamp() -> ColumnOperation:
-        """Current timestamp."""
+        """Current timestamp.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("current_timestamp function")
         return DateTimeFunctions.current_timestamp()
 
     @staticmethod
     def current_date() -> ColumnOperation:
-        """Current date."""
+        """Current date.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("current_date function")
         return DateTimeFunctions.current_date()
 
     @staticmethod
@@ -1148,7 +1251,12 @@ class Functions:
 
     @staticmethod
     def when(condition: Any, value: Any = None) -> CaseWhen:
-        """Start CASE WHEN expression."""
+        """Start CASE WHEN expression.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("CASE WHEN expression")
         if value is not None:
             return ConditionalFunctions.when(condition, value)
         return ConditionalFunctions.when(condition)
@@ -1206,7 +1314,12 @@ class Functions:
     # SQL expression function
     @staticmethod
     def expr(expression: str) -> ColumnOperation:
-        """Parse SQL expression into a column (simplified mock)."""
+        """Parse SQL expression into a column (simplified mock).
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session(f"expression '{expression}'")
         # Represent as a column operation on a dummy column
         from mock_spark.functions.base import Column
 
@@ -1395,7 +1508,12 @@ class Functions:
     # Window functions
     @staticmethod
     def row_number() -> ColumnOperation:
-        """Row number window function."""
+        """Row number window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("row_number window function")
         # Create a special column for functions without input
         from mock_spark.functions.base import Column
         from mock_spark.spark_types import IntegerType
@@ -1409,7 +1527,12 @@ class Functions:
 
     @staticmethod
     def rank() -> ColumnOperation:
-        """Rank window function."""
+        """Rank window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("rank window function")
         # Create a special column for functions without input
         from mock_spark.functions.base import Column
 
@@ -1421,7 +1544,12 @@ class Functions:
 
     @staticmethod
     def dense_rank() -> ColumnOperation:
-        """Dense rank window function."""
+        """Dense rank window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("dense_rank window function")
         # Create a special column for functions without input
         from mock_spark.functions.base import Column
 
@@ -1433,33 +1561,58 @@ class Functions:
 
     @staticmethod
     def lag(
-        column: Union[Column, str], offset: int = 1, default_value: Any = None
+        column: Union[Column, str], offset: int = 1, default: Any = None
     ) -> ColumnOperation:
-        """Lag window function."""
+        """Lag window function.
+        
+        Args:
+            column: The column to lag.
+            offset: Number of rows to look back. Default is 1.
+            default: Default value if offset goes beyond partition. Default is None.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("lag window function")
         if isinstance(column, str):
             column = Column(column)
 
-        operation = ColumnOperation(column, "lag", (offset, default_value))
+        operation = ColumnOperation(column, "lag", (offset, default))
         operation.name = f"lag({column.name}, {offset})"
         operation.function_name = "lag"
         return operation
 
     @staticmethod
     def lead(
-        column: Union[Column, str], offset: int = 1, default_value: Any = None
+        column: Union[Column, str], offset: int = 1, default: Any = None
     ) -> ColumnOperation:
-        """Lead window function."""
+        """Lead window function.
+        
+        Args:
+            column: The column to lead.
+            offset: Number of rows to look forward. Default is 1.
+            default: Default value if offset goes beyond partition. Default is None.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("lead window function")
         if isinstance(column, str):
             column = Column(column)
 
-        operation = ColumnOperation(column, "lead", (offset, default_value))
+        operation = ColumnOperation(column, "lead", (offset, default))
         operation.name = f"lead({column.name}, {offset})"
         operation.function_name = "lead"
         return operation
 
     @staticmethod
     def nth_value(column: Union[Column, str], n: int) -> ColumnOperation:
-        """Nth value window function."""
+        """Nth value window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("nth_value window function")
         if isinstance(column, str):
             column = Column(column)
 
@@ -1470,7 +1623,12 @@ class Functions:
 
     @staticmethod
     def ntile(n: int) -> ColumnOperation:
-        """NTILE window function."""
+        """NTILE window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("ntile window function")
         from mock_spark.functions.base import Column
 
         dummy_column = Column("__ntile__")
@@ -1481,7 +1639,12 @@ class Functions:
 
     @staticmethod
     def cume_dist() -> ColumnOperation:
-        """Cumulative distribution window function."""
+        """Cumulative distribution window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("cume_dist window function")
         from mock_spark.functions.base import Column
 
         dummy_column = Column("__cume_dist__")
@@ -1492,7 +1655,12 @@ class Functions:
 
     @staticmethod
     def percent_rank() -> ColumnOperation:
-        """Percent rank window function."""
+        """Percent rank window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("percent_rank window function")
         from mock_spark.functions.base import Column
 
         dummy_column = Column("__percent_rank__")
@@ -1503,7 +1671,12 @@ class Functions:
 
     @staticmethod
     def first_value(column: Union[Column, str]) -> ColumnOperation:
-        """First value window function."""
+        """First value window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("first_value window function")
         if isinstance(column, str):
             column = Column(column)
 
@@ -1514,7 +1687,12 @@ class Functions:
 
     @staticmethod
     def last_value(column: Union[Column, str]) -> ColumnOperation:
-        """Last value window function."""
+        """Last value window function.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("last_value window function")
         if isinstance(column, str):
             column = Column(column)
 
@@ -1965,7 +2143,12 @@ class Functions:
 
     @staticmethod
     def current_timezone() -> ColumnOperation:
-        """Get current timezone."""
+        """Get current timezone.
+        
+        Raises:
+            RuntimeError: If no active SparkSession is available
+        """
+        Functions._require_active_session("current_timezone function")
         return DateTimeFunctions.current_timezone()
 
     @staticmethod

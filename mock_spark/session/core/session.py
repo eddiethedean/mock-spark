@@ -59,6 +59,7 @@ class SparkSession:
     # Class attribute for builder pattern
     builder: Optional["SparkSessionBuilder"] = None
     _singleton_session: Optional["SparkSession"] = None
+    _active_sessions: list["SparkSession"] = []
 
     def __init__(
         self,
@@ -147,6 +148,10 @@ class SparkSession:
         self._sql_parameter_binder: ISQLParameterBinder = SQLParameterBinder()
         self._lifecycle_manager: ISessionLifecycleManager = SessionLifecycleManager()
         self._mocking_coordinator: IMockingCoordinator = MockingCoordinator()
+
+        # Register this session as active
+        SparkSession._active_sessions.append(self)
+        SparkSession._singleton_session = self
 
     @property
     def appName(self) -> str:
@@ -485,6 +490,9 @@ class SparkSession:
         """Stop the session and clean up resources."""
         # Delegate to SessionLifecycleManager service
         self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
+        # Remove from active sessions list
+        if self in SparkSession._active_sessions:
+            SparkSession._active_sessions.remove(self)
         # Clear singleton if this is the active singleton session
         if SparkSession._singleton_session is self:
             SparkSession._singleton_session = None
@@ -497,6 +505,12 @@ class SparkSession:
         """Context manager exit."""
         # Delegate to SessionLifecycleManager service
         self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
+        # Remove from active sessions list
+        if self in SparkSession._active_sessions:
+            SparkSession._active_sessions.remove(self)
+        # Clear singleton if this is the active singleton session
+        if SparkSession._singleton_session is self:
+            SparkSession._singleton_session = None
 
     def newSession(self) -> "SparkSession":
         """Create new session.
@@ -505,6 +519,26 @@ class SparkSession:
             New SparkSession instance.
         """
         return SparkSession(self.app_name)
+
+    @classmethod
+    def get_active_session(cls) -> Optional["SparkSession"]:
+        """Get the most recently created active session.
+
+        Returns:
+            The most recent active SparkSession, or None if no sessions are active.
+        """
+        if cls._active_sessions:
+            return cls._active_sessions[-1]
+        return None
+
+    @classmethod
+    def _has_active_session(cls) -> bool:
+        """Check if there's at least one active session.
+
+        Returns:
+            True if there's at least one active session, False otherwise.
+        """
+        return len(cls._active_sessions) > 0
 
     # Mockable methods for testing
     def mock_createDataFrame(
