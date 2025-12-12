@@ -61,10 +61,10 @@ class TestCatalogCreateDatabase:
     def test_create_database_invalid_name_not_string(self, spark):
         """Test createDatabase raises error for non-string name."""
         with pytest.raises(IllegalArgumentException, match="must be a string"):
-            spark.catalog.createDatabase(123)  # type: ignore[arg-type]
+            spark.catalog.createDatabase(123)
 
         with pytest.raises(IllegalArgumentException, match="must be a string"):
-            spark.catalog.createDatabase(None)  # type: ignore[arg-type]
+            spark.catalog.createDatabase(None)
 
     def test_create_database_multiple_databases(self, spark):
         """Test creating multiple databases."""
@@ -112,12 +112,19 @@ class TestCatalogCreateDatabase:
         assert spark.storage.schema_exists("storage_test_db")
 
         # Create table via storage
-        from mock_spark.spark_types import StructType, StructField, StringType, IntegerType
+        from mock_spark.spark_types import (
+            StructType,
+            StructField,
+            StringType,
+            IntegerType,
+        )
 
-        schema = StructType([
-            StructField("id", IntegerType(), True),
-            StructField("name", StringType(), True),
-        ])
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("name", StringType(), True),
+            ]
+        )
         spark.storage.create_table("storage_test_db", "test_table", schema)
 
         # Verify via catalog
@@ -148,6 +155,7 @@ class TestCatalogCreateDatabase:
         assert "testdb" in db_names
         assert db_names.count("TestDB") == 1
         assert db_names.count("testdb") == 1
+
 
 @pytest.mark.compatibility
 class TestCatalogCreateDatabaseEdgeCases:

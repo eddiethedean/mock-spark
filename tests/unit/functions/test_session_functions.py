@@ -142,7 +142,7 @@ class TestSessionFunctions:
             # F.current_database() might use a different error path
             # Test with a function that definitely requires active session
             with pytest.raises((PySparkValueError, RuntimeError)):
-                Functions.current_database()  # type: ignore[operator]
+                Functions.current_database()
         finally:
             SparkSession._singleton_session = self.spark
             if self.spark not in SparkSession._active_sessions:

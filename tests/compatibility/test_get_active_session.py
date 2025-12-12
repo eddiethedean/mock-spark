@@ -66,7 +66,7 @@ class TestGetActiveSession:
         spark2 = SparkSession.builder.appName("singleton").getOrCreate()
         # Verify it's the singleton
         assert SparkSession._singleton_session is spark2
-        
+
         # Create another regular session (shouldn't replace singleton)
         # But note: creating a new session will set it as singleton
         # So we need to test differently - getActiveSession should return singleton if it exists
@@ -147,7 +147,9 @@ class TestGetActiveSession:
             spark = SparkSession(name)
             try:
                 active = SparkSession.getActiveSession()
-                results.append((name, active is not None, active.app_name if active else None))
+                results.append(
+                    (name, active is not None, active.app_name if active else None)
+                )
             finally:
                 spark.stop()
 
@@ -166,6 +168,7 @@ class TestGetActiveSession:
         for name, has_active, app_name in results:
             assert has_active is True
             assert app_name == name
+
 
 @pytest.mark.compatibility
 class TestGetActiveSessionIntegration:

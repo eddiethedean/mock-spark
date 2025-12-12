@@ -25,7 +25,7 @@ class TestFixtureCompatibility:
         """Test that multiple sessions can be created in fixtures."""
         # Get initial count to account for sessions from other tests
         initial_count = len(SparkSession._active_sessions)
-        
+
         spark1 = SparkSession("test1")
         spark2 = SparkSession("test2")
 
@@ -40,7 +40,7 @@ class TestFixtureCompatibility:
         finally:
             spark2.stop()
             spark1.stop()
-            
+
             # Verify cleanup
             assert len(SparkSession._active_sessions) == initial_count
 
