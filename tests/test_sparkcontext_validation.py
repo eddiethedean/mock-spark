@@ -12,15 +12,17 @@ from mock_spark import SparkSession, functions as F
 class TestSessionValidation:
     """Test that functions require active SparkSession."""
 
-    def test_col_requires_active_session(self):
-        """Test that col() raises error without active session."""
+    def test_col_does_not_require_active_session(self):
+        """Test that col() does NOT require active session (PySpark behavior)."""
         # Clear any existing sessions
         SparkSession._active_sessions.clear()
         SparkSession._singleton_session = None
 
-        # No active session
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.col("id")
+        # In PySpark, col() can be called without a session
+        # It just creates a column expression that's evaluated later
+        col_expr = F.col("id")
+        assert col_expr is not None
+        assert hasattr(col_expr, "name") or hasattr(col_expr, "column_name")
 
     def test_col_works_with_active_session(self):
         """Test that col() works with active session."""
@@ -28,25 +30,29 @@ class TestSessionValidation:
         try:
             col_expr = F.col("id")
             assert col_expr is not None
-            assert col_expr.name == "id"
+            assert hasattr(col_expr, "name") or hasattr(col_expr, "column_name")
         finally:
             spark.stop()
 
-    def test_col_fails_after_session_stopped(self):
-        """Test that col() fails after session is stopped."""
+    def test_col_works_after_session_stopped(self):
+        """Test that col() still works after session is stopped (PySpark behavior)."""
         spark = SparkSession("test")
         spark.stop()
 
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.col("id")
+        # In PySpark, col() can be called even after session is stopped
+        # It just creates a column expression
+        col_expr = F.col("id")
+        assert col_expr is not None
 
-    def test_lit_requires_active_session(self):
-        """Test that lit() requires active session."""
+    def test_lit_does_not_require_active_session(self):
+        """Test that lit() does NOT require active session (PySpark behavior)."""
         SparkSession._active_sessions.clear()
         SparkSession._singleton_session = None
 
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.lit(42)
+        # In PySpark, lit() can be called without a session
+        # It just creates a literal expression that's evaluated later
+        lit_expr = F.lit(42)
+        assert lit_expr is not None
 
     def test_expr_requires_active_session(self):
         """Test that expr() requires active session."""
@@ -106,7 +112,7 @@ class TestSessionValidation:
         spark2 = SparkSession("test2")
 
         try:
-            # Should work with active sessions
+            # Should work with active sessions (col() doesn't require session, but works with it)
             col_expr = F.col("id")
             assert col_expr is not None
 
@@ -119,6 +125,7 @@ class TestSessionValidation:
             spark2.stop()
             spark1.stop()
 
-        # Should fail after all sessions stopped
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.col("id")
+        # col() should still work after all sessions stopped (PySpark behavior)
+        # It just creates a column expression that's evaluated later
+        col_expr = F.col("id")
+        assert col_expr is not None

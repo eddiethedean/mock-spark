@@ -112,7 +112,7 @@ class MockErrorSimulator:
             if method_name:
                 self.spark_session._remove_error_rule(method_name)
             else:
-                self.spark_session.clear_error_rules()
+                self.spark_session._clear_error_rules()
         else:
             # Fallback for old session structure
             if method_name:

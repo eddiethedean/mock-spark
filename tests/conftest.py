@@ -2,7 +2,7 @@
 Global pytest configuration for mock-spark tests.
 
 This configuration ensures proper resource cleanup to prevent test leaks.
-No PySpark dependencies - tests use expected outputs for compatibility validation.
+Supports both mock-spark and PySpark backends for unified testing.
 """
 
 import contextlib
@@ -55,9 +55,94 @@ def isolated_session():
 
 
 @pytest.fixture
-def spark(mock_spark_session):
-    """Alias for mock_spark_session to match common test patterns."""
-    return mock_spark_session
+def spark(request):
+    """Unified SparkSession fixture that works with both mock-spark and PySpark.
+
+    Backend selection priority:
+    1. pytest marker: @pytest.mark.backend('mock'|'pyspark'|'both')
+    2. Environment variable: MOCK_SPARK_TEST_BACKEND
+    3. Default: mock-spark
+
+    Examples:
+        # Use mock-spark (default)
+        def test_something(spark):
+            df = spark.createDataFrame([{"id": 1}])
+
+        # Force PySpark
+        @pytest.mark.backend('pyspark')
+        def test_with_pyspark(spark):
+            df = spark.createDataFrame([{"id": 1}])
+
+        # Compare both
+        @pytest.mark.backend('both')
+        def test_comparison(mock_spark_session, pyspark_session):
+            # Both sessions available
+    """
+    from tests.fixtures.spark_backend import (
+        SparkBackend,
+        BackendType,
+        get_backend_type,
+    )
+
+    # Handle backward compatibility - request may not be available in all contexts
+    try:
+        backend = get_backend_type(request)
+    except (AttributeError, TypeError):
+        # Fallback for backward compatibility
+        backend = BackendType.MOCK
+
+    if backend == BackendType.BOTH:
+        # For comparison mode, return mock-spark by default
+        # Tests should use mock_spark_session and pyspark_session fixtures
+        backend = BackendType.MOCK
+
+    session = SparkBackend.create_session(
+        app_name="test_app",
+        backend=backend,
+        request=request if hasattr(request, "node") else None,
+    )
+    yield session
+
+    # Cleanup
+    with contextlib.suppress(BaseException):
+        session.stop()
+    gc.collect()
+
+
+@pytest.fixture
+def spark_backend(request):
+    """Get the current backend type being used.
+
+    Returns:
+        BackendType enum value.
+    """
+    from tests.fixtures.spark_backend import get_backend_type
+
+    try:
+        return get_backend_type(request)
+    except (AttributeError, TypeError):
+        # Fallback for backward compatibility
+        from tests.fixtures.spark_backend import BackendType
+
+        return BackendType.MOCK
+
+
+@pytest.fixture
+def pyspark_session(request):
+    """Create a PySpark SparkSession for comparison testing.
+
+    Skips test if PySpark is not available.
+    """
+    from tests.fixtures.spark_backend import SparkBackend
+
+    try:
+        session = SparkBackend.create_pyspark_session("test_app")
+        yield session
+        with contextlib.suppress(BaseException):
+            session.stop()
+        gc.collect()
+    except (ImportError, RuntimeError) as e:
+        pytest.skip(f"PySpark not available: {e}")
 
 
 @pytest.fixture
@@ -107,4 +192,8 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "timeout: mark tests that rely on pytest-timeout"
+    )
+    config.addinivalue_line(
+        "markers",
+        "backend(mock|pyspark|both): mark test to run with specific backend(s)",
     )

@@ -6,7 +6,6 @@ Tests type and class operations against expected outputs generated from PySpark.
 
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
 
 
 class TestTypeClassFunctionsCompatibility:
@@ -21,8 +20,16 @@ class TestTypeClassFunctionsCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    def test_array_type(self, spark):
+    def test_array_type(self, spark, spark_backend):
         """Test array type creation."""
+        from tests.fixtures.spark_backend import BackendType
+
+        # Import appropriate F based on backend
+        if spark_backend == BackendType.PYSPARK:
+            from pyspark.sql import functions as F
+        else:
+            from mock_spark import F
+
         expected = load_expected_output("functions", "type_array_type")
 
         df = spark.createDataFrame(expected["input_data"])
@@ -30,8 +37,16 @@ class TestTypeClassFunctionsCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    def test_struct_type(self, spark):
+    def test_struct_type(self, spark, spark_backend):
         """Test struct type creation."""
+        from tests.fixtures.spark_backend import BackendType
+
+        # Import appropriate F based on backend
+        if spark_backend == BackendType.PYSPARK:
+            from pyspark.sql import functions as F
+        else:
+            from mock_spark import F
+
         expected = load_expected_output("functions", "type_struct_type")
 
         df = spark.createDataFrame(expected["input_data"])

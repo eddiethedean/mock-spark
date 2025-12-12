@@ -204,7 +204,7 @@ class TestDropOperationSchemaTracking:
                 pytest.fail("CTE optimization should handle drop() correctly")
 
     @pytest.mark.skip(
-        reason="Known limitation: Polars lazy evaluation drops columns that depend on dropped columns. Will be addressed in Phase 3."
+        reason="Known limitation: Polars schema dtype mismatch when converting materialized DataFrame back to lazy after drop operation. Will be addressed in future."
     )
     def test_withcolumn_drop_withcolumn_chain(self, spark):
         """Test withColumn -> drop -> withColumn chain.

@@ -522,11 +522,15 @@ class SQLExecutor:
             # Parse schema and table name
             schema_name = components.get("schema_name")
             table_name = object_name
+            # Access storage through catalog (ISession protocol doesn't expose _storage)
+            storage = getattr(self.session, "_storage", None)
+            if storage is None:
+                storage = self.session.catalog._storage  # type: ignore[attr-defined]
             if schema_name is None:
-                schema_name = self.session.storage.get_current_schema()
+                schema_name = storage.get_current_schema()
 
             # Check if table exists
-            if self.session.storage.table_exists(schema_name, table_name):
+            if storage.table_exists(schema_name, table_name):
                 if not ignore_if_exists:
                     from ...errors import AnalysisException
 
@@ -558,7 +562,7 @@ class SQLExecutor:
                 ) from e
 
             # Create table in storage backend
-            self.session.storage.create_table(schema_name, table_name, schema.fields)
+            storage.create_table(schema_name, table_name, schema.fields)
 
         # Return empty DataFrame to indicate success
         return cast("IDataFrame", DataFrame([], StructType([])))
@@ -590,11 +594,15 @@ class SQLExecutor:
             # Parse schema and table name
             schema_name = components.get("schema_name")
             table_name = object_name
+            # Access storage through catalog (ISession protocol doesn't expose _storage)
+            storage = getattr(self.session, "_storage", None)
+            if storage is None:
+                storage = self.session.catalog._storage  # type: ignore[attr-defined]
             if schema_name is None:
-                schema_name = self.session.storage.get_current_schema()
+                schema_name = storage.get_current_schema()
 
             # Check if table exists
-            if not self.session.storage.table_exists(schema_name, table_name):
+            if not storage.table_exists(schema_name, table_name):
                 if not ignore_if_not_exists:
                     from ...errors import AnalysisException
 
@@ -605,7 +613,7 @@ class SQLExecutor:
                 return cast("IDataFrame", DataFrame([], StructType([])))
 
             # Drop table from storage backend
-            self.session.storage.drop_table(schema_name, table_name)
+            storage.drop_table(schema_name, table_name)
 
         # Return empty DataFrame to indicate success
         return cast("IDataFrame", DataFrame([], StructType([])))
@@ -630,15 +638,19 @@ class SQLExecutor:
         schema_name = components.get("schema_name")
         insert_type = components.get("type", "unknown")
 
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
         if schema_name is None:
-            schema_name = self.session.storage.get_current_schema()
+            schema_name = storage.get_current_schema()
 
         # Check if table exists
-        if not self.session.storage.table_exists(schema_name, table_name):
+        if not storage.table_exists(schema_name, table_name):
             raise AnalysisException(f"Table {schema_name}.{table_name} does not exist")
 
         # Get table schema
-        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+        table_schema = storage.get_table_schema(schema_name, table_name)
         if not isinstance(table_schema, StructType):
             raise QueryExecutionException(
                 f"Failed to get schema for table {schema_name}.{table_name}"
@@ -703,8 +715,12 @@ class SQLExecutor:
             data = validator.coerce(data)
 
         # Insert data into storage backend
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
         if data:
-            self.session.storage.insert_data(schema_name, table_name, data)
+            storage.insert_data(schema_name, table_name, data)
 
         # Return empty DataFrame to indicate success
         from typing import cast
@@ -770,21 +786,25 @@ class SQLExecutor:
         set_clauses = components.get("set_clauses", [])
         where_conditions = components.get("where_conditions", [])
 
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
         if schema_name is None:
-            schema_name = self.session.storage.get_current_schema()
+            schema_name = storage.get_current_schema()
 
         # Build qualified table name
         qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
 
         # Check if table exists
-        if not self.session.storage.table_exists(schema_name, table_name):
+        if not storage.table_exists(schema_name, table_name):
             from ...errors import AnalysisException
 
             raise AnalysisException(f"Table {qualified_name} does not exist")
 
         # Get table data and schema directly (avoid DataFrame operations that use lazy evaluation)
-        rows = self.session.storage.get_data(schema_name, table_name)
-        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+        rows = storage.get_data(schema_name, table_name)
+        table_schema = storage.get_table_schema(schema_name, table_name)
 
         # Import required modules
         import re
@@ -929,19 +949,23 @@ class SQLExecutor:
         schema_name = components.get("schema_name")
         where_conditions = components.get("where_conditions", [])
 
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
         if schema_name is None:
-            schema_name = self.session.storage.get_current_schema()
+            schema_name = storage.get_current_schema()
 
         # Build qualified table name
         qualified_name = f"{schema_name}.{table_name}" if schema_name else table_name
 
         # Check if table exists
-        if not self.session.storage.table_exists(schema_name, table_name):
+        if not storage.table_exists(schema_name, table_name):
             raise AnalysisException(f"Table {qualified_name} does not exist")
 
         # Get table data and schema
-        rows = self.session.storage.get_data(schema_name, table_name)
-        table_schema = self.session.storage.get_table_schema(schema_name, table_name)
+        rows = storage.get_data(schema_name, table_name)
+        table_schema = storage.get_table_schema(schema_name, table_name)
 
         # Normalize WHERE condition if present
         normalized_condition = None
@@ -1063,7 +1087,11 @@ class SQLExecutor:
                     schema_name, table_only = "default", table_name
 
                 # Get table metadata
-                meta = self.session.storage.get_table_metadata(schema_name, table_only)
+                # Access storage through catalog (ISession protocol doesn't expose _storage)
+                storage = getattr(self.session, "_storage", None)
+                if storage is None:
+                    storage = self.session.catalog._storage  # type: ignore[attr-defined]
+                meta = storage.get_table_metadata(schema_name, table_only)
 
                 if not meta or meta.get("format") != "delta":
                     from ...errors import AnalysisException
@@ -1243,13 +1271,14 @@ class SQLExecutor:
                             updated_rows.append(source_dict.copy())
 
         # Write merged data back to target table
-
-        self.session.storage.drop_table(target_schema, target_name)
-        self.session.storage.create_table(
-            target_schema, target_name, target_df.schema.fields
-        )
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+        storage.drop_table(target_schema, target_name)
+        storage.create_table(target_schema, target_name, target_df.schema.fields)
         if updated_rows:
-            self.session.storage.insert_data(target_schema, target_name, updated_rows)
+            storage.insert_data(target_schema, target_name, updated_rows)
 
         # MERGE returns empty DataFrame
         return cast("IDataFrame", DataFrame([], StructType([])))

@@ -45,12 +45,6 @@ class ISession(ABC):
 
     @property
     @abstractmethod
-    def storage(self) -> Any:
-        """Get storage manager."""
-        pass
-
-    @property
-    @abstractmethod
     def read(self) -> IDataFrameReader:
         """Get DataFrame reader."""
         pass

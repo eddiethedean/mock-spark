@@ -109,7 +109,7 @@ class TestCatalogCreateDatabase:
         spark.catalog.createDatabase("storage_test_db", ignoreIfExists=True)
 
         # Verify it's accessible via storage
-        assert spark.storage.schema_exists("storage_test_db")
+        assert spark._storage.schema_exists("storage_test_db")
 
         # Create table via storage
         from mock_spark.spark_types import (
@@ -125,7 +125,7 @@ class TestCatalogCreateDatabase:
                 StructField("name", StringType(), True),
             ]
         )
-        spark.storage.create_table("storage_test_db", "test_table", schema)
+        spark._storage.create_table("storage_test_db", "test_table", schema)
 
         # Verify via catalog
         assert spark.catalog.tableExists("storage_test_db", "test_table")

@@ -56,7 +56,7 @@ class AnalysisException(SparkException):
         elif "database" in message_lower and "not found" in message_lower:
             self._hint = (
                 "In mock-spark, create databases using "
-                "spark.sql('CREATE DATABASE ...') or spark.storage.create_schema(...). "
+                "spark.sql('CREATE DATABASE ...') or spark._storage.create_schema(...). "
                 "For PySpark compatibility, use standard SQL commands."
             )
         elif "column" in message_lower and "not found" in message_lower:

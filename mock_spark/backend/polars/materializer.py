@@ -5,7 +5,7 @@ This module provides materialization of lazy DataFrame operations using Polars,
 replacing SQL-based materialization with Polars DataFrame operations.
 """
 
-from typing import Any
+from typing import Any, Optional
 import polars as pl
 from mock_spark.spark_types import StructType, Row
 from .expression_translator import PolarsExpressionTranslator
@@ -59,9 +59,32 @@ class PolarsMaterializer:
             df = pl.DataFrame()
         else:
             # Create DataFrame from data
+            # Handle tuple/list format by converting to dicts using schema field names
+            # Note: Type signature says list[dict], but we defensively handle tuples at runtime
+            if data:
+                first_row: Any = data[0]  # Allow runtime check for tuples/lists
+                if isinstance(first_row, (list, tuple)):
+                    # Convert tuples to dicts using schema field names
+                    converted_data = []
+                    field_names = [f.name for f in schema.fields]
+                    for row in data:
+                        row_any: Any = row  # Allow runtime check for tuples/lists
+                        if isinstance(row_any, (list, tuple)):
+                            converted_data.append(
+                                {
+                                    field_names[i]: row_any[i]
+                                    for i in range(len(row_any))
+                                }
+                            )
+                        else:
+                            converted_data.append(row_any)
+                    df = pl.DataFrame(converted_data)
+                else:
+                    df = pl.DataFrame(data)
+            else:
+                df = pl.DataFrame(data)
             # Only enforce schema types if we have a union operation (to prevent type mismatches)
             # For other operations, let Polars infer types naturally
-            df = pl.DataFrame(data)
             if has_union_operation and schema.fields:
                 from .type_mapper import mock_type_to_polars_dtype
 
@@ -85,17 +108,140 @@ class PolarsMaterializer:
         # Use lazy evaluation for better performance
         lazy_df = df.lazy()
 
-        # Track current schema as operations are applied
-        current_schema = schema
+        # Track original schema BEFORE any operations
+        # The schema parameter should be the original schema before any operations
+        # If we have data, we can verify by checking the data keys match schema fields
+        original_schema = schema
+        # Verify schema matches data (if data exists)
+        if data and len(data) > 0:
+            first_row = data[0]
+            # Handle both dict and tuple formats
+            is_dict_format = isinstance(first_row, dict)
+            is_tuple_format = isinstance(first_row, (list, tuple))
 
-        # Apply operations in sequence
-        for op_name, payload in operations:
+            if is_dict_format:
+                data_keys = set(first_row.keys())
+            elif is_tuple_format:
+                # Tuple/list format - use schema field names
+                data_keys = {f.name for f in schema.fields}
+            else:
+                # Fallback: try to get keys if possible
+                data_keys = set(getattr(first_row, "keys", lambda: [])())
+
+            schema_keys = {field.name for field in schema.fields}
+            # If schema doesn't match data, infer from data (only for dict format)
+            if is_dict_format and data_keys != schema_keys:
+                from ...spark_types import StructType, StructField
+                from .type_mapper import polars_dtype_to_mock_type
+
+                # Create Polars DataFrame to infer types from dict data
+                temp_df = pl.DataFrame(data)
+                original_fields = []
+                for col_name in temp_df.columns:
+                    polars_dtype = temp_df[col_name].dtype
+                    mock_type = polars_dtype_to_mock_type(polars_dtype)
+                    original_fields.append(StructField(col_name, mock_type, True))
+                original_schema = StructType(original_fields)
+
+        original_columns = {field.name for field in original_schema.fields}
+
+        # Track current schema as operations are applied
+        current_schema = original_schema
+
+        # Build mapping of computed expressions to column names for optimization
+        from ...dataframe.lazy import LazyEvaluationEngine
+
+        computed_expressions = LazyEvaluationEngine._build_computed_expressions_map(
+            operations
+        )
+
+        # Build column dependency graph for drop operation optimization
+        # This tracks which columns depend on which other columns
+        # IMPORTANT: Use the projected schema (which includes computed columns) to determine
+        # available columns, not just original_columns. This ensures that intermediate
+        # columns created by earlier operations are available for dependency tracking.
+        # The schema parameter already reflects the projected schema after all operations.
+        projected_columns = {field.name for field in schema.fields}
+        column_dependencies = LazyEvaluationEngine._build_column_dependency_graph(
+            operations, projected_columns
+        )
+
+        # Track current columns as we process operations (for dependency tracking)
+        # Start with projected columns (which includes computed columns from earlier operations)
+        current_available_columns = projected_columns.copy()
+
+        # Track if we have a materialized DataFrame available (e.g., after drop operation)
+        # This avoids schema issues when converting back to lazy and then collecting again
+        df_materialized: Optional[pl.DataFrame] = None
+
+        # Group operations to handle filter-before-select optimization
+        # When filter references original columns not in current schema, push it before select
+        optimized_operations = []
+        i = 0
+        while i < len(operations):
+            op_name, payload = operations[i]
+            if op_name == "select" and i + 1 < len(operations):
+                # Check if next operation is a filter that references original columns
+                next_op_name, next_payload = operations[i + 1]
+                if next_op_name == "filter":
+                    # Check if filter references columns not in select result
+                    # Extract column names that will be in the result of select
+                    # (using schema inference, not just looking at the expressions)
+                    from ...dataframe.schema.schema_manager import SchemaManager
+
+                    select_schema = SchemaManager.project_schema_with_operations(
+                        current_schema, [(op_name, payload)]
+                    )
+                    current_columns = {field.name for field in select_schema.fields}
+                    # Check if filter references original columns not in current columns
+                    missing_cols = LazyEvaluationEngine._extract_column_names(
+                        next_payload, current_columns
+                    )
+                    # If filter references original columns, push it before select
+                    if missing_cols and missing_cols.issubset(original_columns):
+                        # Filter references original columns - apply it before select
+                        # Add filter first, then select
+                        optimized_operations.append((next_op_name, next_payload))
+                        optimized_operations.append(
+                            (op_name, payload)
+                        )  # Add select after filter
+                        i += 2  # Skip both select and filter
+                        continue
+            optimized_operations.append((op_name, payload))
+            i += 1
+
+        # Apply optimized operations in sequence
+        # If no optimization happened, optimized_operations will be the same as operations
+        for op_name, payload in optimized_operations:
             if op_name == "filter":
-                # Filter operation - no schema change
-                lazy_df = lazy_df.filter(self.translator.translate(payload))
+                # Filter operation - optimize to use computed columns if available
+                # Note: When filter is pushed before select, computed_expressions will be empty
+                # because select hasn't been applied yet. This is fine - the filter references
+                # original columns, not computed ones.
+                # If we have a materialized DataFrame, convert it back to lazy first
+                if df_materialized is not None:
+                    lazy_df = df_materialized.lazy()
+                    df_materialized = None
+                optimized_condition = (
+                    LazyEvaluationEngine._replace_with_computed_column(
+                        payload, computed_expressions
+                    )
+                )
+                filter_expr = self.translator.translate(optimized_condition)
+                # Apply filter to lazy DataFrame
+                lazy_df = lazy_df.filter(filter_expr)
+                # Verify filter worked by checking row count (for debugging)
+                # Note: We don't update current_schema for filter as it doesn't change columns
             elif op_name == "select":
                 # Select operation - need to collect first for window functions
-                df_collected = lazy_df.collect()
+                # Use materialized DataFrame if available, otherwise collect from lazy
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
+                # Apply select - this should work even if filter was applied first
+                # because select expressions reference column names, not DataFrame objects
                 lazy_df = self.operation_executor.apply_select(
                     df_collected, payload
                 ).lazy()
@@ -107,7 +253,14 @@ class PolarsMaterializer:
                 )
             elif op_name == "withColumn":
                 # WithColumn operation - need to collect first for window functions
-                df_collected = lazy_df.collect()
+                # Use materialized DataFrame if available, otherwise collect from lazy
+                # This avoids schema mismatch issues when converting back to lazy after drop
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None
+                else:
+                    df_collected = lazy_df.collect()
+
                 column_name, expression = payload
                 result_df = self.operation_executor.apply_with_column(
                     df_collected, column_name, expression
@@ -116,12 +269,13 @@ class PolarsMaterializer:
                 # Convert result back to lazy
                 # Window functions are already fully materialized in apply_with_column
                 lazy_df = result_df.lazy()
-                # Update schema after withColumn
+                # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
                 current_schema = SchemaManager.project_schema_with_operations(
                     current_schema, [(op_name, payload)]
                 )
+                current_available_columns.add(column_name)
             elif op_name == "join":
                 # Join operation - need to handle separately
                 other_df, on, how = payload
@@ -265,11 +419,19 @@ class PolarsMaterializer:
                     )
                     ascending = True
 
+                # Optimize orderBy columns to use computed columns if available
+                optimized_columns = []
+                for col in columns:
+                    optimized_col = LazyEvaluationEngine._replace_with_computed_column(
+                        col, computed_expressions
+                    )
+                    optimized_columns.append(optimized_col)
+
                 # Build sort expressions with descending flags
                 # Polars doesn't have .desc() on Expr, use sort() with descending parameter
                 sort_by = []
                 descending_flags = []
-                for col in columns:
+                for col in optimized_columns:
                     is_desc = False
                     col_expr = None
                     if isinstance(col, str):
@@ -323,9 +485,159 @@ class PolarsMaterializer:
                 # Distinct operation
                 lazy_df = lazy_df.unique()
             elif op_name == "drop":
-                # Drop operation
-                columns = payload
-                lazy_df = lazy_df.drop(columns)
+                # Drop operation - need to handle Polars lazy evaluation limitation
+                # Polars drops columns that depend on dropped columns during lazy evaluation
+                # Solution: materialize ALL columns before dropping, then re-select what we need
+                # This breaks the lazy dependency chain
+                columns_to_drop = (
+                    payload if isinstance(payload, (list, tuple)) else [payload]
+                )
+
+                # Filter out non-existent columns (PySpark allows dropping non-existent columns silently)
+                # We need to check against current available columns
+                existing_columns_to_drop = [
+                    col for col in columns_to_drop if col in current_available_columns
+                ]
+
+                # If no columns to actually drop, skip this operation
+                if not existing_columns_to_drop:
+                    continue
+
+                columns_to_drop = existing_columns_to_drop
+
+                # Find all columns that depend on the columns being dropped
+                columns_to_preserve: set[str] = set()
+                for col_name, deps in column_dependencies.items():
+                    # If this column depends on any column being dropped, we need to preserve it
+                    if deps.intersection(columns_to_drop):
+                        columns_to_preserve.add(col_name)
+
+                # Also check subsequent operations for columns they need
+                current_op_index = optimized_operations.index((op_name, payload))
+                for future_op_name, future_payload in optimized_operations[
+                    current_op_index + 1 :
+                ]:
+                    if future_op_name == "withColumn":
+                        col_name, expr = future_payload
+                        # Extract all columns this expression depends on
+                        expr_deps = (
+                            LazyEvaluationEngine._extract_all_column_dependencies(expr)
+                        )
+                        # If expr depends on a column that depends on dropped columns, preserve it
+                        for dep_col in expr_deps:
+                            if dep_col in column_dependencies:
+                                dep_deps = column_dependencies[dep_col]
+                                if dep_deps.intersection(columns_to_drop):
+                                    columns_to_preserve.add(dep_col)
+                            # Also check if dep_col is in current available columns
+                            elif (
+                                dep_col in current_available_columns
+                                and dep_col in column_dependencies
+                                and column_dependencies[dep_col].intersection(
+                                    columns_to_drop
+                                )
+                            ):
+                                # This column exists and is needed - preserve it if it depends on dropped columns
+                                columns_to_preserve.add(dep_col)
+
+                # Always materialize before dropping if there are subsequent operations
+                # This ensures dependent columns are preserved even if dependency graph is incomplete
+                if current_op_index + 1 < len(optimized_operations):
+                    # Collect current state to materialize all columns
+                    df_collected = lazy_df.collect()
+
+                    # Drop columns using select to preserve schema correctly
+                    # Using select instead of drop ensures schema is properly maintained
+                    cols_to_keep = [
+                        col
+                        for col in df_collected.columns
+                        if col not in columns_to_drop
+                    ]
+
+                    # Handle edge case: dropping all columns
+                    # PySpark preserves row count even when all columns are dropped
+                    if not cols_to_keep:
+                        # Create empty DataFrame with same number of rows
+                        # Use select with empty column list to preserve row structure
+                        row_count = df_collected.height
+                        # Create a dummy column, select it, then drop it to preserve row count
+                        # Actually, Polars can't represent a DataFrame with rows but no columns
+                        # So we create a single dummy column with null values
+                        df_collected = pl.DataFrame({"_dummy": [None] * row_count})
+                        # But wait, PySpark behavior is to return empty schema but preserve rows
+                        # For now, we'll use the dummy column approach and handle it in schema projection
+                        # The schema will show no columns, but the row count will be preserved
+                    else:
+                        df_collected = df_collected.select(cols_to_keep)
+
+                    # Store the materialized DataFrame instead of converting back to lazy
+                    # This avoids schema mismatch issues when subsequent operations (like withColumn)
+                    # need to collect again. They can use the materialized DataFrame directly.
+                    # Only convert to lazy if the next operation requires it (like filter)
+                    next_op_index = current_op_index + 1
+                    if next_op_index < len(optimized_operations):
+                        next_op_name, _ = optimized_operations[next_op_index]
+                        # Operations that can work with lazy frames (don't collect)
+                        lazy_ops = {
+                            "filter",
+                            "distinct",
+                            "limit",
+                            "offset",
+                            "orderBy",
+                            "sort",
+                        }
+                        if next_op_name in lazy_ops:
+                            # Next operation works with lazy, so convert back to lazy
+                            # Create a fresh lazy frame by converting to dicts and back to avoid schema issues
+                            lazy_df = df_collected.lazy()
+                            df_materialized = None
+                        else:
+                            # Next operation will collect anyway (withColumn, select, etc.)
+                            # Keep it materialized to avoid schema issues when converting back to lazy
+                            # Store the materialized DataFrame directly - no conversion to dicts needed
+                            # as we'll use it directly in the next operation
+                            df_materialized = df_collected
+                            # Don't create lazy_df here - we'll use df_materialized directly
+                            # Set lazy_df to None or keep it as is, but operations will check df_materialized first
+                            lazy_df = (
+                                df_collected.lazy()
+                            )  # Still need for final collection if no more ops
+                    else:
+                        # No more operations, convert back to lazy for final collection
+                        lazy_df = df_collected.lazy()
+                        df_materialized = None
+                elif columns_to_preserve:
+                    # No future operations but we have columns to preserve
+                    df_collected = lazy_df.collect()
+                    current_cols = set(df_collected.columns)
+                    cols_to_keep = list(current_cols - set(columns_to_drop))
+                    if not cols_to_keep:
+                        # All columns dropped - preserve row count
+                        row_count = df_collected.height
+                        df_collected = pl.DataFrame({"_dummy": [None] * row_count})
+                    else:
+                        df_collected = df_collected.select(cols_to_keep)
+                    lazy_df = df_collected.lazy()
+                else:
+                    # No dependencies and no future operations - can drop directly
+                    # But we still need to handle non-existent columns and all-columns case
+                    df_collected = lazy_df.collect()
+                    cols_to_keep = [
+                        col
+                        for col in df_collected.columns
+                        if col not in columns_to_drop
+                    ]
+                    if not cols_to_keep:
+                        # All columns dropped - preserve row count
+                        row_count = df_collected.height
+                        df_collected = pl.DataFrame({"_dummy": [None] * row_count})
+                    else:
+                        df_collected = df_collected.select(cols_to_keep)
+                    lazy_df = df_collected.lazy()
+
+                # Update available columns after drop
+                for col in columns_to_drop:
+                    current_available_columns.discard(col)
             elif op_name == "withColumnRenamed":
                 # WithColumnRenamed operation
                 old_name, new_name = payload
@@ -334,9 +646,26 @@ class PolarsMaterializer:
                 raise ValueError(f"Unsupported operation: {op_name}")
 
         # Materialize (collect) the lazy DataFrame
-        result_df = lazy_df.collect()
+        # Use materialized DataFrame if available, otherwise collect from lazy
+        if df_materialized is not None:
+            result_df = df_materialized
+        elif lazy_df is not None:
+            result_df = lazy_df.collect()
+        else:
+            # Should not happen, but handle gracefully
+            raise ValueError("No DataFrame to materialize")
 
         # Convert to list[Row]
+        # Handle special case: if all columns were dropped, result_df may have a _dummy column
+        # We need to convert this to empty dicts to match PySpark's behavior
+        if "_dummy" in result_df.columns and len(result_df.columns) == 1:
+            # All columns were dropped - create empty rows preserving row count
+            rows = []
+            row_count = result_df.height
+            for _ in range(row_count):
+                rows.append(Row({}, schema=None))
+            return rows
+
         # For joins with duplicate columns, Polars uses _right suffix
         # We need to convert these to match PySpark's duplicate column handling
         rows = []

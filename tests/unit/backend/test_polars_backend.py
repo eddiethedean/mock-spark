@@ -118,7 +118,7 @@ class TestPolarsBackendIntegration:
 
         spark = SparkSession("test_app")
         # Check that storage backend is Polars
-        backend_type = BackendFactory.get_backend_type(spark.storage)
+        backend_type = BackendFactory.get_backend_type(spark._storage)
         assert backend_type == "polars"
         spark.stop()
 

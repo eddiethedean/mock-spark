@@ -183,7 +183,11 @@ class DataFrameReader:
 
         from .dataframe import DataFrame
 
-        return cast("IDataFrame", DataFrame(data_rows, schema, self.session.storage))
+        # Access storage through catalog (ISession protocol doesn't expose _storage)
+        storage = getattr(self.session, "_storage", None)
+        if storage is None:
+            storage = self.session.catalog._storage  # type: ignore[attr-defined]
+        return cast("IDataFrame", DataFrame(data_rows, schema, storage))
 
     def table(self, table_name: str) -> IDataFrame:
         """Load table.
@@ -209,7 +213,11 @@ class DataFrameReader:
                 schema_name, table_only = "default", table_name
 
             # Get table metadata to access version history
-            meta = self.session.storage.get_table_metadata(schema_name, table_only)
+            # Access storage through catalog (ISession protocol doesn't expose _storage)
+            storage = getattr(self.session, "_storage", None)
+            if storage is None:
+                storage = self.session.catalog._storage  # type: ignore[attr-defined]
+            meta = storage.get_table_metadata(schema_name, table_only)
 
             if not meta or meta.get("format") != "delta":
                 from ..errors import AnalysisException

@@ -25,20 +25,20 @@ def reset_singleton():
 def test_default_backend_is_polars():
     spark = SparkSession()
     assert spark.backend_type == "polars"
-    assert BackendFactory.get_backend_type(spark.storage) == "polars"
+    assert BackendFactory.get_backend_type(spark._storage) == "polars"
 
 
 def test_env_var_overrides_backend(monkeypatch):
     monkeypatch.setenv("MOCK_SPARK_BACKEND", "memory")
     spark = SparkSession()
     assert spark.backend_type == "memory"
-    assert BackendFactory.get_backend_type(spark.storage) == "memory"
+    assert BackendFactory.get_backend_type(spark._storage) == "memory"
 
 
 def test_builder_config_overrides_backend():
     spark = SparkSession.builder.config("spark.mock.backend", "file").getOrCreate()
     assert spark.backend_type == "file"
-    assert BackendFactory.get_backend_type(spark.storage) == "file"
+    assert BackendFactory.get_backend_type(spark._storage) == "file"
 
 
 def test_invalid_backend_raises_value_error():

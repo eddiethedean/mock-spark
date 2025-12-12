@@ -15,7 +15,7 @@ class AuditPlugin:
         return df
 
 spark = SparkSession()
-spark.register_plugin(AuditPlugin())
+spark._register_plugin(AuditPlugin())
 
 _ = spark.createDataFrame([{"id": 1}], ["id"])  # hooks will run
 ```

@@ -237,6 +237,45 @@ def _collect_rows(df: Any, columns: Sequence[str]) -> list[dict[str, Any]]:
     return rows
 
 
+def _normalize_row_to_dict(value: Any) -> Any:
+    """Recursively convert Row objects to plain dictionaries.
+
+    PySpark's Row objects may contain nested Row objects, especially in struct columns.
+    This function recursively converts all Row objects to plain dicts for comparison.
+
+    Args:
+        value: Value to normalize (may be Row, dict, list, or other type)
+
+    Returns:
+        Normalized value with all Row objects converted to dicts
+    """
+    # Check if this is a Row object (has asDict method)
+    if hasattr(value, "asDict"):
+        try:
+            # Use recursive=True to get nested structures
+            row_dict = value.asDict(recursive=True)
+            # Recursively normalize any nested Row objects
+            return _normalize_row_to_dict(row_dict)
+        except (TypeError, AttributeError):
+            try:
+                # Fallback to non-recursive
+                row_dict = value.asDict()
+                return _normalize_row_to_dict(row_dict)
+            except (TypeError, AttributeError):
+                pass
+
+    # Handle dictionaries - recursively normalize values
+    if isinstance(value, dict):
+        return {k: _normalize_row_to_dict(v) for k, v in value.items()}
+
+    # Handle lists/tuples - recursively normalize elements
+    if isinstance(value, (list, tuple)):
+        return type(value)(_normalize_row_to_dict(item) for item in value)
+
+    # For other types (primitives, etc.), return as-is
+    return value
+
+
 def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
     """Convert a row to a dictionary.
 
@@ -255,11 +294,13 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
             )
             if row_values and len(row_values) >= len(columns):
                 # Use positional access for all columns (handles duplicates correctly)
-                return {
+                result_dict = {
                     col: row_values[idx]
                     for idx, col in enumerate(columns)
                     if idx < len(row_values)
                 }
+                # Normalize Row objects to dicts recursively
+                return _normalize_row_to_dict(result_dict)
         except (TypeError, AttributeError):
             pass
 
@@ -269,18 +310,22 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
             base = row.asDict(recursive=True)
         except TypeError:
             base = row.asDict()
+        # Normalize nested Row objects to dicts
+        normalized_base = _normalize_row_to_dict(base)
         # Fallback to dict lookup (will only get last value for duplicates)
-        return {col: base.get(col) for col in columns}
+        return {col: normalized_base.get(col) for col in columns}
 
     if isinstance(row, dict):
-        return {col: row.get(col) for col in columns}
+        normalized_row = _normalize_row_to_dict(row)
+        return {col: normalized_row.get(col) for col in columns}
 
     if (
         isinstance(row, Sequence)
         and not isinstance(row, (str, bytes, bytearray))
         and len(row) == len(columns)
     ):
-        return {col: row[idx] for idx, col in enumerate(columns)}
+        result_dict = {col: row[idx] for idx, col in enumerate(columns)}
+        return _normalize_row_to_dict(result_dict)
 
     result: dict[str, Any] = {}
     for col in columns:
@@ -290,7 +335,8 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
         except Exception:
             value = getattr(row, col, None)
         result[col] = value
-    return result
+    # Normalize the result to handle nested Row objects
+    return _normalize_row_to_dict(result)
 
 
 def _sort_rows(
@@ -434,9 +480,19 @@ def _compare_values(
         return True, ""
 
     # Enhanced map/dict comparison
-    if isinstance(mock_val, dict) and isinstance(expected_val, dict):
-        mock_keys = set(mock_val.keys())
-        expected_keys = set(expected_val.keys())
+    # Normalize both values to ensure Row objects are converted to dicts
+    normalized_mock = (
+        _normalize_row_to_dict(mock_val) if not isinstance(mock_val, dict) else mock_val
+    )
+    normalized_expected = (
+        _normalize_row_to_dict(expected_val)
+        if not isinstance(expected_val, dict)
+        else expected_val
+    )
+
+    if isinstance(normalized_mock, dict) and isinstance(normalized_expected, dict):
+        mock_keys = set(normalized_mock.keys())
+        expected_keys = set(normalized_expected.keys())
         if mock_keys != expected_keys:
             missing_in_mock = expected_keys - mock_keys
             extra_in_mock = mock_keys - expected_keys
@@ -448,11 +504,25 @@ def _compare_values(
             return False, error_msg
         for key in sorted(mock_keys):
             equivalent, error = _compare_values(
-                mock_val[key], expected_val[key], tolerance, f"{context}.{key}"
+                normalized_mock[key],
+                normalized_expected[key],
+                tolerance,
+                f"{context}.{key}",
             )
             if not equivalent:
                 return False, error
         return True, ""
+
+    # Also check if one is a Row object (has asDict method) - normalize it
+    if hasattr(mock_val, "asDict") or hasattr(expected_val, "asDict"):
+        normalized_mock_val = _normalize_row_to_dict(mock_val)
+        normalized_expected_val = _normalize_row_to_dict(expected_val)
+        if isinstance(normalized_mock_val, dict) and isinstance(
+            normalized_expected_val, dict
+        ):
+            return _compare_values(
+                normalized_mock_val, normalized_expected_val, tolerance, context
+            )
 
     if isinstance(mock_val, set) and isinstance(expected_val, set):
         if mock_val == expected_val:

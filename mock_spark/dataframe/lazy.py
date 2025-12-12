@@ -47,6 +47,278 @@ class LazyEvaluationEngine:
                 self._optimizer = None
 
     @staticmethod
+    def _normalize_expression(expr: Any) -> str:
+        """Create a canonical representation of an expression for comparison.
+
+        Args:
+            expr: Expression to normalize (ColumnOperation, Column, etc.)
+
+        Returns:
+            Canonical string representation of the expression
+        """
+        from ..functions import Column, ColumnOperation, Literal
+
+        if isinstance(expr, str):
+            return f"col({expr})"
+        elif isinstance(expr, Column):
+            return f"col({expr.name})"
+        elif isinstance(expr, Literal):
+            value = expr.value
+            if isinstance(value, str):
+                return f"lit('{value}')"
+            else:
+                return f"lit({value})"
+        elif isinstance(expr, ColumnOperation):
+            operation = expr.operation
+            # Handle desc/asc operations specially - they wrap the underlying expression
+            if operation in ("desc", "asc"):
+                # Normalize the underlying column, ignoring the sort direction
+                return LazyEvaluationEngine._normalize_expression(expr.column)
+            # Normalize column and value recursively
+            col_part = LazyEvaluationEngine._normalize_expression(expr.column)
+            if hasattr(expr, "value") and expr.value is not None:
+                value_part = LazyEvaluationEngine._normalize_expression(expr.value)
+                # For commutative operations (*, +), normalize order
+                if operation in ("*", "+"):
+                    # Create sorted tuple for normalization
+                    parts = sorted([col_part, value_part])
+                    return f"{operation}({parts[0]}, {parts[1]})"
+                else:
+                    return f"{operation}({col_part}, {value_part})"
+            else:
+                return f"{operation}({col_part})"
+        else:
+            # Fallback: string representation
+            return str(expr)
+
+    @staticmethod
+    def _build_computed_expressions_map(
+        operations: list[tuple[str, Any]],
+    ) -> dict[str, str]:
+        """Build a mapping from expression signatures to column names.
+
+        Args:
+            operations: List of (operation_name, payload) tuples
+
+        Returns:
+            Dictionary mapping expression signatures to column names
+        """
+        computed_expressions: dict[str, str] = {}
+        for op_name, payload in operations:
+            if op_name == "withColumn":
+                column_name, expression = payload
+                expr_signature = LazyEvaluationEngine._normalize_expression(expression)
+                computed_expressions[expr_signature] = column_name
+        return computed_expressions
+
+    @staticmethod
+    def _replace_with_computed_column(
+        expr: Any, computed_expressions: dict[str, str]
+    ) -> Any:
+        """Replace expression with computed column reference if match found.
+
+        Args:
+            expr: Expression to potentially replace
+            computed_expressions: Mapping from expression signatures to column names
+
+        Returns:
+            Original expression or Column reference to computed column
+        """
+        from ..functions import Column, ColumnOperation
+
+        # Handle desc/asc operations specially - check underlying expression first
+        if isinstance(expr, ColumnOperation) and expr.operation in ("desc", "asc"):
+            # Replace the underlying expression, then reapply desc/asc if needed
+            underlying_expr = LazyEvaluationEngine._replace_with_computed_column(
+                expr.column, computed_expressions
+            )
+            # If underlying expression was replaced with a column, wrap it
+            if (
+                isinstance(underlying_expr, Column)
+                and underlying_expr is not expr.column
+            ):
+                from ..functions.core.column import ColumnOperation
+
+                return ColumnOperation(underlying_expr, expr.operation, None)
+            # Otherwise return original if no match found
+            return expr
+
+        expr_signature = LazyEvaluationEngine._normalize_expression(expr)
+        if expr_signature in computed_expressions:
+            # Replace with column reference
+            column_name = computed_expressions[expr_signature]
+            return Column(column_name)
+        elif isinstance(expr, ColumnOperation):
+            # Recursively check nested expressions
+            if hasattr(expr, "column"):
+                new_column = LazyEvaluationEngine._replace_with_computed_column(
+                    expr.column, computed_expressions
+                )
+                if new_column is not expr.column:
+                    # Create new ColumnOperation with replaced column
+                    from ..functions.core.column import ColumnOperation
+
+                    new_op = ColumnOperation(
+                        new_column, expr.operation, getattr(expr, "value", None)
+                    )
+                    # Check if this new expression matches a computed column
+                    new_expr_signature = LazyEvaluationEngine._normalize_expression(
+                        new_op
+                    )
+                    if new_expr_signature in computed_expressions:
+                        column_name = computed_expressions[new_expr_signature]
+                        return Column(column_name)
+                    return new_op
+            if hasattr(expr, "value") and expr.value is not None:
+                new_value = LazyEvaluationEngine._replace_with_computed_column(
+                    expr.value, computed_expressions
+                )
+                if new_value is not expr.value:
+                    # Create new ColumnOperation with replaced value
+                    from ..functions.core.column import ColumnOperation
+
+                    new_op = ColumnOperation(expr.column, expr.operation, new_value)
+                    # Check if this new expression matches a computed column
+                    new_expr_signature = LazyEvaluationEngine._normalize_expression(
+                        new_op
+                    )
+                    if new_expr_signature in computed_expressions:
+                        column_name = computed_expressions[new_expr_signature]
+                        return Column(column_name)
+                    return new_op
+        return expr
+
+    @staticmethod
+    def _extract_column_names(expr: Any, available_columns: set[str]) -> set[str]:
+        """Extract column names referenced in an expression that aren't in available_columns.
+
+        Args:
+            expr: Expression to analyze
+            available_columns: Set of columns available in current schema
+
+        Returns:
+            Set of column names that don't exist in available_columns (from original DataFrame)
+        """
+        from ..functions import Column, ColumnOperation, Literal
+
+        missing_columns: set[str] = set()
+
+        if isinstance(expr, str):
+            # String column name
+            if expr not in available_columns:
+                missing_columns.add(expr)
+        elif isinstance(expr, Column):
+            # Column reference
+            if expr.name not in available_columns:
+                missing_columns.add(expr.name)
+        elif isinstance(expr, Literal):
+            # Literal - no column reference
+            pass
+        elif isinstance(expr, ColumnOperation):
+            # Recursively check nested expressions
+            if hasattr(expr, "column"):
+                missing_columns.update(
+                    LazyEvaluationEngine._extract_column_names(
+                        expr.column, available_columns
+                    )
+                )
+            if hasattr(expr, "value") and expr.value is not None:
+                missing_columns.update(
+                    LazyEvaluationEngine._extract_column_names(
+                        expr.value, available_columns
+                    )
+                )
+
+        return missing_columns
+
+    @staticmethod
+    def _extract_all_column_dependencies(expr: Any) -> set[str]:
+        """Extract all column names that an expression depends on.
+
+        Args:
+            expr: Expression to analyze
+
+        Returns:
+            Set of all column names referenced in the expression
+        """
+        from ..functions import Column, ColumnOperation, Literal
+
+        dependencies: set[str] = set()
+
+        if isinstance(expr, str):
+            # String column name
+            dependencies.add(expr)
+        elif isinstance(expr, Column):
+            # Column reference
+            dependencies.add(expr.name)
+        elif isinstance(expr, Literal):
+            # Literal - no column reference
+            pass
+        elif isinstance(expr, ColumnOperation):
+            # Recursively check nested expressions
+            if hasattr(expr, "column"):
+                dependencies.update(
+                    LazyEvaluationEngine._extract_all_column_dependencies(expr.column)
+                )
+            if hasattr(expr, "value") and expr.value is not None:
+                dependencies.update(
+                    LazyEvaluationEngine._extract_all_column_dependencies(expr.value)
+                )
+
+        return dependencies
+
+    @staticmethod
+    def _build_column_dependency_graph(
+        operations: list[tuple[str, Any]], available_columns: set[str]
+    ) -> dict[str, set[str]]:
+        """Build a graph of column dependencies.
+
+        Args:
+            operations: List of (operation_name, payload) tuples
+            available_columns: Set of available column names (from projected schema, not just original)
+
+        Returns:
+            Dictionary mapping column names to sets of columns they depend on
+        """
+        dependencies: dict[str, set[str]] = {}
+        current_columns: set[str] = available_columns.copy()
+
+        for op_name, payload in operations:
+            if op_name == "withColumn":
+                column_name, expression = payload
+                # Extract all columns this expression depends on
+                # Only include columns that exist in current_columns (not computed ones from future)
+                deps = LazyEvaluationEngine._extract_all_column_dependencies(expression)
+                # Filter to only include columns that exist at this point
+                deps = deps.intersection(current_columns)
+                dependencies[column_name] = deps
+                current_columns.add(column_name)
+            elif op_name == "select":
+                # Select creates new columns - extract dependencies for each
+                for col in payload:
+                    if hasattr(col, "name"):
+                        col_name = col.name
+                        deps = LazyEvaluationEngine._extract_all_column_dependencies(
+                            col
+                        )
+                        # Filter to only include columns that exist at this point
+                        deps = deps.intersection(current_columns)
+                        dependencies[col_name] = deps
+                        current_columns.add(col_name)
+            elif op_name == "drop":
+                # Drop removes columns
+                columns_to_drop = (
+                    payload if isinstance(payload, (list, tuple)) else [payload]
+                )
+                for col in columns_to_drop:
+                    current_columns.discard(col)
+                    # Also remove from dependencies dict if it's there
+                    if col in dependencies:
+                        del dependencies[col]
+
+        return dependencies
+
+    @staticmethod
     def queue_operation(df: "DataFrame", op_name: str, payload: Any) -> "DataFrame":
         """Queue an operation for lazy evaluation.
 
@@ -69,11 +341,13 @@ class LazyEvaluationEngine:
         elif op_name == "withColumn":
             new_schema = LazyEvaluationEngine._infer_withcolumn_schema(df, payload)
 
+        new_operations = df._operations_queue + [(op_name, payload)]
+
         return DataFrame(
             df.data,
             new_schema,
             df.storage,
-            operations=df._operations_queue + [(op_name, payload)],
+            operations=new_operations,
         )
 
     def optimize_operations(
@@ -233,6 +507,7 @@ class LazyEvaluationEngine:
                 )
                 # Preserve cached state
                 result_df._is_cached = getattr(df, "_is_cached", False)
+
                 return result_df
             finally:
                 materializer.close()

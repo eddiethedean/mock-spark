@@ -62,34 +62,61 @@ class GroupedData:
         """
         from ...functions import F
 
+        # Track expression processing order to preserve column ordering
+        # For dict syntax, PySpark preserves dict order; otherwise we sort alphabetically
+        expression_order: list[str] = []
+        is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
+
         # Handle dictionary syntax: {"col": "agg_func"}
-        if len(exprs) == 1 and isinstance(exprs[0], dict):
+        if is_dict_syntax:
             agg_dict = exprs[0]
+            if not isinstance(agg_dict, dict):
+                raise TypeError(
+                    f"Expected dict for dict syntax aggregation, got {type(agg_dict)}"
+                )
             converted_exprs: list[
                 Union[str, Column, ColumnOperation, AggregateFunction]
             ] = []
             for col_name, agg_func in agg_dict.items():
                 if agg_func == "sum":
-                    converted_exprs.append(F.sum(col_name))
+                    expr = F.sum(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"sum({col_name})")
                 elif agg_func == "avg" or agg_func == "mean":
-                    converted_exprs.append(F.avg(col_name))
+                    expr = F.avg(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"avg({col_name})")
                 elif agg_func == "max":
-                    converted_exprs.append(F.max(col_name))
+                    expr = F.max(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"max({col_name})")
                 elif agg_func == "min":
-                    converted_exprs.append(F.min(col_name))
+                    expr = F.min(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"min({col_name})")
                 elif agg_func == "count":
-                    # For dict syntax, count(column) should be named just "count" not "count(column)"
+                    # For dict syntax, PySpark names it "count(column)" not "count"
                     count_expr = F.count(col_name)
-                    # Set alias to "count" to match PySpark behavior
-                    converted_exprs.append(count_expr.alias("count"))
+                    converted_exprs.append(count_expr)
+                    expression_order.append(
+                        f"count({col_name})"
+                    )  # Track the actual column name PySpark uses
                 elif agg_func == "stddev":
-                    converted_exprs.append(F.stddev(col_name))
+                    expr = F.stddev(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"stddev({col_name})")
                 elif agg_func == "variance":
-                    converted_exprs.append(F.variance(col_name))
+                    expr = F.variance(col_name)
+                    converted_exprs.append(expr)
+                    expression_order.append(f"variance({col_name})")
                 else:
                     # Fallback to string expression
                     converted_exprs.append(f"{agg_func}({col_name})")
+                    expression_order.append(f"{agg_func}({col_name})")
             exprs = tuple(converted_exprs)
+        else:
+            # For non-dict syntax, track expression order (will sort alphabetically later)
+            expression_order = []
 
         # Materialize the DataFrame if it has queued operations
         if self.df._operations_queue:
@@ -106,12 +133,15 @@ class GroupedData:
         # Track which result keys are from count/rank functions (non-nullable)
         non_nullable_keys = set()
 
+        # Track result key order for non-dict syntax (PySpark preserves expression order)
+        result_key_order: list[str] = []
+
         # Apply aggregations
         result_data = []
         for group_key, group_rows in groups.items():
             result_row = dict(zip(self.group_columns, group_key))
 
-            for expr in exprs:
+            for expr in exprs:  # type: ignore[assignment]
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key, result_value = self._evaluate_string_expression(
@@ -120,6 +150,9 @@ class GroupedData:
                     # Check if this is a count function
                     if expr.startswith("count("):
                         non_nullable_keys.add(result_key)
+                    # Track result key order (same for all groups)
+                    if result_key not in result_key_order:
+                        result_key_order.append(result_key)
                     result_row[result_key] = result_value
                 elif isinstance(expr, dict):
                     # Handle dict expressions (for pivot operations)
@@ -128,6 +161,9 @@ class GroupedData:
                     # For literals in aggregation, just use their value
                     # Note: Literal may be passed at runtime even if not in type annotation
                     result_key = get_expression_name(expr)
+                    # Track result key order (same for all groups)
+                    if result_key not in result_key_order:
+                        result_key_order.append(result_key)
                     result_row[result_key] = get_expression_value(expr)
                 elif is_column_operation(expr):
                     # Handle ColumnOperation first (before AggregateFunction check)
@@ -138,27 +174,94 @@ class GroupedData:
                     # Check if this is a count function
                     if hasattr(expr, "operation") and expr.operation == "count":
                         non_nullable_keys.add(result_key)
+                    # Track result key order (same for all groups)
+                    if result_key not in result_key_order:
+                        result_key_order.append(result_key)
                     result_row[result_key] = result_value
                 elif hasattr(expr, "function_name") and not is_column_operation(expr):
                     # Handle AggregateFunction (but not ColumnOperation)
+                    if not isinstance(expr, AggregateFunction):
+                        raise TypeError(f"Expected AggregateFunction, got {type(expr)}")
+                    # isinstance check above ensures expr is AggregateFunction at this point
                     result_key, result_value = self._evaluate_aggregate_function(
-                        cast("AggregateFunction", expr), group_rows
+                        expr, group_rows
                     )
                     # Check if this is a count function
                     if expr.function_name == "count":
                         non_nullable_keys.add(result_key)
+                    # Track result key order (same for all groups)
+                    if result_key not in result_key_order:
+                        result_key_order.append(result_key)
                     result_row[result_key] = result_value
                 elif is_column(expr):
                     # Handle Column (but not ColumnOperation, which is handled above)
                     result_key, result_value = self._evaluate_column_expression(
                         cast("Union[Column, ColumnOperation]", expr), group_rows
                     )
+                    # Track result key order (same for all groups)
+                    if result_key not in result_key_order:
+                        result_key_order.append(result_key)
                     result_row[result_key] = result_value
                 elif isinstance(expr, dict):
                     # Skip dict expressions - should have been converted already
                     pass
 
-            result_data.append(result_row)
+            # Reorder result_row to match PySpark's column ordering:
+            # Group columns first (in their original order), then aggregation columns
+            group_cols_dict = {col: result_row[col] for col in self.group_columns}
+            agg_cols_dict = {
+                col: result_row[col]
+                for col in result_row
+                if col not in self.group_columns
+            }
+
+            # PySpark behavior for column ordering:
+            # - For dict syntax: sorts aggregation columns by the column name being aggregated first,
+            #   then by function name (not by full column name like "avg(salary)")
+            # - For non-dict syntax: preserves expression order
+            if is_dict_syntax and expression_order:
+                # For dict syntax, PySpark sorts by the column name being aggregated first
+                def sort_key(col_name: str) -> tuple[str, str]:
+                    """Extract (column_name, function_name) for sorting."""
+                    # Column names are like "avg(salary)", "count(id)", etc.
+                    import re
+
+                    match = re.match(r"(\w+)\((\w+)\)", col_name)
+                    if match:
+                        func_name, agg_col_name = match.groups()
+                        return (
+                            agg_col_name,
+                            func_name,
+                        )  # Sort by column name first, then function
+                    # Fallback: use full string
+                    return (col_name, "")
+
+                # Sort by the column name being aggregated, then by function name
+                ordered_agg_cols = dict(
+                    sorted(
+                        agg_cols_dict.items(),
+                        key=lambda x: sort_key(
+                            x[0] if isinstance(x[0], str) else str(x[0])
+                        ),
+                    )
+                )
+            elif result_key_order:
+                # For non-dict syntax, preserve expression order (PySpark behavior)
+                ordered_agg_cols = {}
+                for key in result_key_order:
+                    if key in agg_cols_dict:
+                        ordered_agg_cols[key] = agg_cols_dict[key]
+                # Add any keys that weren't in the tracked order (shouldn't happen)
+                for key in agg_cols_dict:
+                    if key not in ordered_agg_cols:
+                        ordered_agg_cols[key] = agg_cols_dict[key]
+            else:
+                # Fallback: sort aggregation columns alphabetically (shouldn't happen)
+                ordered_agg_cols = dict(sorted(agg_cols_dict.items()))
+
+            # Combine: group cols first, then ordered agg cols
+            result_row_ordered = {**group_cols_dict, **ordered_agg_cols}
+            result_data.append(result_row_ordered)
 
         # Create result DataFrame with proper schema
         from ..dataframe import DataFrame
@@ -175,7 +278,7 @@ class GroupedData:
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
         literal_keys: set[str] = set()
-        for expr in exprs:
+        for expr in exprs:  # type: ignore[assignment]
             if is_literal_type(expr):
                 lit_key = get_expression_name(expr)
                 literal_keys.add(lit_key)
@@ -256,7 +359,7 @@ class GroupedData:
 
             # Infer schema from aggregation expressions
             # (literal_keys already defined above)
-            for expr in exprs:
+            for expr in exprs:  # type: ignore[assignment]
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key = expr  # Use expression as key

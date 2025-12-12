@@ -116,13 +116,13 @@ spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
 # Convenient API, but mock-spark-specific
 from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
 
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 schema = StructType([
     StructField("name", StringType(), True),
     StructField("age", IntegerType(), True)
 ])
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", [
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", [
     {"name": "Alice", "age": 25},
     {"name": "Bob", "age": 30}
 ])

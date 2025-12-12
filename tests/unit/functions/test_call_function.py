@@ -1,7 +1,14 @@
 import pytest
 
-from mock_spark.sql import functions as F
-from mock_spark.errors import PySparkTypeError, PySparkValueError
+from tests.fixtures.spark_backend import get_backend_type, BackendType
+
+# call_function is mock-spark specific - skip if using PySpark
+_backend = get_backend_type()
+if _backend == BackendType.PYSPARK:
+    pytestmark = pytest.mark.skip(reason="call_function is mock-spark specific")
+else:
+    from mock_spark.sql import functions as F
+    from mock_spark.errors import PySparkTypeError, PySparkValueError
 
 
 def test_call_function_invokes_registered_function(spark):

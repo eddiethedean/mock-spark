@@ -119,9 +119,14 @@ class ColumnValidator:
         if isinstance(condition, ColumnOperation):
             # Validate operations that reference columns
             if hasattr(condition, "column"):
+                # For filter operations, use lazy materialization mode to allow
+                # column references from original DataFrame context (PySpark behavior)
+                is_lazy = (operation == "filter" and has_pending_joins) or (
+                    operation == "filter"
+                )  # Always allow lazy mode for filters
                 # Recursively validate the column references in the expression
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=False
+                    schema, condition, operation, in_lazy_materialization=is_lazy
                 )
             return
 
@@ -148,8 +153,10 @@ class ColumnValidator:
                 "/",
             ]:
                 # Validate column references in the expression
+                # For filter operations, allow lazy materialization mode
+                is_lazy = operation == "filter"
                 ColumnValidator.validate_expression_columns(
-                    schema, condition, operation, in_lazy_materialization=False
+                    schema, condition, operation, in_lazy_materialization=is_lazy
                 )
                 return
             # Simple column reference
@@ -224,11 +231,17 @@ class ColumnValidator:
                     ):
                         # This is a Literal used as a column - skip validation
                         pass
-                    elif not in_lazy_materialization and col_name != "*":
+                    elif col_name != "*" and (
+                        not in_lazy_materialization or operation != "filter"
+                    ):
                         # Skip validation for wildcard selector
+                        # In lazy materialization mode (filter after select), allow column references
+                        # that might be from original DataFrame context
                         ColumnValidator.validate_column_exists(
                             schema, col_name, operation
                         )
+                        # For filter operations in lazy context, allow column references
+                        # that don't exist in current schema - they'll be resolved during materialization
 
             # Recursively validate nested expressions
             if hasattr(expression, "column"):

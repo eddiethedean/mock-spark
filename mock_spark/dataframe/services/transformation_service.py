@@ -356,20 +356,9 @@ class TransformationService:
 
     def drop(self, *cols: str) -> "SupportsDataFrameOps":
         """Drop columns."""
-        new_data = []
-        for row in self._df.data:
-            new_row = {k: v for k, v in row.items() if k not in cols}
-            new_data.append(new_row)
-
-        # Update schema
-        new_fields = [
-            field for field in self._df.schema.fields if field.name not in cols
-        ]
-        new_schema = StructType(new_fields)
-        from ..dataframe import DataFrame
-
-        return cast(
-            "SupportsDataFrameOps", DataFrame(new_data, new_schema, self._df.storage)
+        # Always use lazy evaluation to queue the operation
+        return self._df._queue_op(
+            "drop", cols if len(cols) > 1 else (cols[0] if cols else ())
         )
 
     def distinct(self) -> "SupportsDataFrameOps":

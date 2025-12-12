@@ -146,7 +146,7 @@ With Polars backend, threading issues should be completely eliminated. If you en
 1. **Verify Backend**: Ensure you're using Polars backend (default in v3.0.0+)
    ```python
    from mock_spark.backend.factory import BackendFactory
-   backend_type = BackendFactory.get_backend_type(spark.storage)
+   backend_type = BackendFactory.get_backend_type(spark._storage)
    assert backend_type == "polars"
    ```
 

@@ -6,7 +6,6 @@ Tests DataFrame operations against expected outputs generated from PySpark.
 
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
 
 
 class TestDataFrameMethodsExtendedCompatibility:
@@ -152,7 +151,7 @@ class TestDataFrameMethodsExtendedCompatibility:
 
     def test_aggregation(self, spark):
         """Test DataFrame aggregation operations."""
-        expected = load_expected_output("dataframe_operations", "aggregation")
+        expected = load_expected_output("dataframe_operations", "aggregation_dict")
 
         df = spark.createDataFrame(expected["input_data"])
         result = (
@@ -163,8 +162,16 @@ class TestDataFrameMethodsExtendedCompatibility:
 
         assert_dataframes_equal(result, expected)
 
-    def test_column_access(self, spark):
+    def test_column_access(self, spark, spark_backend):
         """Test DataFrame column access operations."""
+        from tests.fixtures.spark_backend import BackendType
+
+        # Import appropriate F based on backend
+        if spark_backend == BackendType.PYSPARK:
+            from pyspark.sql import functions as F
+        else:
+            from mock_spark import F
+
         expected = load_expected_output("dataframe_operations", "column_access")
 
         df = spark.createDataFrame(expected["input_data"])

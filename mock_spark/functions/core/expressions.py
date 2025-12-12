@@ -48,10 +48,10 @@ class ExpressionFunctions:
         Returns:
             Column instance.
 
-        Raises:
-            RuntimeError: If no active SparkSession is available
+        Note:
+            In PySpark, col() can be called without an active SparkSession.
+            The column expression is evaluated later when used with a DataFrame.
         """
-        ExpressionFunctions._require_active_session(f"column expression '{name}'")
         return Column(name)
 
     @staticmethod
@@ -66,10 +66,10 @@ class ExpressionFunctions:
         Returns:
             Literal instance.
 
-        Raises:
-            RuntimeError: If no active SparkSession is available
+        Note:
+            In PySpark, lit() can be called without an active SparkSession.
+            The literal expression is evaluated later when used with a DataFrame.
         """
-        ExpressionFunctions._require_active_session("literal creation")
         return Literal(value)
 
     @staticmethod

@@ -383,17 +383,17 @@ class TestAggregatedDataFrameCatalogRegistration:
             [("user1", 100), ("user2", 200)], ["user_id", "value"]
         )
 
-        # Verify source DataFrame uses spark.storage
-        assert source.storage is spark.storage, (
-            "Source DataFrame should use spark.storage"
+        # Verify source DataFrame uses spark._storage
+        assert source.storage is spark._storage, (
+            "Source DataFrame should use spark._storage"
         )
 
         # Create aggregated DataFrame
         agg_df = source.groupBy("user_id").agg(F.count("*").alias("count"))
 
         # CRITICAL: Aggregated DataFrame should use the same storage instance
-        assert agg_df.storage is spark.storage, (
-            "Aggregated DataFrame should use spark.storage"
+        assert agg_df.storage is spark._storage, (
+            "Aggregated DataFrame should use spark._storage"
         )
         assert agg_df.storage is source.storage, (
             "Aggregated DataFrame should use same storage as source"
@@ -401,8 +401,8 @@ class TestAggregatedDataFrameCatalogRegistration:
 
         # Verify writer also uses the same storage
         writer = agg_df.write
-        assert writer.storage is spark.storage, (
-            "DataFrameWriter should use spark.storage"
+        assert writer.storage is spark._storage, (
+            "DataFrameWriter should use spark._storage"
         )
 
         # Write table and verify it's accessible
@@ -428,7 +428,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert first_agg.storage is spark.storage
+        assert first_agg.storage is spark._storage
 
         # Second aggregation: group by user_id, category
         second_agg = first_agg.groupBy("user_id", "category").agg(
@@ -436,7 +436,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert second_agg.storage is spark.storage
+        assert second_agg.storage is spark._storage
 
         # Third aggregation: group by user_id
         third_agg = second_agg.groupBy("user_id").agg(
@@ -444,7 +444,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert third_agg.storage is spark.storage
+        assert third_agg.storage is spark._storage
 
         # Write and verify immediate access
         third_agg.write.mode("overwrite").saveAsTable("test_schema.triple_nested")
@@ -474,7 +474,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg_df = source.groupBy("user_id").agg(F.count("*").alias("count"))
 
         # Verify storage synchronization even for empty DataFrames
-        assert agg_df.storage is spark.storage
+        assert agg_df.storage is spark._storage
 
         # Write empty aggregated DataFrame
         agg_df.write.mode("overwrite").saveAsTable("test_schema.empty_agg")
@@ -494,7 +494,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert agg_df.storage is spark.storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.single_row_agg")
 
@@ -514,7 +514,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         cube_df = source.cube("user_id", "category").agg(F.sum("value").alias("total"))
 
         # Verify storage synchronization
-        assert cube_df.storage is spark.storage
+        assert cube_df.storage is spark._storage
 
         cube_df.write.mode("overwrite").saveAsTable("test_schema.cube_test")
 
@@ -537,7 +537,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert rollup_df.storage is spark.storage
+        assert rollup_df.storage is spark._storage
 
         rollup_df.write.mode("overwrite").saveAsTable("test_schema.rollup_test")
 
@@ -563,7 +563,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         pivot_df = source.groupBy("user_id").pivot("quarter").agg(F.sum("value"))
 
         # Verify storage synchronization
-        assert pivot_df.storage is spark.storage
+        assert pivot_df.storage is spark._storage
 
         pivot_df.write.mode("overwrite").saveAsTable("test_schema.pivot_test")
 
@@ -585,9 +585,9 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg3 = source.groupBy("user_id").agg(F.avg("value").alias("average"))
 
         # Verify all use the same storage
-        assert agg1.storage is spark.storage
-        assert agg2.storage is spark.storage
-        assert agg3.storage is spark.storage
+        assert agg1.storage is spark._storage
+        assert agg2.storage is spark._storage
+        assert agg3.storage is spark._storage
 
         # Write all to different tables
         agg1.write.mode("overwrite").saveAsTable("test_schema.seq_agg1")
@@ -616,9 +616,9 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg_df = selected.groupBy("user_id").agg(F.sum("value").alias("total"))
 
         # Verify storage synchronization through transformations
-        assert filtered.storage is spark.storage
-        assert selected.storage is spark.storage
-        assert agg_df.storage is spark.storage
+        assert filtered.storage is spark._storage
+        assert selected.storage is spark._storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.transformed_agg")
 
@@ -642,8 +642,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg_df = joined.groupBy("user_id").agg(F.sum("value").alias("total"))
 
         # Verify storage synchronization
-        assert joined.storage is spark.storage
-        assert agg_df.storage is spark.storage
+        assert joined.storage is spark._storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.join_agg")
 
@@ -663,8 +663,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg2 = source2.groupBy("user_id").agg(F.count("*").alias("count"))
 
         # Verify storage synchronization
-        assert agg1.storage is spark.storage
-        assert agg2.storage is spark.storage
+        assert agg1.storage is spark._storage
+        assert agg2.storage is spark._storage
 
         # Write to different schemas
         agg1.write.mode("overwrite").saveAsTable("schema1.agg_table")
@@ -697,8 +697,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert windowed.storage is spark.storage
-        assert agg_df.storage is spark.storage
+        assert windowed.storage is spark._storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.window_agg")
 
@@ -720,7 +720,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert agg_df.storage is spark.storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.complex_expr_agg")
 
@@ -748,11 +748,11 @@ class TestAggregatedDataFrameCatalogRegistration:
         step5 = step4.groupBy().agg(F.sum("total").alias("grand_total"))
 
         # Verify storage synchronization at each step
-        assert step1.storage is spark.storage
-        assert step2.storage is spark.storage
-        assert step3.storage is spark.storage
-        assert step4.storage is spark.storage
-        assert step5.storage is spark.storage
+        assert step1.storage is spark._storage
+        assert step2.storage is spark._storage
+        assert step3.storage is spark._storage
+        assert step4.storage is spark._storage
+        assert step5.storage is spark._storage
 
         step5.write.mode("overwrite").saveAsTable("test_schema.chain_agg")
 
@@ -774,7 +774,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert agg_df.storage is spark.storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.null_agg")
 
@@ -798,8 +798,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg_df = distinct_df.groupBy("user_id").agg(F.sum("value").alias("total"))
 
         # Verify storage synchronization
-        assert distinct_df.storage is spark.storage
-        assert agg_df.storage is spark.storage
+        assert distinct_df.storage is spark._storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.distinct_agg")
 
@@ -820,7 +820,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Verify storage synchronization
-        assert agg_df.storage is spark.storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.large_agg")
 
@@ -838,8 +838,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         agg_df = unioned.groupBy("user_id").agg(F.sum("value").alias("total"))
 
         # Verify storage synchronization
-        assert unioned.storage is spark.storage
-        assert agg_df.storage is spark.storage
+        assert unioned.storage is spark._storage
+        assert agg_df.storage is spark._storage
 
         agg_df.write.mode("overwrite").saveAsTable("test_schema.union_agg")
 
@@ -858,7 +858,7 @@ class TestAggregatedDataFrameCatalogRegistration:
 
         # Get writer and verify storage
         writer = agg_df.write
-        assert writer.storage is spark.storage
+        assert writer.storage is spark._storage
         assert writer.storage is source.storage
         assert writer.storage is agg_df.storage
 
@@ -882,8 +882,8 @@ class TestAggregatedDataFrameCatalogRegistration:
         writer2 = agg_df.write
 
         # All should use the same storage
-        assert writer1.storage is spark.storage
-        assert writer2.storage is spark.storage
+        assert writer1.storage is spark._storage
+        assert writer2.storage is spark._storage
         assert writer1.storage is writer2.storage
 
         # Write to different tables

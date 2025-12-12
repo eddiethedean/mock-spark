@@ -14,6 +14,16 @@ export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH}"
 echo "Running Mock Spark Test Suite (Overhauled)"
 echo "=========================================="
 
+# Check backend selection
+BACKEND="${MOCK_SPARK_TEST_BACKEND:-mock}"
+echo "Backend: $BACKEND"
+if [ "$BACKEND" = "pyspark" ]; then
+    echo "⚠️  Running with PySpark (slower)"
+elif [ "$BACKEND" = "both" ]; then
+    echo "⚠️  Running with both backends (comparison mode - slowest)"
+fi
+echo ""
+
 # Check if pytest-xdist is available for parallel execution
 if python3 -c "import pytest_xdist" 2>/dev/null; then
     echo "✅ pytest-xdist available - using parallel execution (8 workers)"

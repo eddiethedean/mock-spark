@@ -73,9 +73,6 @@ class TestComplexScenariosCompatibility:
         )
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="Filter with computed columns: CTE references original table instead of CTE alias"
-    )
     def test_withcolumn_filter_orderby_chain(self, mock_spark_session):
         """Test withColumn -> filter -> orderBy chain against expected output."""
         test_data = [
@@ -196,9 +193,6 @@ class TestComplexScenariosCompatibility:
         )
         assert_dataframes_equal(result, expected)
 
-    @pytest.mark.skip(
-        reason="Filter with function calls: Column resolution issue in CTE context"
-    )
     def test_complex_string_operations_chain(self, mock_spark_session):
         """Test complex string operations chain against expected output."""
         test_data = [

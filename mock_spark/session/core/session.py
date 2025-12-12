@@ -46,7 +46,6 @@ class SparkSession:
         sparkContext: SparkContext instance for session context.
         catalog: Catalog instance for database and table operations.
         conf: Configuration object for session settings.
-        storage: MemoryStorageManager for data persistence.
 
     Example:
         >>> spark = SparkSession("MyApp")
@@ -103,17 +102,17 @@ class SparkSession:
         self.backend_type = resolved_backend_type
         # Use dependency injection for storage backend
         if storage_backend is None:
-            self.storage = BackendFactory.create_storage_backend(
+            self._storage = BackendFactory.create_storage_backend(
                 backend_type=resolved_backend_type,
                 db_path=db_path,
                 max_memory=max_memory,
                 allow_disk_spillover=allow_disk_spillover,
             )
         else:
-            self.storage = storage_backend
+            self._storage = storage_backend
         from typing import cast
 
-        self._catalog = Catalog(self.storage, spark=self)
+        self._catalog = Catalog(self._storage, spark=self)
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
         from ..._version import __version__
@@ -231,7 +230,7 @@ class SparkSession:
 
         # Delegate to DataFrameFactory service
         df = self._dataframe_factory.create_dataframe(
-            data, schema, self._engine_config, self.storage
+            data, schema, self._engine_config, self._storage
         )
 
         # Apply lazy/eager mode based on session config
@@ -259,7 +258,7 @@ class SparkSession:
         """Track DataFrame for approximate memory accounting."""
         self._performance_tracker.track_dataframe(df)
 
-    def get_memory_usage(self) -> int:
+    def _get_memory_usage(self) -> int:
         """Return approximate memory usage in bytes for tracked DataFrames."""
         return self._performance_tracker.get_memory_usage()
 
@@ -267,7 +266,7 @@ class SparkSession:
         """Clear tracked DataFrames to free memory accounting."""
         self._performance_tracker.clear_cache()
 
-    def benchmark_operation(
+    def _benchmark_operation(
         self, operation_name: str, func: Any, *args: Any, **kwargs: Any
     ) -> Any:
         """Benchmark an operation and record simple telemetry.
@@ -279,7 +278,7 @@ class SparkSession:
             operation_name, func, *args, **kwargs
         )
 
-    def get_benchmark_results(self) -> dict[str, dict[str, Any]]:
+    def _get_benchmark_results(self) -> dict[str, dict[str, Any]]:
         """Return a copy of the latest benchmark results."""
         return self._performance_tracker.get_benchmark_results()
 
@@ -378,7 +377,7 @@ class SparkSession:
     # ---------------------------
     # Plugin registration (Phase 4)
     # ---------------------------
-    def register_plugin(self, plugin: Any) -> None:
+    def _register_plugin(self, plugin: Any) -> None:
         self._plugins.append(plugin)
 
     def _real_table(self, table_name: str) -> IDataFrame:
@@ -398,19 +397,19 @@ class SparkSession:
             schema, table = table_name.split(".", 1)
         else:
             # Use current schema instead of hardcoded "default"
-            schema = self.storage.get_current_schema()
+            schema = self._storage.get_current_schema()
             table = table_name
         # Handle global temp views using Spark's convention 'global_temp'
         if schema == "global_temp":
             schema = "global_temp"
 
         # Check if table exists
-        if not self.storage.table_exists(schema, table):
+        if not self._storage.table_exists(schema, table):
             # Fallback: Try to get table schema directly
             # This handles edge cases where storage has the table but table_exists() check fails
             # This can happen immediately after saveAsTable() if there's a brief synchronization delay
             try:
-                table_schema = self.storage.get_table_schema(schema, table)
+                table_schema = self._storage.get_table_schema(schema, table)
                 if table_schema is not None and len(table_schema.fields) > 0:
                     # Table exists in storage but wasn't detected by table_exists()
                     # This is acceptable - proceed with reading the table
@@ -427,8 +426,8 @@ class SparkSession:
                 raise AnalysisException(f"Table or view not found: {table_name}")
 
         # Get table data and schema
-        table_data = self.storage.get_data(schema, table)
-        table_schema = self.storage.get_table_schema(schema, table)
+        table_data = self._storage.get_data(schema, table)
+        table_schema = self._storage.get_table_schema(schema, table)
 
         # Ensure schema is not None
         if table_schema is None:
@@ -478,7 +477,7 @@ class SparkSession:
 
             table_schema = StructType(updated_fields)
 
-        return cast("IDataFrame", DataFrame(table_data, table_schema, self.storage))
+        return cast("IDataFrame", DataFrame(table_data, table_schema, self._storage))
 
     def range(
         self, start: int, end: int, step: int = 1, numPartitions: Optional[int] = None
@@ -503,7 +502,7 @@ class SparkSession:
     def stop(self) -> None:
         """Stop the session and clean up resources."""
         # Delegate to SessionLifecycleManager service
-        self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
+        self._lifecycle_manager.stop_session(self._storage, self._performance_tracker)
         # Remove from active sessions list
         if self in SparkSession._active_sessions:
             SparkSession._active_sessions.remove(self)
@@ -518,7 +517,7 @@ class SparkSession:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         # Delegate to SessionLifecycleManager service
-        self._lifecycle_manager.stop_session(self.storage, self._performance_tracker)
+        self._lifecycle_manager.stop_session(self._storage, self._performance_tracker)
         # Remove from active sessions list
         if self in SparkSession._active_sessions:
             SparkSession._active_sessions.remove(self)
@@ -535,7 +534,7 @@ class SparkSession:
         return SparkSession(self.app_name)
 
     @classmethod
-    def get_active_session(cls) -> Optional["SparkSession"]:
+    def _get_active_session(cls) -> Optional["SparkSession"]:
         """Get the most recently created active session.
 
         Returns:
@@ -580,7 +579,7 @@ class SparkSession:
         return len(cls._active_sessions) > 0
 
     # Mockable methods for testing
-    def mock_createDataFrame(
+    def _mock_createDataFrame(
         self, side_effect: Any = None, return_value: Any = None
     ) -> None:
         """Mock createDataFrame method for testing."""
@@ -589,14 +588,14 @@ class SparkSession:
             "createDataFrame", side_effect, return_value
         )
 
-    def mock_table(self, side_effect: Any = None, return_value: Any = None) -> None:
+    def _mock_table(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock table method for testing."""
         # Delegate to MockingCoordinator service
         self._table_impl = self._mocking_coordinator.setup_mock_impl(
             "table", side_effect, return_value
         )
 
-    def mock_sql(self, side_effect: Any = None, return_value: Any = None) -> None:
+    def _mock_sql(self, side_effect: Any = None, return_value: Any = None) -> None:
         """Mock sql method for testing."""
         # Delegate to MockingCoordinator service
         self._sql_impl = self._mocking_coordinator.setup_mock_impl(
@@ -604,7 +603,7 @@ class SparkSession:
         )
 
     # Error simulation methods
-    def add_error_rule(
+    def _add_error_rule(
         self, method_name: str, error_condition: Any, error_exception: Any
     ) -> None:
         """Add error simulation rule."""
@@ -613,12 +612,12 @@ class SparkSession:
             method_name, error_condition, error_exception
         )
 
-    def clear_error_rules(self) -> None:
+    def _clear_error_rules(self) -> None:
         """Clear all error simulation rules."""
         # Delegate to MockingCoordinator service
         self._mocking_coordinator.clear_error_rules()
 
-    def reset_mocks(self) -> None:
+    def _reset_mocks(self) -> None:
         """Reset all mocks to original implementations."""
         # Delegate to MockingCoordinator service
         original_impls = {
@@ -643,10 +642,8 @@ class SparkSession:
             raise exception
 
     # Integration with MockErrorSimulator
-    def _add_error_rule(self, method_name: str, condition: Any, exception: Any) -> None:
-        """Add error rule (used by MockErrorSimulator)."""
-        # Delegate to MockingCoordinator service
-        self._mocking_coordinator.add_error_rule(method_name, condition, exception)
+    # Note: _add_error_rule is already defined above at line 606
+    # This comment is kept for documentation purposes
 
     def _remove_error_rule(self, method_name: str, condition: Any = None) -> None:
         """Remove error rule (used by MockErrorSimulator)."""

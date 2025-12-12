@@ -97,9 +97,9 @@ class DeltaTable:
             schema, table = "default", table_name
 
         # Check table exists (only for SparkSession)
-        if hasattr(spark_session, "storage") and not spark_session.storage.table_exists(
-            schema, table
-        ):
+        if hasattr(
+            spark_session, "_storage"
+        ) and not spark_session._storage.table_exists(schema, table):
             raise AnalysisException(f"Table or view not found: {table_name}")
         # For real SparkSession, we'll just assume the table exists
         # and let it fail naturally if it doesn't
@@ -256,7 +256,7 @@ class DeltaTable:
             ]
         )
 
-        return DataFrame(details, schema, self._spark.storage)
+        return DataFrame(details, schema, self._spark._storage)
 
     def history(self, limit: int | None = None) -> DataFrame:
         """
@@ -311,7 +311,7 @@ class DeltaTable:
             ]
         )
 
-        return DataFrame(history, schema, self._spark.storage)
+        return DataFrame(history, schema, self._spark._storage)
 
     def _overwrite_table(self, df: DataFrame) -> None:
         """Persist the provided DataFrame back into the Delta table."""
@@ -326,12 +326,12 @@ class DeltaTable:
 
     def _load_table_rows(self) -> list[dict[str, Any]]:
         schema_name, table_name = self._resolve_table_parts()
-        data = self._spark.storage.get_data(schema_name, table_name)
+        data = self._spark._storage.get_data(schema_name, table_name)
         return [dict(row) for row in data]
 
     def _current_schema(self) -> StructType:
         schema_name, table_name = self._resolve_table_parts()
-        schema = self._spark.storage.get_table_schema(schema_name, table_name)
+        schema = self._spark._storage.get_table_schema(schema_name, table_name)
         if schema is None:
             from .spark_types import StructType
 

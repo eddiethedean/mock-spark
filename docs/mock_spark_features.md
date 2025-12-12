@@ -78,23 +78,23 @@ from mock_spark.sql.types import StructType, StructField, StringType, IntegerTyp
 spark = SparkSession("MyApp")
 
 # Create schema (database)
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 
 # Create table with schema
 schema = StructType([
     StructField("name", StringType(), True),
     StructField("age", IntegerType(), True)
 ])
-spark.storage.create_table("test_db", "users", schema)
+spark._storage.create_table("test_db", "users", schema)
 
 # Insert data
-spark.storage.insert_data("test_db", "users", [
+spark._storage.insert_data("test_db", "users", [
     {"name": "Alice", "age": 25},
     {"name": "Bob", "age": 30}
 ])
 
 # Get table as DataFrame
-df = spark.storage.get_table("test_db", "users")
+df = spark._storage.get_table("test_db", "users")
 ```
 
 **When to use:**
@@ -162,10 +162,10 @@ If you have code using mock-spark convenience APIs and want to make it PySpark-c
 
 **Before (mock-spark only):**
 ```python
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 schema = StructType([StructField("name", StringType())])
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", [{"name": "Alice"}])
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", [{"name": "Alice"}])
 ```
 
 **After (PySpark-compatible):**
@@ -188,13 +188,13 @@ spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25)")
 
 **After (convenience API):**
 ```python
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 schema = StructType([
     StructField("name", StringType()),
     StructField("age", IntegerType())
 ])
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 ```
 
 ## Best Practices
@@ -223,9 +223,9 @@ spark.sql("CREATE TABLE analytics.events (timestamp TIMESTAMP, event_type STRING
 # Good: Convenient for tests, but mock-spark-specific
 @pytest.fixture
 def setup_test_data(spark):
-    spark.storage.create_schema("test")
+    spark._storage.create_schema("test")
     schema = StructType([StructField("id", IntegerType())])
-    spark.storage.create_table("test", "data", schema)
+    spark._storage.create_table("test", "data", schema)
     return spark
 ```
 

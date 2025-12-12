@@ -247,26 +247,18 @@ class DataFrameWriter:
                     # Preserve version history
                     preserved_history = meta.get("version_history", [])
 
-            # Handle overwriteSchema option (Issue #2 fix)
+            # Handle overwriteSchema option
+            # In PySpark, overwriteSchema=true means completely overwrite the schema
+            # (not merge/preserve existing columns). This matches PySpark's behavior.
             overwrite_schema = self._options.get("overwriteSchema", "false")
             if isinstance(overwrite_schema, bool):
-                overwrite_schema_enabled = overwrite_schema
+                pass
             else:
-                overwrite_schema_enabled = str(overwrite_schema).lower() == "true"
+                str(overwrite_schema).lower() == "true"
 
             # Use extracted schema (handles aggregated DataFrames correctly)
+            # When overwriteSchema=true, we completely overwrite (no merging)
             schema_to_use = df_schema
-
-            if table_exists and overwrite_schema_enabled:
-                # Read existing schema and merge with current schema (Issue #4 fix)
-                existing_schema = self.storage.get_table_schema(schema, table)
-                if existing_schema and isinstance(existing_schema, StructType):
-                    df_to_write, schema_to_use = self._merge_schemas_for_overwrite(
-                        existing_schema, self.df
-                    )
-                    # Re-extract schema from merged DataFrame if schema was merged
-                    if df_to_write is not self.df:
-                        schema_to_use = self._extract_schema_for_catalog(df_to_write)
 
             if table_exists:
                 self.storage.drop_table(schema, table)
@@ -361,7 +353,7 @@ class DataFrameWriter:
         with contextlib.suppress(Exception):
             # If verification fails, it's likely a storage instance synchronization issue
             # Since we just created the table, it should exist - don't fail the operation
-            # The table will be accessible via spark.table() which uses spark.storage
+            # The table will be accessible via spark.table() which uses spark._storage
             # This handles the case where writer.storage and spark.storage are different instances
             self._ensure_table_immediately_accessible(schema, table)
 

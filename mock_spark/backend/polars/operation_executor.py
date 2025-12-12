@@ -920,12 +920,16 @@ class PolarsOperationExecutor:
         df1_cols = set(df1.columns)
         df2_cols = set(df2.columns)
 
-        # Add missing columns
+        # Add missing columns with correct types
         for col in df1_cols - df2_cols:
-            df2 = df2.with_columns(pl.lit(None).alias(col))
+            # Use the type from df1's column
+            col_type = df1[col].dtype
+            df2 = df2.with_columns(pl.lit(None, dtype=col_type).alias(col))
 
         for col in df2_cols - df1_cols:
-            df1 = df1.with_columns(pl.lit(None).alias(col))
+            # Use the type from df2's column
+            col_type = df2[col].dtype
+            df1 = df1.with_columns(pl.lit(None, dtype=col_type).alias(col))
 
         # Ensure column order matches
         column_order = df1.columns

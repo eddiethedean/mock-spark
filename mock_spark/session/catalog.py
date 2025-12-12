@@ -95,7 +95,7 @@ class Catalog:
             spark: Optional SparkSession instance for SQL-based operations.
                   If provided, createDatabase() will use SQL instead of direct storage calls.
         """
-        self.storage = storage
+        self._storage = storage
         self.spark = spark
         self._cached_tables: set[str] = set()  # Track cached tables
 
@@ -105,7 +105,7 @@ class Catalog:
         Returns:
             List of Database objects.
         """
-        return [Database(name) for name in self.storage.list_schemas()]
+        return [Database(name) for name in self._storage.list_schemas()]
 
     def setCurrentDatabase(self, dbName: str) -> None:
         """Set current/active database.
@@ -116,11 +116,11 @@ class Catalog:
         Raises:
             AnalysisException: If database does not exist.
         """
-        if not self.storage.schema_exists(dbName):
+        if not self._storage.schema_exists(dbName):
             from mock_spark.core.exceptions.analysis import AnalysisException
 
             raise AnalysisException(f"Database '{dbName}' does not exist")
-        self.storage.set_current_schema(dbName)
+        self._storage.set_current_schema(dbName)
 
     def currentDatabase(self) -> str:
         """Get current database name.
@@ -128,7 +128,7 @@ class Catalog:
         Returns:
             Current database name.
         """
-        return self.storage.get_current_schema()
+        return self._storage.get_current_schema()
 
     def currentCatalog(self) -> str:
         """Get current catalog name (Spark SQL compatibility).
@@ -162,7 +162,7 @@ class Catalog:
             raise IllegalArgumentException("Database name cannot be empty")
 
         # Check if database already exists
-        if self.storage.schema_exists(name):
+        if self._storage.schema_exists(name):
             if not ignoreIfExists:
                 raise AnalysisException(f"Database '{name}' already exists")
             # Database exists and ignoreIfExists is True, nothing to do
@@ -172,7 +172,7 @@ class Catalog:
         # Use direct storage call to avoid infinite recursion with SQL execution
         # (SQL CREATE DATABASE would call this method again)
         try:
-            self.storage.create_schema(name)
+            self._storage.create_schema(name)
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
@@ -210,12 +210,12 @@ class Catalog:
             else ignoreIfNotExists
         )
 
-        if not ignore_flag and not self.storage.schema_exists(name):
+        if not ignore_flag and not self._storage.schema_exists(name):
             raise AnalysisException(f"Database '{name}' does not exist")
 
-        if self.storage.schema_exists(name):
+        if self._storage.schema_exists(name):
             try:
-                self.storage.drop_schema(name)
+                self._storage.drop_schema(name)
             except Exception as e:
                 if isinstance(e, (AnalysisException, IllegalArgumentException)):
                     raise
@@ -247,16 +247,16 @@ class Catalog:
             # But also check if tableName might actually be a schema name
             # (some PySpark code might call it as tableExists("schema", "table"))
             # Check if reversing makes more sense (if "tableName" exists as a schema)
-            if self.storage.schema_exists(tableName) and not self.storage.schema_exists(
-                dbName
-            ):
+            if self._storage.schema_exists(
+                tableName
+            ) and not self._storage.schema_exists(dbName):
                 # If tableName is actually a schema and dbName is not, swap them
                 # This handles: tableExists("test_schema", "test_table")
                 # which should check table "test_table" in schema "test_schema"
                 dbName, tableName = tableName, dbName
 
         if dbName is None:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
         if not isinstance(dbName, str):
             raise IllegalArgumentException("Database name must be a string")
 
@@ -271,16 +271,16 @@ class Catalog:
 
         try:
             # First check storage directly
-            exists = self.storage.table_exists(dbName, tableName)
+            exists = self._storage.table_exists(dbName, tableName)
             if exists:
                 return True
 
             # If storage says it doesn't exist, try to verify by attempting to get schema
             # This handles cases where table exists but isn't properly registered
             # But only if schema exists (otherwise table definitely doesn't exist)
-            if self.storage.schema_exists(dbName):
+            if self._storage.schema_exists(dbName):
                 try:
-                    table_schema = self.storage.get_table_schema(dbName, tableName)
+                    table_schema = self._storage.get_table_schema(dbName, tableName)
                     # Empty schema means table doesn't exist - check if it has fields
                     if table_schema is not None and len(table_schema.fields) > 0:
                         # Table exists in storage but wasn't detected by table_exists()
@@ -293,7 +293,7 @@ class Catalog:
             # Final check: try to list tables in the database and check if our table is there
             # This is a more comprehensive check that catches any synchronization issues
             try:
-                table_list = self.storage.list_tables(dbName)
+                table_list = self._storage.list_tables(dbName)
                 if tableName in table_list:
                     return True
             except Exception:
@@ -322,18 +322,18 @@ class Catalog:
             AnalysisException: If database doesn't exist or there's an error.
         """
         if dbName is None:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
         if not isinstance(dbName, str):
             raise IllegalArgumentException("Database name must be a string")
 
         if not dbName:
             raise IllegalArgumentException("Database name cannot be empty")
 
-        if not self.storage.schema_exists(dbName):
+        if not self._storage.schema_exists(dbName):
             raise AnalysisException(f"Database '{dbName}' does not exist")
 
         try:
-            table_names = self.storage.list_tables(dbName)
+            table_names = self._storage.list_tables(dbName)
             return [Table(name, dbName) for name in table_names]
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
@@ -388,15 +388,15 @@ class Catalog:
                     f"Invalid qualified table name: {tableName}"
                 )
         else:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
 
         try:
             # Check if table exists first
-            if not self.storage.table_exists(dbName, tableName):
+            if not self._storage.table_exists(dbName, tableName):
                 raise AnalysisException(f"Table '{dbName}.{tableName}' does not exist")
 
             # Drop the table from storage
-            self.storage.drop_table(dbName, tableName)
+            self._storage.drop_table(dbName, tableName)
         except Exception as e:
             if isinstance(e, (AnalysisException, IllegalArgumentException)):
                 raise
@@ -433,7 +433,7 @@ class Catalog:
                     f"Invalid qualified table name: {tableName}"
                 )
         else:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"
 
         return qualified_name in self._cached_tables
@@ -465,11 +465,11 @@ class Catalog:
                     f"Invalid qualified table name: {tableName}"
                 )
         else:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"
 
         # Check if table exists
-        if not self.storage.table_exists(dbName, tableName):
+        if not self._storage.table_exists(dbName, tableName):
             raise AnalysisException(f"Table '{qualified_name}' does not exist")
 
         # Add to cache
@@ -501,7 +501,7 @@ class Catalog:
                     f"Invalid qualified table name: {tableName}"
                 )
         else:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
             qualified_name = f"{dbName}.{tableName}"
 
         # Remove from cache
@@ -558,7 +558,7 @@ class Catalog:
         if not dbName:
             raise IllegalArgumentException("Database name cannot be empty")
 
-        if not self.storage.schema_exists(dbName):
+        if not self._storage.schema_exists(dbName):
             raise AnalysisException(f"Database '{dbName}' does not exist")
 
         return Database(dbName)
@@ -600,7 +600,7 @@ class Catalog:
                     f"Invalid qualified table name: {tableName}"
                 )
         elif dbName is None:
-            dbName = self.storage.get_current_schema()
+            dbName = self._storage.get_current_schema()
 
         if not isinstance(dbName, str):
             raise IllegalArgumentException("Database name must be a string")
@@ -609,7 +609,7 @@ class Catalog:
             raise IllegalArgumentException("Database name cannot be empty")
 
         # Check if table exists
-        if not self.storage.table_exists(dbName, tableName):
+        if not self._storage.table_exists(dbName, tableName):
             qualified_name = f"{dbName}.{tableName}" if dbName else tableName
             raise AnalysisException(f"Table '{qualified_name}' does not exist")
 
@@ -635,10 +635,10 @@ class Catalog:
             AnalysisException: If table is not visible after all checks
         """
         # Check 1: Verify table_exists() returns True
-        if self.storage.table_exists(schema, table):
+        if self._storage.table_exists(schema, table):
             # Verify we can get schema (ensures table is fully registered)
             try:
-                table_schema = self.storage.get_table_schema(schema, table)
+                table_schema = self._storage.get_table_schema(schema, table)
                 if table_schema is not None:
                     # Table is visible and has schema - success
                     return
@@ -649,7 +649,7 @@ class Catalog:
 
         # Check 2: Try to get schema directly (fallback for edge cases)
         try:
-            table_schema = self.storage.get_table_schema(schema, table)
+            table_schema = self._storage.get_table_schema(schema, table)
             if table_schema is not None and len(table_schema.fields) > 0:
                 # Table exists in storage but wasn't detected by table_exists()
                 # This is acceptable - table is queryable
@@ -659,7 +659,7 @@ class Catalog:
 
         # Check 3: Verify table appears in list_tables()
         try:
-            table_list = self.storage.list_tables(schema)
+            table_list = self._storage.list_tables(schema)
             if table in table_list:
                 # Table is in the list - it's visible
                 return

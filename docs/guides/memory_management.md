@@ -8,8 +8,8 @@ from mock_spark.sql import SparkSession
 spark = SparkSession()
 
 # after creating multiple DataFrames
-print(spark.get_memory_usage())
+print(spark._get_memory_usage())
 
 spark.clear_cache()  # frees memory tracked by the session
-print(spark.get_memory_usage())  # 0
+print(spark._get_memory_usage())  # 0
 ```

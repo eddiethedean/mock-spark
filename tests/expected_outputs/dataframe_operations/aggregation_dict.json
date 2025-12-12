@@ -1,7 +1,7 @@
 {
   "test_id": "aggregation",
   "pyspark_version": "3.5",
-  "generated_at": "2025-12-12T13:36:44.016509",
+  "generated_at": "2025-12-12T13:37:00.000000",
   "input_data": [
     {
       "id": 1,
@@ -38,13 +38,13 @@
       "field_count": 3,
       "field_names": [
         "department",
-        "avg_salary",
-        "count"
+        "count(id)",
+        "avg_salary"
       ],
       "field_types": [
         "StringType()",
-        "DoubleType()",
-        "LongType()"
+        "LongType()",
+        "DoubleType()"
       ],
       "fields": [
         {
@@ -53,34 +53,35 @@
           "nullable": true
         },
         {
+          "name": "count(id)",
+          "type": "LongType()",
+          "nullable": false
+        },
+        {
           "name": "avg_salary",
           "type": "DoubleType()",
           "nullable": true
-        },
-        {
-          "name": "count",
-          "type": "LongType()",
-          "nullable": false
         }
       ]
     },
     "data": [
       {
         "department": "Finance",
-        "avg_salary": 80000.0,
-        "count": 1
+        "count(id)": 1,
+        "avg_salary": 80000.0
       },
       {
         "department": "HR",
-        "avg_salary": 60000.0,
-        "count": 1
+        "count(id)": 1,
+        "avg_salary": 60000.0
       },
       {
         "department": "IT",
-        "avg_salary": 60000.0,
-        "count": 2
+        "count(id)": 2,
+        "avg_salary": 60000.0
       }
     ],
     "row_count": 3
   }
 }
+

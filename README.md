@@ -97,10 +97,10 @@ Mock-Spark provides a convenient `.storage` API for managing databases and table
 
 ```python
 # Mock-Spark: Using .storage API (convenient but NOT PySpark-compatible)
-spark.storage.create_schema("test_db")
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", data)
-df = spark.storage.query_table("test_db", "users")
+spark._storage.create_schema("test_db")
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", data)
+df = spark._storage.query_table("test_db", "users")
 
 # Both Mock-Spark and PySpark: Using SQL commands (recommended for compatibility)
 spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
@@ -114,10 +114,10 @@ df = spark.table("test_db.users")  # Read table as DataFrame
 ```
 
 **Migration Guide:**
-- `spark.storage.create_schema()` → `spark.sql("CREATE DATABASE IF NOT EXISTS ...")`
-- `spark.storage.create_table()` → `spark.sql("CREATE TABLE ...")` or `df.write.saveAsTable()`
-- `spark.storage.insert_data()` → `df.write.mode("append").saveAsTable()`
-- `spark.storage.query_table()` → `spark.table()` or `spark.sql("SELECT * FROM ...")`
+- `spark._storage.create_schema()` → `spark.sql("CREATE DATABASE IF NOT EXISTS ...")`
+- `spark._storage.create_table()` → `spark.sql("CREATE TABLE ...")` or `df.write.saveAsTable()`
+- `spark._storage.insert_data()` → `df.write.mode("append").saveAsTable()`
+- `spark._storage.query_table()` → `spark.table()` or `spark.sql("SELECT * FROM ...")`
 
 See the [Storage API Guide](docs/storage_api_guide.md) and [Migration Guide](docs/migration_from_pyspark.md) for more details.
 

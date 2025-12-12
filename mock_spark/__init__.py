@@ -102,7 +102,7 @@ from .errors import (  # noqa: E402
 #   - mock_spark.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "3.13.0"
+__version__ = "3.14.0"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 

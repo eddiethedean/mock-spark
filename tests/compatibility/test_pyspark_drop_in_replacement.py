@@ -252,7 +252,7 @@ class TestSchemaCreationAPIs:
 
     def test_storage_create_schema(self, spark):
         """Test that storage.create_schema() works."""
-        spark.storage.create_schema("schema1")
+        spark._storage.create_schema("schema1")
 
         schemas = [db.name for db in spark.catalog.listDatabases()]
         assert "schema1" in schemas
@@ -274,7 +274,7 @@ class TestSchemaCreationAPIs:
     def test_all_apis_create_same_schema(self, spark):
         """Test that all three APIs create the same schema."""
         # Create schema using storage API
-        spark.storage.create_schema("test_schema")
+        spark._storage.create_schema("test_schema")
 
         # Try to create same schema using SQL (should be idempotent)
         spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
@@ -411,23 +411,28 @@ class TestExprSQLParsing:
 class TestSparkSessionRequirements:
     """Test that function calls require active SparkSession."""
 
-    def test_col_requires_active_session(self):
-        """Test that F.col() requires active SparkSession."""
+    def test_col_does_not_require_active_session(self):
+        """Test that F.col() does NOT require active SparkSession (PySpark behavior)."""
         # Stop any existing session
         SparkSession._singleton_session = None
         SparkSession._active_sessions.clear()
 
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.col("test")
+        # In PySpark, col() can be called without a session
+        # It just creates a column expression that's evaluated later
+        col_expr = F.col("test")
+        assert col_expr is not None
+        assert hasattr(col_expr, "name") or hasattr(col_expr, "column_name")
 
-    def test_lit_requires_active_session(self):
-        """Test that F.lit() requires active SparkSession."""
+    def test_lit_does_not_require_active_session(self):
+        """Test that F.lit() does NOT require active SparkSession (PySpark behavior)."""
         # Stop any existing session
         SparkSession._singleton_session = None
         SparkSession._active_sessions.clear()
 
-        with pytest.raises(RuntimeError, match="No active SparkSession found"):
-            F.lit(42)
+        # In PySpark, lit() can be called without a session
+        # It just creates a literal expression that's evaluated later
+        lit_expr = F.lit(42)
+        assert lit_expr is not None
 
     def test_expr_requires_active_session(self):
         """Test that F.expr() requires active SparkSession."""

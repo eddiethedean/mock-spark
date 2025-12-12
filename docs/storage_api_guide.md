@@ -1,6 +1,6 @@
 # Storage API Guide
 
-**⚠️ Important:** The `spark.storage` API is a **mock-spark-specific convenience feature** that does not exist in PySpark. For code that needs to work with both mock-spark and PySpark, use SQL commands or DataFrame operations instead.
+**⚠️ Important:** The `spark._storage` API is a **private mock-spark-specific convenience feature** that does not exist in PySpark. For code that needs to work with both mock-spark and PySpark, use SQL commands or DataFrame operations instead. The `spark._storage` API is now private and should not be used in production code.
 
 This guide explains the two ways to manage databases and tables in mock-spark, and when to use each approach.
 
@@ -9,7 +9,7 @@ This guide explains the two ways to manage databases and tables in mock-spark, a
 Mock-spark provides two APIs for managing storage:
 
 1. **PySpark-Compatible APIs** (SQL commands) - ✅ Use for compatibility with PySpark
-2. **mock-spark Convenience APIs** (`.storage` API) - ⚠️ Mock-spark-specific, not available in PySpark
+2. **mock-spark Convenience APIs** (`._storage` API) - ⚠️ Private mock-spark-specific, not available in PySpark
 
 Both work identically in mock-spark, but **only SQL commands are portable** between mock-spark and PySpark.
 
@@ -95,16 +95,16 @@ from mock_spark.sql import SparkSession
 spark = SparkSession("MyApp")
 
 # Create schema (database)
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 
 # Check if schema exists
-exists = spark.storage.schema_exists("test_db")
+exists = spark._storage.schema_exists("test_db")
 
 # List all schemas
-schemas = spark.storage.list_schemas()
+schemas = spark._storage.list_schemas()
 
 # Drop schema
-spark.storage.drop_schema("test_db")
+spark._storage.drop_schema("test_db")
 ```
 
 ### Creating Tables
@@ -120,7 +120,7 @@ schema = StructType([
 ])
 
 # Create table
-spark.storage.create_table("test_db", "users", schema)
+spark._storage.create_table("test_db", "users", schema)
 
 # Insert data
 data = [
@@ -128,10 +128,10 @@ data = [
     {"id": 2, "name": "Bob", "age": 30},
     {"id": 3, "name": "Charlie", "age": 35}
 ]
-spark.storage.insert_data("test_db", "users", data)
+spark._storage.insert_data("test_db", "users", data)
 
 # Get table as DataFrame
-df = spark.storage.get_table("test_db", "users")
+df = spark._storage.get_table("test_db", "users")
 ```
 
 ### Benefits
@@ -170,9 +170,9 @@ spark.sql("CREATE TABLE analytics.events (timestamp TIMESTAMP, event_type STRING
 # This is convenient for tests, but won't work with PySpark
 @pytest.fixture
 def setup_test_data(spark):
-    spark.storage.create_schema("test")
+    spark._storage.create_schema("test")
     schema = StructType([StructField("id", IntegerType())])
-    spark.storage.create_table("test", "data", schema)
+    spark._storage.create_table("test", "data", schema)
     return spark
 ```
 
@@ -184,10 +184,10 @@ If you have code using `.storage` API and want to make it PySpark-compatible:
 
 **Before (mock-spark only):**
 ```python
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 schema = StructType([StructField("name", StringType())])
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", [{"name": "Alice"}])
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", [{"name": "Alice"}])
 ```
 
 **After (PySpark-compatible):**
@@ -210,13 +210,13 @@ spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25)")
 
 **After (convenience API):**
 ```python
-spark.storage.create_schema("test_db")
+spark._storage.create_schema("test_db")
 schema = StructType([
     StructField("name", StringType()),
     StructField("age", IntegerType())
 ])
-spark.storage.create_table("test_db", "users", schema)
-spark.storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
+spark._storage.create_table("test_db", "users", schema)
+spark._storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 ```
 
 ## Best Practices

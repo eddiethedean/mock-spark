@@ -420,16 +420,18 @@ class DataFrame:
     # Display operations
     def show(self, n: int = 20, truncate: bool = True) -> None:
         """Display DataFrame content in a clean table format."""
-        # Materialize if needed (this updates the schema)
+        # Materialize if needed (this updates the schema and data)
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            # Update schema from materialized DataFrame
+            # Update schema and data from materialized DataFrame
             self._schema = materialized.schema
-        # Mark as materialized after show (schema is now updated)
+            self.data = materialized.data
+            self._operations_queue = []
+        # Mark as materialized after show (schema and data are now updated)
         self._mark_materialized()
         return self._display.show(n, truncate)
 
-    def to_markdown(
+    def _to_markdown(
         self,
         n: int = 20,
         truncate: bool = True,
@@ -444,12 +446,14 @@ class DataFrame:
 
     def collect(self) -> list["Row"]:
         """Collect all data as list of Row objects."""
-        # Materialize if needed (this updates the schema)
+        # Materialize if needed (this updates the schema and data)
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
-            # Update schema from materialized DataFrame
+            # Update schema and data from materialized DataFrame
             self._schema = materialized.schema
-        # Mark as materialized after collection (schema is now updated)
+            self.data = materialized.data
+            self._operations_queue = []
+        # Mark as materialized after collection (schema and data are now updated)
         self._mark_materialized()
         return self._display.collect()
 
@@ -531,19 +535,19 @@ class DataFrame:
         return self._display.isEmpty()
 
     # Assertion operations
-    def assert_has_columns(self, expected_columns: list[str]) -> None:
+    def _assert_has_columns(self, expected_columns: list[str]) -> None:
         """Assert that DataFrame has the expected columns."""
         return self._assertions.assert_has_columns(expected_columns)
 
-    def assert_row_count(self, expected_count: int) -> None:
+    def _assert_row_count(self, expected_count: int) -> None:
         """Assert that DataFrame has the expected row count."""
         return self._assertions.assert_row_count(expected_count)
 
-    def assert_schema_matches(self, expected_schema: StructType) -> None:
+    def _assert_schema_matches(self, expected_schema: StructType) -> None:
         """Assert that DataFrame schema matches the expected schema."""
         return self._assertions.assert_schema_matches(expected_schema)
 
-    def assert_data_equals(self, expected_data: list[dict[str, Any]]) -> None:
+    def _assert_data_equals(self, expected_data: list[dict[str, Any]]) -> None:
         """Assert that DataFrame data equals the expected data."""
         return self._assertions.assert_data_equals(expected_data)
 
@@ -964,9 +968,20 @@ class DataFrame:
         if not has_pending_joins:
             # Check if there are pending joins (columns might come from other DF)
             has_pending_joins = any(op[0] == "join" for op in self._operations_queue)
+
+        # For lazy DataFrames with operations queued, allow column references from original context
+        # PySpark allows filtering on columns from original DataFrame even after select
+        in_lazy_context = len(self._operations_queue) > 0
+
         self._get_validation_handler().validate_filter_expression(
             self.schema, condition, operation, has_pending_joins
         )
+
+        # Also validate expression columns with lazy materialization flag for proper column resolution
+        if in_lazy_context:
+            self._get_validation_handler().validate_expression_columns(
+                self.schema, condition, operation, in_lazy_materialization=True
+            )
 
     def _validate_expression_columns(
         self,

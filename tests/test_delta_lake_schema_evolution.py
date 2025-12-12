@@ -3,10 +3,26 @@ Comprehensive tests for Delta Lake schema evolution in mock-spark.
 
 These tests validate that mock-spark behaves like PySpark for schema evolution,
 specifically for Delta Lake features like overwriteSchema and schema merging.
+
+Note: These tests are primarily for mock-spark's schema evolution features.
+When running with PySpark, some tests may be skipped or need special handling
+due to differences in table management and schema evolution behavior.
 """
 
-from mock_spark import functions as F
-from mock_spark import StringType, IntegerType, DoubleType
+from tests.fixtures.spark_backend import get_backend_type, BackendType
+
+# Import appropriate types and functions based on backend
+_backend = get_backend_type()
+if _backend == BackendType.PYSPARK:
+    try:
+        from pyspark.sql import functions as F
+        from pyspark.sql.types import StringType, IntegerType, DoubleType
+    except ImportError:
+        from mock_spark import functions as F
+        from mock_spark import StringType, IntegerType, DoubleType
+else:
+    from mock_spark import functions as F
+    from mock_spark import StringType, IntegerType, DoubleType
 
 
 class TestDeltaLakeSchemaEvolution:
@@ -48,91 +64,163 @@ class TestDeltaLakeSchemaEvolution:
 
     def test_immediate_table_access(self, spark):
         """Test that table is immediately accessible after saveAsTable."""
-        spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        import uuid
+
+        # Use unique table name to avoid conflicts when running with PySpark
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"test_schema_{table_suffix}"
+        table_name = f"{schema_name}.test_table"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         df = spark.createDataFrame([(1, "test")], ["id", "name"])
 
         # Write table
-        df.write.mode("overwrite").saveAsTable("test_schema.test_table")
+        df.write.mode("overwrite").saveAsTable(table_name)
 
         # Should be immediately accessible (no delay, no retry needed)
-        table = spark.table("test_schema.test_table")
+        table = spark.table(table_name)
         assert table is not None
         assert table.count() == 1
         assert "id" in table.columns
         assert "name" in table.columns
 
+        # Cleanup
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass  # Ignore cleanup errors
+
     def test_basic_schema_evolution(self, spark):
         """Test basic schema evolution: add new columns."""
-        spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        import uuid
+
+        # Use unique table name to avoid conflicts when running with PySpark
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"test_schema_{table_suffix}"
+        table_name = f"{schema_name}.users"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         # Initial table
         df1 = spark.createDataFrame([(1, "Alice")], ["id", "name"])
-        df1.write.mode("overwrite").saveAsTable("test_schema.users")
+        df1.write.mode("overwrite").saveAsTable(table_name)
 
         # Add new column with overwriteSchema
         df2 = spark.createDataFrame([(1, "Alice", 25)], ["id", "name", "age"])
         df2.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(
-            "test_schema.users"
+            table_name
         )
 
-        result = spark.table("test_schema.users")
+        result = spark.table(table_name)
         assert set(result.columns) == {"id", "name", "age"}
+
+        # Cleanup
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass  # Ignore cleanup errors
 
     def test_overwrite_schema_option(self, spark):
         """Test that overwriteSchema option preserves existing columns."""
-        spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        import uuid
+
+        # Use unique table name to avoid conflicts when running with PySpark
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"test_schema_{table_suffix}"
+        table_name = f"{schema_name}.users"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         # Create initial table
         df1 = spark.createDataFrame([(1, "Alice")], ["id", "name"])
-        df1.write.mode("overwrite").saveAsTable("test_schema.users")
+        df1.write.mode("overwrite").saveAsTable(table_name)
 
         # Verify initial schema
-        table1 = spark.table("test_schema.users")
+        table1 = spark.table(table_name)
         assert set(table1.columns) == {"id", "name"}
 
         # Add new column with overwriteSchema
         df2 = spark.createDataFrame([(1, "Alice", 25)], ["id", "name", "age"])
         df2.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(
-            "test_schema.users"
+            table_name
         )
 
         # Verify schema evolution: existing columns preserved, new column added
-        table2 = spark.table("test_schema.users")
+        table2 = spark.table(table_name)
         assert "id" in table2.columns
         assert "name" in table2.columns
         assert "age" in table2.columns
         assert len(table2.columns) == 3
 
+        # Cleanup
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass  # Ignore cleanup errors
+
     def test_preserve_existing_columns(self, spark):
-        """Test that existing columns are preserved when adding new ones."""
-        spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        """Test that overwriteSchema completely overwrites the schema (PySpark behavior).
+
+        Note: In PySpark, overwriteSchema=true means completely overwrite the schema,
+        NOT merge/preserve existing columns. This test verifies that behavior.
+        """
+        import uuid
+
+        # Use unique table name to avoid conflicts when running with PySpark
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"test_schema_{table_suffix}"
+        table_name = f"{schema_name}.data"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         # Initial: [id, name, value]
         df1 = spark.createDataFrame([(1, "Alice", 100)], ["id", "name", "value"])
-        df1.write.mode("overwrite").saveAsTable("test_schema.data")
+        df1.write.mode("overwrite").saveAsTable(table_name)
 
         # Overwrite with: [id, age] (missing name and value)
         df2 = spark.createDataFrame([(1, 25)], ["id", "age"])
         df2.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(
-            "test_schema.data"
+            table_name
         )
 
-        result = spark.table("test_schema.data")
+        result = spark.table(table_name)
         assert "id" in result.columns
-        assert "name" in result.columns  # Should be preserved
-        assert "value" in result.columns  # Should be preserved
         assert "age" in result.columns  # New column
+        # PySpark behavior: overwriteSchema completely overwrites, doesn't preserve
+        assert "name" not in result.columns  # Should NOT be preserved
+        assert "value" not in result.columns  # Should NOT be preserved
+
+        # Cleanup
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass  # Ignore cleanup errors
 
     def test_schema_merge_on_overwrite(self, spark):
-        """Test that overwrite preserves existing columns when overwriteSchema=true."""
-        spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
+        """Test that overwriteSchema completely overwrites the schema (PySpark behavior).
+
+        Note: In PySpark, overwriteSchema=true means completely overwrite the schema,
+        NOT merge/preserve existing columns. This test verifies that behavior.
+        """
+        import uuid
+
+        # Use unique table name to avoid conflicts when running with PySpark
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"test_schema_{table_suffix}"
+        table_name = f"{schema_name}.users"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
         # Initial table with columns: [id, name, value]
         df1 = spark.createDataFrame(
             [(1, "Alice", 100), (2, "Bob", 200)], ["id", "name", "value"]
         )
-        df1.write.mode("overwrite").saveAsTable("test_schema.users")
+        df1.write.mode("overwrite").saveAsTable(table_name)
 
         # Overwrite with new columns but missing some existing
         # New DataFrame has: [id, age, city] (missing name and value)
@@ -140,22 +228,23 @@ class TestDeltaLakeSchemaEvolution:
             [(1, 25, "NYC"), (2, 30, "LA")], ["id", "age", "city"]
         )
 
-        # With overwriteSchema=true, should preserve name and value (with nulls)
+        # With overwriteSchema=true, PySpark completely overwrites the schema
         df2.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(
-            "test_schema.users"
+            table_name
         )
 
-        # Verify all columns exist
-        result = spark.table("test_schema.users")
+        # Verify: PySpark behavior is to completely overwrite, not merge
+        result = spark.table(table_name)
         assert "id" in result.columns
-        assert "name" in result.columns  # Preserved from original
-        assert "value" in result.columns  # Preserved from original
         assert "age" in result.columns  # New column
         assert "city" in result.columns  # New column
+        # PySpark behavior: overwriteSchema completely overwrites, doesn't preserve
+        assert "name" not in result.columns  # Should NOT be preserved
+        assert "value" not in result.columns  # Should NOT be preserved
 
-        # Verify null values for missing columns
-        rows = result.collect()
-        assert rows[0]["name"] is None  # Should be null (wasn't in new DataFrame)
-        assert rows[0]["value"] is None  # Should be null
-        assert rows[0]["age"] == 25  # Should have value from new DataFrame
-        assert rows[0]["city"] == "NYC"  # Should have value from new DataFrame
+        # Cleanup
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass  # Ignore cleanup errors
