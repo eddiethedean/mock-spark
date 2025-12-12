@@ -300,7 +300,10 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
                     if idx < len(row_values)
                 }
                 # Normalize Row objects to dicts recursively
-                return _normalize_row_to_dict(result_dict)
+                normalized = _normalize_row_to_dict(result_dict)
+                if isinstance(normalized, dict):
+                    return normalized
+                return {}
         except (TypeError, AttributeError):
             pass
 
@@ -312,12 +315,16 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
             base = row.asDict()
         # Normalize nested Row objects to dicts
         normalized_base = _normalize_row_to_dict(base)
+        if not isinstance(normalized_base, dict):
+            normalized_base = {}
         # Fallback to dict lookup (will only get last value for duplicates)
         return {col: normalized_base.get(col) for col in columns}
 
     if isinstance(row, dict):
         normalized_row = _normalize_row_to_dict(row)
-        return {col: normalized_row.get(col) for col in columns}
+        if isinstance(normalized_row, dict):
+            return {col: normalized_row.get(col) for col in columns}
+        return {col: row.get(col) for col in columns}  # Fallback to original dict
 
     if (
         isinstance(row, Sequence)
@@ -325,7 +332,10 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
         and len(row) == len(columns)
     ):
         result_dict = {col: row[idx] for idx, col in enumerate(columns)}
-        return _normalize_row_to_dict(result_dict)
+        normalized = _normalize_row_to_dict(result_dict)
+        if isinstance(normalized, dict):
+            return normalized
+        return result_dict
 
     result: dict[str, Any] = {}
     for col in columns:
@@ -336,7 +346,10 @@ def _row_to_dict(row: Any, columns: Sequence[str]) -> dict[str, Any]:
             value = getattr(row, col, None)
         result[col] = value
     # Normalize the result to handle nested Row objects
-    return _normalize_row_to_dict(result)
+    normalized = _normalize_row_to_dict(result)
+    if isinstance(normalized, dict):
+        return normalized
+    return result
 
 
 def _sort_rows(

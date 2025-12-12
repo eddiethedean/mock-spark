@@ -109,12 +109,17 @@ class ResultCapture:
         if isinstance(row, dict):
             return row
         elif hasattr(row, "asDict"):
-            return row.asDict()
+            as_dict_result = row.asDict()
+            if isinstance(as_dict_result, dict):
+                return as_dict_result
+            return {}  # Fallback to empty dict if asDict doesn't return dict
         else:
             # Try to convert to dict
-            result = {}
+            result: dict[str, Any] = {}
             if hasattr(row, "__dict__"):
-                result = row.__dict__
+                row_dict = row.__dict__
+                if isinstance(row_dict, dict):
+                    result = row_dict
             elif hasattr(row, "_fields"):
                 # Row-like object
                 for field in row._fields:
@@ -135,7 +140,7 @@ class ResultCapture:
             return None
 
         with open(baseline_file) as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore[no-any-return]
 
     def compare_with_baseline(
         self, test_name: str, current_result: Any
@@ -157,6 +162,9 @@ class ResultCapture:
         baseline_serialized = baseline.get("pyspark_result") or baseline.get(
             "mock_result"
         )
+
+        if baseline_serialized is None:
+            return False, "No baseline serialized result found"
 
         if current_serialized.get("count") != baseline_serialized.get("count"):
             return False, "Row count mismatch"

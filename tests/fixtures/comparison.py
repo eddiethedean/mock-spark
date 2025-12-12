@@ -106,8 +106,11 @@ def _compare_types(mock_type: Any, pyspark_type: Any) -> bool:
         "TimestampType": "TimestampType",
     }
 
-    mock_normalized = type_mapping.get(mock_type_name, mock_type_name)
-    pyspark_normalized = type_mapping.get(pyspark_type_name, pyspark_type_name)
+    # Type narrowing: ensure type names are strings
+    mock_type_str = str(mock_type_name) if mock_type_name is not None else ""
+    pyspark_type_str = str(pyspark_type_name) if pyspark_type_name is not None else ""
+    mock_normalized = type_mapping.get(mock_type_str, mock_type_str)
+    pyspark_normalized = type_mapping.get(pyspark_type_str, pyspark_type_str)
 
     return mock_normalized == pyspark_normalized
 
@@ -251,7 +254,7 @@ def _compare_values(mock_val: Any, pyspark_val: Any, tolerance: float = 1e-6) ->
         )
 
     # Default comparison
-    return mock_val == pyspark_val
+    return bool(mock_val == pyspark_val)
 
 
 def _sort_rows(rows: list[Any], columns: list[str]) -> list[Any]:
@@ -274,7 +277,7 @@ def _sort_rows(rows: list[Any], columns: list[str]) -> list[Any]:
             if val is None:
                 values.append("")
             elif isinstance(val, (int, float)):
-                values.append(val)
+                values.append(str(val))  # Convert numbers to strings for consistent typing
             else:
                 values.append(str(val))
         return tuple(values)
