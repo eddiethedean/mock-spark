@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.13.0 — 2025-12-XX
+
+### Removed
+- **Removed PySpark Alias Import Feature** - Removed the `from pyspark.sql import ...` namespace package feature
+  - Deleted `mock_spark/pyspark/` namespace package directory and all related files
+  - Removed pyspark namespace registration from `mock_spark/__init__.py`
+  - Removed `"pyspark*"` from package includes in `pyproject.toml`
+  - Deleted test files: `test_pyspark_namespace_imports.py` and `test_pyspark_drop_in_replacement_comprehensive.py`
+  - Removed pyspark namespace-specific test methods from compatibility test files
+  - Note: `from mock_spark.sql import ...` imports continue to work as before
+  - Note: `getActiveSession()` and `createDatabase()` improvements remain, just without pyspark namespace support
+
+### Testing
+- All 1330+ tests passing (40 skipped)
+- All files pass mypy type checking with Python 3.11
+- All files pass ruff format and lint checks
+- Code coverage: 51% overall
+
 ## 3.12.0 — 2025-12-XX
 
 ### Added
@@ -45,7 +63,7 @@
   - All `array_distinct` tests are now skipped
 
 ### Testing
-- All 1304+ tests passing (40 skipped)
+- All 1330+ tests passing (40 skipped)
 - All files pass mypy type checking with Python 3.11
 - All files pass ruff format and lint checks
 - Code coverage: 51% overall

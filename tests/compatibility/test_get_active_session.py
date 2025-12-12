@@ -167,27 +167,6 @@ class TestGetActiveSession:
             assert has_active is True
             assert app_name == name
 
-    def test_get_active_session_from_pyspark_namespace(self):
-        """Test getActiveSession() works when imported from pyspark namespace."""
-        try:
-            from pyspark.sql import SparkSession as PySparkSession
-
-            # Clear existing sessions
-            SparkSession._singleton_session = None
-            SparkSession._active_sessions.clear()
-
-            spark = PySparkSession("pyspark_test")
-            try:
-                active = PySparkSession.getActiveSession()
-                assert active is not None
-                assert active is spark
-            finally:
-                spark.stop()
-        except ImportError:
-            # If real PySpark is installed and takes precedence, skip
-            pytest.skip("Real PySpark takes precedence, cannot test mock-spark namespace")
-
-
 @pytest.mark.compatibility
 class TestGetActiveSessionIntegration:
     """Integration tests for getActiveSession() with DataFrame operations."""

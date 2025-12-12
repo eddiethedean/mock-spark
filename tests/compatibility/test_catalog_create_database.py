@@ -149,26 +149,6 @@ class TestCatalogCreateDatabase:
         assert db_names.count("TestDB") == 1
         assert db_names.count("testdb") == 1
 
-    def test_create_database_from_pyspark_namespace(self, spark):
-        """Test createDatabase works when using pyspark namespace."""
-        try:
-            from pyspark.sql import SparkSession as PySparkSession
-
-            pyspark_session = PySparkSession("pyspark_catalog_test")
-            try:
-                pyspark_session.catalog.createDatabase("pyspark_test_db", ignoreIfExists=True)
-
-                # Verify it was created
-                databases = pyspark_session.catalog.listDatabases()
-                db_names = [db.name for db in databases]
-                assert "pyspark_test_db" in db_names
-            finally:
-                pyspark_session.stop()
-        except ImportError:
-            # If real PySpark is installed and takes precedence, skip
-            pytest.skip("Real PySpark takes precedence, cannot test mock-spark namespace")
-
-
 @pytest.mark.compatibility
 class TestCatalogCreateDatabaseEdgeCases:
     """Test edge cases and error scenarios for createDatabase()."""
