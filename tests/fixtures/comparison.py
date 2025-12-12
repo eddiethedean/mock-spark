@@ -277,7 +277,9 @@ def _sort_rows(rows: list[Any], columns: list[str]) -> list[Any]:
             if val is None:
                 values.append("")
             elif isinstance(val, (int, float)):
-                values.append(str(val))  # Convert numbers to strings for consistent typing
+                values.append(
+                    str(val)
+                )  # Convert numbers to strings for consistent typing
             else:
                 values.append(str(val))
         return tuple(values)
