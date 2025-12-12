@@ -69,7 +69,8 @@ class Functions:
         if session is not None:
             return session
 
-        active = SparkSession._singleton_session
+        # Use getActiveSession() for PySpark compatibility
+        active = SparkSession.getActiveSession()
         if active is not None:
             return active
 

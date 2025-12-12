@@ -77,7 +77,7 @@ Issues = "https://github.com/eddiethedean/mock-spark/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mock_spark*"]
+include = ["mock_spark*", "pyspark*"]
 
 [tool.setuptools.package-data]
 mock_spark = ["py.typed"]

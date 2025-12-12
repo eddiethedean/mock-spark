@@ -216,3 +216,18 @@ from . import sql  # noqa: E402
 
 # Register sql module in sys.modules
 sys.modules["mock_spark.sql"] = sql
+
+# ==============================================================================
+# PYSPARK NAMESPACE - Support "from pyspark.sql import ..."
+# ==============================================================================
+# This allows mock-spark to be used as a drop-in replacement for pyspark
+# by providing a pyspark namespace that works identically to PySpark imports
+
+from . import pyspark  # noqa: E402
+
+# Register pyspark namespace in sys.modules
+sys.modules["pyspark"] = pyspark
+sys.modules["pyspark.sql"] = pyspark.sql
+sys.modules["pyspark.sql.types"] = pyspark.sql.types
+sys.modules["pyspark.sql.functions"] = pyspark.sql.functions
+sys.modules["pyspark.sql.utils"] = pyspark.sql.utils

@@ -1,15 +1,17 @@
 # Storage API Guide
 
+**⚠️ Important:** The `spark.storage` API is a **mock-spark-specific convenience feature** that does not exist in PySpark. For code that needs to work with both mock-spark and PySpark, use SQL commands or DataFrame operations instead.
+
 This guide explains the two ways to manage databases and tables in mock-spark, and when to use each approach.
 
 ## Overview
 
 Mock-spark provides two APIs for managing storage:
 
-1. **PySpark-Compatible APIs** (SQL commands) - Use for compatibility
-2. **mock-spark Convenience APIs** (`.storage` API) - Use for testing convenience
+1. **PySpark-Compatible APIs** (SQL commands) - ✅ Use for compatibility with PySpark
+2. **mock-spark Convenience APIs** (`.storage` API) - ⚠️ Mock-spark-specific, not available in PySpark
 
-Both work identically, but the SQL commands are portable between mock-spark and PySpark.
+Both work identically in mock-spark, but **only SQL commands are portable** between mock-spark and PySpark.
 
 ## PySpark-Compatible APIs (Recommended for Compatibility)
 

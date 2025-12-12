@@ -23,6 +23,9 @@ class TestFixtureCompatibility:
 
     def test_multiple_sessions_in_fixture(self):
         """Test that multiple sessions can be created in fixtures."""
+        # Get initial count to account for sessions from other tests
+        initial_count = len(SparkSession._active_sessions)
+        
         spark1 = SparkSession("test1")
         spark2 = SparkSession("test2")
 
@@ -30,11 +33,16 @@ class TestFixtureCompatibility:
             assert spark1.app_name == "test1"
             assert spark2.app_name == "test2"
 
-            # Both should be active
-            assert len(SparkSession._active_sessions) == 2
+            # Both should be active (initial + 2 new sessions)
+            assert len(SparkSession._active_sessions) == initial_count + 2
+            assert spark1 in SparkSession._active_sessions
+            assert spark2 in SparkSession._active_sessions
         finally:
             spark2.stop()
             spark1.stop()
+            
+            # Verify cleanup
+            assert len(SparkSession._active_sessions) == initial_count
 
     def test_session_context_manager(self):
         """Test that session works as context manager."""

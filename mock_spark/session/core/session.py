@@ -113,7 +113,7 @@ class SparkSession:
             self.storage = storage_backend
         from typing import cast
 
-        self._catalog = Catalog(self.storage)
+        self._catalog = Catalog(self.storage, spark=self)
         self.sparkContext = SparkContext(app_name)
         self._conf = Configuration()
         from ..._version import __version__
@@ -541,6 +541,31 @@ class SparkSession:
         Returns:
             The most recent active SparkSession, or None if no sessions are active.
         """
+        if cls._active_sessions:
+            return cls._active_sessions[-1]
+        return None
+
+    @classmethod
+    def getActiveSession(cls) -> Optional["SparkSession"]:
+        """Get the currently active SparkSession (PySpark-compatible).
+
+        This method matches PySpark's SparkSession.getActiveSession() API,
+        allowing code written for PySpark to work seamlessly with mock-spark.
+
+        Returns:
+            The currently active SparkSession, or None if no session is active.
+            Prefers singleton session if available, otherwise returns the most
+            recent active session.
+
+        Example:
+            >>> spark = SparkSession("MyApp")
+            >>> active = SparkSession.getActiveSession()
+            >>> assert active is spark
+        """
+        # Prefer singleton session (matches PySpark behavior)
+        if cls._singleton_session is not None:
+            return cls._singleton_session
+        # Fallback to most recent active session
         if cls._active_sessions:
             return cls._active_sessions[-1]
         return None

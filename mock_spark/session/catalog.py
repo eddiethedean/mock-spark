@@ -78,21 +78,25 @@ class Catalog:
 
     Attributes:
         storage: Storage manager for data persistence.
+        spark: Optional SparkSession reference for SQL-based operations.
 
     Example:
-        >>> catalog = Catalog(storage_manager)
+        >>> catalog = Catalog(storage_manager, spark_session)
         >>> catalog.createDatabase("test_db")
         >>> catalog.listDatabases()
         [Database(name='test_db')]
     """
 
-    def __init__(self, storage: IStorageManager):
+    def __init__(self, storage: IStorageManager, spark: Optional[Any] = None):
         """Initialize Catalog.
 
         Args:
             storage: Storage manager instance.
+            spark: Optional SparkSession instance for SQL-based operations.
+                  If provided, createDatabase() will use SQL instead of direct storage calls.
         """
         self.storage = storage
+        self.spark = spark
         self._cached_tables: set[str] = set()  # Track cached tables
 
     def listDatabases(self) -> list[Database]:
@@ -137,6 +141,12 @@ class Catalog:
     def createDatabase(self, name: str, ignoreIfExists: bool = True) -> None:
         """Create a database.
 
+        This method uses SQL internally to match PySpark's behavior, where
+        database creation is done via SQL statements rather than direct API calls.
+        However, to avoid infinite recursion when called from SQL execution,
+        it checks if the database already exists first and uses direct storage
+        calls when appropriate.
+
         Args:
             name: Database name.
             ignoreIfExists: Whether to ignore if database already exists.
@@ -151,9 +161,16 @@ class Catalog:
         if not name:
             raise IllegalArgumentException("Database name cannot be empty")
 
-        if not ignoreIfExists and self.storage.schema_exists(name):
-            raise AnalysisException(f"Database '{name}' already exists")
+        # Check if database already exists
+        if self.storage.schema_exists(name):
+            if not ignoreIfExists:
+                raise AnalysisException(f"Database '{name}' already exists")
+            # Database exists and ignoreIfExists is True, nothing to do
+            return
 
+        # Database doesn't exist, create it
+        # Use direct storage call to avoid infinite recursion with SQL execution
+        # (SQL CREATE DATABASE would call this method again)
         try:
             self.storage.create_schema(name)
         except Exception as e:

@@ -27,7 +27,8 @@ class ExpressionFunctions:
         """
         from mock_spark.session.core.session import SparkSession
 
-        if not SparkSession._has_active_session():
+        # Use getActiveSession() for PySpark compatibility
+        if SparkSession.getActiveSession() is None:
             raise RuntimeError(
                 f"Cannot perform {operation_name}: "
                 "No active SparkSession found. "
