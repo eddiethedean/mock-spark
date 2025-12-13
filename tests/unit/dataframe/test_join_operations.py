@@ -3,8 +3,8 @@ Unit tests for join operations.
 """
 
 import pytest
-from mock_spark.dataframe.operations.join_operations import JoinOperationsStatic
-from mock_spark import SparkSession
+from sparkless.dataframe.operations.join_operations import JoinOperationsStatic
+from sparkless import SparkSession
 
 
 @pytest.mark.unit

@@ -1,0 +1,557 @@
+"""Schema management and inference for DataFrame operations."""
+
+from typing import Any, Optional, Union, TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from ...dataframe import DataFrame
+
+from ...spark_types import (
+    StructType,
+    StructField,
+    DataType,
+    BooleanType,
+    LongType,
+    StringType,
+    DoubleType,
+    IntegerType,
+    DateType,
+    TimestampType,
+    DecimalType,
+    ArrayType,
+    MapType,
+)
+from ...functions import Literal, Column, ColumnOperation
+from ...core.ddl_adapter import parse_ddl_schema
+
+
+class SchemaManager:
+    """Manages schema projection and type inference for DataFrame operations.
+
+    This class handles:
+    - Schema projection after queued lazy operations
+    - Type inference for select operations
+    - Type inference for withColumn operations
+    - Type inference for join operations
+    - Cast type string parsing
+    """
+
+    @staticmethod
+    def project_schema_with_operations(
+        base_schema: StructType, operations_queue: list[tuple[str, Any]]
+    ) -> StructType:
+        """Compute schema after applying queued lazy operations.
+
+        Iterates through operations queue and projects resulting schema
+        without materializing data.
+
+        Preserves base schema fields even when data is empty.
+        """
+        # Ensure base_schema has fields attribute
+        if not hasattr(base_schema, "fields"):
+            # Fallback to empty schema if fields attribute missing
+            fields_map: dict[str, StructField] = {}
+        else:
+            # Preserve base schema fields - this works even for empty DataFrames with schemas
+            fields_map = {f.name: f for f in base_schema.fields}
+
+        for op_name, op_val in operations_queue:
+            if op_name == "filter":
+                # no schema change
+                continue
+            elif op_name == "select":
+                fields_map = SchemaManager._handle_select_operation(fields_map, op_val)
+            elif op_name == "withColumn":
+                col_name, col = op_val
+                fields_map = SchemaManager._handle_withcolumn_operation(
+                    fields_map, col_name, col, base_schema
+                )
+            elif op_name == "drop":
+                fields_map = SchemaManager._handle_drop_operation(fields_map, op_val)
+            elif op_name == "join":
+                other_df, on, how = op_val
+                # For joins, return immediately to preserve duplicate column names (PySpark behavior)
+                # Build a list instead of dict to allow duplicates
+                fields_list = list(fields_map.values())
+                # Add all fields from right DataFrame (may create duplicates - that's PySpark behavior)
+                for field in other_df.schema.fields:
+                    fields_list.append(field)
+                # For semi/anti joins, only return left DataFrame columns
+                if how and how.lower() in ("semi", "anti", "left_semi", "left_anti"):
+                    return StructType(list(fields_map.values()))
+                return StructType(fields_list)
+
+        return StructType(list(fields_map.values()))
+
+    @staticmethod
+    def _handle_select_operation(
+        fields_map: dict[str, StructField], columns: tuple[Any, ...]
+    ) -> dict[str, StructField]:
+        """Handle select operation schema changes."""
+        new_fields_map = {}
+
+        for col in columns:
+            if isinstance(col, str):
+                if col == "*":
+                    # Add all existing fields
+                    new_fields_map.update(fields_map)
+                elif col in fields_map:
+                    new_fields_map[col] = fields_map[col]
+            elif hasattr(col, "name"):
+                col_name = col.name
+                if col_name == "*":
+                    # Add all existing fields
+                    new_fields_map.update(fields_map)
+                elif col_name in fields_map:
+                    new_fields_map[col_name] = fields_map[col_name]
+                elif isinstance(col, Literal):
+                    # For Literal objects - literals are never nullable
+                    new_fields_map[col_name] = SchemaManager._create_literal_field(col)
+                else:
+                    # New column from expression - infer type based on operation
+                    new_fields_map[col_name] = SchemaManager._infer_expression_type(col)
+
+        return new_fields_map
+
+    @staticmethod
+    def _handle_withcolumn_operation(
+        fields_map: dict[str, StructField],
+        col_name: str,
+        col: Union[Column, ColumnOperation, Literal, Any],
+        base_schema: StructType,
+    ) -> dict[str, StructField]:
+        """Handle withColumn operation schema changes."""
+        col_any = cast("Any", col)
+        operation = getattr(col_any, "operation", None)
+
+        if operation is not None and hasattr(col_any, "name"):
+            if operation == "cast":
+                # Cast operation - use the target data type from col.value
+                # This handles F.lit(None).cast(TimestampType()) correctly
+                cast_type = getattr(col_any, "value", None)
+                if isinstance(cast_type, str):
+                    fields_map[col_name] = StructField(
+                        col_name, SchemaManager.parse_cast_type_string(cast_type), nullable=True
+                    )
+                else:
+                    # Already a DataType object
+                    if isinstance(cast_type, DataType):
+                        # Create a new instance with nullable=True
+                        # This is critical for F.lit(None).cast() - the column should be nullable
+                        type_class = type(cast_type)
+                        if type_class in (
+                            StringType,
+                            IntegerType,
+                            LongType,
+                            DoubleType,
+                            BooleanType,
+                            DateType,
+                            TimestampType,
+                        ):
+                            # Simple types that take nullable parameter
+                            new_type = type_class(nullable=True)
+                        elif isinstance(cast_type, ArrayType):
+                            new_type = ArrayType(cast_type.element_type, nullable=True)
+                        elif isinstance(cast_type, MapType):
+                            new_type = MapType(
+                                cast_type.key_type, cast_type.value_type, nullable=True
+                            )
+                        else:
+                            # For other types, try to preserve nullable=True
+                            try:
+                                new_type = type_class(nullable=True)
+                            except (TypeError, ValueError):
+                                # If type doesn't support nullable parameter, use as-is
+                                new_type = cast_type
+                        fields_map[col_name] = StructField(col_name, new_type, nullable=True)
+                    elif cast_type is not None:
+                        fields_map[col_name] = StructField(col_name, cast_type, nullable=True)
+                    else:
+                        fields_map[col_name] = StructField(col_name, StringType(), nullable=True)
+            elif operation in ["+", "-", "*", "/", "%"]:
+                # Arithmetic operations - infer type from operands
+                data_type = SchemaManager._infer_arithmetic_type(col_any, base_schema)
+                fields_map[col_name] = StructField(col_name, data_type)
+            elif operation in ["abs"]:
+                fields_map[col_name] = StructField(col_name, LongType())
+            elif operation in ["length"]:
+                fields_map[col_name] = StructField(col_name, IntegerType())
+            elif operation in ["round"]:
+                data_type = SchemaManager._infer_round_type(col_any)
+                fields_map[col_name] = StructField(col_name, data_type)
+            elif operation in ["upper", "lower"]:
+                fields_map[col_name] = StructField(col_name, StringType())
+            elif operation == "datediff":
+                fields_map[col_name] = StructField(col_name, IntegerType())
+            elif operation == "months_between":
+                fields_map[col_name] = StructField(col_name, DoubleType())
+            elif operation in [
+                "hour",
+                "minute",
+                "second",
+                "day",
+                "dayofmonth",
+                "month",
+                "year",
+                "quarter",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+            ]:
+                fields_map[col_name] = StructField(col_name, IntegerType())
+            elif operation in ("from_json", "from_csv"):
+                struct_type = SchemaManager._resolve_struct_type(col_any)
+                fields_map[col_name] = StructField(
+                    col_name, struct_type if struct_type is not None else StructType([])
+                )
+            elif operation in ("to_json", "to_csv"):
+                alias = SchemaManager._build_function_alias(
+                    operation, col_any.column, col_name
+                )
+                fields_map[col_name] = StructField(alias, StringType())
+            else:
+                fields_map[col_name] = StructField(col_name, StringType())
+        elif isinstance(col, Literal):
+            # For Literal objects - check if it's been cast
+            # If the literal's value is None, it should be nullable
+            if col.value is None:
+                # None literals should be nullable, but we need to check if there's a cast
+                # Check if this Literal is wrapped in a ColumnOperation with cast
+                # This is handled by the operation check above, but if we reach here,
+                # it means the Literal itself is being used directly
+                # For None literals, default to StringType but make it nullable
+                fields_map[col_name] = StructField(col_name, col.data_type, nullable=True)
+            else:
+                # For non-None literals, they are never nullable
+                field = SchemaManager._create_literal_field(col)
+                fields_map[col_name] = StructField(col_name, field.dataType, field.nullable)
+        else:
+            # fallback literal inference
+            data_type = SchemaManager._infer_literal_type(col_any)
+            fields_map[col_name] = StructField(col_name, data_type)
+
+        return fields_map
+
+    @staticmethod
+    def _handle_drop_operation(
+        fields_map: dict[str, StructField],
+        columns_to_drop: Union[str, list[str], tuple[str, ...]],
+    ) -> dict[str, StructField]:
+        """Handle drop operation schema changes.
+
+        Args:
+            fields_map: Current schema fields map
+            columns_to_drop: Column name(s) to drop (string, list, or tuple)
+
+        Returns:
+            Updated fields_map with dropped columns removed
+        """
+        # Handle different formats for columns_to_drop
+        if isinstance(columns_to_drop, str):
+            # Single column name
+            columns_to_drop = [columns_to_drop]
+        elif isinstance(columns_to_drop, tuple):
+            # Convert tuple to list
+            columns_to_drop = list(columns_to_drop)
+
+        # Remove columns from fields_map
+        for col_name in columns_to_drop:
+            if col_name in fields_map:
+                del fields_map[col_name]
+
+        return fields_map
+
+    @staticmethod
+    def _handle_join_operation(
+        fields_map: dict[str, StructField],
+        other_df: "DataFrame",
+        how: str = "inner",
+    ) -> dict[str, StructField]:
+        """Handle join operation schema changes."""
+        # For semi/anti joins, only return left DataFrame columns
+        if how and how.lower() in ["semi", "anti", "left_semi", "left_anti"]:
+            # Don't add right DataFrame fields for semi/anti joins
+            return fields_map
+
+        # Add fields from the other DataFrame to the schema
+        for field in other_df.schema.fields:
+            # Avoid duplicate field names
+            if field.name not in fields_map:
+                fields_map[field.name] = field
+            else:
+                # Handle field name conflicts by prefixing
+                new_field = StructField(
+                    f"right_{field.name}", field.dataType, field.nullable
+                )
+                fields_map[f"right_{field.name}"] = new_field
+
+        return fields_map
+
+    @staticmethod
+    def _create_literal_field(col: Literal) -> StructField:
+        """Create a field for a Literal object."""
+        col_type = col.column_type
+        if isinstance(col_type, BooleanType):
+            data_type: DataType = BooleanType(nullable=False)
+        elif isinstance(col_type, IntegerType):
+            data_type = IntegerType(nullable=False)
+        elif isinstance(col_type, LongType):
+            data_type = LongType(nullable=False)
+        elif isinstance(col_type, DoubleType):
+            data_type = DoubleType(nullable=False)
+        elif isinstance(col_type, StringType):
+            data_type = StringType(nullable=False)
+        else:
+            # For other types, create a new instance with nullable=False
+            data_type = col_type.__class__(nullable=False)
+
+        return StructField(col.name, data_type, nullable=False)
+
+    @staticmethod
+    def _infer_expression_type(
+        col: Union[Column, ColumnOperation, Literal, Any],
+    ) -> StructField:
+        """Infer type for an expression column."""
+        if hasattr(col, "operation"):
+            operation = getattr(col, "operation", None)
+            if operation == "datediff":
+                return StructField(col.name, IntegerType())
+            elif operation == "months_between":
+                return StructField(col.name, DoubleType())
+            elif operation in [
+                "hour",
+                "minute",
+                "second",
+                "day",
+                "dayofmonth",
+                "month",
+                "year",
+                "quarter",
+                "dayofweek",
+                "dayofyear",
+                "weekofyear",
+            ]:
+                return StructField(col.name, IntegerType())
+            elif operation in ("from_json", "from_csv"):
+                struct_type = SchemaManager._resolve_struct_type(col)
+                return StructField(
+                    col.name, struct_type if struct_type is not None else StructType([])
+                )
+            elif operation in ("to_json", "to_csv"):
+                alias = SchemaManager._build_function_alias(
+                    operation, getattr(col, "column", None), col.name
+                )
+                return StructField(alias, StringType())
+            else:
+                # Default to StringType for unknown operations
+                return StructField(col.name, StringType())
+        else:
+            # No operation attribute - default to StringType
+            return StructField(col.name, StringType())
+
+    @staticmethod
+    def _resolve_struct_type(col: Union[ColumnOperation, Any]) -> Optional[StructType]:
+        """Extract StructType information from a column operation's schema argument."""
+        if not hasattr(col, "value"):
+            return None
+
+        value = getattr(col, "value")
+        schema_spec: Any = None
+        if isinstance(value, tuple) and len(value) >= 1:
+            schema_spec = value[0]
+        else:
+            schema_spec = value
+
+        return SchemaManager._coerce_to_struct_type(schema_spec)
+
+    @staticmethod
+    def _coerce_to_struct_type(schema_spec: Any) -> Optional[StructType]:
+        """Coerce various schema representations to StructType."""
+        if schema_spec is None:
+            return None
+
+        if isinstance(schema_spec, StructType):
+            return schema_spec
+
+        if isinstance(schema_spec, StructField):
+            return StructType([schema_spec])
+
+        if isinstance(schema_spec, Literal):
+            return SchemaManager._coerce_to_struct_type(schema_spec.value)
+
+        if hasattr(schema_spec, "value") and not isinstance(
+            schema_spec, (dict, list, str)
+        ):
+            return SchemaManager._coerce_to_struct_type(schema_spec.value)
+
+        if isinstance(schema_spec, str):
+            try:
+                return parse_ddl_schema(schema_spec)
+            except Exception:
+                return StructType([])
+
+        if isinstance(schema_spec, dict):
+            return StructType([StructField(name, StringType()) for name in schema_spec])
+
+        if isinstance(schema_spec, (list, tuple)):
+            collected_fields: list[StructField] = []
+            for item in schema_spec:
+                if isinstance(item, StructField):
+                    collected_fields.append(item)
+                elif isinstance(item, str):
+                    collected_fields.append(StructField(item, StringType()))
+            if collected_fields:
+                return StructType(collected_fields)
+
+        return None
+
+    @staticmethod
+    def _build_function_alias(operation: str, column_expr: Any, fallback: str) -> str:
+        if operation in ("to_json", "to_csv") and column_expr is not None:
+            struct_alias = SchemaManager._format_struct_alias(column_expr)
+            return f"{operation}({struct_alias})"
+        return fallback
+
+    @staticmethod
+    def _format_struct_alias(expr: Any) -> str:
+        names = SchemaManager._extract_struct_field_names(expr)
+        if names:
+            return f"struct({', '.join(names)})"
+        return "struct(...)"
+
+    @staticmethod
+    def _extract_struct_field_names(expr: Any) -> list[str]:
+        names: list[str] = []
+        if (
+            isinstance(expr, ColumnOperation)
+            and getattr(expr, "operation", None) == "struct"
+        ):
+            first = SchemaManager._extract_column_name(expr.column)
+            if first:
+                names.append(first)
+            additional = expr.value
+            if isinstance(additional, tuple):
+                for item in additional:
+                    name = SchemaManager._extract_column_name(item)
+                    if name:
+                        names.append(name)
+        else:
+            name = SchemaManager._extract_column_name(expr)
+            if name:
+                names.append(name)
+        return names
+
+    @staticmethod
+    def _extract_column_name(expr: Any) -> Optional[str]:
+        if isinstance(expr, Column):
+            return expr.name
+        if isinstance(expr, ColumnOperation) and hasattr(expr, "name"):
+            return expr.name
+        if isinstance(expr, str):
+            return expr
+        return getattr(expr, "name", None)
+
+    @staticmethod
+    def _infer_arithmetic_type(
+        col: Union[Column, ColumnOperation, Any], base_schema: StructType
+    ) -> DataType:
+        """Infer type for arithmetic operations."""
+        left_type = None
+        right_type = None
+
+        # Get left operand type (the column itself)
+        if hasattr(col, "name"):
+            for field in base_schema.fields:
+                if field.name == col.name:
+                    left_type = field.dataType
+                    break
+
+        # Get right operand type
+        right_operand = getattr(col, "value", None)
+        if right_operand is not None and hasattr(right_operand, "name"):
+            for field in base_schema.fields:
+                if field.name == right_operand.name:
+                    right_type = field.dataType
+                    break
+
+        # If either operand is DoubleType, result is DoubleType
+        if (left_type and isinstance(left_type, DoubleType)) or (
+            right_type and isinstance(right_type, DoubleType)
+        ):
+            return DoubleType()
+        else:
+            return LongType()
+
+    @staticmethod
+    def _infer_round_type(
+        col: Union[Column, ColumnOperation, Any],
+    ) -> DataType:
+        """Infer type for round operation."""
+        # round() should return the same type as its input
+        col_any = cast("Any", col)
+        column_operand = getattr(col_any, "column", None)
+        if (
+            column_operand is not None
+            and hasattr(column_operand, "operation")
+            and getattr(column_operand, "operation") == "cast"
+        ):
+            # If the input is a cast operation, check the target type
+            cast_type = getattr(column_operand, "value", "string")
+            if isinstance(cast_type, str) and cast_type.lower() in ["int", "integer"]:
+                return LongType()
+            else:
+                return DoubleType()
+        else:
+            # Default to DoubleType for other cases
+            return DoubleType()
+
+    @staticmethod
+    def _infer_literal_type(
+        col: Union[Literal, int, float, str, bool, Any],
+    ) -> DataType:
+        """Infer type for literal values."""
+        if isinstance(col, (int, float)):
+            if isinstance(col, float):
+                return DoubleType()
+            else:
+                return LongType()
+        else:
+            return StringType()
+
+    @staticmethod
+    def parse_cast_type_string(type_str: str) -> DataType:
+        """Parse a cast type string to DataType."""
+        type_str = type_str.strip().lower()
+
+        # Primitive types
+        if type_str in ["int", "integer"]:
+            return IntegerType()
+        elif type_str in ["long", "bigint"]:
+            return LongType()
+        elif type_str in ["double", "float"]:
+            return DoubleType()
+        elif type_str in ["string", "varchar"]:
+            return StringType()
+        elif type_str in ["boolean", "bool"]:
+            return BooleanType()
+        elif type_str == "date":
+            return DateType()
+        elif type_str == "timestamp":
+            return TimestampType()
+        elif type_str.startswith("decimal"):
+            import re
+
+            match = re.match(r"decimal\((\d+),(\d+)\)", type_str)
+            if match:
+                precision, scale = int(match.group(1)), int(match.group(2))
+                return DecimalType(precision, scale)
+            return DecimalType(10, 2)
+        elif type_str.startswith("array<"):
+            element_type_str = type_str[6:-1]
+            return ArrayType(SchemaManager.parse_cast_type_string(element_type_str))
+        elif type_str.startswith("map<"):
+            types = type_str[4:-1].split(",", 1)
+            key_type = SchemaManager.parse_cast_type_string(types[0].strip())
+            value_type = SchemaManager.parse_cast_type_string(types[1].strip())
+            return MapType(key_type, value_type)
+        else:
+            return StringType()  # Default fallback

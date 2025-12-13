@@ -1,11 +1,11 @@
 # Storage Serialization Guide
 
-This guide provides comprehensive documentation for Mock Spark's storage serialization capabilities, including CSV, JSON, and other format support.
+This guide provides comprehensive documentation for Sparkless's storage serialization capabilities, including CSV, JSON, and other format support.
 
 
 ## Overview
 
-Mock Spark provides a complete storage serialization system that supports multiple data formats:
+Sparkless provides a complete storage serialization system that supports multiple data formats:
 
 - **Parquet Storage** - Columnar storage format (default for Polars backend in v3.0.0+)
 - **CSV Serialization** - Comma-separated values format
@@ -21,8 +21,8 @@ The `CSVSerializer` class provides CSV serialization and deserialization capabil
 ### Basic Usage
 
 ```python
-from mock_spark.storage.serialization.csv import CSVSerializer
-from mock_spark.sql import SparkSession
+from sparkless.storage.serialization.csv import CSVSerializer
+from sparkless.sql import SparkSession
 
 # Create Spark session
 spark = SparkSession("CSVExample")
@@ -79,7 +79,7 @@ print(deserialized_data)
 ### Schema-Aware Serialization
 
 ```python
-from mock_spark.spark_types import MockStructType, MockStructField, StringType, IntegerType
+from sparkless.spark_types import MockStructType, MockStructField, StringType, IntegerType
 
 # Define schema
 schema = MockStructType([
@@ -121,7 +121,7 @@ The `JSONSerializer` class provides JSON serialization and deserialization capab
 ### Basic Usage
 
 ```python
-from mock_spark.storage.serialization.json import JSONSerializer
+from sparkless.storage.serialization.json import JSONSerializer
 
 # Create JSON serializer
 json_serializer = JSONSerializer()
@@ -208,7 +208,7 @@ df_read = spark.read.format("json").load("/path/to/json")
 # Note: Polars is the default backend (v3.0.0+)
 # DuckDB backend is available as optional/legacy backend
 
-from mock_spark.storage.backends.memory import MemoryStorageManager
+from sparkless.storage.backends.memory import MemoryStorageManager
 
 # Create storage manager (in-memory by default)
 storage = MemoryStorageManager()
@@ -227,7 +227,7 @@ deserialized_data = csv_serializer.deserialize(retrieved_data)
 ### Creating Custom Serializers
 
 ```python
-from mock_spark.storage.serialization.base import BaseSerializer
+from sparkless.storage.serialization.base import BaseSerializer
 
 class CustomSerializer(BaseSerializer):
     def serialize(self, data):
@@ -252,7 +252,7 @@ custom_data = custom_serializer.serialize(df.collect())
 ### Registering Custom Formats
 
 ```python
-from mock_spark.storage.serialization.registry import SerializationRegistry
+from sparkless.storage.serialization.registry import SerializationRegistry
 
 # Register custom format
 registry = SerializationRegistry()
@@ -318,7 +318,7 @@ for serialized_chunk in chunked_serialize(large_data, csv_serializer):
 ### Serialization Errors
 
 ```python
-from mock_spark.storage.serialization.exceptions import SerializationError
+from sparkless.storage.serialization.exceptions import SerializationError
 
 try:
     csv_data = csv_serializer.serialize(invalid_data)
@@ -340,7 +340,7 @@ except SerializationError as e:
 ### Validation Errors
 
 ```python
-from mock_spark.storage.serialization.exceptions import ValidationError
+from sparkless.storage.serialization.exceptions import ValidationError
 
 try:
     validated_data = csv_serializer.validate_and_deserialize(csv_data, schema)
@@ -377,4 +377,4 @@ json_serializer.set_debug(True)
 # Debug information will be printed during serialization/deserialization
 ```
 
-This comprehensive storage serialization guide provides everything you need to work with Mock Spark's serialization capabilities effectively.
+This comprehensive storage serialization guide provides everything you need to work with Sparkless's serialization capabilities effectively.

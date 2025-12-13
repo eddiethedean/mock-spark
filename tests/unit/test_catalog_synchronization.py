@@ -8,8 +8,8 @@ import pytest
 import tempfile
 import os
 import threading
-from mock_spark import SparkSession
-from mock_spark.sql import functions as F
+from sparkless import SparkSession
+from sparkless.sql import functions as F
 
 
 @pytest.mark.unit
@@ -262,7 +262,7 @@ class TestCatalogSynchronization:
     def test_empty_table_immediate_access(self, spark):
         """Test immediate access with empty tables."""
         # Create empty DataFrame with schema
-        from mock_spark.sql.types import (
+        from sparkless.sql.types import (
             StructType,
             StructField,
             IntegerType,
@@ -475,7 +475,7 @@ class TestCatalogSynchronization:
         """Test immediate access with complex data types."""
         # Note: Complex types like arrays and maps may have limitations in storage
         # Test with simpler complex scenario - nested structs or just verify basic access
-        from mock_spark.sql.types import (
+        from sparkless.sql.types import (
             StructType,
             StructField,
             StringType,

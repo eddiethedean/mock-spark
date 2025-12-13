@@ -1,15 +1,15 @@
-# Mock-Spark API Reference
+# Sparkless API Reference
 
 ## Overview
 
-Mock-Spark provides 100% API compatibility with PySpark while using Polars as the default backend. This reference covers all supported functions, classes, and operations.
+Sparkless provides 100% API compatibility with PySpark while using Polars as the default backend. This reference covers all supported functions, classes, and operations.
 
 ## Session Management
 
 ### SparkSession
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 # Create session
 spark = SparkSession("my_app")
@@ -50,7 +50,7 @@ df = spark.createDataFrame([
 ])
 
 # With explicit schema
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 schema = StructType([
     StructField("id", IntegerType(), True),
@@ -65,7 +65,7 @@ df = spark.createDataFrame(data, schema)
 # df = spark.createDataFrame([], ['col1', 'col2'])
 
 # ✅ Correct way:
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 empty_schema = StructType([
     StructField("col1", StringType(), True),
     StructField("col2", IntegerType(), True)
@@ -165,7 +165,7 @@ df.groupBy("department").agg(
 #### Basic Operations
 
 ```python
-from mock_spark.sql import functions as F
+from sparkless.sql import functions as F
 
 # Literal values
 F.lit("constant")
@@ -301,7 +301,7 @@ F.col("value").cast("int")  # May fail on invalid values
 ### Window Specification
 
 ```python
-from mock_spark.sql import Window
+from sparkless.sql import Window
 
 # Basic window
 window = Window.partitionBy("department").orderBy("salary")
@@ -349,7 +349,7 @@ F.first(F.col("value"), ignoreNulls=True).over(window)
 ### Primitive Types
 
 ```python
-from mock_spark.sql.types import *
+from sparkless.sql.types import *
 
 # Basic types
 StringType()
@@ -497,7 +497,7 @@ F.expr("DATE_ADD(date_col, 7)")
 ### Exception Types
 
 ```python
-from mock_spark.core.exceptions import *
+from sparkless.core.exceptions import *
 
 # Column not found
 MockSparkColumnNotFoundError
@@ -522,8 +522,8 @@ MockSparkQueryExecutionError
 spark.conf.set("spark.sql.debug", "true")
 
 # Or globally
-import mock_spark
-mock_spark.set_debug_mode(True)
+import sparkless
+sparkless.set_debug_mode(True)
 ```
 
 ## Performance Tips
@@ -560,7 +560,7 @@ df.storageLevel
 
 ```python
 import pytest
-from mock_spark import SparkSession
+from sparkless import SparkSession
 
 @pytest.fixture
 def spark():
@@ -617,7 +617,7 @@ See `docs/migration_from_pyspark.md` for detailed migration guide.
 ### Basic Data Processing
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 # Create session
 spark = SparkSession("data_processing")
@@ -642,7 +642,7 @@ print(result)
 ### Window Functions
 
 ```python
-from mock_spark.sql import Window
+from sparkless.sql import Window
 
 # Define window
 window = Window.partitionBy("department").orderBy("salary")
@@ -668,4 +668,4 @@ result = df.groupBy("department") \
     .collect()
 ```
 
-This API reference provides comprehensive documentation for all Mock-Spark functionality. For more examples and patterns, see `docs/testing_patterns.md`.
+This API reference provides comprehensive documentation for all Sparkless functionality. For more examples and patterns, see `docs/testing_patterns.md`.

@@ -1,8 +1,8 @@
-# Migrating from PySpark to Mock-Spark
+# Migrating from PySpark to Sparkless
 
 ## Overview
 
-Mock-Spark is a drop-in replacement for PySpark designed for testing and development. It provides 100% API compatibility with PySpark while using Polars as the default backend for fast, in-memory processing.
+Sparkless is a drop-in replacement for PySpark designed for testing and development. It provides 100% API compatibility with PySpark while using Polars as the default backend for fast, in-memory processing.
 
 ## Drop-in Replacement
 
@@ -16,8 +16,8 @@ from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import *
 
 # After  
-from mock_spark.sql import SparkSession, functions as F
-from mock_spark.sql.types import *
+from sparkless.sql import SparkSession, functions as F
+from sparkless.sql.types import *
 ```
 
 ### Session Creation
@@ -29,7 +29,7 @@ spark = SparkSession.builder \
     .config("spark.sql.adaptive.enabled", "true") \
     .getOrCreate()
 
-# Mock-Spark (identical API)
+# Sparkless (identical API)
 spark = SparkSession.builder \
     .appName("MyApp") \
     .config("spark.sql.adaptive.enabled", "true") \
@@ -41,7 +41,7 @@ spark = SparkSession.builder \
 All DataFrame operations work identically:
 
 ```python
-# Both PySpark and Mock-Spark
+# Both PySpark and Sparkless
 df = spark.createDataFrame([
     {"id": 1, "name": "Alice", "age": 25},
     {"id": 2, "name": "Bob", "age": 30}
@@ -79,18 +79,18 @@ result = df.filter(df.age > 25) \
 - **Debug Mode**: Enable SQL logging for troubleshooting
 - **Validation Rules**: String and list-based validation expressions
 - **Performance**: 10x faster than PySpark for most operations
-- **Storage API**: Convenient `.storage` API for database and table management (mock-spark-specific)
+- **Storage API**: Convenient `.storage` API for database and table management (sparkless-specific)
 
-### 📝 Mock-Spark-Specific Features
+### 📝 Sparkless-Specific Features
 
 #### Storage API
 
-Mock-Spark provides a convenient `.storage` API for managing databases and tables. This is a **mock-spark-specific feature** that doesn't exist in PySpark. In PySpark, you would use SQL commands instead.
+Sparkless provides a convenient `.storage` API for managing databases and tables. This is a **sparkless-specific feature** that doesn't exist in PySpark. In PySpark, you would use SQL commands instead.
 
-**Mock-Spark (using .storage API):**
+**Sparkless (using .storage API):**
 ```python
-from mock_spark.sql import SparkSession
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql import SparkSession
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 spark = SparkSession("MyApp")
 
@@ -133,10 +133,10 @@ df.write.saveAsTable("test_db.users")
 spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
 ```
 
-**Compatibility Note:** For maximum compatibility with PySpark, use SQL commands in mock-spark. Both approaches work in mock-spark, but SQL commands are portable to PySpark:
+**Compatibility Note:** For maximum compatibility with PySpark, use SQL commands in sparkless. Both approaches work in sparkless, but SQL commands are portable to PySpark:
 
 ```python
-# Works in both mock-spark and PySpark
+# Works in both sparkless and PySpark
 spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
 spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
 spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
@@ -177,7 +177,7 @@ df.select(F.array_contains(df.array_column, "value"))  # ✅ Works
 
 ### Speed Improvements
 
-Mock-Spark is significantly faster than PySpark for most operations:
+Sparkless is significantly faster than PySpark for most operations:
 
 - **Simple Operations**: 10-50x faster
 - **Complex Aggregations**: 5-20x faster  
@@ -199,8 +199,8 @@ Mock-Spark is significantly faster than PySpark for most operations:
 spark.conf.set("spark.sql.debug", "true")
 
 # Or set globally
-import mock_spark
-mock_spark.set_debug_mode(True)
+import sparkless
+sparkless.set_debug_mode(True)
 ```
 
 ### Common Error Messages
@@ -244,7 +244,7 @@ When debug mode is enabled, you'll see generated SQL:
 
 ```python
 import pytest
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 @pytest.fixture
 def spark():
@@ -304,7 +304,7 @@ def test_performance(spark):
 
 ### During Migration
 
-- [ ] Replace PySpark imports with Mock-Spark imports
+- [ ] Replace PySpark imports with Sparkless imports
 - [ ] Update session creation (usually no changes needed)
 - [ ] Test basic DataFrame operations
 - [ ] Verify column access patterns work
@@ -325,8 +325,8 @@ def test_performance(spark):
 
 ```python
 # If you get import errors
-from mock_spark.sql import SparkSession, functions as F
-from mock_spark.sql.types import *
+from sparkless.sql import SparkSession, functions as F
+from sparkless.sql.types import *
 ```
 
 ### Session Issues
@@ -342,7 +342,7 @@ spark = SparkSession.builder.appName("my_app").getOrCreate()
 
 ```python
 # If you get type errors, check your data types
-from mock_spark.sql.types import StringType, IntegerType, StructType, StructField
+from sparkless.sql.types import StringType, IntegerType, StructType, StructField
 
 schema = StructType([
     StructField("id", IntegerType(), True),
@@ -366,7 +366,7 @@ schema = StructType([
 
 ### Support
 
-For issues specific to Mock-Spark:
+For issues specific to Sparkless:
 
 1. Check the error message for specific guidance
 2. Enable debug mode to see generated SQL
@@ -379,7 +379,7 @@ For issues specific to Mock-Spark:
 ### Basic Data Processing
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 # Create session
 spark = SparkSession("data_processing")
@@ -404,7 +404,7 @@ print(result)
 ### Window Functions
 
 ```python
-from mock_spark.sql import Window
+from sparkless.sql import Window
 
 # Define window
 window = Window.partitionBy("department").orderBy("salary")
@@ -430,4 +430,4 @@ result = df.groupBy("department") \
     .collect()
 ```
 
-This migration guide should help you successfully transition from PySpark to Mock-Spark while maintaining full functionality and gaining significant performance improvements.
+This migration guide should help you successfully transition from PySpark to Sparkless while maintaining full functionality and gaining significant performance improvements.

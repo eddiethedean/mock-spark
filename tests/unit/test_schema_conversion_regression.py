@@ -11,8 +11,8 @@ try:
 except ImportError:
     MetaData = None
 
-from mock_spark import SparkSession
-from mock_spark.spark_types import (
+from sparkless import SparkSession
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,
@@ -22,7 +22,7 @@ from mock_spark.spark_types import (
 )
 
 try:
-    from mock_spark.storage.sqlalchemy_helpers import create_table_from_mock_schema
+    from sparkless.storage.sqlalchemy_helpers import create_table_from_mock_schema
 except ImportError:
     create_table_from_mock_schema = None  # type: ignore
 

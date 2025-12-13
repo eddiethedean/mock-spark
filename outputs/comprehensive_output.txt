@@ -1,7 +1,7 @@
-🚀 Mock Spark - Comprehensive Feature Showcase
+🚀 Sparkless - Comprehensive Feature Showcase
 ============================================================
 
-📦 Initializing Mock Spark...
+📦 Initializing Sparkless...
    ✓ Session: ComprehensiveDemo
 
 📊 Loading sample data...
@@ -161,4 +161,4 @@ Test2   None
 📚 Learn more:
    • Docs: docs/
    • API Reference: docs/api_reference.md
-   • GitHub: https://github.com/eddiethedean/mock-spark
+   • GitHub: https://github.com/eddiethedean/sparkless

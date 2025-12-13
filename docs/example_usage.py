@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Example usage of Mock Spark package.
+Example usage of Sparkless package.
 """
 
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 
 def main() -> None:
-    """Demonstrate Mock Spark functionality."""
-    print("🚀 Mock Spark Example Usage")
+    """Demonstrate Sparkless functionality."""
+    print("🚀 Sparkless Example Usage")
     print("=" * 40)
 
     # Create a mock Spark session
@@ -75,7 +75,7 @@ def main() -> None:
 
     # Window functions
     print("\n🪟 Window Functions:")
-    from mock_spark.sql import Window
+    from sparkless.sql import Window
 
     window_spec = Window.orderBy(F.desc("age"))
     window_ops = df.select(

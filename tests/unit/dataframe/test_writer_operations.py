@@ -5,9 +5,9 @@ Unit tests for DataFrameWriter operations.
 import pytest
 import tempfile
 import os
-from mock_spark import SparkSession
-from mock_spark.core.exceptions.analysis import AnalysisException
-from mock_spark.errors import IllegalArgumentException
+from sparkless import SparkSession
+from sparkless.core.exceptions.analysis import AnalysisException
+from sparkless.errors import IllegalArgumentException
 
 
 @pytest.mark.unit

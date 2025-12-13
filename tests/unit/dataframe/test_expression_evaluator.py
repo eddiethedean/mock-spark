@@ -3,10 +3,10 @@ Unit tests for expression evaluator.
 """
 
 import pytest
-from mock_spark.dataframe.evaluation.expression_evaluator import ExpressionEvaluator
-from mock_spark.functions import Column, ColumnOperation
-from mock_spark.functions.conditional import CaseWhen
-from mock_spark.functions.core.literals import Literal
+from sparkless.dataframe.evaluation.expression_evaluator import ExpressionEvaluator
+from sparkless.functions import Column, ColumnOperation
+from sparkless.functions.conditional import CaseWhen
+from sparkless.functions.core.literals import Literal
 
 
 @pytest.mark.unit

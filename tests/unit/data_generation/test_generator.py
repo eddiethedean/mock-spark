@@ -3,8 +3,8 @@ Unit tests for data generator.
 """
 
 import pytest
-from mock_spark.data_generation.generator import MockDataGenerator
-from mock_spark.spark_types import (
+from sparkless.data_generation.generator import MockDataGenerator
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,

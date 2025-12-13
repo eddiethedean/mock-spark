@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
-    from mock_spark import SparkSession, F as MockF  # noqa: F401
+    from sparkless import SparkSession, F as MockF  # noqa: F401
 
     MOCK_SPARK_AVAILABLE = True
 except ImportError:

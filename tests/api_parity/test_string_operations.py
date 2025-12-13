@@ -13,7 +13,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_upper_function(self, mock_spark, pyspark_spark, string_data):
         """Test upper string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -31,7 +31,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_lower_function(self, mock_spark, pyspark_spark, string_data):
         """Test lower string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -49,7 +49,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_length_function(self, mock_spark, pyspark_spark, string_data):
         """Test length string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -67,7 +67,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_trim_function(self, mock_spark, pyspark_spark):
         """Test trim string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -91,7 +91,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_ltrim_function(self, mock_spark, pyspark_spark):
         """Test ltrim string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -115,7 +115,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_rtrim_function(self, mock_spark, pyspark_spark):
         """Test rtrim string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -139,7 +139,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_substring_function(self, mock_spark, pyspark_spark, string_data):
         """Test substring string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -159,7 +159,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_concat_function(self, mock_spark, pyspark_spark, string_data):
         """Test concat string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.functions import lit
 
@@ -182,7 +182,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_concat_ws_function(self, mock_spark, pyspark_spark, string_data):
         """Test concat_ws string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -206,7 +206,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_split_function(self, mock_spark, pyspark_spark, string_data):
         """Test split string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -226,7 +226,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_regexp_replace_function(self, mock_spark, pyspark_spark, string_data):
         """Test regexp_replace string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -246,7 +246,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_regexp_extract_function(self, mock_spark, pyspark_spark, string_data):
         """Test regexp_extract string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -279,7 +279,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_rlike_function(self, mock_spark, pyspark_spark, string_data):
         """Test rlike string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
 
         # MockSpark
         mock_df = mock_spark.createDataFrame(string_data)
@@ -348,7 +348,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_when_otherwise_function(self, mock_spark, pyspark_spark, string_data):
         """Test when/otherwise string function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -374,7 +374,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_coalesce_function(self, mock_spark, pyspark_spark):
         """Test coalesce function with null values."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -400,7 +400,7 @@ class TestStringOperations(ParityTestBase):
 
     def test_complex_string_operations(self, mock_spark, pyspark_spark, string_data):
         """Test complex string operations combining multiple functions."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark

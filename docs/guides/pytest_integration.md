@@ -1,11 +1,11 @@
 # Pytest Integration
 
-Built-in patterns for using Mock-Spark in pytest suites.
+Built-in patterns for using Sparkless in pytest suites.
 
 ```python
 # conftest.py
 import pytest
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 @pytest.fixture
 def spark():
@@ -14,7 +14,7 @@ def spark():
 
 ```python
 # example test
-from mock_spark import functions as F
+from sparkless import functions as F
 
 def test_basic(spark):
     df = spark.createDataFrame([{"x": 1}, {"x": 2}])

@@ -6,7 +6,7 @@ available in later transforms, especially in multi-step pipelines.
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.compatibility

@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Docker-based compatibility testing system has been implemented to test mock-spark against multiple Python and PySpark version combinations.
+A Docker-based compatibility testing system has been implemented to test sparkless against multiple Python and PySpark version combinations.
 
 ## What Was Created
 
@@ -12,7 +12,7 @@ A Docker-based compatibility testing system has been implemented to test mock-sp
 - Parameterized Dockerfile that accepts Python, PySpark, and Java versions as build arguments
 - Uses official Python base images
 - Installs appropriate Java version (11 for PySpark 3.2-3.4, 17 for 3.5+)
-- Installs mock-spark and its dependencies
+- Installs sparkless and its dependencies
 - Copies and runs critical tests
 
 #### `tests/compatibility_matrix/test_runner.sh`
@@ -103,7 +103,7 @@ Generated in the project root with:
 
 ### Example Report Structure
 ```markdown
-# Mock-Spark Compatibility Matrix
+# Sparkless Compatibility Matrix
 
 **Generated:** 2024-01-15 10:30:00
 **Total test time:** 45.2 minutes

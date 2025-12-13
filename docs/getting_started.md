@@ -1,19 +1,19 @@
-# Getting Started with Mock Spark
+# Getting Started with Sparkless
 
-> **Compatibility Snapshot:** This guide targets Mock Spark `3.5.0`, which provides parity with PySpark 3.2–3.5 and ships with 650+ passing regression tests.
+> **Compatibility Snapshot:** This guide targets Sparkless `3.5.0`, which provides parity with PySpark 3.2–3.5 and ships with 650+ passing regression tests.
 
 ## Installation
 
-Install Mock Spark using pip:
+Install Sparkless using pip:
 
 ```bash
-pip install mock-spark
+pip install sparkless
 ```
 
 For development with testing tools:
 
 ```bash
-pip install mock-spark[dev]
+pip install sparkless[dev]
 ```
 
 ## Quick Start
@@ -21,7 +21,7 @@ pip install mock-spark[dev]
 ### Basic Example
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 # Create session
 spark = SparkSession("MyApp")
@@ -40,14 +40,14 @@ print(result.collect())  # [Row(name='Bob')]
 
 ### Drop-in PySpark Replacement
 
-Mock Spark is designed to be a drop-in replacement for PySpark:
+Sparkless is designed to be a drop-in replacement for PySpark:
 
 ```python
 # Before (PySpark)
 from pyspark.sql import SparkSession
 
-# After (Mock Spark)
-from mock_spark.sql import SparkSession
+# After (Sparkless)
+from sparkless.sql import SparkSession
 ```
 
 That's it! Your existing PySpark code works unchanged.
@@ -57,7 +57,7 @@ That's it! Your existing PySpark code works unchanged.
 ### DataFrame Operations
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 spark = SparkSession("Example")
 data = [
@@ -80,7 +80,7 @@ dept_avg = df.groupBy("dept").avg("salary")
 ### Window Functions
 
 ```python
-from mock_spark.sql import Window, functions as F
+from sparkless.sql import Window, functions as F
 
 # Ranking within departments
 window_spec = Window.partitionBy("dept").orderBy(F.desc("salary"))
@@ -101,20 +101,20 @@ df.createOrReplaceTempView("employees")
 
 ### Storage Management
 
-Mock-Spark provides two ways to manage databases and tables:
+Sparkless provides two ways to manage databases and tables:
 
 **Option 1: SQL Commands (PySpark-Compatible - Recommended)**
 ```python
-# Works in both mock-spark and PySpark
+# Works in both sparkless and PySpark
 spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
 spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
 spark.sql("INSERT INTO test_db.users VALUES ('Alice', 25), ('Bob', 30)")
 ```
 
-**Option 2: Storage API (Mock-Spark-Specific)**
+**Option 2: Storage API (Sparkless-Specific)**
 ```python
-# Convenient API, but mock-spark-specific
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+# Convenient API, but sparkless-specific
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 spark._storage.create_schema("test_db")
 schema = StructType([
@@ -128,20 +128,20 @@ spark._storage.insert_data("test_db", "users", [
 ])
 ```
 
-**Note:** For maximum compatibility with PySpark, use SQL commands. The `.storage` API is a mock-spark convenience feature that doesn't exist in PySpark.
+**Note:** For maximum compatibility with PySpark, use SQL commands. The `.storage` API is a sparkless convenience feature that doesn't exist in PySpark.
 
 # Run SQL queries
 result = spark.sql("SELECT name, salary FROM employees WHERE salary > 80000")
 result.show()
 ```
 
-## Testing with Mock Spark
+## Testing with Sparkless
 
 ### Unit Test Example
 
 ```python
 import pytest
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 def test_data_transformation():
     """Test DataFrame transformation logic."""
@@ -180,7 +180,7 @@ def test_aggregation():
 
 ## Lazy Evaluation
 
-Mock Spark mirrors PySpark's lazy evaluation model:
+Sparkless mirrors PySpark's lazy evaluation model:
 
 ```python
 # Transformations are queued (not executed)
@@ -205,9 +205,9 @@ spark = SparkSession("App", enable_lazy_evaluation=False)
 
 ## Performance
 
-Mock Spark provides significant speed improvements:
+Sparkless provides significant speed improvements:
 
-| Operation | PySpark | Mock Spark | Speedup |
+| Operation | PySpark | Sparkless | Speedup |
 |-----------|---------|------------|---------|
 | Session Creation | 30-45s | 0.1s | 300x |
 | Simple Query | 2-5s | 0.01s | 200x |
@@ -222,6 +222,6 @@ Mock Spark provides significant speed improvements:
 
 ## Getting Help
 
-- **GitHub**: [github.com/eddiethedean/mock-spark](https://github.com/eddiethedean/mock-spark)
-- **Issues**: [github.com/eddiethedean/mock-spark/issues](https://github.com/eddiethedean/mock-spark/issues)
+- **GitHub**: [github.com/eddiethedean/sparkless](https://github.com/eddiethedean/sparkless)
+- **Issues**: [github.com/eddiethedean/sparkless/issues](https://github.com/eddiethedean/sparkless/issues)
 - **Documentation**: [docs/](.)

@@ -1,10 +1,10 @@
 # Testing with PySpark
 
-This guide explains how to run tests with PySpark to establish a baseline for mock-spark behavior validation.
+This guide explains how to run tests with PySpark to establish a baseline for sparkless behavior validation.
 
 ## Overview
 
-The unified test infrastructure allows you to run the same tests with either mock-spark or PySpark, enabling direct comparison and baseline validation. PySpark results serve as the authoritative source of truth for how mock-spark should behave.
+The unified test infrastructure allows you to run the same tests with either sparkless or PySpark, enabling direct comparison and baseline validation. PySpark results serve as the authoritative source of truth for how sparkless should behave.
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ def test_with_pyspark(spark):
     df = spark.createDataFrame([{"id": 1}])
     assert df.count() == 1
 
-# Run test only with mock-spark
+# Run test only with sparkless
 @pytest.mark.backend('mock')
 def test_with_mock(spark):
     df = spark.createDataFrame([{"id": 1}])
@@ -40,10 +40,10 @@ def test_with_mock(spark):
 
 # Run test with both and compare
 @pytest.mark.backend('both')
-def test_comparison(mock_spark_session, pyspark_session):
+def test_comparison(sparkless_session, pyspark_session):
     from tests.fixtures.comparison import assert_dataframes_equal
     
-    mock_df = mock_spark_session.createDataFrame([{"id": 1}])
+    mock_df = sparkless_session.createDataFrame([{"id": 1}])
     pyspark_df = pyspark_session.createDataFrame([{"id": 1}])
     
     assert_dataframes_equal(mock_df, pyspark_df)
@@ -55,20 +55,20 @@ The backend is selected in the following order (highest to lowest priority):
 
 1. **Pytest marker**: `@pytest.mark.backend('pyspark')`
 2. **Environment variable**: `MOCK_SPARK_TEST_BACKEND=pyspark`
-3. **Default**: mock-spark
+3. **Default**: sparkless
 
 ## Comparison Mode
 
-When using `MOCK_SPARK_TEST_BACKEND=both`, tests receive both `mock_spark_session` and `pyspark_session` fixtures. Use comparison utilities to verify results match:
+When using `MOCK_SPARK_TEST_BACKEND=both`, tests receive both `sparkless_session` and `pyspark_session` fixtures. Use comparison utilities to verify results match:
 
 ```python
 from tests.fixtures.comparison import assert_dataframes_equal
 
 @pytest.mark.backend('both')
-def test_dataframe_operations(mock_spark_session, pyspark_session):
+def test_dataframe_operations(sparkless_session, pyspark_session):
     data = [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
     
-    mock_df = mock_spark_session.createDataFrame(data)
+    mock_df = sparkless_session.createDataFrame(data)
     pyspark_df = pyspark_session.createDataFrame(data)
     
     # Compare results
@@ -116,7 +116,7 @@ is_equal = compare_schemas(mock_df.schema, pyspark_df.schema, strict=False)
 
 ## Known Differences
 
-Some differences between PySpark and mock-spark are expected and handled automatically:
+Some differences between PySpark and sparkless are expected and handled automatically:
 
 1. **Row Ordering**: PySpark doesn't guarantee row order - comparison utilities sort rows before comparing
 2. **Floating Point Precision**: Use tolerance in comparisons
@@ -215,10 +215,10 @@ If comparisons fail:
 
 ## CI/CD Integration
 
-### Fast Runs (Mock-Spark Only)
+### Fast Runs (Sparkless Only)
 
 ```bash
-# Default - mock-spark only, fast
+# Default - sparkless only, fast
 pytest tests/ -m "not slow"
 ```
 

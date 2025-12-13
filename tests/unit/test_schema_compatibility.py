@@ -6,9 +6,9 @@ and union operations.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.core.exceptions.analysis import AnalysisException
-from mock_spark.spark_types import (
+from sparkless import SparkSession
+from sparkless.core.exceptions.analysis import AnalysisException
+from sparkless.spark_types import (
     ArrayType,
     MapType,
     StructField,

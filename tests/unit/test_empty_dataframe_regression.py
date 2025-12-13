@@ -4,8 +4,8 @@ Tests for Regression 2: Empty DataFrame Column Detection
 Tests that empty DataFrames created with explicit schemas preserve column information.
 """
 
-from mock_spark import SparkSession
-from mock_spark.spark_types import (
+from sparkless import SparkSession
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,
@@ -146,7 +146,7 @@ class TestEmptyDataFrameRegression:
         """Test that empty DataFrame preserves complex type information."""
         spark = SparkSession("test")
 
-        from mock_spark.spark_types import ArrayType, MapType
+        from sparkless.spark_types import ArrayType, MapType
 
         schema = StructType(
             [

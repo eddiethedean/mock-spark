@@ -3,8 +3,8 @@ Unit tests for DDL adapter.
 """
 
 import pytest
-from mock_spark.core.ddl_adapter import parse_ddl_schema
-from mock_spark.spark_types import (
+from sparkless.core.ddl_adapter import parse_ddl_schema
+from sparkless.spark_types import (
     StructType,
     StringType,
     IntegerType,

@@ -7,7 +7,7 @@ echo "========================================"
 # Check if PySpark is available
 if ! python3 -c "import pyspark" 2>/dev/null; then
     echo "❌ PySpark not available. Install with:"
-    echo "   pip install mock-spark[generate-outputs]"
+    echo "   pip install sparkless[generate-outputs]"
     echo "   or"
     echo "   pip install pyspark delta-spark"
     exit 1
@@ -36,7 +36,7 @@ echo "-----------------------------------------------------------------"
 
 # Loop through each PySpark version and category to generate outputs
 for version in "${PYSPARK_VERSIONS[@]}"; do
-    export MOCK_SPARK_PYSPARK_VERSION=$version
+    export SPARKLESS_PYSPARK_VERSION=$version
     echo "Generating outputs for PySpark version: $version"
     for category in "${CATEGORIES[@]}"; do
         echo "  Category: $category"
@@ -50,7 +50,7 @@ done
 
 echo "-----------------------------------------------------------------"
 echo "Expected output generation complete."
-unset MOCK_SPARK_PYSPARK_VERSION
+unset SPARKLESS_PYSPARK_VERSION
 
 if [ $? -eq 0 ]; then
     echo ""

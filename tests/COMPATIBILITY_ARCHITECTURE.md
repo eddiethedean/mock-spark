@@ -8,7 +8,7 @@
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   PySpark       │    │   Mock-Spark     │    │   Test Runner   │
+│   PySpark       │    │   Sparkless     │    │   Test Runner   │
 │   (Generator)   │    │   (Runtime)      │    │   (pytest)      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
@@ -16,9 +16,9 @@
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │ Expected Output │    │ Actual Output    │    │ Comparison      │
-│ Generator       │    │ (Mock-Spark)     │    │ Engine          │
+│ Generator       │    │ (Sparkless)     │    │ Engine          │
 │                 │    │                  │    │                 │
-│ • Runs PySpark  │    │ • Runs Mock-Spark│    │ • Loads expected│
+│ • Runs PySpark  │    │ • Runs Sparkless│    │ • Loads expected│
 │ • Captures      │    │ • Produces       │    │ • Compares      │
 │   outputs       │    │   results        │    │ • Reports       │
 │ • Saves JSON    │    │                  │    │   differences   │
@@ -77,7 +77,7 @@
 
 ### 3. Comparison Engine (`comparison_utils.py`)
 
-**Purpose**: Compares Mock-Spark results with expected outputs
+**Purpose**: Compares Sparkless results with expected outputs
 
 **Key Features**:
 - Schema comparison (field names, types, counts)
@@ -86,7 +86,7 @@
 - Detailed error reporting
 - Tolerance-based numerical comparison
 
-**Input**: Mock-Spark DataFrame, expected output dictionary
+**Input**: Sparkless DataFrame, expected output dictionary
 **Output**: Comparison result with pass/fail status
 
 ### 4. Test Files (`test_*_compatibility.py`)
@@ -95,11 +95,11 @@
 
 **Key Features**:
 - Load expected outputs
-- Execute Mock-Spark operations
+- Execute Sparkless operations
 - Assert equivalence
 - Provide clear test descriptions
 
-**Input**: Test data, Mock-Spark operations
+**Input**: Test data, Sparkless operations
 **Output**: Test results (pass/fail)
 
 ## Data Flow
@@ -118,9 +118,9 @@
 
 ```
 1. Test loads expected output from JSON
-2. Test creates Mock-Spark session
-3. Test executes same operations against Mock-Spark
-4. Test compares Mock-Spark result with expected output
+2. Test creates Sparkless session
+3. Test executes same operations against Sparkless
+4. Test compares Sparkless result with expected output
 5. Test reports pass/fail with detailed error messages
 ```
 
@@ -237,9 +237,9 @@ tests/
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `FileNotFoundError` | Missing expected output | Run generator |
-| `Schema mismatch` | Different column names | Update Mock-Spark naming |
-| `Data mismatch` | Different calculations | Fix Mock-Spark logic |
-| `Row count mismatch` | Different filtering | Fix Mock-Spark operations |
+| `Schema mismatch` | Different column names | Update Sparkless naming |
+| `Data mismatch` | Different calculations | Fix Sparkless logic |
+| `Row count mismatch` | Different filtering | Fix Sparkless operations |
 
 ### Debugging Tools
 
@@ -270,11 +270,11 @@ tests/
 - Visual diff tools for large datasets
 
 ### 3. **Performance Testing**
-- Benchmark Mock-Spark against PySpark performance
+- Benchmark Sparkless against PySpark performance
 - Memory usage comparison
 
 ### 4. **Coverage Analysis**
-- Track which Mock-Spark features are tested
+- Track which Sparkless features are tested
 - Identify gaps in compatibility testing
 
 This architecture provides a robust, maintainable foundation for compatibility testing that can scale with the project's growth.

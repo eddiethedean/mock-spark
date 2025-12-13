@@ -1,11 +1,11 @@
 # Compatibility Matrix Testing
 
-This directory contains tools for testing mock-spark compatibility across multiple Python and PySpark version combinations using Docker.
+This directory contains tools for testing sparkless compatibility across multiple Python and PySpark version combinations using Docker.
 
 ## Overview
 
 The compatibility testing system:
-- Tests mock-spark against Python 3.9-3.13
+- Tests sparkless against Python 3.9-3.13
 - Tests against PySpark 3.2, 3.3, 3.4, and 3.5
 - Uses Docker to ensure clean, isolated test environments
 - Generates a comprehensive compatibility report
@@ -21,7 +21,7 @@ The compatibility testing system:
 Run all compatibility tests:
 
 ```bash
-cd /path/to/mock-spark
+cd /path/to/sparkless
 python tests/compatibility_matrix/run_matrix_tests.py
 ```
 

@@ -7,7 +7,7 @@ This module tests that SQL generation uses correct DuckDB syntax:
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.unit
@@ -43,7 +43,7 @@ class TestSQLSyntaxCompatibility:
 
     def test_strptime_format_with_literal_t(self, spark):
         """Test STRPTIME format strings with literal 'T' character."""
-        from mock_spark.spark_types import StringType, StructType, StructField
+        from sparkless.spark_types import StringType, StructType, StructField
 
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45"},
@@ -66,7 +66,7 @@ class TestSQLSyntaxCompatibility:
 
     def test_strptime_format_with_optional_fractional_seconds(self, spark):
         """Test STRPTIME format strings with optional fractional seconds."""
-        from mock_spark.spark_types import StringType, StructType, StructField
+        from sparkless.spark_types import StringType, StructType, StructField
 
         test_data = [
             {"timestamp_str": "2025-10-29T10:30:45.123456"},

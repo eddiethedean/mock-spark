@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test runner for comparison testing with both PySpark and mock-spark
+# Test runner for comparison testing with both PySpark and sparkless
 
 # Activate virtual environment if it exists
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ echo "This will run tests with both backends and compare results."
 echo ""
 
 # Set backend to both for comparison
-export MOCK_SPARK_TEST_BACKEND=both
+export SPARKLESS_TEST_BACKEND=both
 
 # Check if pytest-xdist is available
 if python3 -c "import pytest_xdist" 2>/dev/null; then
@@ -33,7 +33,7 @@ fi
 if ! python3 -c "import pyspark" 2>/dev/null; then
     echo "❌ PySpark is not available"
     echo "   Install with: pip install pyspark"
-    echo "   Or use: pip install mock-spark[generate-outputs]"
+    echo "   Or use: pip install sparkless[generate-outputs]"
     exit 1
 fi
 
@@ -59,7 +59,7 @@ exit_code=$?
 echo ""
 if [ $exit_code -eq 0 ]; then
     echo "✅ Comparison tests completed"
-    echo "✅ All results match between PySpark and mock-spark"
+    echo "✅ All results match between PySpark and sparkless"
 else
     echo "❌ Comparison tests found differences"
     echo "   Review test output for details"

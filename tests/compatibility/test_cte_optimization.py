@@ -7,7 +7,7 @@ without falling back to table-per-operation, especially with datetime parsing.
 
 import pytest
 import warnings
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.compatibility
@@ -23,7 +23,7 @@ class TestCTEOptimizationCompatibility:
 
     def test_complex_cte_chain_with_datetime(self, spark):
         """Test complex CTE chain with datetime parsing operations."""
-        from mock_spark.spark_types import (
+        from sparkless.spark_types import (
             StructType,
             StructField,
             StringType,

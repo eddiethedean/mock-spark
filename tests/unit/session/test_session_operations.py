@@ -3,8 +3,8 @@ Unit tests for SparkSession operations.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.spark_types import (
+from sparkless import SparkSession
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,
@@ -12,7 +12,7 @@ from mock_spark.spark_types import (
     ArrayType,
     MapType,
 )
-from mock_spark.core.exceptions.analysis import AnalysisException
+from sparkless.core.exceptions.analysis import AnalysisException
 
 
 @pytest.mark.unit
@@ -82,7 +82,7 @@ class TestSessionOperations:
 
     def test_createDataFrame_empty(self, spark):
         """Test creating empty DataFrame."""
-        from mock_spark.spark_types import StructType
+        from sparkless.spark_types import StructType
 
         df = spark.createDataFrame([], StructType([]))
 

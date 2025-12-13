@@ -3,7 +3,7 @@
 Enable lazy mode and queue operations until an action is called.
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 spark = SparkSession()
 df = spark.createDataFrame([{ "x": i } for i in range(5)])

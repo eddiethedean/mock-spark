@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test runner script for compatibility testing
-# Runs a subset of critical tests to verify mock-spark compatibility
+# Runs a subset of critical tests to verify sparkless compatibility
 
 set -e
 
@@ -15,7 +15,7 @@ echo ""
 
 # Test 1: Import test
 echo "[1/5] Testing package import..."
-if python -c "import mock_spark; print(f'mock_spark version: {mock_spark.__version__}')"; then
+if python -c "import sparkless; print(f'sparkless version: {sparkless.__version__}')"; then
     echo "✓ Import successful"
 else
     echo "✗ Import failed"

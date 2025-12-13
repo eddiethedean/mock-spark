@@ -3,14 +3,14 @@ Unit tests for optimization rules.
 """
 
 import pytest
-from mock_spark.optimizer.optimization_rules import (
+from sparkless.optimizer.optimization_rules import (
     FilterPushdownRule,
     ColumnPruningRule,
     JoinOptimizationRule,
     PredicatePushdownRule,
     ProjectionPushdownRule,
 )
-from mock_spark.optimizer.query_optimizer import Operation, OperationType
+from sparkless.optimizer.query_optimizer import Operation, OperationType
 
 
 @pytest.mark.unit

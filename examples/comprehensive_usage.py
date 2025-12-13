@@ -19,7 +19,7 @@ import sys
 # Allow running this script directly without installing the package
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from mock_spark.sql import SparkSession, functions as F, Window
+from sparkless.sql import SparkSession, functions as F, Window
 
 
 def create_sample_data() -> list[dict[str, Any]]:

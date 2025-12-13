@@ -5,7 +5,7 @@ This test suite verifies that columns created in transforms require
 materialization before they can be accessed, matching PySpark behavior.
 """
 
-from mock_spark import SparkSession, functions as F
+from sparkless import SparkSession, functions as F
 
 
 class TestColumnAvailability:
@@ -28,7 +28,7 @@ class TestColumnAvailability:
         """Test that columns are available after collect()."""
         spark = SparkSession("test")
         try:
-            from mock_spark.spark_types import IntegerType, StructType, StructField
+            from sparkless.spark_types import IntegerType, StructType, StructField
 
             schema = StructType(
                 [
@@ -52,7 +52,7 @@ class TestColumnAvailability:
         """Test that columns are available after show()."""
         spark = SparkSession("test")
         try:
-            from mock_spark.spark_types import IntegerType, StructType, StructField
+            from sparkless.spark_types import IntegerType, StructType, StructField
 
             schema = StructType(
                 [
@@ -76,7 +76,7 @@ class TestColumnAvailability:
         """Test that DataFrame is marked as materialized after actions."""
         spark = SparkSession("test")
         try:
-            from mock_spark.spark_types import IntegerType, StructType, StructField
+            from sparkless.spark_types import IntegerType, StructType, StructField
 
             schema = StructType(
                 [

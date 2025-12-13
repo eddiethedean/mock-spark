@@ -4,8 +4,8 @@ Unit tests for collection handler.
 
 import pytest
 
-from mock_spark.dataframe.collection_handler import CollectionHandler
-from mock_spark.spark_types import (
+from sparkless.dataframe.collection_handler import CollectionHandler
+from sparkless.spark_types import (
     StructType,
     StructField,
     LongType,
@@ -73,13 +73,17 @@ class TestCollectionHandler:
         """Test head with default n=1."""
         result = handler.head(sample_data, schema)
         assert result is not None
-        assert not isinstance(result, list)
+        # CollectionHandler always returns a list (internal behavior)
+        # DataFrame API converts this to match PySpark behavior
+        assert isinstance(result, list)
 
     def test_head_with_n_1(self, handler, sample_data, schema):
         """Test head with n=1."""
         result = handler.head(sample_data, schema, n=1)
         assert result is not None
-        assert not isinstance(result, list)
+        # CollectionHandler always returns a list (internal behavior)
+        # DataFrame API converts this to match PySpark behavior
+        assert isinstance(result, list)
 
     def test_head_with_n_greater_than_1(self, handler, sample_data, schema):
         """Test head with n>1."""
@@ -96,13 +100,17 @@ class TestCollectionHandler:
         """Test tail with default n=1."""
         result = handler.tail(sample_data, schema)
         assert result is not None
-        assert not isinstance(result, list)
+        # CollectionHandler always returns a list (internal behavior)
+        # DataFrame API converts this to match PySpark behavior
+        assert isinstance(result, list)
 
     def test_tail_with_n_1(self, handler, sample_data, schema):
         """Test tail with n=1."""
         result = handler.tail(sample_data, schema, n=1)
         assert result is not None
-        assert not isinstance(result, list)
+        # CollectionHandler always returns a list (internal behavior)
+        # DataFrame API converts this to match PySpark behavior
+        assert isinstance(result, list)
 
     def test_tail_with_n_greater_than_1(self, handler, sample_data, schema):
         """Test tail with n>1."""

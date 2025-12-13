@@ -3,9 +3,9 @@ Unit tests for DataFrame transformation operations.
 """
 
 import pytest
-from mock_spark import SparkSession, F
-from mock_spark.window import Window
-from mock_spark.core.exceptions.operation import SparkColumnNotFoundError
+from sparkless import SparkSession, F
+from sparkless.window import Window
+from sparkless.core.exceptions.operation import SparkColumnNotFoundError
 
 
 @pytest.mark.unit
@@ -247,7 +247,7 @@ class TestTransformationOperations:
 
     def test_dropDuplicates_empty_dataframe(self, spark):
         """Test dropDuplicates on empty DataFrame."""
-        from mock_spark.spark_types import StructType
+        from sparkless.spark_types import StructType
 
         df = spark.createDataFrame([], StructType([]))
         result = df.dropDuplicates()
@@ -256,7 +256,7 @@ class TestTransformationOperations:
 
     def test_dropDuplicates_with_none_values(self, spark):
         """Test dropDuplicates with None values."""
-        from mock_spark.spark_types import (
+        from sparkless.spark_types import (
             StructType,
             StructField,
             IntegerType,

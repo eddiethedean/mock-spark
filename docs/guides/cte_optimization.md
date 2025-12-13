@@ -18,7 +18,7 @@ With Polars backend, optimization is automatic:
 ### How It Works
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession("MyApp")  # Uses Polars by default
 df = spark.createDataFrame(data)
@@ -61,7 +61,7 @@ SELECT * FROM cte_2
 
 **Note**: CTE optimization is only relevant for DuckDB backend. With Polars (default in v3.0.0+), optimization is automatic.
 
-The legacy implementation was in `mock_spark/backend/duckdb/query_executor.py` with these key components:
+The legacy implementation was in `sparkless/backend/duckdb/query_executor.py` with these key components:
 
 #### 1. Updated `materialize()` Method
 
@@ -194,7 +194,7 @@ Example operations: `filter → select → withColumn → orderBy → limit`
 Optimization is **automatic** - no configuration needed:
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession("MyApp")  # Uses Polars by default
 # All operations are automatically optimized
@@ -204,7 +204,7 @@ spark = SparkSession("MyApp")  # Uses Polars by default
 The CTE optimization is **automatically applied** when using lazy evaluation:
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 spark = SparkSession.builder.appName("app").getOrCreate()
 

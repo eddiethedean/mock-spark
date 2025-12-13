@@ -23,13 +23,13 @@ docker build \
     --build-arg PYSPARK_VERSION=$PYSPARK_VERSION \
     --build-arg JAVA_VERSION=$JAVA_VERSION \
     -f tests/compatibility_matrix/Dockerfile.template \
-    -t mock-spark-test:test \
+    -t sparkless-test:test \
     .
 
 # Run tests
 echo ""
 echo "Running tests..."
-docker run --rm mock-spark-test:test
+docker run --rm sparkless-test:test
 
 echo ""
 echo "=========================================="

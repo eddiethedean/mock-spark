@@ -16,7 +16,7 @@ class TestDataFrameCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         session = SparkSession("compatibility_test")
         yield session
@@ -130,7 +130,7 @@ class TestDataFrameCompatibility:
         """Test aggregation operations against expected outputs."""
         expected = load_expected_output("dataframe_operations", "aggregation")
 
-        from mock_spark import F
+        from sparkless import F
 
         df = spark.createDataFrame(expected["input_data"])
         result = df.groupBy("department").agg(

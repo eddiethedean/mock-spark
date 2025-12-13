@@ -1,6 +1,6 @@
 # Threading Support
 
-Mock-Spark's Polars backend is **thread-safe by design**, eliminating threading issues that were present with DuckDB. Polars uses Rayon (Rust's data parallelism library) internally, making it safe for concurrent operations.
+Sparkless's Polars backend is **thread-safe by design**, eliminating threading issues that were present with DuckDB. Polars uses Rayon (Rust's data parallelism library) internally, making it safe for concurrent operations.
 
 ## Thread Safety with Polars
 
@@ -15,7 +15,7 @@ Polars backend provides native thread safety:
 All operations with Polars backend are thread-safe:
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 from concurrent.futures import ThreadPoolExecutor
 
 spark = SparkSession("MyApp")
@@ -81,7 +81,7 @@ pytest -n 8 tests/
 # Polars backend is thread-safe - no special configuration needed
 ```
 
-No special configuration is needed - Mock-Spark with Polars backend handles threading automatically.
+No special configuration is needed - Sparkless with Polars backend handles threading automatically.
 
 ## Comparison with DuckDB Backend
 
@@ -110,7 +110,7 @@ Polars threading provides excellent performance:
 ## Example: Parallel Pipeline Execution
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 from concurrent.futures import ThreadPoolExecutor
 
 def run_pipeline_step(step_id, input_data):
@@ -145,7 +145,7 @@ With Polars backend, threading issues should be completely eliminated. If you en
 
 1. **Verify Backend**: Ensure you're using Polars backend (default in v3.0.0+)
    ```python
-   from mock_spark.backend.factory import BackendFactory
+   from sparkless.backend.factory import BackendFactory
    backend_type = BackendFactory.get_backend_type(spark._storage)
    assert backend_type == "polars"
    ```
@@ -167,7 +167,7 @@ If you're migrating from DuckDB backend and had threading issues:
 
 ## See Also
 
-- [Configuration Guide](./configuration.md) - Configuration options for Mock-Spark
-- [Pytest Integration Guide](./pytest_integration.md) - Using Mock-Spark with pytest
+- [Configuration Guide](./configuration.md) - Configuration options for Sparkless
+- [Pytest Integration Guide](./pytest_integration.md) - Using Sparkless with pytest
 - [Memory Management Guide](./memory_management.md) - Managing memory in parallel contexts
 - [Migration Guide](../migration_from_v2_to_v3.md) - Migrating from DuckDB to Polars

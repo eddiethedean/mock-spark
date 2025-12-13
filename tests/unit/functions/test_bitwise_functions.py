@@ -3,8 +3,8 @@ Unit tests for bitwise functions.
 """
 
 import pytest
-from mock_spark import F
-from mock_spark.functions.bitwise import BitwiseFunctions
+from sparkless import F
+from sparkless.functions.bitwise import BitwiseFunctions
 
 
 @pytest.mark.unit
@@ -14,7 +14,7 @@ class TestBitwiseFunctions:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         return SparkSession("test")
 

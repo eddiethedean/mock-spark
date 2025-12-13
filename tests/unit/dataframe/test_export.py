@@ -3,8 +3,8 @@ Unit tests for DataFrame export utilities.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.dataframe.export import DataFrameExporter
+from sparkless import SparkSession
+from sparkless.dataframe.export import DataFrameExporter
 
 # Try to import pandas - will skip tests if not available
 pandas = pytest.importorskip("pandas")
@@ -57,7 +57,7 @@ class TestDataFrameExporter:
     def test_to_pandas_with_lazy_evaluation(self):
         """Test to_pandas handles lazy evaluation."""
 
-        from mock_spark import F
+        from sparkless import F
 
         spark = SparkSession("test")
         df = spark.createDataFrame([{"id": 1}]).filter(F.col("id") > 0)

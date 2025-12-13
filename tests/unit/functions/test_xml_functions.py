@@ -3,8 +3,8 @@ Unit tests for XML functions.
 """
 
 import pytest
-from mock_spark import F
-from mock_spark.functions.xml import XMLFunctions
+from sparkless import F
+from sparkless.functions.xml import XMLFunctions
 
 
 @pytest.mark.unit
@@ -14,7 +14,7 @@ class TestXMLFunctions:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         return SparkSession("test")
 

@@ -13,8 +13,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_row_number_window(self, mock_spark, pyspark_spark, sample_data):
         """Test row_number window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -43,8 +43,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_rank_window(self, mock_spark, pyspark_spark, sample_data):
         """Test rank window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -70,8 +70,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_dense_rank_window(self, mock_spark, pyspark_spark, sample_data):
         """Test dense_rank window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -100,8 +100,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_lag_window(self, mock_spark, pyspark_spark, sample_data):
         """Test lag window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -130,8 +130,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_lead_window(self, mock_spark, pyspark_spark, sample_data):
         """Test lead window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -160,8 +160,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_first_window(self, mock_spark, pyspark_spark, sample_data):
         """Test first window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -190,8 +190,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_last_window(self, mock_spark, pyspark_spark, sample_data):
         """Test last window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -220,8 +220,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_sum_window(self, mock_spark, pyspark_spark, sample_data):
         """Test sum window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -250,8 +250,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_avg_window(self, mock_spark, pyspark_spark, sample_data):
         """Test avg window function."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -280,8 +280,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_window_with_rows_between(self, mock_spark, pyspark_spark, sample_data):
         """Test window with ROWS BETWEEN frame."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -318,8 +318,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_window_with_range_between(self, mock_spark, pyspark_spark, sample_data):
         """Test window with RANGE BETWEEN frame."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -356,8 +356,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_multiple_window_functions(self, mock_spark, pyspark_spark, sample_data):
         """Test multiple window functions in one query."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -390,8 +390,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_window_with_complex_ordering(self, mock_spark, pyspark_spark, sample_data):
         """Test window with complex ordering expressions."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 
@@ -424,8 +424,8 @@ class TestWindowOperations(ParityTestBase):
 
     def test_window_without_partition(self, mock_spark, pyspark_spark, sample_data):
         """Test window function without partitioning."""
-        from mock_spark import F as MockF
-        from mock_spark.window import Window as MockWindow
+        from sparkless import F as MockF
+        from sparkless.window import Window as MockWindow
         from pyspark.sql import functions as PySparkF
         from pyspark.sql.window import Window as PySparkWindow
 

@@ -5,9 +5,9 @@ Tests the SQLExprParser class that parses SQL expressions for F.expr() compatibi
 """
 
 import pytest
-from mock_spark.functions.core.sql_expr_parser import SQLExprParser
-from mock_spark.functions.core.column import Column, ColumnOperation
-from mock_spark.core.exceptions.analysis import ParseException
+from sparkless.functions.core.sql_expr_parser import SQLExprParser
+from sparkless.functions.core.column import Column, ColumnOperation
+from sparkless.core.exceptions.analysis import ParseException
 
 
 class TestSQLExprParser:

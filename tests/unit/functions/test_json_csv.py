@@ -5,8 +5,8 @@ Tests JSON parsing, serialization, and CSV formatting functions.
 """
 
 import pytest
-from mock_spark import SparkSession, F
-from mock_spark.functions.core.column import Column, ColumnOperation
+from sparkless import SparkSession, F
+from sparkless.functions.core.column import Column, ColumnOperation
 
 
 @pytest.mark.fast
@@ -30,7 +30,7 @@ class TestJSONFunctions:
     def test_from_json_exists(self, spark):
         """Test that from_json function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "from_json")
@@ -39,7 +39,7 @@ class TestJSONFunctions:
     def test_to_json_exists(self, spark):
         """Test that to_json function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "to_json")
@@ -48,7 +48,7 @@ class TestJSONFunctions:
     def test_schema_of_json_exists(self, spark):
         """Test that schema_of_json function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "schema_of_json")
@@ -57,7 +57,7 @@ class TestJSONFunctions:
     def test_schema_of_csv_exists(self, spark):
         """Test that schema_of_csv function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "schema_of_csv")
@@ -105,7 +105,7 @@ class TestCSVFunctions:
     def test_from_csv_exists(self, spark):
         """Test that from_csv function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "from_csv")
@@ -114,7 +114,7 @@ class TestCSVFunctions:
     def test_to_csv_exists(self, spark):
         """Test that to_csv function exists."""
         # Check that JSONCSVFunctions class exists
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         # The function exists in the class
         assert hasattr(JSONCSVFunctions, "to_csv")
@@ -130,11 +130,11 @@ class TestCSVFunctions:
 
     def test_json_csv_module_importable(self):
         """Test that json_csv module is importable."""
-        from mock_spark.functions import json_csv
+        from sparkless.functions import json_csv
 
         # Module should be importable
         assert json_csv is not None
         # Should have JSONCSVFunctions class
-        from mock_spark.functions.json_csv import JSONCSVFunctions
+        from sparkless.functions.json_csv import JSONCSVFunctions
 
         assert JSONCSVFunctions is not None

@@ -3,8 +3,8 @@ Unit tests for condition evaluator.
 """
 
 import pytest
-from mock_spark.core.condition_evaluator import ConditionEvaluator
-from mock_spark.functions import Column, ColumnOperation
+from sparkless.core.condition_evaluator import ConditionEvaluator
+from sparkless.functions import Column, ColumnOperation
 
 
 @pytest.mark.unit

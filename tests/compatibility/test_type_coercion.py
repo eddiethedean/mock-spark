@@ -6,7 +6,7 @@ ensuring proper implicit type conversions in various operations.
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.compatibility

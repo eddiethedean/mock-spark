@@ -2,7 +2,7 @@
 
 ## Delta Schema Evolution with the Polars Backend
 
-Mock-Spark 3.0.0 introduced the Polars backend, which enforces strict column dtypes
+Sparkless 3.0.0 introduced the Polars backend, which enforces strict column dtypes
 at the storage layer. Earlier builds failed when appending to Delta tables with
 ``mergeSchema=true`` because the storage layer attempted to concatenate a
 ``Null``-typed column (from the existing data) with a concrete dtype (from the
@@ -27,7 +27,7 @@ columns to succeed.
 - Keep schema evolution granular; add one change per write to simplify
   debugging and match Delta Lake best practices.
 - When downstream consumers expect string-based dates or timestamps, wrap the
-  expressions with ``mock_spark.compat.datetime.to_date_str`` or
+  expressions with ``sparkless.compat.datetime.to_date_str`` or
   ``to_timestamp_str`` to obtain stable ISO-formatted text values without
   mutating PySpark behaviour.
 

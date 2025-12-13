@@ -6,7 +6,7 @@ import os
 import pytest
 import tempfile
 import polars as pl
-from mock_spark.backend.polars.parquet_storage import ParquetStorage
+from sparkless.backend.polars.parquet_storage import ParquetStorage
 
 
 @pytest.mark.unit

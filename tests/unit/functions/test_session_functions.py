@@ -8,7 +8,7 @@ import getpass
 
 import pytest
 
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 
 class TestSessionFunctions:
@@ -135,8 +135,8 @@ class TestSessionFunctions:
     def test_error_when_no_active_session(self) -> None:
         SparkSession._singleton_session = None
         SparkSession._active_sessions.clear()
-        from mock_spark.errors import PySparkValueError
-        from mock_spark.functions.functions import Functions
+        from sparkless.errors import PySparkValueError
+        from sparkless.functions.functions import Functions
 
         try:
             # F.current_database() might use a different error path

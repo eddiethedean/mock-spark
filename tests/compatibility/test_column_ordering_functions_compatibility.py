@@ -40,7 +40,7 @@ class TestColumnOrderingFunctionsCompatibility:
         if spark_backend == BackendType.PYSPARK:
             from pyspark.sql import functions as F
         else:
-            from mock_spark import F
+            from sparkless import F
 
         expected = load_expected_output("functions", "column_col")
 
@@ -57,7 +57,7 @@ class TestColumnOrderingFunctionsCompatibility:
         if spark_backend == BackendType.PYSPARK:
             from pyspark.sql import functions as F
         else:
-            from mock_spark import F
+            from sparkless import F
 
         expected = load_expected_output("functions", "column_column")
 
@@ -74,7 +74,7 @@ class TestColumnOrderingFunctionsCompatibility:
         if spark_backend == BackendType.PYSPARK:
             from pyspark.sql import functions as F
         else:
-            from mock_spark import F
+            from sparkless import F
 
         expected = load_expected_output("functions", "column_lit")
 
@@ -92,7 +92,7 @@ class TestColumnOrderingFunctionsCompatibility:
         if spark_backend == BackendType.PYSPARK:
             from pyspark.sql import functions as F
         else:
-            from mock_spark import F
+            from sparkless import F
 
         expected = load_expected_output("functions", "column_expr")
 

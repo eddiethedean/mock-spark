@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test script to verify notebook code works."""
 
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 import random
 from datetime import datetime, timedelta
 import time

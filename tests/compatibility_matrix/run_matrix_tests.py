@@ -205,7 +205,7 @@ class CompatibilityTester:
         current = 0
 
         print(f"\n{'=' * 70}")
-        print("Mock-Spark Compatibility Matrix Test (Working Combinations Only)")
+        print("Sparkless Compatibility Matrix Test (Working Combinations Only)")
         print(f"{'=' * 70}")
         print(f"Testing {total_combinations} working combinations")
         print(f"{'=' * 70}\n")
@@ -246,7 +246,7 @@ class CompatibilityTester:
 
         # Create matrix
         lines = []
-        lines.append("# Mock-Spark Compatibility Matrix")
+        lines.append("# Sparkless Compatibility Matrix")
         lines.append("")
         lines.append(f"**Generated:** {timestamp}  ")
         lines.append(f"**Total test time:** {total_time / 60:.1f} minutes  ")

@@ -6,7 +6,7 @@ specifically focusing on optional fractional seconds patterns like [.SSSSSS].
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.compatibility

@@ -3,9 +3,9 @@ Unit tests for error simulation framework.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.error_simulation import MockErrorSimulator
-from mock_spark.errors import AnalysisException, PySparkValueError
+from sparkless import SparkSession
+from sparkless.error_simulation import MockErrorSimulator
+from sparkless.errors import AnalysisException, PySparkValueError
 
 
 @pytest.mark.unit

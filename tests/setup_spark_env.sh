@@ -128,7 +128,7 @@ echo -e "\n=== Testing Mock Spark ==="
 "$PYTHON_BIN" - <<'PY'
 import sys
 sys.path.insert(0, '.')
-from mock_spark import MockSparkSession
+from sparkless import MockSparkSession
 spark = MockSparkSession()
 print('Mock Spark session created successfully!')
 print('Mock Spark version:', spark.version)

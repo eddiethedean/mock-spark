@@ -26,7 +26,7 @@ Compatibility tests for [CATEGORY] using expected outputs.
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class Test[Category]Compatibility:
@@ -35,7 +35,7 @@ class Test[Category]Compatibility:
     @pytest.fixture
     def spark(self):
         """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        from sparkless import MockSparkSession
         session = MockSparkSession("[category]_test")
         yield session
         session.stop()
@@ -168,10 +168,10 @@ result = df.select(
 | Error | Solution |
 |-------|----------|
 | `FileNotFoundError: Expected output file not found` | Run generator: `python tests/tools/generate_expected_outputs.py --category [category]` |
-| `Schema field names mismatch` | Check Mock-Spark function naming matches PySpark |
-| `Numerical mismatch` | Verify Mock-Spark calculation logic matches PySpark |
-| `Row count mismatch` | Check Mock-Spark operation produces same number of rows |
-| `Null mismatch` | Verify null handling in Mock-Spark matches PySpark |
+| `Schema field names mismatch` | Check Sparkless function naming matches PySpark |
+| `Numerical mismatch` | Verify Sparkless calculation logic matches PySpark |
+| `Row count mismatch` | Check Sparkless operation produces same number of rows |
+| `Null mismatch` | Verify null handling in Sparkless matches PySpark |
 
 ## File Locations
 

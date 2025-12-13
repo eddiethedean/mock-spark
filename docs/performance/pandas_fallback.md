@@ -1,6 +1,6 @@
 # Pandas Fallback Benchmarks
 
-Mock Spark ships with a lightweight stub that mimics the minimal slice of the
+Sparkless ships with a lightweight stub that mimics the minimal slice of the
 pandas API that appears in tests and documentation examples. The stub keeps the
 default installation lean and avoids the heavy NumPy dependency tree. When
 parity with native pandas is needed, you can opt-in to the real implementation

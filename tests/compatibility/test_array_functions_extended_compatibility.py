@@ -7,7 +7,7 @@ This module validates extended array functions against pre-generated PySpark out
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class TestArrayFunctionsExtendedCompatibility:
@@ -16,7 +16,7 @@ class TestArrayFunctionsExtendedCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         session = SparkSession("array_functions_test")
         yield session

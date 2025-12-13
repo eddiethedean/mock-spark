@@ -7,7 +7,7 @@ This module validates extended window functions against pre-generated PySpark ou
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class TestWindowFunctionsExtendedCompatibility:
@@ -16,7 +16,7 @@ class TestWindowFunctionsExtendedCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         session = SparkSession("window_functions_test")
         yield session
@@ -26,7 +26,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test cume_dist window function."""
         expected = load_expected_output("windows", "cume_dist")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("cume_dist", F.cume_dist().over(window_spec))
@@ -36,7 +36,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test dense_rank window function."""
         expected = load_expected_output("windows", "dense_rank")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("dense_rank", F.dense_rank().over(window_spec))
@@ -46,7 +46,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test first_value window function."""
         expected = load_expected_output("windows", "first_value")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("first_salary", F.first("salary").over(window_spec))
@@ -56,7 +56,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test lag window function."""
         expected = load_expected_output("windows", "lag")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("lag_salary", F.lag("salary", 1).over(window_spec))
@@ -66,7 +66,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test last_value window function."""
         expected = load_expected_output("windows", "last_value")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("last_salary", F.last("salary").over(window_spec))
@@ -76,7 +76,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test lead window function."""
         expected = load_expected_output("windows", "lead")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("lead_salary", F.lead("salary", 1).over(window_spec))
@@ -86,7 +86,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test nth_value window function."""
         expected = load_expected_output("windows", "nth_value")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("nth", F.nth_value("salary", 2).over(window_spec))
@@ -96,7 +96,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test ntile window function."""
         expected = load_expected_output("windows", "ntile")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("ntile", F.ntile(2).over(window_spec))
@@ -106,7 +106,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test percent_rank window function."""
         expected = load_expected_output("windows", "percent_rank")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("percent_rank", F.percent_rank().over(window_spec))
@@ -116,7 +116,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test rank window function."""
         expected = load_expected_output("windows", "rank")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("rank", F.rank().over(window_spec))
@@ -126,7 +126,7 @@ class TestWindowFunctionsExtendedCompatibility:
         """Test row_number window function."""
         expected = load_expected_output("windows", "row_number")
         df = spark.createDataFrame(expected["input_data"])
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("row_num", F.row_number().over(window_spec))

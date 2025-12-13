@@ -7,7 +7,7 @@ This module validates extended string functions against pre-generated PySpark ou
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class TestStringFunctionsExtendedCompatibility:
@@ -16,7 +16,7 @@ class TestStringFunctionsExtendedCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         session = SparkSession("string_functions_test")
         yield session

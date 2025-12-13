@@ -3,8 +3,8 @@ Unit tests for array functions.
 """
 
 import pytest
-from mock_spark import SparkSession, F
-from mock_spark.functions.array import ArrayFunctions
+from sparkless import SparkSession, F
+from sparkless.functions.array import ArrayFunctions
 
 
 @pytest.mark.unit
@@ -247,7 +247,7 @@ class TestArrayFunctions:
         result = ArrayFunctions.transform(F.col("numbers"), func)
         assert result.operation == "transform"
         # Should be MockLambdaExpression wrapper
-        from mock_spark.functions.core.lambda_parser import MockLambdaExpression
+        from sparkless.functions.core.lambda_parser import MockLambdaExpression
 
         assert isinstance(result.value, MockLambdaExpression)
 

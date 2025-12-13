@@ -6,12 +6,12 @@ materialization, and expression translation.
 """
 
 import pytest
-from mock_spark.backend.polars import (
+from sparkless.backend.polars import (
     PolarsStorageManager,
     PolarsMaterializer,
 )
-from mock_spark.backend.factory import BackendFactory
-from mock_spark.spark_types import (
+from sparkless.backend.factory import BackendFactory
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,
@@ -95,7 +95,7 @@ class TestPolarsMaterializer:
             ]
         )
 
-        from mock_spark.functions.core.column import Column
+        from sparkless.functions.core.column import Column
 
         # Create filter operation: age > 30
         age_col = Column("age")
@@ -114,7 +114,7 @@ class TestPolarsBackendIntegration:
 
     def test_session_uses_polars_by_default(self):
         """Test that SparkSession uses Polars backend by default."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         spark = SparkSession("test_app")
         # Check that storage backend is Polars
@@ -124,7 +124,7 @@ class TestPolarsBackendIntegration:
 
     def test_create_dataframe_with_polars(self):
         """Test creating DataFrame with Polars backend."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         spark = SparkSession("test_app")
         data = [{"name": "Alice", "age": 25}]

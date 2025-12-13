@@ -12,7 +12,7 @@ cat COMPATIBILITY_REPORT.md
 
 ## What It Does
 
-Tests mock-spark against **20 combinations** of Python (3.9-3.13) and PySpark (3.2-3.5) versions using Docker.
+Tests sparkless against **20 combinations** of Python (3.9-3.13) and PySpark (3.2-3.5) versions using Docker.
 
 ## Prerequisites
 
@@ -72,7 +72,7 @@ Edit `run_matrix_tests.py` to test fewer combinations.
 ## Example Output
 
 ```
-Mock-Spark Compatibility Matrix
+Sparkless Compatibility Matrix
 
 **Total combinations tested:** 20
 **Passed:** 18 ✓

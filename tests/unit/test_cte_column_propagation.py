@@ -9,8 +9,8 @@ This module tests the fixes for:
 
 import pytest
 import warnings
-from mock_spark import SparkSession, F
-from mock_spark.spark_types import StringType
+from sparkless import SparkSession, F
+from sparkless.spark_types import StringType
 
 
 @pytest.mark.unit

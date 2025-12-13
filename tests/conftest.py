@@ -29,7 +29,7 @@ def cleanup_after_each_test():
 @pytest.fixture
 def mock_spark_session():
     """Create a SparkSession with automatic cleanup."""
-    from mock_spark import SparkSession
+    from sparkless import SparkSession
 
     session = SparkSession("test_app")
     yield session
@@ -42,7 +42,7 @@ def mock_spark_session():
 @pytest.fixture
 def isolated_session():
     """Create an isolated SparkSession for tests requiring isolation."""
-    from mock_spark import SparkSession
+    from sparkless import SparkSession
     import uuid
 
     # Use unique name to ensure isolation
@@ -96,8 +96,14 @@ def spark(request):
         # Tests should use mock_spark_session and pyspark_session fixtures
         backend = BackendType.MOCK
 
+    # Use test name in app name for better isolation in parallel tests
+    test_name = "test_app"
+    if hasattr(request, "node") and hasattr(request.node, "name"):
+        # Include test name for better isolation
+        test_name = f"test_{request.node.name[:50]}"  # Limit length
+    
     session = SparkBackend.create_session(
-        app_name="test_app",
+        app_name=test_name,
         backend=backend,
         request=request if hasattr(request, "node") else None,
     )
@@ -148,7 +154,7 @@ def pyspark_session(request):
 @pytest.fixture
 def mock_spark():
     """Provide mock spark session for compatibility tests."""
-    from mock_spark import SparkSession
+    from sparkless import SparkSession
 
     session = SparkSession("test_app")
     yield session

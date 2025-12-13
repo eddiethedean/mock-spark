@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Update the Mock-Spark column in PYSPARK_FUNCTION_MATRIX.md and pyspark_api_matrix.json
+Update the Sparkless column in PYSPARK_FUNCTION_MATRIX.md and pyspark_api_matrix.json
 based on actual implementation.
 
 This script scans the mock_spark codebase to identify which functions and DataFrame methods
@@ -18,9 +18,9 @@ sys.path.insert(0, str(repo_root))
 
 
 def get_implemented_functions():
-    """Read the __all__ list from mock_spark/functions/__init__.py"""
+    """Read the __all__ list from sparkless/functions/__init__.py"""
     init_file = (
-        Path(__file__).parent.parent / "mock_spark" / "functions" / "__init__.py"
+        Path(__file__).parent.parent / "sparkless" / "functions" / "__init__.py"
     )
 
     with open(init_file) as f:
@@ -43,7 +43,7 @@ def get_implemented_dataframe_methods():
 
     # Import MockDataFrame to check its methods
     try:
-        from mock_spark.dataframe.dataframe import MockDataFrame
+        from sparkless.dataframe.dataframe import MockDataFrame
 
         # Get all public methods from MockDataFrame
         for attr_name in dir(MockDataFrame):
@@ -53,13 +53,13 @@ def get_implemented_dataframe_methods():
                     methods.add(attr_name)
 
         # Also check mixin classes
-        from mock_spark.dataframe.transformations import TransformationOperations
-        from mock_spark.dataframe.joins import JoinOperations
-        from mock_spark.dataframe.aggregations import AggregationOperations
-        from mock_spark.dataframe.display import DisplayOperations
-        from mock_spark.dataframe.schema import SchemaOperations
-        from mock_spark.dataframe.assertions import AssertionOperations
-        from mock_spark.dataframe.operations import MiscellaneousOperations
+        from sparkless.dataframe.transformations import TransformationOperations
+        from sparkless.dataframe.joins import JoinOperations
+        from sparkless.dataframe.aggregations import AggregationOperations
+        from sparkless.dataframe.display import DisplayOperations
+        from sparkless.dataframe.schema import SchemaOperations
+        from sparkless.dataframe.assertions import AssertionOperations
+        from sparkless.dataframe.operations import MiscellaneousOperations
 
         mixin_classes = [
             TransformationOperations,
@@ -111,7 +111,7 @@ def update_matrix_markdown(functions, df_methods, matrix_file):
             continue
 
         # Check if this line is a function/method row
-        # Format: | `function_name` | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Mock-Spark |
+        # Format: | `function_name` | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Sparkless |
         match = re.match(r"^\|\s+`([^`]+)`\s+\|.*$", line)
         if match:
             item_name = match.group(1)
@@ -123,10 +123,10 @@ def update_matrix_markdown(functions, df_methods, matrix_file):
                 implemented = item_name in df_methods
 
             if implemented:
-                # Parse the line to get the Mock-Spark column
+                # Parse the line to get the Sparkless column
                 parts = line.split("|")
                 if len(parts) >= 8:
-                    # Mock-Spark column is index 7
+                    # Sparkless column is index 7
                     current_status = parts[7].strip()
 
                     # Update if it's not already ✅ or 🔷
@@ -156,22 +156,22 @@ def update_matrix_json(functions, df_methods, json_file):
     # Update functions
     for func_name in matrix.get("functions", {}):
         if func_name in functions and (
-            "mock_spark" not in matrix["functions"][func_name]
-            or not matrix["functions"][func_name].get("mock_spark", False)
+            "sparkless" not in matrix["functions"][func_name]
+            or not matrix["functions"][func_name].get("sparkless", False)
         ):
             # Add mock_spark field if not present
-            matrix["functions"][func_name]["mock_spark"] = True
+            matrix["functions"][func_name]["sparkless"] = True
             updated_count += 1
             print(f"Updated JSON function: {func_name}")
 
     # Update DataFrame methods
     for method_name in matrix.get("dataframe_methods", {}):
         if method_name in df_methods and (
-            "mock_spark" not in matrix["dataframe_methods"][method_name]
-            or not matrix["dataframe_methods"][method_name].get("mock_spark", False)
+            "sparkless" not in matrix["dataframe_methods"][method_name]
+            or not matrix["dataframe_methods"][method_name].get("sparkless", False)
         ):
             # Add mock_spark field if not present
-            matrix["dataframe_methods"][method_name]["mock_spark"] = True
+            matrix["dataframe_methods"][method_name]["sparkless"] = True
             updated_count += 1
             print(f"Updated JSON method: {method_name}")
 
@@ -185,7 +185,7 @@ def update_matrix_json(functions, df_methods, json_file):
 def main():
     """Main entry point"""
     matrix_md = repo_root / "PYSPARK_FUNCTION_MATRIX.md"
-    matrix_json = repo_root / "mock_spark" / "pyspark_api_matrix.json"
+    matrix_json = repo_root / "sparkless" / "pyspark_api_matrix.json"
 
     print("Scanning mock_spark functions...")
     functions = get_implemented_functions()

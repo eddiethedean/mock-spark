@@ -3,7 +3,7 @@
 Use the session benchmarking API to time operations and inspect results.
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 spark = SparkSession()
 

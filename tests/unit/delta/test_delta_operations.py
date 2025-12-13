@@ -1,7 +1,7 @@
 import pytest
 
-from mock_spark import SparkSession
-from mock_spark.delta import DeltaTable
+from sparkless import SparkSession
+from sparkless.delta import DeltaTable
 
 
 class TestDeltaOperations:

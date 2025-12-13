@@ -3,8 +3,8 @@ Unit tests for set operations.
 """
 
 import pytest
-from mock_spark.dataframe.operations.set_operations import SetOperations
-from mock_spark.spark_types import Row
+from sparkless.dataframe.operations.set_operations import SetOperations
+from sparkless.spark_types import Row
 
 
 @pytest.mark.unit
@@ -63,7 +63,7 @@ class TestSetOperations:
 
     def test_union_combines_dataframes(self):
         """Test union combines two DataFrames."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         spark = SparkSession("test")
         df1 = spark.createDataFrame([{"id": 1}, {"id": 2}])

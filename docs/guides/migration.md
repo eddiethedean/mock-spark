@@ -1,16 +1,16 @@
-# PySpark → Mock-Spark Migration Guide
+# PySpark → Sparkless Migration Guide
 
 ## Quick Swap
 
 ```python
 # from pyspark.sql import SparkSession
-from mock_spark.sql import SparkSession as SparkSession, functions as F, Window
+from sparkless.sql import SparkSession as SparkSession, functions as F, Window
 ```
 
 ## Common Patterns
 
 - Keep DataFrame APIs unchanged (select, filter, withColumn, groupBy)
-- Replace `Window` with `mock_spark.Window` if imported directly
+- Replace `Window` with `sparkless.Window` if imported directly
 - Exceptions: use `AnalysisException` semantics for missing columns
 
 ## Tips

@@ -3,17 +3,17 @@ Unit tests for aggregation operations.
 """
 
 import pytest
-from mock_spark.dataframe.operations.aggregation_operations import (
+from sparkless.dataframe.operations.aggregation_operations import (
     AggregationOperationsStatic,
 )
-from mock_spark.spark_types import (
+from sparkless.spark_types import (
     StructType,
     StructField,
     IntegerType,
     DoubleType,
     StringType,
 )
-from mock_spark.core.exceptions.analysis import ColumnNotFoundException
+from sparkless.core.exceptions.analysis import ColumnNotFoundException
 
 
 @pytest.mark.unit

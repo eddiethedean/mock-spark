@@ -7,13 +7,13 @@ echo "=================================="
 # Test 1: Import test
 echo ""
 echo "Test 1: Can we import the storage module?"
-python3 -c "from mock_spark.backend.duckdb.storage import DuckDBStorageManager; print('✅ Import successful')" || echo "❌ Import failed"
+python3 -c "from sparkless.backend.duckdb.storage import DuckDBStorageManager; print('✅ Import successful')" || echo "❌ Import failed"
 
 # Test 2: Basic instantiation
 echo ""
 echo "Test 2: Can we create a storage manager?"
 python3 -c "
-from mock_spark.backend.duckdb.storage import DuckDBStorageManager
+from sparkless.backend.duckdb.storage import DuckDBStorageManager
 import time
 storage = DuckDBStorageManager()
 print('✅ Storage manager created')
@@ -23,7 +23,7 @@ print('✅ Storage manager created')
 echo ""
 echo "Test 3: Can we create a schema (timeout: 5s)?"
 timeout 5 python3 -c "
-from mock_spark.backend.duckdb.storage import DuckDBStorageManager
+from sparkless.backend.duckdb.storage import DuckDBStorageManager
 storage = DuckDBStorageManager()
 storage.create_schema('test_schema')
 print('✅ Schema creation successful')
@@ -33,7 +33,7 @@ print('✅ Schema creation successful')
 echo ""
 echo "Test 4: Can we check if schema exists (timeout: 5s)?"
 timeout 5 python3 -c "
-from mock_spark.backend.duckdb.storage import DuckDBStorageManager
+from sparkless.backend.duckdb.storage import DuckDBStorageManager
 storage = DuckDBStorageManager()
 storage.create_schema('test_schema2')
 exists = storage.schema_exists('test_schema2')
@@ -44,7 +44,7 @@ print(f'✅ Schema exists check: {exists}')
 echo ""
 echo "Test 5: Can we get thread-local connection (timeout: 5s)?"
 timeout 5 python3 -c "
-from mock_spark.backend.duckdb.storage import _get_thread_connection, DuckDBStorageManager
+from sparkless.backend.duckdb.storage import _get_thread_connection, DuckDBStorageManager
 storage = DuckDBStorageManager()
 conn = _get_thread_connection(storage.engine)
 print('✅ Thread-local connection obtained')

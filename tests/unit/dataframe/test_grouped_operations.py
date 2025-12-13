@@ -3,7 +3,7 @@ Unit tests for grouped operations (cube, pivot, rollup).
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.unit

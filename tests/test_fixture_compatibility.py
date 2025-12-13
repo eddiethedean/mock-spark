@@ -5,7 +5,7 @@ This test suite verifies that test fixtures and setup code work
 the same way with mock-spark as they do with PySpark.
 """
 
-from mock_spark import SparkSession
+from sparkless import SparkSession
 
 
 class TestFixtureCompatibility:

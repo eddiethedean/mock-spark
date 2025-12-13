@@ -6,7 +6,7 @@ to ensure compatibility across different window specifications and function type
 """
 
 import pytest
-from mock_spark import F
+from sparkless import F
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 
@@ -50,7 +50,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("row_num", F.row_number().over(window_spec))
@@ -93,7 +93,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("rank", F.rank().over(window_spec))
@@ -136,7 +136,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("dense_rank", F.dense_rank().over(window_spec))
@@ -179,7 +179,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("lag_salary", F.lag("salary", 1).over(window_spec))
@@ -222,7 +222,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("dept").orderBy("salary")
         result = df.withColumn("lead_salary", F.lead("salary", 1).over(window_spec))
@@ -265,7 +265,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("department")
         result = df.withColumn("dept_total", F.sum("salary").over(window_spec))
@@ -308,7 +308,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("department")
         result = df.withColumn("dept_avg", F.avg("salary").over(window_spec))
@@ -351,7 +351,7 @@ class TestWindowFunctionsCompatibility:
 
         df = mock_spark_session.createDataFrame(test_data)
 
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         window_spec = Window.partitionBy("department")
         result = df.withColumn("dept_count", F.count("salary").over(window_spec))

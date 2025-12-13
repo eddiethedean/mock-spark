@@ -1,6 +1,6 @@
 # Compatibility Testing Guide
 
-This guide explains how to add new compatibility tests using the new expected-output architecture. This system allows us to test Mock-Spark against PySpark without requiring PySpark as a runtime dependency.
+This guide explains how to add new compatibility tests using the new expected-output architecture. This system allows us to test Sparkless against PySpark without requiring PySpark as a runtime dependency.
 
 ## Architecture Overview
 
@@ -8,7 +8,7 @@ The compatibility testing system has three main components:
 
 1. **Expected Output Generator** (`tests/tools/generate_expected_outputs.py`) - Runs PySpark code to generate "golden" outputs
 2. **Output Loader** (`tests/tools/output_loader.py`) - Loads and caches expected outputs during tests
-3. **Comparison Utils** (`tests/tools/comparison_utils.py`) - Compares Mock-Spark results with expected outputs
+3. **Comparison Utils** (`tests/tools/comparison_utils.py`) - Compares Sparkless results with expected outputs
 
 ### Key Benefits
 
@@ -59,7 +59,7 @@ def _generate_your_category_outputs(self):
 
 ### Step 2: Create Test Data
 
-Define input data for your tests. The generator will use this data with both PySpark and Mock-Spark:
+Define input data for your tests. The generator will use this data with both PySpark and Sparkless:
 
 ```python
 # In the generator, define input data
@@ -97,7 +97,7 @@ Compatibility tests for your category using expected outputs.
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class TestYourCategoryCompatibility:
@@ -106,7 +106,7 @@ class TestYourCategoryCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a MockSparkSession for testing."""
-        from mock_spark import MockSparkSession
+        from sparkless import MockSparkSession
         session = MockSparkSession("your_category_test")
         yield session
         session.stop()
@@ -286,13 +286,13 @@ python tests/tools/generate_expected_outputs.py --category your_category
 
 **Error**: `Schema field names mismatch: mock=['col1'], expected=['col2']`
 
-**Solution**: Check that Mock-Spark and PySpark generate the same column names. You may need to update Mock-Spark's function implementations.
+**Solution**: Check that Sparkless and PySpark generate the same column names. You may need to update Sparkless's function implementations.
 
 ### 3. Data Mismatches
 
 **Error**: `Numerical mismatch in column 'value' row 0: mock=1.0, expected=2.0`
 
-**Solution**: Verify that Mock-Spark's implementation produces the same results as PySpark. Check for:
+**Solution**: Verify that Sparkless's implementation produces the same results as PySpark. Check for:
 - Different calculation logic
 - Type conversion issues
 - Precision differences
@@ -380,6 +380,6 @@ find tests/expected_outputs -name "*_3_1.json" -delete
 
 ## Conclusion
 
-This architecture provides a robust, maintainable way to test Mock-Spark compatibility with PySpark. The separation of concerns between generation, loading, and comparison makes it easy to add new tests and debug issues.
+This architecture provides a robust, maintainable way to test Sparkless compatibility with PySpark. The separation of concerns between generation, loading, and comparison makes it easy to add new tests and debug issues.
 
 For questions or issues, refer to the existing test files as examples or consult the development team.

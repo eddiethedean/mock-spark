@@ -7,8 +7,8 @@ to ensure mock-spark behaves exactly like PySpark in testing scenarios.
 
 import pytest
 import warnings
-from mock_spark import SparkSession, functions as F
-from mock_spark.spark_types import StructType, StructField, StringType
+from sparkless import SparkSession, functions as F
+from sparkless.spark_types import StructType, StructField, StringType
 
 
 class TestStringConcatenationWithCaching:
@@ -154,7 +154,7 @@ class TestUnionOperationStrictness:
 
     def test_union_different_column_count_raises_error(self, spark):
         """Test that union with different column counts raises AnalysisException."""
-        from mock_spark.core.exceptions.analysis import AnalysisException
+        from sparkless.core.exceptions.analysis import AnalysisException
 
         df1 = spark.createDataFrame([("A", 1)], ["name", "value"])
         df2 = spark.createDataFrame([("B",)], ["name"])
@@ -164,7 +164,7 @@ class TestUnionOperationStrictness:
 
     def test_union_different_column_names_raises_error(self, spark):
         """Test that union with different column names raises AnalysisException."""
-        from mock_spark.core.exceptions.analysis import AnalysisException
+        from sparkless.core.exceptions.analysis import AnalysisException
 
         df1 = spark.createDataFrame([("A", 1)], ["name", "value"])
         df2 = spark.createDataFrame([("B", 2)], ["name", "id"])
@@ -174,8 +174,8 @@ class TestUnionOperationStrictness:
 
     def test_union_incompatible_types_raises_error(self, spark):
         """Test that union with incompatible types raises AnalysisException."""
-        from mock_spark.core.exceptions.analysis import AnalysisException
-        from mock_spark.spark_types import BooleanType, StructType, StructField
+        from sparkless.core.exceptions.analysis import AnalysisException
+        from sparkless.spark_types import BooleanType, StructType, StructField
 
         df1 = spark.createDataFrame([("A", 1)], ["name", "value"])
         schema2 = StructType(
@@ -292,7 +292,7 @@ class TestTypeSystemCompatibility:
 
     def test_struct_type_compatibility(self):
         """Test that StructType works with PySpark operations if available."""
-        from mock_spark.spark_types import StructType, StructField, StringType
+        from sparkless.spark_types import StructType, StructField, StringType
 
         schema = StructType([StructField("name", StringType(), True)])
 
@@ -306,7 +306,7 @@ class TestTypeSystemCompatibility:
 
     def test_types_have_correct_attributes(self):
         """Test that types have correct PySpark-compatible attributes."""
-        from mock_spark.spark_types import StructType, StructField, StringType
+        from sparkless.spark_types import StructType, StructField, StringType
 
         schema = StructType([StructField("name", StringType(), True)])
 
@@ -462,7 +462,7 @@ class TestErrorHandlingCompatibility:
 
     def test_py4j_error_available(self):
         """Test that MockPy4JJavaError is available."""
-        from mock_spark.core.exceptions.py4j_compat import MockPy4JJavaError
+        from sparkless.core.exceptions.py4j_compat import MockPy4JJavaError
 
         # Should be able to create error
         error = MockPy4JJavaError("Test error")
@@ -471,7 +471,7 @@ class TestErrorHandlingCompatibility:
 
     def test_py4j_error_inheritance(self):
         """Test that MockPy4JJavaError can be caught as Exception."""
-        from mock_spark.core.exceptions.py4j_compat import MockPy4JJavaError
+        from sparkless.core.exceptions.py4j_compat import MockPy4JJavaError
 
         error = MockPy4JJavaError("Test error")
 
@@ -560,7 +560,7 @@ class TestCatalogAPICompatibility:
 
     def test_create_database_raises_if_exists(self, spark):
         """Test that createDatabase raises if database exists and ignoreIfExists=False."""
-        from mock_spark.core.exceptions.analysis import AnalysisException
+        from sparkless.core.exceptions.analysis import AnalysisException
 
         spark.catalog.createDatabase("test_db2", ignoreIfExists=True)
 
@@ -580,7 +580,7 @@ class TestDatetimeTypeCasting:
 
     def test_to_timestamp_requires_string_type(self, spark):
         """Test that to_timestamp() requires StringType input."""
-        from mock_spark.spark_types import TimestampType, StructType, StructField
+        from sparkless.spark_types import TimestampType, StructType, StructField
 
         # Create DataFrame with TimestampType (not StringType)
         schema = StructType([StructField("timestamp_col", TimestampType(), True)])
@@ -594,7 +594,7 @@ class TestDatetimeTypeCasting:
         """Test that to_timestamp() works with StringType input."""
         # Create DataFrame - ensure column is inferred as string, not timestamp
         # Use explicit schema to ensure it's StringType
-        from mock_spark.spark_types import StructType, StructField, StringType
+        from sparkless.spark_types import StructType, StructField, StringType
 
         schema = StructType([StructField("timestamp_str", StringType(), True)])
         df = spark.createDataFrame([("2024-01-01T10:00:00",)], schema)
@@ -605,7 +605,7 @@ class TestDatetimeTypeCasting:
 
     def test_to_timestamp_with_explicit_cast(self, spark):
         """Test that to_timestamp() works with explicit string cast."""
-        from mock_spark.spark_types import TimestampType, StructType, StructField
+        from sparkless.spark_types import TimestampType, StructType, StructField
 
         schema = StructType([StructField("timestamp_col", TimestampType(), True)])
         df = spark.createDataFrame([{"timestamp_col": None}], schema)
@@ -618,7 +618,7 @@ class TestDatetimeTypeCasting:
 
     def test_to_timestamp_with_integer_type_fails(self, spark):
         """Test that to_timestamp() fails with IntegerType."""
-        from mock_spark.spark_types import IntegerType, StructType, StructField
+        from sparkless.spark_types import IntegerType, StructType, StructField
 
         schema = StructType([StructField("date_int", IntegerType(), True)])
         df = spark.createDataFrame([{"date_int": 20240101}], schema)

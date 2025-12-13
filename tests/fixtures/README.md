@@ -1,18 +1,18 @@
 # Test Fixtures and Utilities
 
-This directory contains the unified test infrastructure for running tests with both PySpark and mock-spark.
+This directory contains the unified test infrastructure for running tests with both PySpark and sparkless.
 
 ## Overview
 
 The unified test infrastructure allows you to:
-- Run the same tests with either PySpark or mock-spark
+- Run the same tests with either PySpark or sparkless
 - Compare results between backends
-- Use PySpark as a baseline for mock-spark behavior validation
+- Use PySpark as a baseline for sparkless behavior validation
 
 ## Key Components
 
 ### `spark_backend.py`
-Backend abstraction layer that creates SparkSession instances from either PySpark or mock-spark based on configuration.
+Backend abstraction layer that creates SparkSession instances from either PySpark or sparkless based on configuration.
 
 **Key Functions:**
 - `get_backend_type()` - Get backend from markers/env/default
@@ -30,7 +30,7 @@ SparkSession, F, StructType = get_spark_imports()
 ```
 
 ### `comparison.py`
-Utilities for comparing results between PySpark and mock-spark.
+Utilities for comparing results between PySpark and sparkless.
 
 **Key Functions:**
 - `assert_dataframes_equal()` - Assert two DataFrames are equal
@@ -41,7 +41,7 @@ Utilities for comparing results between PySpark and mock-spark.
 Capture and store test results for baseline generation and comparison.
 
 ### `difference_handlers.py`
-Handlers for known differences between PySpark and mock-spark (row ordering, precision, etc.).
+Handlers for known differences between PySpark and sparkless (row ordering, precision, etc.).
 
 ## Usage
 

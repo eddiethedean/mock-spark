@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mock_spark.optimizer.query_optimizer import (
+from sparkless.optimizer.query_optimizer import (
     Operation,
     OperationType,
     QueryOptimizer,

@@ -1,7 +1,7 @@
-🚀 Mock Spark - Basic Usage Example
+🚀 Sparkless - Basic Usage Example
 ============================================================
 
-1️⃣  Creating Mock Spark Session...
+1️⃣  Creating Sparkless Session...
    ✓ Session created: BasicExample
 
 2️⃣  Creating DataFrame...
@@ -102,7 +102,7 @@ Sales         5    Eve       85000
 ✨ Example completed successfully!
 
 💡 Key Takeaways:
-   • Mock Spark provides drop-in PySpark replacement
+   • Sparkless provides drop-in PySpark replacement
    • No JVM required - 10x faster tests
    • Full API compatibility with lazy evaluation
    • Perfect for unit testing and CI/CD

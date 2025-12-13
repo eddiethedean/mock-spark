@@ -9,8 +9,8 @@ import pytest
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from mock_spark.backend.polars.storage import PolarsStorageManager
-from mock_spark.spark_types import (
+from sparkless.backend.polars.storage import PolarsStorageManager
+from sparkless.spark_types import (
     StructType,
     StructField,
     IntegerType,

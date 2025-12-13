@@ -6,9 +6,9 @@ error cases, edge cases, and integration with SQL operations.
 """
 
 import pytest
-from mock_spark.sql import SparkSession
-from mock_spark.core.exceptions.analysis import AnalysisException
-from mock_spark.core.exceptions.validation import IllegalArgumentException
+from sparkless.sql import SparkSession
+from sparkless.core.exceptions.analysis import AnalysisException
+from sparkless.core.exceptions.validation import IllegalArgumentException
 
 
 @pytest.mark.compatibility
@@ -112,7 +112,7 @@ class TestCatalogCreateDatabase:
         assert spark._storage.schema_exists("storage_test_db")
 
         # Create table via storage
-        from mock_spark.spark_types import (
+        from sparkless.spark_types import (
             StructType,
             StructField,
             StringType,

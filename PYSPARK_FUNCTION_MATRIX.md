@@ -5,9 +5,9 @@
 **Last Updated:** 2024
 
 This matrix shows which functions and DataFrame methods are available in each PySpark version,
-and whether they are implemented in mock-spark.
+and whether they are implemented in sparkless.
 
-**Note:** All mock-spark features are available to everyone - there is no version gating.
+**Note:** All sparkless features are available to everyone - there is no version gating.
 This matrix is provided for reference to understand PySpark version compatibility.
 
 ## Recent Improvements (2024)
@@ -31,23 +31,23 @@ This matrix is provided for reference to understand PySpark version compatibilit
 - **Reverse Cumulative Sum**: Implemented reverse cumulative sum for `rowsBetween(currentRow, unboundedFollowing)`
 
 ### PySpark Compatibility
-- **Module Structure**: Converted `mock_spark/sql/functions.py` to export a proper module (matching `pyspark.sql.functions`)
-- **Exception Exports**: Created `mock_spark/sql/utils.py` to export exceptions matching PySpark structure
+- **Module Structure**: Converted `sparkless/sql/functions.py` to export a proper module (matching `pyspark.sql.functions`)
+- **Exception Exports**: Created `sparkless/sql/utils.py` to export exceptions matching PySpark structure
 - **Environment Configuration**: Fixed PySpark environment setup in API parity tests
 
 ## Legend
 
-- ✅ = Available in PySpark version (or implemented in mock-spark)
+- ✅ = Available in PySpark version (or implemented in sparkless)
 - ⚠️ = Deprecated in PySpark (available but modern alternative recommended)
-- ❌ = Not available in PySpark version (or not implemented in mock-spark)
+- ❌ = Not available in PySpark version (or not implemented in sparkless)
 
-**Mock-Spark Status:** All implemented features (marked with ✅) are available to all users regardless of PySpark version.
+**Sparkless Status:** All implemented features (marked with ✅) are available to all users regardless of PySpark version.
 
 ## Functions (pyspark.sql.functions)
 
 Total functions cataloged: 444
 
-| Function | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Mock-Spark |
+| Function | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Sparkless |
 |----------|-------|-------|-------|-------|-------|-------|------------|
 | `ArrayType` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `Column` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -498,7 +498,7 @@ Total functions cataloged: 444
 
 Total methods cataloged: 94
 
-| Method | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Mock-Spark |
+| Method | 3.0.3 | 3.1.3 | 3.2.4 | 3.3.4 | 3.4.3 | 3.5.2 | Sparkless |
 |--------|-------|-------|-------|-------|-------|-------|------------|
 | `agg` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `alias` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -603,7 +603,7 @@ Total methods cataloged: 94
 - **PySpark 3.3.4**: 271 functions, 88 DataFrame methods
 - **PySpark 3.4.3**: 289 functions, 92 DataFrame methods
 - **PySpark 3.5.2**: 451 functions, 94 DataFrame methods
-- **Mock-Spark**: 485 functions, 85 DataFrame methods
+- **Sparkless**: 485 functions, 85 DataFrame methods
 
-**All mock-spark features are available to everyone** - there is no version gating or compatibility restrictions.
+**All sparkless features are available to everyone** - there is no version gating or compatibility restrictions.
 This provides comprehensive PySpark compatibility across all supported versions!

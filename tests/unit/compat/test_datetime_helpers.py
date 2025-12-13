@@ -2,10 +2,10 @@
 
 from datetime import date, datetime
 
-from mock_spark.compat import datetime as dt_compat
-from mock_spark.functions import F
-from mock_spark.functions.base import ColumnOperation
-from mock_spark.spark_types import (
+from sparkless.compat import datetime as dt_compat
+from sparkless.functions import F
+from sparkless.functions.base import ColumnOperation
+from sparkless.spark_types import (
     Row,
     StructField,
     StructType,

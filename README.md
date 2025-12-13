@@ -1,4 +1,4 @@
-# Mock Spark
+# Sparkless
 
 <div align="center">
 
@@ -7,8 +7,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI version](https://badge.fury.io/py/mock-spark.svg)](https://badge.fury.io/py/mock-spark)
-[![Tests](https://img.shields.io/badge/tests-650+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/mock-spark)
+[![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
+[![Tests](https://img.shields.io/badge/tests-650+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -18,18 +18,18 @@
 
 ---
 
-## Why Mock Spark?
+## Why Sparkless?
 
 **Tired of waiting 30+ seconds for Spark to initialize in every test?**
 
-Mock Spark is a lightweight PySpark replacement that runs your tests **10x faster** by eliminating JVM overhead. Your existing PySpark code works unchanged—just swap the import.
+Sparkless is a lightweight PySpark replacement that runs your tests **10x faster** by eliminating JVM overhead. Your existing PySpark code works unchanged—just swap the import.
 
 ```python
 # Before
 from pyspark.sql import SparkSession
 
 # After  
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 ```
 
 ### Key Benefits
@@ -62,13 +62,13 @@ from mock_spark.sql import SparkSession
 ### Installation
 
 ```bash
-pip install mock-spark
+pip install sparkless
 ```
 
 ### Basic Usage
 
 ```python
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 # Create session
 spark = SparkSession("MyApp")
@@ -91,18 +91,18 @@ df.show()
 # 30    Bob
 ```
 
-### Storage API (Mock-Spark-Specific)
+### Storage API (Sparkless-Specific)
 
-Mock-Spark provides a convenient `.storage` API for managing databases and tables. **Note:** This is a **mock-spark-specific convenience API** that does not exist in PySpark. For PySpark compatibility, use SQL commands or DataFrame operations instead:
+Sparkless provides a convenient `.storage` API for managing databases and tables. **Note:** This is a **sparkless-specific convenience API** that does not exist in PySpark. For PySpark compatibility, use SQL commands or DataFrame operations instead:
 
 ```python
-# Mock-Spark: Using .storage API (convenient but NOT PySpark-compatible)
+# Sparkless: Using .storage API (convenient but NOT PySpark-compatible)
 spark._storage.create_schema("test_db")
 spark._storage.create_table("test_db", "users", schema)
 spark._storage.insert_data("test_db", "users", data)
 df = spark._storage.query_table("test_db", "users")
 
-# Both Mock-Spark and PySpark: Using SQL commands (recommended for compatibility)
+# Both Sparkless and PySpark: Using SQL commands (recommended for compatibility)
 spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
 spark.sql("CREATE TABLE test_db.users (name STRING, age INT)")
 df.write.saveAsTable("test_db.users")  # Write DataFrame to table
@@ -125,7 +125,7 @@ See the [Storage API Guide](docs/storage_api_guide.md) and [Migration Guide](doc
 
 ```python
 import pytest
-from mock_spark.sql import SparkSession, functions as F
+from sparkless.sql import SparkSession, functions as F
 
 def test_data_pipeline():
     """Test PySpark logic without Spark cluster."""
@@ -152,7 +152,7 @@ def test_data_pipeline():
 
 ### 🚀 Complete PySpark API Compatibility
 
-Mock Spark implements **120+ functions** and **70+ DataFrame methods** across PySpark 3.0-3.5:
+Sparkless implements **120+ functions** and **70+ DataFrame methods** across PySpark 3.0-3.5:
 
 | Category | Functions | Examples |
 |----------|-----------|----------|
@@ -179,7 +179,7 @@ Mock Spark implements **120+ functions** and **70+ DataFrame methods** across Py
 ### Window Functions
 
 ```python
-from mock_spark.sql import Window, functions as F
+from sparkless.sql import Window, functions as F
 
 # Ranking and analytics
 df = spark.createDataFrame([
@@ -248,7 +248,7 @@ spark.sql("""
 
 ### Lazy Evaluation
 
-Mock Spark mirrors PySpark's lazy execution model:
+Sparkless mirrors PySpark's lazy execution model:
 
 ```python
 # Transformations are queued (not executed)
@@ -295,7 +295,7 @@ result = (
 
 ### Polars Backend (Default)
 
-Mock Spark uses **Polars** as the default backend, providing:
+Sparkless uses **Polars** as the default backend, providing:
 
 - 🧵 **Thread Safety** - Designed for parallel execution
 - ⚡ **High Performance** - Optimized DataFrame operations
@@ -308,7 +308,7 @@ spark = SparkSession("MyApp")
 
 # Explicit backend selection
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "polars") \
+    .config("spark.sparkless.backend", "polars") \
     .getOrCreate()
 ```
 
@@ -317,26 +317,15 @@ spark = SparkSession.builder \
 ```python
 # Memory backend for lightweight testing
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "memory") \
+    .config("spark.sparkless.backend", "memory") \
     .getOrCreate()
 
 # File backend for persistent storage
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "file") \
-    .config("spark.mock.backend.basePath", "/tmp/mock_spark") \
+    .config("spark.sparkless.backend", "file") \
+    .config("spark.sparkless.backend.basePath", "/tmp/sparkless") \
     .getOrCreate()
 ```
-
-**Available Backends:**
-- **Polars** (default): High-performance analytical database with thread safety
-- **Memory**: In-memory storage for lightweight testing
-- **File**: File-based storage for persistent data
-- **DuckDB** (optional): Legacy SQL backend. Requires the optional DuckDB modules from
-  Mock-Spark 2.x plus the `duckdb`/`duckdb-engine` Python packages.
-
-Set `MOCK_SPARK_BACKEND` to override globally (for example,
-`MOCK_SPARK_BACKEND=memory pytest`). See `docs/backend_selection.md` for a full
-matrix of options, dependencies, and troubleshooting tips.
 
 ---
 
@@ -391,7 +380,7 @@ spark = SparkSession(
 
 Real-world test suite improvements:
 
-| Operation | PySpark | Mock Spark | Speedup |
+| Operation | PySpark | Sparkless | Speedup |
 |-----------|---------|------------|---------|
 | Session Creation | 30-45s | 0.1s | **300x** |
 | Simple Query | 2-5s | 0.01s | **200x** |
@@ -420,7 +409,7 @@ Real-world test suite improvements:
 
 ### Version 3.6.0 - Profiling & Adaptive Execution
 
-- ⚡ **Feature-Flagged Profiling** – Introduced `mock_spark.utils.profiling` with opt-in instrumentation for Polars hot paths and expression evaluation, plus a new guide at `docs/performance/profiling.md`.
+- ⚡ **Feature-Flagged Profiling** – Introduced `sparkless.utils.profiling` with opt-in instrumentation for Polars hot paths and expression evaluation, plus a new guide at `docs/performance/profiling.md`.
 - 🔁 **Adaptive Execution Simulation** – Query plans can now inject synthetic `REPARTITION` steps based on skew metrics, configurable via `QueryOptimizer.configure_adaptive_execution` and covered by new regression tests.
 - 🐼 **Pandas Backend Choice** – Added an optional native pandas mode (`MOCK_SPARK_PANDAS_MODE`) with benchmarking support (`scripts/benchmark_pandas_fallback.py`) and documentation in `docs/performance/pandas_fallback.md`.
 
@@ -429,7 +418,7 @@ Real-world test suite improvements:
 - 🧭 **Session-Literal Helpers** – `F.current_catalog`, `F.current_database`, `F.current_schema`, and `F.current_user` return PySpark-compatible literals and understand the active session (with new regression coverage).
 - 🗃️ **Reliable Catalog Context** – The Polars backend and unified storage manager now track the selected schema so `setCurrentDatabase` works end-to-end, and `SparkContext.sparkUser()` mirrors PySpark behaviour.
 - 🧮 **Pure-Python Stats** – Lightweight `percentile` and `covariance` helpers keep percentile/cov tests green even without NumPy, eliminating native-crash regressions.
-- 🛠️ **Dynamic Dispatch** – `F.call_function("func_name", ...)` lets wrappers dynamically invoke registered Mock Spark functions with PySpark-style error messages.
+- 🛠️ **Dynamic Dispatch** – `F.call_function("func_name", ...)` lets wrappers dynamically invoke registered Sparkless functions with PySpark-style error messages.
 
 ### Version 3.4.0 - Workflow & CI Refresh
 
@@ -440,7 +429,7 @@ Real-world test suite improvements:
 
 ### Version 3.3.0 - Type Hardening & Clean Type Check
 
-- 🧮 **Zero mypy Debt** – `mypy mock_spark` now runs clean after migrating the Polars executor,
+- 🧮 **Zero mypy Debt** – `mypy sparkless` now runs clean after migrating the Polars executor,
   expression evaluator, Delta merge helpers, and reader/writer stack to Python 3.9 union syntax.
 - 🧾 **Accurate DataFrame Interfaces** – `DataFrameReader.load()` and related helpers now return
   `IDataFrame` consistently while keeping type-only imports behind `TYPE_CHECKING`.
@@ -518,8 +507,8 @@ See [Migration Guide](docs/migration_from_v2_to_v3.md) for details.
 
 ```bash
 # Install for development
-git clone https://github.com/eddiethedean/mock-spark.git
-cd mock-spark
+git clone https://github.com/eddiethedean/sparkless.git
+cd sparkless
 pip install -e ".[dev]"
 
 # Run all tests (with proper isolation)
@@ -530,7 +519,7 @@ ruff format .
 ruff check . --fix
 
 # Type checking
-mypy mock_spark tests
+mypy sparkless tests
 
 # Linting
 ruff check .
@@ -552,7 +541,7 @@ We welcome contributions! Areas of interest:
 
 ## Known Limitations
 
-While Mock Spark provides comprehensive PySpark compatibility, some advanced features are planned for future releases:
+While Sparkless provides comprehensive PySpark compatibility, some advanced features are planned for future releases:
 
 - **Error Handling**: Enhanced error messages with recovery strategies
 - **Performance**: Advanced query optimization, parallel execution, intelligent caching
@@ -571,9 +560,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Links
 
-- **GitHub**: [github.com/eddiethedean/mock-spark](https://github.com/eddiethedean/mock-spark)
-- **PyPI**: [pypi.org/project/mock-spark](https://pypi.org/project/mock-spark/)
-- **Issues**: [github.com/eddiethedean/mock-spark/issues](https://github.com/eddiethedean/mock-spark/issues)
+- **GitHub**: [github.com/eddiethedean/sparkless](https://github.com/eddiethedean/sparkless)
+- **PyPI**: [pypi.org/project/sparkless](https://pypi.org/project/sparkless/)
+- **Issues**: [github.com/eddiethedean/sparkless/issues](https://github.com/eddiethedean/sparkless/issues)
 - **Documentation**: [Full documentation](docs/)
 
 ---
@@ -582,6 +571,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **Built with ❤️ for the PySpark community**
 
-*Star ⭐ this repo if Mock Spark helps speed up your tests!*
+*Star ⭐ this repo if Sparkless helps speed up your tests!*
 
 </div>

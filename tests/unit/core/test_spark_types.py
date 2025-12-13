@@ -3,7 +3,7 @@ Unit tests for spark types.
 """
 
 import pytest
-from mock_spark.spark_types import (
+from sparkless.spark_types import (
     StringType,
     IntegerType,
     LongType,

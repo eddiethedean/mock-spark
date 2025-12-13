@@ -3,9 +3,9 @@ Unit tests for UDF (User-Defined Function) classes.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.functions.udf import UserDefinedFunction, UserDefinedTableFunction
-from mock_spark.spark_types import StringType, StructType, StructField
+from sparkless import SparkSession
+from sparkless.functions.udf import UserDefinedFunction, UserDefinedTableFunction
+from sparkless.spark_types import StringType, StructType, StructField
 
 
 @pytest.mark.unit

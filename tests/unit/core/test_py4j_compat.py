@@ -5,7 +5,7 @@ Tests the MockPy4JJavaError class for PySpark error handling compatibility.
 """
 
 import pytest
-from mock_spark.core.exceptions.py4j_compat import MockPy4JJavaError
+from sparkless.core.exceptions.py4j_compat import MockPy4JJavaError
 
 
 class TestMockPy4JJavaError:

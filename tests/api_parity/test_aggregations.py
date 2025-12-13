@@ -101,7 +101,7 @@ class TestAggregations(ParityTestBase):
 
     def test_agg_with_functions_module(self, mock_spark, pyspark_spark, sample_data):
         """Test agg using functions module."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -125,7 +125,7 @@ class TestAggregations(ParityTestBase):
 
     def test_count_distinct(self, mock_spark, pyspark_spark, sample_data):
         """Test countDistinct aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -145,7 +145,7 @@ class TestAggregations(ParityTestBase):
 
     def test_stddev_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test stddev aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -165,7 +165,7 @@ class TestAggregations(ParityTestBase):
 
     def test_variance_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test variance aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -185,7 +185,7 @@ class TestAggregations(ParityTestBase):
 
     def test_collect_list_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test collect_list aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -205,7 +205,7 @@ class TestAggregations(ParityTestBase):
 
     def test_collect_set_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test collect_set aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -225,7 +225,7 @@ class TestAggregations(ParityTestBase):
 
     def test_first_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test first aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -245,7 +245,7 @@ class TestAggregations(ParityTestBase):
 
     def test_last_aggregation(self, mock_spark, pyspark_spark, sample_data):
         """Test last aggregation."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark

@@ -2,7 +2,7 @@
 
 import pytest
 
-from mock_spark import SparkSession, StringType
+from sparkless import SparkSession, StringType
 
 
 @pytest.mark.unit
@@ -40,7 +40,8 @@ class TestDeltaSchemaEvolution:
         schema = result_df.schema
 
         assert schema.fieldNames() == ["id", "name", "favorite_color"]
-        favorite_color_field = schema.get_field_by_name("favorite_color")
+        # Use PySpark API to get field by name
+        favorite_color_field = next((f for f in schema.fields if f.name == "favorite_color"), None)
         assert favorite_color_field is not None
         assert isinstance(favorite_color_field.dataType, StringType)
 

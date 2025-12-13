@@ -47,7 +47,7 @@ def main():
     compat_dir = project_root / "tests" / "compatibility_matrix"
 
     print("=" * 70)
-    print("Mock-Spark Compatibility Testing Setup Validation")
+    print("Sparkless Compatibility Testing Setup Validation")
     print("=" * 70)
     print()
 

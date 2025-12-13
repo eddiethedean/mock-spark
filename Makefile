@@ -1,7 +1,7 @@
 .PHONY: help install install-dev test test-cov lint format type-check clean build publish
 
 help: ## Show this help message
-	@echo "Mock Spark Package Management"
+	@echo "Sparkless Package Management"
 	@echo "============================="
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
@@ -15,7 +15,7 @@ test: ## Run tests
 	bash tests/run_all_tests.sh
 
 test-cov: ## Run tests with coverage
-	PYTEST_ADDOPTS="--cov=mock_spark --cov-report=term-missing --cov-report=html --cov-report=xml" bash tests/run_all_tests.sh
+	PYTEST_ADDOPTS="--cov=sparkless --cov-report=term-missing --cov-report=html --cov-report=xml" bash tests/run_all_tests.sh
 
 lint: ## Run linting
 	ruff check .
@@ -25,7 +25,7 @@ format: ## Format code
 	ruff check . --fix
 
 type-check: ## Run mypy type checking
-	mypy mock_spark tests
+	mypy sparkless tests
 
 clean: ## Clean build artifacts
 	rm -rf build/

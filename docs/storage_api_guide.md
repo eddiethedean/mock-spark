@@ -1,26 +1,26 @@
 # Storage API Guide
 
-**⚠️ Important:** The `spark._storage` API is a **private mock-spark-specific convenience feature** that does not exist in PySpark. For code that needs to work with both mock-spark and PySpark, use SQL commands or DataFrame operations instead. The `spark._storage` API is now private and should not be used in production code.
+**⚠️ Important:** The `spark._storage` API is a **private sparkless-specific convenience feature** that does not exist in PySpark. For code that needs to work with both sparkless and PySpark, use SQL commands or DataFrame operations instead. The `spark._storage` API is now private and should not be used in production code.
 
-This guide explains the two ways to manage databases and tables in mock-spark, and when to use each approach.
+This guide explains the two ways to manage databases and tables in sparkless, and when to use each approach.
 
 ## Overview
 
 Mock-spark provides two APIs for managing storage:
 
 1. **PySpark-Compatible APIs** (SQL commands) - ✅ Use for compatibility with PySpark
-2. **mock-spark Convenience APIs** (`._storage` API) - ⚠️ Private mock-spark-specific, not available in PySpark
+2. **sparkless Convenience APIs** (`._storage` API) - ⚠️ Private sparkless-specific, not available in PySpark
 
-Both work identically in mock-spark, but **only SQL commands are portable** between mock-spark and PySpark.
+Both work identically in sparkless, but **only SQL commands are portable** between sparkless and PySpark.
 
 ## PySpark-Compatible APIs (Recommended for Compatibility)
 
-Use SQL commands when you need code that works with both mock-spark and PySpark.
+Use SQL commands when you need code that works with both sparkless and PySpark.
 
 ### Creating Databases
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession("MyApp")
 
@@ -78,19 +78,19 @@ exists = spark.catalog.tableExists("users", "test_db")
 
 ### Benefits
 
-- ✅ Works identically in PySpark and mock-spark
+- ✅ Works identically in PySpark and sparkless
 - ✅ Standard SQL syntax
 - ✅ No code changes needed when switching engines
 - ✅ Familiar to PySpark developers
 
-## mock-spark Convenience APIs
+## sparkless Convenience APIs
 
-Use the `.storage` API when writing mock-spark-specific test utilities or when you need more convenient programmatic access.
+Use the `.storage` API when writing sparkless-specific test utilities or when you need more convenient programmatic access.
 
 ### Creating Databases (Schemas)
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession("MyApp")
 
@@ -110,7 +110,7 @@ spark._storage.drop_schema("test_db")
 ### Creating Tables
 
 ```python
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 # Define schema
 schema = StructType([
@@ -145,7 +145,7 @@ df = spark._storage.get_table("test_db", "users")
 
 ### Use SQL Commands (PySpark-Compatible) When:
 
-- Writing code that needs to work with both mock-spark and PySpark
+- Writing code that needs to work with both sparkless and PySpark
 - Following PySpark best practices
 - Writing production-like code
 - Sharing code with teams using PySpark
@@ -153,17 +153,17 @@ df = spark._storage.get_table("test_db", "users")
 
 **Example:**
 ```python
-# This code works in both mock-spark and PySpark
+# This code works in both sparkless and PySpark
 spark.sql("CREATE DATABASE IF NOT EXISTS analytics")
 spark.sql("CREATE TABLE analytics.events (timestamp TIMESTAMP, event_type STRING)")
 ```
 
-### Use `.storage` API (mock-spark Convenience) When:
+### Use `.storage` API (sparkless Convenience) When:
 
-- Writing mock-spark-specific test utilities
+- Writing sparkless-specific test utilities
 - Setting up test fixtures
 - Need convenient programmatic access
-- Code will only run with mock-spark
+- Code will only run with sparkless
 
 **Example:**
 ```python
@@ -182,7 +182,7 @@ def setup_test_data(spark):
 
 If you have code using `.storage` API and want to make it PySpark-compatible:
 
-**Before (mock-spark only):**
+**Before (sparkless only):**
 ```python
 spark._storage.create_schema("test_db")
 schema = StructType([StructField("name", StringType())])
@@ -199,7 +199,7 @@ spark.sql("INSERT INTO test_db.users VALUES ('Alice')")
 
 ### Migrating from SQL Commands to `.storage` API
 
-If you want to use the convenience API in mock-spark-specific code:
+If you want to use the convenience API in sparkless-specific code:
 
 **Before (SQL):**
 ```python
@@ -222,7 +222,7 @@ spark._storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 ## Best Practices
 
 1. **For Production-Like Code**: Always use SQL commands for maximum compatibility
-2. **For Test Utilities**: Use `.storage` API for convenience in mock-spark-specific test helpers
+2. **For Test Utilities**: Use `.storage` API for convenience in sparkless-specific test helpers
 3. **For Learning**: Use SQL commands to learn PySpark patterns
 4. **For Sharing**: Use SQL commands so code works for everyone
 
@@ -234,7 +234,7 @@ spark._storage.insert_data("test_db", "users", [{"name": "Alice", "age": 25}])
 | Standard SQL | ✅ Yes | ❌ No |
 | Programmatic Access | ⚠️ Via SQL strings | ✅ Direct API |
 | Test Convenience | ⚠️ More verbose | ✅ More concise |
-| Learning PySpark | ✅ Recommended | ⚠️ mock-spark specific |
+| Learning PySpark | ✅ Recommended | ⚠️ sparkless specific |
 
-**Recommendation**: Use SQL commands for code that needs to work with both engines. Use `.storage` API for mock-spark-specific test utilities.
+**Recommendation**: Use SQL commands for code that needs to work with both engines. Use `.storage` API for sparkless-specific test utilities.
 

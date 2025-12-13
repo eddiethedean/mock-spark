@@ -6,7 +6,7 @@ match PySpark exactly, ensuring no false positives in tests.
 """
 
 import pytest
-from mock_spark import SparkSession, functions as F
+from sparkless import SparkSession, functions as F
 
 
 class TestFunctionAPIs:

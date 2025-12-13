@@ -6,7 +6,7 @@ ensuring that datediff() auto-converts string dates without requiring explicit t
 """
 
 import pytest
-from mock_spark import SparkSession, F
+from sparkless import SparkSession, F
 
 
 @pytest.mark.compatibility

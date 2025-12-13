@@ -15,7 +15,7 @@ echo "Running Mock Spark Test Suite (Overhauled)"
 echo "=========================================="
 
 # Check backend selection
-BACKEND="${MOCK_SPARK_TEST_BACKEND:-mock}"
+BACKEND="${SPARKLESS_TEST_BACKEND:-mock}"
 echo "Backend: $BACKEND"
 if [ "$BACKEND" = "pyspark" ]; then
     echo "⚠️  Running with PySpark (slower)"

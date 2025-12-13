@@ -4,11 +4,11 @@ Unit tests for type mapper.
 
 import pytest
 import polars as pl
-from mock_spark.backend.polars.type_mapper import (
+from sparkless.backend.polars.type_mapper import (
     mock_type_to_polars_dtype,
     polars_dtype_to_mock_type,
 )
-from mock_spark.spark_types import (
+from sparkless.spark_types import (
     StringType,
     IntegerType,
     LongType,
@@ -85,7 +85,7 @@ class TestTypeMapper:
         class UnsupportedType:
             pass
 
-        with pytest.raises(ValueError, match="Unsupported MockSpark type"):
+        with pytest.raises(ValueError, match="Unsupported Sparkless type"):
             mock_type_to_polars_dtype(UnsupportedType())
 
     def test_polars_to_mock_string(self):

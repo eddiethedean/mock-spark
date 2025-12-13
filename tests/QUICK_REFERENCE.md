@@ -2,7 +2,7 @@
 
 ## Running Tests
 
-### Default (Mock-Spark)
+### Default (Sparkless)
 ```bash
 pytest tests/
 # or
@@ -24,7 +24,7 @@ bash tests/run_comparison_tests.sh
 ## Test Markers
 
 ```python
-# Run only with mock-spark
+# Run only with sparkless
 @pytest.mark.backend('mock')
 def test_mock_only(spark):
     pass
@@ -36,7 +36,7 @@ def test_pyspark_only(spark):
 
 # Run with both and compare
 @pytest.mark.backend('both')
-def test_comparison(mock_spark_session, pyspark_session):
+def test_comparison(sparkless_session, pyspark_session):
     from tests.fixtures.comparison import assert_dataframes_equal
     # Compare results
 ```
@@ -50,11 +50,11 @@ def test_something(spark):
     df = spark.createDataFrame([{"id": 1}])
 ```
 
-### `mock_spark_session`
-Explicit mock-spark session:
+### `sparkless_session`
+Explicit sparkless session:
 ```python
 def test_mock(spark):
-    # Uses mock-spark
+    # Uses sparkless
     pass
 ```
 

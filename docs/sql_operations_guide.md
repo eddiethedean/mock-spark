@@ -1,11 +1,11 @@
 # SQL Operations Guide
 
-This guide provides comprehensive documentation for Mock Spark's SQL operations, including parsing, validation, optimization, and execution.
+This guide provides comprehensive documentation for Sparkless's SQL operations, including parsing, validation, optimization, and execution.
 
 
 ## Overview
 
-Mock Spark provides a complete SQL processing pipeline that mirrors PySpark's SQL capabilities:
+Sparkless provides a complete SQL processing pipeline that mirrors PySpark's SQL capabilities:
 
 - **SQL Parser** - Converts SQL queries into Abstract Syntax Trees (AST)
 - **SQL Validator** - Validates query syntax and semantics
@@ -19,7 +19,7 @@ The `SQLParser` class provides SQL parsing functionality with support for common
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import SQLParser
+from sparkless.session.sql import SQLParser
 
 # Create parser instance
 parser = SQLParser()
@@ -116,7 +116,7 @@ components = {
 The parser raises `ParseException` for invalid SQL:
 
 ```python
-from mock_spark.core.exceptions.analysis import ParseException
+from sparkless.core.exceptions.analysis import ParseException
 
 try:
     ast = parser.parse("INVALID SQL SYNTAX")
@@ -131,7 +131,7 @@ The `SQLValidator` class validates parsed SQL queries for syntax and semantic co
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import SQLValidator
+from sparkless.session.sql import SQLValidator
 
 validator = SQLValidator()
 
@@ -174,7 +174,7 @@ The `SQLQueryOptimizer` class optimizes SQL queries for better performance.
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import SQLQueryOptimizer
+from sparkless.session.sql import SQLQueryOptimizer
 
 optimizer = SQLQueryOptimizer()
 
@@ -211,7 +211,7 @@ The `SQLExecutor` class executes optimized SQL queries against data.
 ### Basic Usage
 
 ```python
-from mock_spark.session.sql import SQLExecutor
+from sparkless.session.sql import SQLExecutor
 
 executor = SQLExecutor(spark_session)
 
@@ -244,8 +244,8 @@ result = executor.execute(ast, custom_handlers=True)
 Here's a complete example of using the SQL pipeline:
 
 ```python
-from mock_spark.sql import SparkSession
-from mock_spark.session.sql import SQLParser, SQLValidator, SQLQueryOptimizer, SQLExecutor
+from sparkless.sql import SparkSession
+from sparkless.session.sql import SQLParser, SQLValidator, SQLQueryOptimizer, SQLExecutor
 
 # Create Spark session
 spark = SparkSession("SQLExample")
@@ -355,4 +355,4 @@ optimizer.set_debug(True)
 executor.set_debug(True)
 ```
 
-This comprehensive SQL operations guide provides everything you need to work with Mock Spark's SQL capabilities effectively.
+This comprehensive SQL operations guide provides everything you need to work with Sparkless's SQL capabilities effectively.

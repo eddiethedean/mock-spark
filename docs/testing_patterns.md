@@ -1,8 +1,8 @@
-# Testing Best Practices with Mock-Spark
+# Testing Best Practices with Sparkless
 
 ## Overview
 
-Mock-Spark is designed for testing PySpark applications with 100% API compatibility. This guide covers best practices for testing with Mock-Spark, including setup, patterns, and optimization techniques.
+Sparkless is designed for testing PySpark applications with 100% API compatibility. This guide covers best practices for testing with Sparkless, including setup, patterns, and optimization techniques.
 
 ## Setup Test Fixtures
 
@@ -10,8 +10,8 @@ Mock-Spark is designed for testing PySpark applications with 100% API compatibil
 
 ```python
 import pytest
-from mock_spark.sql import SparkSession, functions as F
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql import SparkSession, functions as F
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 @pytest.fixture(scope="session")
 def spark():
@@ -666,4 +666,4 @@ def test_error_conditions(spark, sample_data):
         df.withColumn("rank", F.rank().over(invalid_window)).collect()
 ```
 
-This testing patterns guide provides comprehensive coverage of testing with Mock-Spark. For more examples and advanced patterns, see the test files in the `tests/` directory.
+This testing patterns guide provides comprehensive coverage of testing with Sparkless. For more examples and advanced patterns, see the test files in the `tests/` directory.

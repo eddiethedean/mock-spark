@@ -7,7 +7,7 @@ context managers, and edge cases.
 """
 
 import pytest
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 
 @pytest.mark.compatibility
@@ -123,7 +123,7 @@ class TestGetActiveSession:
 
     def test_get_active_session_with_column_expressions(self):
         """Test that column expressions can use getActiveSession()."""
-        from mock_spark.sql import functions as F
+        from sparkless.sql import functions as F
 
         spark = SparkSession("test_col")
         try:

@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0,<70", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mock-spark"
-version = "3.14.0"
+name = "sparkless"
+version = "3.15.0"
 description = "Lightning-fast PySpark testing without JVM - 10x faster with 100% API compatibility"
 readme = "README.md"
 license = {text = "MIT"}
@@ -71,16 +71,16 @@ generate-outputs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/eddiethedean/mock-spark"
-Repository = "https://github.com/eddiethedean/mock-spark"
-Issues = "https://github.com/eddiethedean/mock-spark/issues"
+Homepage = "https://github.com/eddiethedean/sparkless"
+Repository = "https://github.com/eddiethedean/sparkless"
+Issues = "https://github.com/eddiethedean/sparkless/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mock_spark*"]
+include = ["sparkless*"]
 
 [tool.setuptools.package-data]
-mock_spark = ["py.typed"]
+sparkless = ["py.typed"]
 
 [tool.black]
 line-length = 100
@@ -125,7 +125,7 @@ warn_unreachable = true
 strict_equality = true
 show_error_codes = true
 exclude = '(^venv/|^\.venv/|^venv_exploration_py39/)'
-files = ["mock_spark", "tests"]
+files = ["sparkless", "tests"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -137,7 +137,7 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "mock_spark.testing.*",
+    "sparkless.testing.*",
     "tests.*",
     "tests.fixtures.*",
     "tests.tools.*",
@@ -148,32 +148,32 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
-    "mock_spark.dataframe.grouped_data",
+    "sparkless.dataframe.grouped_data",
 ]
 warn_unreachable = false
 
 [[tool.mypy.overrides]]
 module = [
-    "mock_spark.dataframe.transformations.operations",
-    "mock_spark.dataframe.aggregations.operations",
+    "sparkless.dataframe.transformations.operations",
+    "sparkless.dataframe.aggregations.operations",
 ]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [
-    "mock_spark.functions.conditional",
-    "mock_spark.functions.datetime",
-    "mock_spark.dataframe.grouped.base",
-    "mock_spark.backend.polars.export",
-    "mock_spark.functions.functions",
-    "mock_spark.dataframe.operations.set_operations",
-    "mock_spark.core.schema_inference",
-    "mock_spark.core.data_validation",
-    "mock_spark.functions.window_execution",
-    "mock_spark.dataframe.window_handler",
-    "mock_spark.spark_types",
-    "mock_spark.optimizer.query_optimizer",
-    "mock_spark.dataframe.writer",
+    "sparkless.functions.conditional",
+    "sparkless.functions.datetime",
+    "sparkless.dataframe.grouped.base",
+    "sparkless.backend.polars.export",
+    "sparkless.functions.functions",
+    "sparkless.dataframe.operations.set_operations",
+    "sparkless.core.schema_inference",
+    "sparkless.core.data_validation",
+    "sparkless.functions.window_execution",
+    "sparkless.dataframe.window_handler",
+    "sparkless.spark_types",
+    "sparkless.optimizer.query_optimizer",
+    "sparkless.dataframe.writer",
 ]
 warn_unreachable = false
 ignore_errors = true
@@ -188,7 +188,7 @@ addopts = [
     "--tb=short",
     "--strict-markers",
     "--disable-warnings",
-    "--cov=mock_spark",
+    "--cov=sparkless",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
@@ -200,6 +200,7 @@ markers = [
     "compatibility: marks tests as compatibility tests with real PySpark",
     "fast: marks tests as fast unit tests without PySpark",
     "delta: marks tests that require Delta Lake JARs (run serially for isolation)",
+    "serial: marks tests that must run serially (not in parallel)",
     "performance: marks tests that measure performance (run serially for stable timing)",
 ]
 

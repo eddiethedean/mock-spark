@@ -7,7 +7,7 @@ Tests bitwise operations against expected outputs generated from PySpark.
 import pytest
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
-from mock_spark import F
+from sparkless import F
 
 
 class TestBitwiseFunctionsCompatibility:
@@ -16,7 +16,7 @@ class TestBitwiseFunctionsCompatibility:
     @pytest.fixture
     def spark(self):
         """Create a SparkSession for testing."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         session = SparkSession("compatibility_test")
         yield session

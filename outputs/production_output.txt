@@ -1,4 +1,4 @@
-🚀 Mock Spark Production Ready Demo
+🚀 Sparkless Production Ready Demo
 ============================================================
 ✅ 515 tests passing (100% pass rate)
 ✅ 100% Zero Raw SQL architecture
@@ -8,7 +8,7 @@
 ============================================================
 
 ============================================================
-🎯 Creating Mock Spark Session
+🎯 Creating Sparkless Session
 ============================================================
 ✓ Created session: ProductionDemo
 ✓ Version: 3.5.0
@@ -52,15 +52,15 @@ Traceback (most recent call last):
     main()
   File "examples/production_ready_demo.py", line 133, in main
     print(f"✓ Filtered rows: {filtered_df.count()}")
-  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/mock_spark/dataframe/dataframe.py", line 270, in count
+  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sparkless/dataframe/dataframe.py", line 270, in count
     materialized = self._materialize_if_lazy()
-  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/mock_spark/dataframe/dataframe.py", line 1567, in _materialize_if_lazy
+  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sparkless/dataframe/dataframe.py", line 1567, in _materialize_if_lazy
     return LazyEvaluationEngine.materialize(self)
-  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/mock_spark/dataframe/lazy.py", line 69, in materialize
+  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sparkless/dataframe/lazy.py", line 69, in materialize
     rows = materializer.materialize(df.data, df.schema, df._operations_queue)
-  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/mock_spark/dataframe/sqlmodel_materializer.py", line 87, in materialize
+  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sparkless/dataframe/sqlmodel_materializer.py", line 87, in materialize
     self._apply_select(current_table_name, next_table_name, op_val)
-  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/mock_spark/dataframe/sqlmodel_materializer.py", line 911, in _apply_select
+  File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sparkless/dataframe/sqlmodel_materializer.py", line 911, in _apply_select
     results = session.exec(text(sql)).all()
   File "/Users/odosmatthews/.pyenv/versions/3.8.18/lib/python3.8/site-packages/sqlmodel/orm/session.py", line 83, in exec
     results = super().execute(

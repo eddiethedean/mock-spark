@@ -3,7 +3,7 @@
 Track and clear session memory for large test suites.
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession()
 

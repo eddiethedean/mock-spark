@@ -9,7 +9,7 @@ This document describes the backend architecture with Polars as the default back
 ### Before Refactor
 
 ```
-mock_spark/
+sparkless/
   storage/
     backends/
       (legacy storage implementations)
@@ -31,7 +31,7 @@ mock_spark/
 ### Current Architecture (v3.0.0+)
 
 ```
-mock_spark/
+sparkless/
   backend/
     __init__.py
     protocols.py             # Protocol definitions
@@ -58,7 +58,7 @@ mock_spark/
 ```
 
 **Benefits:**
-- All backend logic centralized in `mock_spark/backend/`
+- All backend logic centralized in `sparkless/backend/`
 - Modules decoupled via protocol interfaces
 - Dependency injection via `BackendFactory`
 - Easy to test with mock backends
@@ -133,7 +133,7 @@ spark = SparkSession("app", storage_backend=custom_storage)
 ### Session with Default Backend
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 # Uses Polars backend by default (v3.0.0+)
 spark = SparkSession("MyApp")
@@ -142,8 +142,8 @@ spark = SparkSession("MyApp")
 ### Session with Custom Backend
 
 ```python
-from mock_spark.sql import SparkSession
-from mock_spark.backend.factory import BackendFactory
+from sparkless.sql import SparkSession
+from sparkless.backend.factory import BackendFactory
 
 # Create custom backend (Polars)
 custom_storage = BackendFactory.create_storage_backend("polars")
@@ -155,7 +155,7 @@ spark = SparkSession("MyApp", storage_backend=custom_storage)
 ### Testing with Mock Backend
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 from unittest.mock import Mock
 
 # Create mock backend for testing
@@ -176,25 +176,25 @@ mock_storage.create_table.assert_called_once()
 Backend selection is now configurable through the session builder's `.config()` method:
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 # Default backend (Polars) - v3.0.0+
 spark = SparkSession("MyApp")
 
 # Explicit backend selection
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "polars") \
+    .config("spark.sparkless.backend", "polars") \
     .getOrCreate()
 
 # Memory backend for lightweight testing
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "memory") \
+    .config("spark.sparkless.backend", "memory") \
     .getOrCreate()
 
 # File backend for persistent storage
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "file") \
-    .config("spark.mock.backend.basePath", "/tmp/mock_spark") \
+    .config("spark.sparkless.backend", "file") \
+    .config("spark.sparkless.backend.basePath", "/tmp/sparkless") \
     .getOrCreate()
 ```
 
@@ -202,17 +202,17 @@ spark = SparkSession.builder \
 
 | Key | Description | Default | Example |
 |-----|-------------|---------|---------|
-| `spark.mock.backend` | Backend type | `"polars"` | `"polars"`, `"memory"`, `"file"` |
-| `spark.mock.backend.maxMemory` | Memory limit | `"1GB"` | `"4GB"`, `"8GB"` |
-| `spark.mock.backend.allowDiskSpillover` | Allow disk usage | `false` | `true`, `false` |
-| `spark.mock.backend.basePath` | Base path for file backend | `"mock_spark_storage"` | `"/tmp/data"` |
+| `spark.sparkless.backend` | Backend type | `"polars"` | `"polars"`, `"memory"`, `"file"` |
+| `spark.sparkless.backend.maxMemory` | Memory limit | `"1GB"` | `"4GB"`, `"8GB"` |
+| `spark.sparkless.backend.allowDiskSpillover` | Allow disk usage | `false` | `true`, `false` |
+| `spark.sparkless.backend.basePath` | Base path for file backend | `"sparkless_storage"` | `"/tmp/data"` |
 
 ### Backend Type Detection
 
 The system automatically detects backend types from storage instances:
 
 ```python
-from mock_spark.backend.factory import BackendFactory
+from sparkless.backend.factory import BackendFactory
 
 # Create a storage backend
 storage = BackendFactory.create_storage_backend("polars")
@@ -230,7 +230,7 @@ print(available)  # ["polars", "memory", "file"]
 
 To add a new backend implementation:
 
-1. **Implement the protocols** in `mock_spark/backend/<backend_name>/`:
+1. **Implement the protocols** in `sparkless/backend/<backend_name>/`:
    - `storage.py` - Implements `StorageBackend` protocol
    - `materializer.py` - Implements `DataMaterializer` protocol  
    - `export.py` - Implements `ExportBackend` protocol
@@ -247,7 +247,7 @@ To add a new backend implementation:
 3. **Add configuration support**:
    ```python
    # Add new config keys for backend-specific options
-   .config("spark.mock.backend.newBackend.option", "value")
+   .config("spark.sparkless.backend.newBackend.option", "value")
    ```
 
 4. **Update detection logic**:
@@ -261,13 +261,13 @@ To add a new backend implementation:
 
 ### Adaptive Execution Simulation
 
-Mock Spark includes a lightweight adaptive execution simulation layer that can
+Sparkless includes a lightweight adaptive execution simulation layer that can
 rewrite logical plans when skewed partitions are detected. The feature is
 disabled by default and can be toggled through configuration or
 programmatically:
 
 ```python
-from mock_spark.optimizer.query_optimizer import QueryOptimizer
+from sparkless.optimizer.query_optimizer import QueryOptimizer
 
 optimizer = QueryOptimizer()
 optimizer.configure_adaptive_execution(
@@ -316,13 +316,13 @@ All existing imports continue to work via re-exports:
 
 ```python
 # Still works - imports from new location transparently
-from mock_spark.storage import PolarsStorageManager
+from sparkless.storage import PolarsStorageManager
 
 # Also works - explicit new import
-from mock_spark.backend.polars import PolarsStorageManager
+from sparkless.backend.polars import PolarsStorageManager
 
 # Factory pattern (recommended)
-from mock_spark.backend.factory import BackendFactory
+from sparkless.backend.factory import BackendFactory
 storage = BackendFactory.create_storage_backend("polars")
 ```
 
@@ -347,7 +347,7 @@ When adding new backend functionality:
 Use protocols for easier mocking:
 
 ```python
-from mock_spark.backend.protocols import StorageBackend
+from sparkless.backend.protocols import StorageBackend
 from typing import cast
 
 def test_with_mock():
@@ -375,7 +375,7 @@ Potential improvements enabled by this architecture:
 
 ## File Mapping
 
-The backend architecture centralizes all backend logic in `mock_spark/backend/`:
+The backend architecture centralizes all backend logic in `sparkless/backend/`:
 - Polars backend: `backend/polars/`
 - Memory backend: `storage/backends/memory.py`
 - File backend: `storage/backends/file.py`
@@ -384,7 +384,7 @@ The backend architecture centralizes all backend logic in `mock_spark/backend/`:
 
 This refactor successfully:
 
-✅ Isolated all backend logic in `mock_spark/backend/`  
+✅ Isolated all backend logic in `sparkless/backend/`  
 ✅ Defined clear protocol interfaces for decoupling  
 ✅ Implemented dependency injection via `BackendFactory`  
 ✅ Maintained full backward compatibility  

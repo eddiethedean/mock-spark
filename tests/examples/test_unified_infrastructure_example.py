@@ -61,7 +61,7 @@ class TestUnifiedInfrastructure:
     def test_aggregation_comparison(self, mock_spark_session, pyspark_session):
         """Compare aggregation results between backends."""
         # Use backend-specific imports for each session
-        from mock_spark.sql import functions as mock_F
+        from sparkless.sql import functions as mock_F
         from pyspark.sql import functions as pyspark_F
 
         data = [

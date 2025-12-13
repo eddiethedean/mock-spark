@@ -8,7 +8,7 @@ import pytest
 import tempfile
 import contextlib
 
-from mock_spark.backend.factory import BackendFactory
+from sparkless.backend.factory import BackendFactory
 
 
 def setup_module(module):
@@ -25,7 +25,7 @@ class TestBackendFactory:
         """Test creating Polars storage backend with defaults."""
         backend = BackendFactory.create_storage_backend("polars")
         assert backend is not None
-        from mock_spark.backend.polars.storage import PolarsStorageManager
+        from sparkless.backend.polars.storage import PolarsStorageManager
 
         assert isinstance(backend, PolarsStorageManager)
 
@@ -49,7 +49,7 @@ class TestBackendFactory:
         """Test creating memory storage backend."""
         backend = BackendFactory.create_storage_backend("memory")
         assert backend is not None
-        from mock_spark.storage.backends.memory import MemoryStorageManager
+        from sparkless.storage.backends.memory import MemoryStorageManager
 
         assert isinstance(backend, MemoryStorageManager)
 
@@ -61,7 +61,7 @@ class TestBackendFactory:
             shutil.rmtree("test_storage", ignore_errors=True)
             backend = BackendFactory.create_storage_backend("file", base_path=base_path)
             assert backend is not None
-            from mock_spark.storage.backends.file import FileStorageManager
+            from sparkless.storage.backends.file import FileStorageManager
 
             assert isinstance(backend, FileStorageManager)
             # Explicitly clean up the backend
@@ -80,7 +80,7 @@ class TestBackendFactory:
         """Test creating Polars materializer with defaults."""
         materializer = BackendFactory.create_materializer("polars")
         assert materializer is not None
-        from mock_spark.backend.polars.materializer import PolarsMaterializer
+        from sparkless.backend.polars.materializer import PolarsMaterializer
 
         assert isinstance(materializer, PolarsMaterializer)
 
@@ -113,7 +113,7 @@ class TestBackendFactory:
         """Test creating Polars export backend."""
         export_backend = BackendFactory.create_export_backend("polars")
         assert export_backend is not None
-        from mock_spark.backend.polars.export import PolarsExporter
+        from sparkless.backend.polars.export import PolarsExporter
 
         assert isinstance(export_backend, PolarsExporter)
 
@@ -126,7 +126,7 @@ class TestBackendFactory:
         """Test creating memory export backend uses Polars."""
         export_backend = BackendFactory.create_export_backend("memory")
         assert export_backend is not None
-        from mock_spark.backend.polars.export import PolarsExporter
+        from sparkless.backend.polars.export import PolarsExporter
 
         assert isinstance(export_backend, PolarsExporter)
 
@@ -134,7 +134,7 @@ class TestBackendFactory:
         """Test creating file export backend uses Polars."""
         export_backend = BackendFactory.create_export_backend("file")
         assert export_backend is not None
-        from mock_spark.backend.polars.export import PolarsExporter
+        from sparkless.backend.polars.export import PolarsExporter
 
         assert isinstance(export_backend, PolarsExporter)
 

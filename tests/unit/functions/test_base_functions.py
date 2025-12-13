@@ -3,8 +3,8 @@ Unit tests for base aggregate functions.
 """
 
 import pytest
-from mock_spark.functions.base import AggregateFunction
-from mock_spark.spark_types import LongType
+from sparkless.functions.base import AggregateFunction
+from sparkless.spark_types import LongType
 
 
 @pytest.mark.unit
@@ -133,7 +133,7 @@ class TestAggregateFunction:
 
     def test_column_name_property_with_column(self):
         """Test column_name property with Column."""
-        from mock_spark.functions.base import Column
+        from sparkless.functions.base import Column
 
         col = Column("test_col")
         func = AggregateFunction(col, "count")
@@ -180,7 +180,7 @@ class TestAggregateFunction:
         """Test over method creates WindowFunction."""
         func = AggregateFunction("col", "sum")
         window_func = func.over("window_spec")
-        from mock_spark.functions.window_execution import WindowFunction
+        from sparkless.functions.window_execution import WindowFunction
 
         assert isinstance(window_func, WindowFunction)
 

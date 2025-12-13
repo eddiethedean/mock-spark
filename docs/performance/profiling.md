@@ -36,13 +36,13 @@ enabled:
 
 Each sample includes runtime (ms) and captured allocations (KB) based on
 `tracemalloc`. Per-thread events are stored in
-`mock_spark.utils.profiling.collect_events()`.
+`sparkless.utils.profiling.collect_events()`.
 
 ## Collecting Samples
 
 ```python
-from mock_spark.session import SparkSession
-from mock_spark.utils import profiling
+from sparkless.session import SparkSession
+from sparkless.utils import profiling
 
 spark = SparkSession.builder.master("local[1]").getOrCreate()
 profiling.clear_events()

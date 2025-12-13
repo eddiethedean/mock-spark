@@ -6,7 +6,7 @@ matching PySpark's behavior exactly.
 """
 
 import pytest
-from mock_spark import SparkSession, functions as F
+from sparkless import SparkSession, functions as F
 
 
 class TestTypeStrictness:
@@ -16,7 +16,7 @@ class TestTypeStrictness:
         """Test that to_timestamp requires string or timestamp input."""
         spark = SparkSession("test")
         try:
-            from mock_spark.spark_types import IntegerType, StructType, StructField
+            from sparkless.spark_types import IntegerType, StructType, StructField
 
             # Create DataFrame with explicit IntegerType schema (not string or timestamp)
             schema = StructType([StructField("date", IntegerType(), True)])
@@ -47,7 +47,7 @@ class TestTypeStrictness:
         """Test that to_date requires string or date input."""
         spark = SparkSession("test")
         try:
-            from mock_spark.spark_types import IntegerType, StructType, StructField
+            from sparkless.spark_types import IntegerType, StructType, StructField
 
             # Create DataFrame with explicit IntegerType schema (not string or date)
             schema = StructType([StructField("date", IntegerType(), True)])

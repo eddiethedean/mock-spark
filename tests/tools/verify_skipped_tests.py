@@ -13,7 +13,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from mock_spark import SparkSession, F  # noqa: E402
+from sparkless import SparkSession, F  # noqa: E402
 
 
 def test_left_join():
@@ -72,7 +72,7 @@ def test_day_function():
 def test_window_functions():
     """Test if window functions work."""
     try:
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         spark = SparkSession("test")
         df = spark.createDataFrame(

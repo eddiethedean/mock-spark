@@ -1,10 +1,10 @@
-# Migration Guide: Mock-Spark v2.x to v3.0.0
+# Migration Guide: Sparkless v2.x to v3.0.0
 
-> **Versioning Note:** The functionality described here now ships as Mock Spark `0.0.x`–`0.3.x` in the semver-aligned roadmap. References to “v3.0.0” map directly to the current `0.0.0` baseline release.
+> **Versioning Note:** The functionality described here now ships as Sparkless `0.0.x`–`0.3.x` in the semver-aligned roadmap. References to “v3.0.0” map directly to the current `0.0.0` baseline release.
 
 ## Overview
 
-Mock-Spark v3.0.0 introduces a **complete migration from DuckDB to Polars** as the default backend. This is a **breaking change** that requires attention when upgrading.
+Sparkless v3.0.0 introduces a **complete migration from DuckDB to Polars** as the default backend. This is a **breaking change** that requires attention when upgrading.
 
 ## Key Changes
 
@@ -28,7 +28,7 @@ Mock-Spark v3.0.0 introduces a **complete migration from DuckDB to Polars** as t
 
 ```bash
 # Install v3.0.0
-pip install mock-spark>=3.0.0
+pip install sparkless>=3.0.0
 
 # Polars is now a required dependency
 # DuckDB and SQLAlchemy are optional (only if using DuckDB backend)
@@ -40,7 +40,7 @@ Most code will work without changes since Polars backend implements the same int
 
 ```python
 # Before (v2.x) - works the same in v3.0.0
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession("MyApp")
 df = spark.createDataFrame([{"name": "Alice", "age": 25}])
@@ -53,7 +53,7 @@ If you have existing DuckDB database files, you'll need to migrate them:
 
 ```python
 # Option 1: Use migration script (if provided)
-from mock_spark.scripts.migrate_duckdb_to_parquet import migrate_database
+from sparkless.scripts.migrate_duckdb_to_parquet import migrate_database
 migrate_database("old_database.duckdb", "new_storage_path")
 
 # Option 2: Manual migration
@@ -67,8 +67,8 @@ If you explicitly configured DuckDB backend, you may need to update:
 ```python
 # v2.x
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "duckdb") \
-    .config("spark.mock.backend.maxMemory", "4GB") \
+    .config("spark.sparkless.backend", "duckdb") \
+    .config("spark.sparkless.backend.maxMemory", "4GB") \
     .getOrCreate()
 
 # v3.0.0 - Polars is default, no memory config needed
@@ -76,7 +76,7 @@ spark = SparkSession("MyApp")  # Uses Polars automatically
 
 # Or explicitly set Polars
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "polars") \
+    .config("spark.sparkless.backend", "polars") \
     .getOrCreate()
 ```
 
@@ -87,8 +87,8 @@ If you need DuckDB for specific features, you can still use it:
 ```python
 # v3.0.0 - Use DuckDB backend explicitly
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "duckdb") \
-    .config("spark.mock.backend.maxMemory", "4GB") \
+    .config("spark.sparkless.backend", "duckdb") \
+    .config("spark.sparkless.backend.maxMemory", "4GB") \
     .getOrCreate()
 ```
 
@@ -160,7 +160,7 @@ All tests should pass with Polars backend. If you encounter issues, you can temp
 
 ```python
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "duckdb") \
+    .config("spark.sparkless.backend", "duckdb") \
     .getOrCreate()
 ```
 

@@ -13,12 +13,12 @@ This example showcases Mock Spark's production-ready capabilities with:
 Run this file to see Mock Spark's full capabilities in action.
 """
 
-from mock_spark.sql import (
+from sparkless.sql import (
     SparkSession,
     functions as F,
     Window,
 )
-from mock_spark.sql.types import (
+from sparkless.sql.types import (
     StringType,
     IntegerType,
     DoubleType,
@@ -36,10 +36,10 @@ from mock_spark.sql.types import (
     StructType,
     StructField,
 )
-from mock_spark.error_simulation import MockErrorSimulator
-from mock_spark.performance_simulation import MockPerformanceSimulator
-from mock_spark.data_generation import MockDataGenerator
-from mock_spark.core.exceptions import AnalysisException
+from sparkless.error_simulation import MockErrorSimulator
+from sparkless.performance_simulation import MockPerformanceSimulator
+from sparkless.data_generation import MockDataGenerator
+from sparkless.core.exceptions import AnalysisException
 import time
 
 

@@ -1,7 +1,7 @@
 # Lazy-by-Default Transition Plan
 
 ## Overview
-- Objective: Make Mock-Spark lazy by default, mirroring PySpark execution semantics, and deprecate eager execution paths.
+- Objective: Make Sparkless lazy by default, mirroring PySpark execution semantics, and deprecate eager execution paths.
 - Outcome: All DataFrame transformations are queued; actions (collect, count, toPandas, show) materialize.
 
 ## Principles
@@ -101,11 +101,11 @@
 ## Agent Execution Context (for any AI agent)
 
 ### Repository Layout (high-signal paths)
-- DataFrame core: `mock_spark/dataframe/dataframe.py`
-- Session core: `mock_spark/session/core/session.py`
-- Configuration: `mock_spark/session/config/configuration.py`
-- Types/rows: `mock_spark/spark_types.py`
-- Functions API: `mock_spark/functions/*.py`
+- DataFrame core: `sparkless/dataframe/dataframe.py`
+- Session core: `sparkless/session/core/session.py`
+- Configuration: `sparkless/session/config/configuration.py`
+- Types/rows: `sparkless/spark_types.py`
+- Functions API: `sparkless/functions/*.py`
 - Tests (unit): `tests/unit/`
 - Tests (compat): `tests/compatibility/`
 - Environment setup for PySpark: `tests/setup_spark_env.sh`
@@ -150,7 +150,7 @@
 - Throwing exceptions during transform instead of on action; exceptions should be raised at materialization time.
 - Eagerly mutating `self.data` in transform methods while in lazy mode; always queue ops.
 - Forgetting to project schema for literals/new columns added via `withColumn`.
-- Using PySpark functions in mock-only tests (use `mock_spark.functions as F`).
+- Using PySpark functions in mock-only tests (use `sparkless.functions as F`).
 
 ### Communication Notes
 - Whenever state is asserted in tests or examples, convert to rows first: `rows = df.collect()`.

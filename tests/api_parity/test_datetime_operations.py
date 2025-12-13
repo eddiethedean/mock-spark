@@ -13,7 +13,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_hour_extraction(self, mock_spark, pyspark_spark, datetime_data):
         """Test hour extraction from timestamp."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -33,7 +33,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_dayofweek_extraction(self, mock_spark, pyspark_spark, datetime_data):
         """Test dayofweek extraction from timestamp."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -53,7 +53,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_to_timestamp_without_format(self, mock_spark, pyspark_spark):
         """Test to_timestamp without format string."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -78,7 +78,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_to_timestamp_with_format(self, mock_spark, pyspark_spark):
         """Test to_timestamp with format string."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -109,7 +109,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_to_date(self, mock_spark, pyspark_spark):
         """Test to_date function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         data = [
@@ -134,7 +134,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_current_timestamp(self, mock_spark, pyspark_spark, sample_data):
         """Test current_timestamp function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -154,7 +154,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_current_date(self, mock_spark, pyspark_spark, sample_data):
         """Test current_date function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -172,7 +172,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_date_format(self, mock_spark, pyspark_spark, datetime_data):
         """Test date_format function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -194,7 +194,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_year_extraction(self, mock_spark, pyspark_spark, datetime_data):
         """Test year extraction from timestamp."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -212,7 +212,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_month_extraction(self, mock_spark, pyspark_spark, datetime_data):
         """Test month extraction from timestamp."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -232,7 +232,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_day_extraction(self, mock_spark, pyspark_spark, datetime_data):
         """Test day extraction from timestamp."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -250,7 +250,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_date_add(self, mock_spark, pyspark_spark, datetime_data):
         """Test date_add function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -270,7 +270,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_date_sub(self, mock_spark, pyspark_spark, datetime_data):
         """Test date_sub function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -290,7 +290,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_datediff(self, mock_spark, pyspark_spark, datetime_data):
         """Test datediff function."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark - datediff requires F.lit() for string literals
@@ -331,7 +331,7 @@ class TestDatetimeOperations(ParityTestBase):
 
     def test_date_arithmetic(self, mock_spark, pyspark_spark, datetime_data):
         """Test date arithmetic operations."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark
@@ -357,7 +357,7 @@ class TestDatetimeOperations(ParityTestBase):
         self, mock_spark, pyspark_spark, datetime_data
     ):
         """Test complex datetime operations combining multiple functions."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark

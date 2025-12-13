@@ -126,11 +126,11 @@ def check_mock_spark_availability(item_name: str, item_type: str) -> bool:
     """
     try:
         if item_type == "function":
-            import mock_spark.functions as F
+            import sparkless.functions as F
 
             return hasattr(F, item_name)
         elif item_type == "dataframe_method":
-            from mock_spark.dataframe.dataframe import MockDataFrame
+            from sparkless.dataframe.dataframe import MockDataFrame
 
             return hasattr(MockDataFrame, item_name)
     except Exception:
@@ -175,11 +175,11 @@ def save_markdown(
     )
 
     # Table header
-    header = "| Function | " + " | ".join(versions) + " | Mock-Spark |"
+    header = "| Function | " + " | ".join(versions) + " | Sparkless |"
     separator = (
         "|"
         + "|".join(
-            ["-" * (len(v) + 2) for v in ["Function"] + versions + ["Mock-Spark"]]
+            ["-" * (len(v) + 2) for v in ["Function"] + versions + ["Sparkless"]]
         )
         + "|"
     )
@@ -206,10 +206,10 @@ def save_markdown(
     )
 
     # Table header
-    header = "| Method | " + " | ".join(versions) + " | Mock-Spark |"
+    header = "| Method | " + " | ".join(versions) + " | Sparkless |"
     separator = (
         "|"
-        + "|".join(["-" * (len(v) + 2) for v in ["Method"] + versions + ["Mock-Spark"]])
+        + "|".join(["-" * (len(v) + 2) for v in ["Method"] + versions + ["Sparkless"]])
         + "|"
     )
     lines.extend([header, separator])
@@ -254,7 +254,7 @@ def save_markdown(
         if check_mock_spark_availability(method, "dataframe_method")
     )
     lines.append(
-        f"- **Mock-Spark**: {mock_func_count} functions, {mock_method_count} DataFrame methods"
+        f"- **Sparkless**: {mock_func_count} functions, {mock_method_count} DataFrame methods"
     )
 
     # Write file
@@ -283,7 +283,7 @@ def main() -> None:
 
     # Save outputs
     repo_root = Path(__file__).parent.parent
-    json_path = repo_root / "mock_spark" / "pyspark_api_matrix.json"
+    json_path = repo_root / "sparkless" / "pyspark_api_matrix.json"
     md_path = repo_root / "PYSPARK_FUNCTION_MATRIX.md"
 
     save_json(matrix, json_path)

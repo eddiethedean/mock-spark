@@ -1,4 +1,4 @@
-# Mock-Spark 3.0.0 Upgrade Summary
+# Sparkless 3.0.0 Upgrade Summary
 
 ## Highlights
 - Restored Delta `mergeSchema` compatibility for the Polars backend via schema
@@ -6,14 +6,14 @@
 - Added datetime normalisation utilities to ease downstream migrations where
   string slicing is still required.
 - Exposed backend selection through constructor overrides, builder config, and
-  the `MOCK_SPARK_BACKEND` environment variable. Documented the workflow in the
+  the `SPARKLESS_BACKEND` environment variable. Documented the workflow in the
   new backend selection guide.
 
 ## Test Coverage
 - New unit tests cover schema evolution, datetime compatibility helpers, backend
   selection, and collected datetime normalisation.
 - Full suite executed with `bash tests/run_all_tests.sh`; documentation example
-  tests still fail when a conflicting global `mock_spark` installation shadows
+  tests still fail when a conflicting global `sparkless` installation shadows
   the workspace. Resolution requires aligning the interpreter used for doc
   scripts.
 

@@ -92,6 +92,10 @@ def _ensure_documentation_dependencies() -> None:
 class TestExampleScripts:
     """Validate that all example scripts run without errors."""
 
+    @pytest.mark.skipif(
+        os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
+        reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
+    )
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         env = os.environ.copy()
@@ -111,6 +115,10 @@ class TestExampleScripts:
         assert "Mock Spark" in result.stdout
         assert "Basic Usage Example" in result.stdout
 
+    @pytest.mark.skipif(
+        os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
+        reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
+    )
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
         env = os.environ.copy()

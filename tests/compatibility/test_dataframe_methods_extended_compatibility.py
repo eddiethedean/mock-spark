@@ -170,7 +170,7 @@ class TestDataFrameMethodsExtendedCompatibility:
         if spark_backend == BackendType.PYSPARK:
             from pyspark.sql import functions as F
         else:
-            from mock_spark import F
+            from sparkless import F
 
         expected = load_expected_output("dataframe_operations", "column_access")
 

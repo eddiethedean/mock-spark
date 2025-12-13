@@ -364,7 +364,7 @@ class TestTypeCasting(ParityTestBase):
 
     def test_cast_in_expressions(self, mock_spark, pyspark_spark, numeric_data):
         """Test casting within expressions."""
-        from mock_spark import F as MockF
+        from sparkless import F as MockF
         from pyspark.sql import functions as PySparkF
 
         # MockSpark

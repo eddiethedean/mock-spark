@@ -10,7 +10,7 @@ import tempfile
 import os
 import gc
 import time
-from mock_spark import SparkSession
+from sparkless import SparkSession
 
 
 @pytest.mark.unit

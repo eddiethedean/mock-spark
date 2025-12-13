@@ -1,11 +1,11 @@
 # Configuration
 
-Mock-Spark configuration is managed via SparkSession constructor options and the session builder.
+Sparkless configuration is managed via SparkSession constructor options and the session builder.
 
 ## Basic Configuration
 
 ```python
-from mock_spark.sql import SparkSession
+from sparkless.sql import SparkSession
 
 spark = SparkSession(
     validation_mode="relaxed",           # strict | relaxed | minimal
@@ -31,19 +31,19 @@ spark = SparkSession("MyApp")
 ```python
 # Use Polars explicitly
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "polars") \
+    .config("spark.sparkless.backend", "polars") \
     .getOrCreate()
 
 # Use DuckDB backend (legacy, requires duckdb package)
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "duckdb") \
-    .config("spark.mock.backend.maxMemory", "4GB") \
-    .config("spark.mock.backend.allowDiskSpillover", True) \
+    .config("spark.sparkless.backend", "duckdb") \
+    .config("spark.sparkless.backend.maxMemory", "4GB") \
+    .config("spark.sparkless.backend.allowDiskSpillover", True) \
     .getOrCreate()
 
 # Use memory backend
 spark = SparkSession.builder \
-    .config("spark.mock.backend", "memory") \
+    .config("spark.sparkless.backend", "memory") \
     .getOrCreate()
 ```
 
@@ -55,7 +55,7 @@ spark = SparkSession.builder \
 - Uses Parquet files for persistence
 
 **DuckDB Backend (legacy):**
-- `spark.mock.backend.maxMemory`: Maximum memory (e.g., "1GB", "4GB")
-- `spark.mock.backend.allowDiskSpillover`: Allow disk spillover when memory is full
+- `spark.sparkless.backend.maxMemory`: Maximum memory (e.g., "1GB", "4GB")
+- `spark.sparkless.backend.allowDiskSpillover`: Allow disk spillover when memory is full
 
 **Note**: `maxMemory` and `allowDiskSpillover` options are ignored for Polars backend.

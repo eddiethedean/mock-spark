@@ -7,8 +7,8 @@ queryable via spark.table() just like simple DataFrames.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.sql import functions as F
+from sparkless import SparkSession
+from sparkless.sql import functions as F
 
 
 @pytest.mark.unit
@@ -455,7 +455,7 @@ class TestAggregatedDataFrameCatalogRegistration:
 
     def test_empty_aggregated_dataframe(self, spark):
         """Test aggregated DataFrame with empty source data."""
-        from mock_spark.spark_types import (
+        from sparkless.spark_types import (
             StructType,
             StructField,
             StringType,
@@ -685,7 +685,7 @@ class TestAggregatedDataFrameCatalogRegistration:
         )
 
         # Add window function column
-        from mock_spark.window import Window
+        from sparkless.window import Window
 
         windowed = source.withColumn(
             "rank", F.row_number().over(Window.partitionBy("user_id").orderBy("value"))

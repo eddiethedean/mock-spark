@@ -1,6 +1,6 @@
 # Function API Audit Report
 
-This document provides an audit of mock-spark function APIs compared to PySpark, ensuring exact compatibility.
+This document provides an audit of sparkless function APIs compared to PySpark, ensuring exact compatibility.
 
 ## Audit Date
 December 2024

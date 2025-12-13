@@ -4,8 +4,8 @@ Tests for Regression 3: Schema Preservation During Transformations
 Tests that empty DataFrames preserve their schema through transformations (select, filter, withColumn, etc.).
 """
 
-from mock_spark import SparkSession, F
-from mock_spark.spark_types import (
+from sparkless import SparkSession, F
+from sparkless.spark_types import (
     StructType,
     StructField,
     StringType,

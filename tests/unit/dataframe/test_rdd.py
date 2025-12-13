@@ -3,7 +3,7 @@ Unit tests for RDD operations.
 """
 
 import pytest
-from mock_spark.dataframe.rdd import MockRDD, MockGroupedRDD
+from sparkless.dataframe.rdd import MockRDD, MockGroupedRDD
 
 
 @pytest.mark.unit
@@ -79,7 +79,7 @@ class TestMockRDD:
 
     def test_reduce_with_empty_rdd(self):
         """Test reduce with empty RDD raises error."""
-        from mock_spark.core.exceptions import PySparkValueError
+        from sparkless.core.exceptions import PySparkValueError
 
         rdd = MockRDD([])
         with pytest.raises(PySparkValueError, match="Cannot reduce empty RDD"):
@@ -136,7 +136,7 @@ class TestMockRDD:
 
     def test_toDF(self, sample_rdd):
         """Test toDF operation."""
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         _ = SparkSession("test")
         _ = sample_rdd.toDF()

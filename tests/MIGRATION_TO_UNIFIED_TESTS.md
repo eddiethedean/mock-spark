@@ -1,10 +1,10 @@
 # Migration Guide: Unified Test Infrastructure
 
-This guide explains how to migrate existing tests to use the unified test infrastructure that supports both PySpark and mock-spark.
+This guide explains how to migrate existing tests to use the unified test infrastructure that supports both PySpark and sparkless.
 
 ## Overview
 
-The unified test infrastructure allows tests to run with either mock-spark or PySpark (or both for comparison) without code changes. This enables:
+The unified test infrastructure allows tests to run with either sparkless or PySpark (or both for comparison) without code changes. This enables:
 - Direct comparison testing
 - PySpark as baseline validation
 - Easy switching between backends
@@ -17,9 +17,9 @@ For new tests or when refactoring, use unified imports:
 
 **Before:**
 ```python
-from mock_spark import SparkSession
-from mock_spark.sql import functions as F
-from mock_spark.sql.types import StructType, StructField, StringType
+from sparkless import SparkSession
+from sparkless.sql import functions as F
+from sparkless.sql.types import StructType, StructField, StringType
 ```
 
 **After (Optional - for new tests):**
@@ -44,7 +44,7 @@ The `spark` fixture automatically selects the backend based on configuration:
 ```python
 @pytest.fixture
 def spark():
-    from mock_spark import SparkSession
+    from sparkless import SparkSession
     session = SparkSession("test_app")
     yield session
     session.stop()
@@ -69,19 +69,19 @@ def test_pyspark_specific(spark):
     # This test only runs with PySpark
     pass
 
-# Run only with mock-spark
+# Run only with sparkless
 @pytest.mark.backend('mock')
 def test_mock_specific(spark):
-    # This test only runs with mock-spark
+    # This test only runs with sparkless
     pass
 
 # Run with both and compare
 @pytest.mark.backend('both')
-def test_comparison(mock_spark_session, pyspark_session):
+def test_comparison(sparkless_session, pyspark_session):
     # Both sessions available for comparison
     from tests.fixtures.comparison import assert_dataframes_equal
     
-    mock_df = mock_spark_session.createDataFrame([{"id": 1}])
+    mock_df = sparkless_session.createDataFrame([{"id": 1}])
     pyspark_df = pyspark_session.createDataFrame([{"id": 1}])
     
     assert_dataframes_equal(mock_df, pyspark_df)
@@ -93,8 +93,8 @@ If you have existing comparison tests, update them to use the new utilities:
 
 **Before:**
 ```python
-def test_comparison(mock_spark, pyspark_spark):
-    mock_df = mock_spark.createDataFrame([{"id": 1}])
+def test_comparison(sparkless, pyspark_spark):
+    mock_df = sparkless.createDataFrame([{"id": 1}])
     pyspark_df = pyspark_spark.createDataFrame([{"id": 1}])
     
     # Manual comparison
@@ -105,10 +105,10 @@ def test_comparison(mock_spark, pyspark_spark):
 **After:**
 ```python
 @pytest.mark.backend('both')
-def test_comparison(mock_spark_session, pyspark_session):
+def test_comparison(sparkless_session, pyspark_session):
     from tests.fixtures.comparison import assert_dataframes_equal
     
-    mock_df = mock_spark_session.createDataFrame([{"id": 1}])
+    mock_df = sparkless_session.createDataFrame([{"id": 1}])
     pyspark_df = pyspark_session.createDataFrame([{"id": 1}])
     
     # Automatic comparison with normalization
@@ -123,7 +123,7 @@ Most tests don't need changes - they work with both backends automatically:
 
 ```python
 def test_basic_operations(spark):
-    """This test works with both mock-spark and PySpark."""
+    """This test works with both sparkless and PySpark."""
     df = spark.createDataFrame([{"id": 1, "name": "Alice"}])
     result = df.filter(df.id > 0).select("name").collect()
     assert len(result) == 1
@@ -142,24 +142,24 @@ def test_pyspark_feature(spark):
 
 @pytest.mark.backend('mock')
 def test_mock_feature(spark):
-    """Test mock-spark-specific behavior."""
-    # This only runs with mock-spark
+    """Test sparkless-specific behavior."""
+    # This only runs with sparkless
     pass
 ```
 
 ### Pattern 3: Comparison Tests
 
-Use comparison mode to validate mock-spark against PySpark:
+Use comparison mode to validate sparkless against PySpark:
 
 ```python
 @pytest.mark.backend('both')
-def test_validation(mock_spark_session, pyspark_session):
-    """Validate mock-spark matches PySpark behavior."""
+def test_validation(sparkless_session, pyspark_session):
+    """Validate sparkless matches PySpark behavior."""
     from tests.fixtures.comparison import assert_dataframes_equal
     
     data = [{"id": i, "value": i * 2} for i in range(10)]
     
-    mock_df = mock_spark_session.createDataFrame(data)
+    mock_df = sparkless_session.createDataFrame(data)
     pyspark_df = pyspark_session.createDataFrame(data)
     
     # Compare basic operations
@@ -179,7 +179,7 @@ When differences are expected, use difference handlers:
 from tests.fixtures.difference_handlers import normalize_row_ordering
 
 @pytest.mark.backend('both')
-def test_with_differences(mock_spark_session, pyspark_session):
+def test_with_differences(sparkless_session, pyspark_session):
     """Test that handles known differences."""
     # ... create DataFrames ...
     
@@ -229,12 +229,12 @@ def test_count(spark):
 
 ```python
 @pytest.mark.backend('both')
-def test_aggregation_comparison(mock_spark_session, pyspark_session):
+def test_aggregation_comparison(sparkless_session, pyspark_session):
     from tests.fixtures.comparison import assert_dataframes_equal
     
     data = [{"category": "A", "value": 10}, {"category": "B", "value": 20}]
     
-    mock_df = mock_spark_session.createDataFrame(data)
+    mock_df = sparkless_session.createDataFrame(data)
     pyspark_df = pyspark_session.createDataFrame(data)
     
     mock_result = mock_df.groupBy("category").agg({"value": "sum"})
@@ -256,10 +256,10 @@ def test_pyspark_behavior(spark):
 
 ## Troubleshooting
 
-### Test Fails with PySpark but Passes with Mock-Spark
+### Test Fails with PySpark but Passes with Sparkless
 
 This indicates a difference in behavior. Options:
-1. Fix mock-spark to match PySpark behavior
+1. Fix sparkless to match PySpark behavior
 2. Document the difference as expected
 3. Use difference handlers to normalize results
 

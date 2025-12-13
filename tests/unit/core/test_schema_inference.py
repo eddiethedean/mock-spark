@@ -3,8 +3,8 @@ Unit tests for schema inference.
 """
 
 import pytest
-from mock_spark.core.schema_inference import SchemaInferenceEngine
-from mock_spark.spark_types import (
+from sparkless.core.schema_inference import SchemaInferenceEngine
+from sparkless.spark_types import (
     StructType,
     LongType,
     StringType,
@@ -96,28 +96,28 @@ class TestSchemaInferenceEngine:
 
     def test_infer_type_bytes(self):
         """Test _infer_type for bytes."""
-        from mock_spark.spark_types import BinaryType
+        from sparkless.spark_types import BinaryType
 
         result = SchemaInferenceEngine._infer_type(b"data")
         assert isinstance(result, BinaryType)
 
     def test_infer_type_date_string(self):
         """Test _infer_type for date string."""
-        from mock_spark.spark_types import DateType
+        from sparkless.spark_types import DateType
 
         result = SchemaInferenceEngine._infer_type("2024-01-01")
         assert isinstance(result, DateType)
 
     def test_infer_type_timestamp_string(self):
         """Test _infer_type for timestamp string."""
-        from mock_spark.spark_types import TimestampType
+        from sparkless.spark_types import TimestampType
 
         result = SchemaInferenceEngine._infer_type("2024-01-01 10:30:00")
         assert isinstance(result, TimestampType)
 
     def test_infer_type_datetime_object(self):
         """Test _infer_type for datetime object."""
-        from mock_spark.spark_types import TimestampType
+        from sparkless.spark_types import TimestampType
         from datetime import datetime
 
         result = SchemaInferenceEngine._infer_type(datetime.now())
@@ -191,7 +191,7 @@ class TestSchemaInferenceEngine:
 
     def test_infer_type_fallback_to_string(self):
         """Test _infer_type falls back to StringType for unknown types."""
-        from mock_spark.spark_types import StringType
+        from sparkless.spark_types import StringType
 
         # Pass a custom object that doesn't match any type
         class CustomClass:

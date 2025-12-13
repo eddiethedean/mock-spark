@@ -3,9 +3,9 @@ Unit tests for SQL executor.
 """
 
 import pytest
-from mock_spark import SparkSession
-from mock_spark.session.sql.executor import SQLExecutor
-from mock_spark.core.exceptions.execution import QueryExecutionException
+from sparkless import SparkSession
+from sparkless.session.sql.executor import SQLExecutor
+from sparkless.core.exceptions.execution import QueryExecutionException
 
 
 @pytest.mark.unit
@@ -190,3 +190,91 @@ class TestSQLExecutor:
         except QueryExecutionException:
             # Expected behavior - table not found raises exception
             pass
+
+    def test_delete_all_rows(self):
+        """Test DELETE FROM table removes all rows but preserves schema."""
+        spark = SparkSession("test")
+        executor = SQLExecutor(spark)
+
+        # Create table with data
+        df = spark.createDataFrame(
+            [("Alice", 25), ("Bob", 30), ("Charlie", 35)],
+            ["name", "age"]
+        )
+        df.write.mode("overwrite").saveAsTable("people")
+
+        # Verify initial data
+        result = spark.table("people")
+        assert result.count() == 3
+
+        # Delete all rows
+        executor.execute("DELETE FROM people")
+
+        # Verify table is empty but schema is preserved
+        result = spark.table("people")
+        assert result.count() == 0
+        assert len(result.columns) == 2
+        assert "name" in result.columns
+        assert "age" in result.columns
+
+    def test_delete_with_where(self):
+        """Test DELETE FROM table WHERE condition."""
+        spark = SparkSession("test")
+        executor = SQLExecutor(spark)
+
+        # Create table with data
+        df = spark.createDataFrame(
+            [("Alice", 25), ("Bob", 30), ("Charlie", 35)],
+            ["name", "age"]
+        )
+        df.write.mode("overwrite").saveAsTable("people")
+
+        # Delete rows where age < 30
+        executor.execute("DELETE FROM people WHERE age < 30")
+
+        # Verify only Bob and Charlie remain
+        result = spark.table("people")
+        assert result.count() == 2
+        rows = result.collect()
+        names = [row["name"] for row in rows]
+        assert "Alice" not in names
+        assert "Bob" in names or "Charlie" in names
+
+    def test_delete_preserves_schema(self):
+        """Test DELETE preserves table schema."""
+        from sparkless import StringType, IntegerType
+
+        spark = SparkSession("test")
+        executor = SQLExecutor(spark)
+
+        # Create table
+        df = spark.createDataFrame([("Alice", 25)], ["name", "age"])
+        df.write.mode("overwrite").saveAsTable("people")
+
+        # Delete all
+        executor.execute("DELETE FROM people")
+
+        # Verify schema is preserved (PySpark API)
+        result = spark.table("people")
+        schema = result.schema
+        name_field = next((f for f in schema.fields if f.name == "name"), None)
+        age_field = next((f for f in schema.fields if f.name == "age"), None)
+        assert name_field is not None
+        assert age_field is not None
+        assert isinstance(name_field.dataType, StringType)
+        # Note: Python int is inferred as LongType, not IntegerType
+        from sparkless import LongType
+        assert isinstance(age_field.dataType, LongType)
+
+    def test_delete_nonexistent_table_error(self):
+        """Test DELETE raises error for non-existent table."""
+        spark = SparkSession("test")
+        executor = SQLExecutor(spark)
+
+        # Should raise error for non-existent table
+        # The error may be wrapped in QueryExecutionException
+        from sparkless.errors import AnalysisException
+        from sparkless.core.exceptions.execution import QueryExecutionException
+
+        with pytest.raises((AnalysisException, QueryExecutionException)):
+            executor.execute("DELETE FROM nonexistent_table")

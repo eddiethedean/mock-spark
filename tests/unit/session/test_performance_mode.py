@@ -5,7 +5,7 @@ Tests the performance_mode parameter and JVM overhead simulation.
 """
 
 import time
-from mock_spark import SparkSession
+from sparkless import SparkSession
 
 
 class TestPerformanceMode:

@@ -9,7 +9,7 @@ execution times to help identify performance differences.
 import time
 import statistics
 from typing import Any, Callable
-from mock_spark import MockSparkSession, F
+from sparkless import MockSparkSession, F
 
 
 def benchmark_operation(
@@ -200,7 +200,7 @@ def run_benchmarks(backend_type: str, size: int = 10000) -> dict[str, Any]:
 
         # Benchmark 10: Window function
         print("10. Window function...")
-        from mock_spark import Window
+        from sparkless import Window
 
         window_spec = Window.partitionBy("category").orderBy(F.col("score").desc())
         results["window_function"] = benchmark_operation(

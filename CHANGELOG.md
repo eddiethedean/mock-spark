@@ -48,12 +48,12 @@
 
 ### Removed
 - **Removed PySpark Alias Import Feature** - Removed the `from pyspark.sql import ...` namespace package feature
-  - Deleted `mock_spark/pyspark/` namespace package directory and all related files
-  - Removed pyspark namespace registration from `mock_spark/__init__.py`
+  - Deleted `sparkless/pyspark/` namespace package directory and all related files
+  - Removed pyspark namespace registration from `sparkless/__init__.py`
   - Removed `"pyspark*"` from package includes in `pyproject.toml`
   - Deleted test files: `test_pyspark_namespace_imports.py` and `test_pyspark_drop_in_replacement_comprehensive.py`
   - Removed pyspark namespace-specific test methods from compatibility test files
-  - Note: `from mock_spark.sql import ...` imports continue to work as before
+  - Note: `from sparkless.sql import ...` imports continue to work as before
   - Note: `getActiveSession()` and `createDatabase()` improvements remain, just without pyspark namespace support
 
 ### Testing
@@ -65,18 +65,18 @@
 ## 3.12.0 — 2025-12-XX
 
 ### Added
-- **PySpark Drop-in Replacement Improvements** - Comprehensive compatibility enhancements to ensure mock-spark behaves exactly like PySpark in testing scenarios
+- **PySpark Drop-in Replacement Improvements** - Comprehensive compatibility enhancements to ensure sparkless behaves exactly like PySpark in testing scenarios
   - String concatenation with `+` operator now returns `None` when DataFrame is cached, matching PySpark behavior
   - Empty DataFrame validation now requires explicit schema (raises `ValueError` if schema not provided)
   - Union operations now enforce strict schema compatibility (column count, names, and types must match)
-  - Type system compatibility: Mock Spark types now inherit from PySpark types when available for better compatibility
+  - Type system compatibility: Sparkless types now inherit from PySpark types when available for better compatibility
   - SQL expression parsing for `F.expr()` with proper SQL syntax support (e.g., `"id IS NOT NULL"`, `"age > 18"`)
   - Py4J error compatibility layer (`MockPy4JJavaError`) for error handling compatibility
   - Performance mode support (`fast`/`realistic`) for JVM overhead simulation in SparkSession
   - Enhanced catalog API compatibility with proper Database object attributes
 - **New Modules**
-  - `mock_spark.core.exceptions.py4j_compat` - Py4J error compatibility layer
-  - `mock_spark.functions.core.sql_expr_parser` - SQL expression parser for `F.expr()`
+  - `sparkless.core.exceptions.py4j_compat` - Py4J error compatibility layer
+  - `sparkless.functions.core.sql_expr_parser` - SQL expression parser for `F.expr()`
 - **Comprehensive Test Suite**
   - New test file `test_pyspark_drop_in_replacement.py` covering all compatibility improvements
   - Tests for caching behavior, empty DataFrames, union operations, SQL parsing, type compatibility
@@ -240,7 +240,7 @@
 ## 3.6.0 — 2025-11-13
 
 ### Added
-- Feature-flagged profiling utilities in `mock_spark.utils.profiling`, with Polars execution and
+- Feature-flagged profiling utilities in `sparkless.utils.profiling`, with Polars execution and
   expression hot paths instrumented via lightweight decorators.
 - Optional native pandas backend selection through `MOCK_SPARK_PANDAS_MODE`, including a benchmarking
   harness at `scripts/benchmark_pandas_fallback.py`.
@@ -257,7 +257,7 @@
 ## 3.5.0 — 2025-11-13
 
 ### Added
-- Session-aware helper functions in `mock_spark.functions`: `current_catalog`, `current_database`,
+- Session-aware helper functions in `sparkless.functions`: `current_catalog`, `current_database`,
   `current_schema`, and `current_user`, plus a dynamic `call_function` dispatcher.
 - Regression tests covering the new helpers and dynamic dispatch, ensuring PySpark-compatible error
   handling.
@@ -290,13 +290,13 @@
 ## 3.3.0 — 2025-11-12
 
 ### Added
-- Consolidated release metadata so `pyproject.toml`, `mock_spark/__init__.py`, and published wheels all advertise version `3.3.0`.
+- Consolidated release metadata so `pyproject.toml`, `sparkless/__init__.py`, and published wheels all advertise version `3.3.0`.
 - Documented the renumbering from the legacy 3.x preview series to the semantic 0.x roadmap, keeping downstream consumers aligned with public messaging.
 - Updated README badges and compatibility tables to reflect the curated 396-test suite and PySpark 3.2–3.5 coverage.
 
 ### Changed
 - Finalised the migration to Python 3.9-native typing throughout the Polars executor,
-  DataFrame reader/writer, schema manager, and Delta helpers so that `mypy mock_spark`
+  DataFrame reader/writer, schema manager, and Delta helpers so that `mypy sparkless`
   now completes without suppressions.
 - Consolidated type-only imports behind `TYPE_CHECKING` guards, reducing import
   overhead while keeping tooling visibility intact.
@@ -316,7 +316,7 @@
 ### Changed
 - Raised the minimum supported Python version to 3.9 and aligned Black, Ruff, and mypy
   targets so local tooling matches the published wheel.
-- Removed the Python 3.8 compatibility shim in `mock_spark.compat.datetime` in favour of
+- Removed the Python 3.8 compatibility shim in `sparkless.compat.datetime` in favour of
   native typing support, simplifying downstream imports.
 - Standardised type hints on built-in generics (`list[str]`, `dict[str, Any]`) and
   `collections.abc` protocols across the codebase, eliminating leftover `typing` fallbacks.
@@ -332,10 +332,10 @@
 ### Added
 - Schema reconciliation for Delta `mergeSchema=true` appends on the Polars backend,
   preventing null-type collisions while preserving legacy data.
-- Datetime compatibility helpers in `mock_spark.compat.datetime` for producing
+- Datetime compatibility helpers in `sparkless.compat.datetime` for producing
   stable string outputs when downstream code expects substrings.
 - Configurable backend selection via constructor overrides, the
-  `MOCK_SPARK_BACKEND` environment variable, or `SparkSession.builder.config`.
+  `SPARKLESS_BACKEND` environment variable, or `SparkSession.builder.config`.
 - Regression tests covering schema evolution, datetime normalisation, backend
   selection, and compatibility helpers.
 - Protocol-based DataFrame mixins (`SupportsDataFrameOps`) enabling structural typing and
@@ -369,7 +369,7 @@
   `docs/known_issues.md`.
 
 ### Known Issues
-- Documentation example tests invoke the globally installed `mock_spark`
+- Documentation example tests invoke the globally installed `sparkless`
   distribution. When a different version is installed in `site-packages`, the
   example scripts exit early with `ImportError`. Align the executable path or
   install the local wheel before running documentation fixtures.

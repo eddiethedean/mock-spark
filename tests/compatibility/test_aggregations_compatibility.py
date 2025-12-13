@@ -6,7 +6,7 @@ to ensure compatibility across different aggregation types and grouping scenario
 """
 
 import pytest
-from mock_spark import F
+from sparkless import F
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal
 

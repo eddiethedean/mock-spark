@@ -5,7 +5,7 @@ Tests the caching functionality and its impact on string concatenation.
 """
 
 import pytest
-from mock_spark import SparkSession, functions as F
+from sparkless import SparkSession, functions as F
 
 
 class TestDataFrameCaching:

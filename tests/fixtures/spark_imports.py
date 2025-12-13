@@ -80,8 +80,8 @@ class SparkImports:
 
     def _load_mock_spark_imports(self) -> None:
         """Load mock-spark imports."""
-        from mock_spark.sql import SparkSession, functions as F
-        from mock_spark.sql.types import (
+        from sparkless.sql import SparkSession, functions as F
+        from sparkless.sql.types import (
             StructType,
             StructField,
             StringType,
@@ -97,8 +97,8 @@ class SparkImports:
             DecimalType,
             Row,
         )
-        from mock_spark.window import Window
-        from mock_spark.dataframe import DataFrameReader
+        from sparkless.window import Window
+        from sparkless.dataframe import DataFrameReader
 
         self.SparkSession = SparkSession
         self.F = F

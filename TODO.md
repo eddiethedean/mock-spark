@@ -3,8 +3,8 @@
 ## Recently Completed (2024)
 
 ### PySpark Compatibility
-- [x] Convert `mock_spark/sql/functions.py` to export a proper module instead of Functions class, using `__getattr__` to expose all functions. (Ensures `isinstance(functions, ModuleType)` returns True for PySpark compatibility.)
-- [x] Create `mock_spark/sql/utils.py` to export exceptions matching PySpark structure (AnalysisException, ParseException, IllegalArgumentException, etc.).
+- [x] Convert `sparkless/sql/functions.py` to export a proper module instead of Functions class, using `__getattr__` to expose all functions. (Ensures `isinstance(functions, ModuleType)` returns True for PySpark compatibility.)
+- [x] Create `sparkless/sql/utils.py` to export exceptions matching PySpark structure (AnalysisException, ParseException, IllegalArgumentException, etc.).
 - [x] Update module structure to match PySpark's `pyspark.sql.types`, `pyspark.sql.functions`, and `pyspark.sql.utils` organization.
 - [x] Fix PySpark environment configuration in API parity tests to resolve `java.net.BindException` issues. (Configured `spark.driver.bindAddress`, `spark.driver.host`, `spark.master`, and `spark.ui.enabled`.)
 
@@ -37,8 +37,8 @@
 - [x] Fix mypy error in `MiscellaneousOperations` by accessing columns via schema instead of direct property access.
 
 ## Performance & Optimisation
-- [x] Profile Polars execution hot paths (`backend/polars/operation_executor.py`, `dataframe/evaluation/expression_evaluator.py`) and introduce vectorised shortcuts or caching for common operators. (Feature-flagged profiling utilities added in `mock_spark/utils/profiling.py`; hot paths instrumented with caching and documented in `docs/performance/profiling.md`.)
-- [x] Evaluate adaptive execution simulation hook in `mock_spark/optimizer/query_optimizer.py` to better mirror Spark's AQE plans under skew. (Adaptive simulation toggle implemented with regression tests under `tests/unit/optimizer/test_query_optimizer_adaptive.py` and documented in `docs/backend_architecture.md`.)
+- [x] Profile Polars execution hot paths (`backend/polars/operation_executor.py`, `dataframe/evaluation/expression_evaluator.py`) and introduce vectorised shortcuts or caching for common operators. (Feature-flagged profiling utilities added in `sparkless/utils/profiling.py`; hot paths instrumented with caching and documented in `docs/performance/profiling.md`.)
+- [x] Evaluate adaptive execution simulation hook in `sparkless/optimizer/query_optimizer.py` to better mirror Spark's AQE plans under skew. (Adaptive simulation toggle implemented with regression tests under `tests/unit/optimizer/test_query_optimizer_adaptive.py` and documented in `docs/backend_architecture.md`.)
 - [x] Benchmark stubbed `pandas` fallback and explore lightweight real dependency opt-in for consumers that want parity with `toPandas`. (Optional native pandas backend with benchmark script in `scripts/benchmark_pandas_fallback.py`; guidance captured in `docs/performance/pandas_fallback.md`.)
 
 ## Testing & Reliability

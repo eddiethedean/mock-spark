@@ -100,12 +100,14 @@ class SparkBackend:
         Returns:
             mock-spark SparkSession instance.
         """
-        from mock_spark import SparkSession
+        from sparkless import SparkSession
 
         return SparkSession(app_name, **kwargs)
 
     @staticmethod
-    def create_pyspark_session(app_name: str = "test_app", **kwargs: Any) -> Any:
+    def create_pyspark_session(
+        app_name: str = "test_app", enable_delta: bool = True, **kwargs: Any
+    ) -> Any:
         """Create a PySpark SparkSession.
 
         Args:
@@ -127,17 +129,6 @@ class SparkBackend:
                 "PySpark is not available. Install with: pip install pyspark"
             )
 
-        # Configure PySpark for testing
-        conf = SparkConf()
-        conf.set("spark.master", "local[1]")
-        conf.set("spark.driver.bindAddress", "127.0.0.1")
-        conf.set("spark.driver.host", "127.0.0.1")
-        conf.set("spark.sql.execution.arrow.pyspark.enabled", "false")
-        conf.set("spark.ui.enabled", "false")
-        conf.setAppName(app_name)
-        conf.set("spark.sql.adaptive.enabled", "false")
-        conf.set("spark.sql.adaptive.coalescePartitions.enabled", "false")
-
         # Set environment variables for PySpark
         import sys
 
@@ -146,13 +137,184 @@ class SparkBackend:
         os.environ.setdefault("PYSPARK_DRIVER_PYTHON", python_executable)
         os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
 
-        # Apply any additional config from kwargs
-        for key, value in kwargs.items():
-            if key.startswith("spark."):
-                conf.set(key, str(value))
-
         try:
-            session = PySparkSession.builder.config(conf=conf).getOrCreate()
+            import uuid
+            # Get worker ID from pytest-xdist for better isolation in parallel tests
+            worker_id = os.environ.get("PYTEST_XDIST_WORKER", "gw0")
+            # Use unique app name, warehouse dir, and master URL for better isolation
+            # PySpark matches sessions based on master URL, so we need unique master URLs
+            # CRITICAL: Include process ID to ensure isolation across pytest-xdist workers
+            import os as os_module
+            process_id = os_module.getpid()
+            unique_id = f"{worker_id}_{process_id}_{uuid.uuid4().hex[:8]}"
+            unique_app_name = f"{app_name}_{unique_id}"
+            unique_warehouse = f"/tmp/spark-warehouse-{unique_id}"
+            # Use a unique master URL to force a new SparkContext
+            # This ensures PySpark doesn't reuse sessions across tests
+            unique_master = f"local[1]"
+            
+            # Stop any existing SparkSession to ensure clean configuration
+            # This is critical for parallel test execution
+            # PySpark's getOrCreate() reuses sessions even with different warehouse dirs,
+            # so we must stop and clear the singleton before creating a new session
+            try:
+                # Try to get and stop the active session
+                active_session = PySparkSession.getActiveSession()
+                if active_session is not None:
+                    active_session.stop()
+                    # Wait a bit for the session to fully stop
+                    import time
+                    time.sleep(0.1)
+            except (AttributeError, Exception):
+                pass
+            
+            try:
+                existing_session = PySparkSession._instantiatedSession
+                if existing_session is not None:
+                    existing_session.stop()
+                    PySparkSession._instantiatedSession = None
+                    # Wait a bit for the session to fully stop
+                    import time
+                    time.sleep(0.1)
+            except (AttributeError, Exception):
+                pass
+            
+            # Clear any cached SparkContext references
+            # This helps ensure a fresh session is created
+            # PySpark maintains a global context registry that can cause session reuse
+            try:
+                from pyspark import SparkContext
+                # Stop all active contexts to force new ones
+                if hasattr(SparkContext, '_active_spark_context'):
+                    active_ctx = SparkContext._active_spark_context
+                    if active_ctx is not None:
+                        try:
+                            active_ctx.stop()
+                            import time
+                            time.sleep(0.1)
+                        except:
+                            pass
+                    SparkContext._active_spark_context = None
+            except (AttributeError, Exception):
+                pass
+            
+            # Build SparkSession with Delta Lake if enabled
+            if enable_delta:
+                try:
+                    from delta import configure_spark_with_delta_pip
+                    # configure_spark_with_delta_pip must be called on a fresh builder
+                    # It adds the Delta JARs and configures extensions/catalog
+                    builder = configure_spark_with_delta_pip(
+                        PySparkSession.builder
+                        .master(unique_master)
+                        .appName(unique_app_name)
+                        .config("spark.driver.bindAddress", "127.0.0.1")
+                        .config("spark.driver.host", "127.0.0.1")
+                        .config("spark.sql.execution.arrow.pyspark.enabled", "false")
+                        .config("spark.ui.enabled", "false")
+                        .config("spark.sql.adaptive.enabled", "false")
+                        .config("spark.sql.adaptive.coalescePartitions.enabled", "false")
+                        .config("spark.sql.warehouse.dir", unique_warehouse)
+                        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+                        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+                    )
+                    # Apply any additional config from kwargs
+                    for key, value in kwargs.items():
+                        if key.startswith("spark."):
+                            builder = builder.config(key, str(value))
+                    session = builder.getOrCreate()
+                    # CRITICAL FIX: Verify warehouse directory is correct
+                    # PySpark's getOrCreate() may reuse a session with wrong warehouse dir
+                    actual_warehouse = session.conf.get("spark.sql.warehouse.dir")
+                    expected_warehouse = unique_warehouse
+                    # PySpark may add "file:" prefix
+                    if not (actual_warehouse == expected_warehouse or 
+                            actual_warehouse == f"file:{expected_warehouse}"):
+                        # Session was reused with wrong warehouse - force stop and recreate
+                        session.stop()
+                        PySparkSession._instantiatedSession = None
+                        # Stop the SparkContext to force a new one
+                        try:
+                            from pyspark import SparkContext
+                            if hasattr(SparkContext, '_active_spark_context'):
+                                ctx = SparkContext._active_spark_context
+                                if ctx is not None:
+                                    ctx.stop()
+                                SparkContext._active_spark_context = None
+                        except:
+                            pass
+                        import time
+                        time.sleep(0.2)
+                        # Recreate the session - this time it should use the correct warehouse
+                        session = builder.getOrCreate()
+                except ImportError:
+                    # Delta Lake not available, continue without it
+                    # unique_id already defined above
+                    builder = PySparkSession.builder.master(unique_master).appName(unique_app_name)
+                    builder = builder.config("spark.driver.bindAddress", "127.0.0.1")
+                    builder = builder.config("spark.driver.host", "127.0.0.1")
+                    builder = builder.config("spark.sql.execution.arrow.pyspark.enabled", "false")
+                    builder = builder.config("spark.ui.enabled", "false")
+                    builder = builder.config("spark.sql.adaptive.enabled", "false")
+                    builder = builder.config("spark.sql.adaptive.coalescePartitions.enabled", "false")
+                    builder = builder.config("spark.sql.warehouse.dir", unique_warehouse)
+                    for key, value in kwargs.items():
+                        if key.startswith("spark."):
+                            builder = builder.config(key, str(value))
+                    session = builder.getOrCreate()
+                    # Verify warehouse directory
+                    actual_warehouse = session.conf.get("spark.sql.warehouse.dir")
+                    expected_warehouse = unique_warehouse
+                    if not (actual_warehouse == expected_warehouse or 
+                            actual_warehouse == f"file:{expected_warehouse}"):
+                        session.stop()
+                        PySparkSession._instantiatedSession = None
+                        try:
+                            from pyspark import SparkContext
+                            if hasattr(SparkContext, '_active_spark_context'):
+                                ctx = SparkContext._active_spark_context
+                                if ctx is not None:
+                                    ctx.stop()
+                                SparkContext._active_spark_context = None
+                        except:
+                            pass
+                        import time
+                        time.sleep(0.2)
+                        session = builder.getOrCreate()
+            else:
+                # unique_id already defined above
+                builder = PySparkSession.builder.master(unique_master).appName(unique_app_name)
+                builder = builder.config("spark.driver.bindAddress", "127.0.0.1")
+                builder = builder.config("spark.driver.host", "127.0.0.1")
+                builder = builder.config("spark.sql.execution.arrow.pyspark.enabled", "false")
+                builder = builder.config("spark.ui.enabled", "false")
+                builder = builder.config("spark.sql.adaptive.enabled", "false")
+                builder = builder.config("spark.sql.adaptive.coalescePartitions.enabled", "false")
+                builder = builder.config("spark.sql.warehouse.dir", unique_warehouse)
+                for key, value in kwargs.items():
+                    if key.startswith("spark."):
+                        builder = builder.config(key, str(value))
+                session = builder.getOrCreate()
+                # Verify warehouse directory
+                actual_warehouse = session.conf.get("spark.sql.warehouse.dir")
+                expected_warehouse = unique_warehouse
+                if not (actual_warehouse == expected_warehouse or 
+                        actual_warehouse == f"file:{expected_warehouse}"):
+                    session.stop()
+                    PySparkSession._instantiatedSession = None
+                    try:
+                        from pyspark import SparkContext
+                        if hasattr(SparkContext, '_active_spark_context'):
+                            ctx = SparkContext._active_spark_context
+                            if ctx is not None:
+                                ctx.stop()
+                            SparkContext._active_spark_context = None
+                    except:
+                        pass
+                    import time
+                    time.sleep(0.2)
+                    session = builder.getOrCreate()
+            
             # Test that session works
             session.createDataFrame([{"test": 1}]).collect()
             return session

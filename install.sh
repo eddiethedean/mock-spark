@@ -1,9 +1,9 @@
 #!/bin/bash
-# Installation script for Mock Spark package
+# Installation script for Sparkless package
 
 set -e
 
-echo "🚀 Installing Mock Spark package..."
+echo "🚀 Installing Sparkless package..."
 
 # Check if Python is available
 if ! command -v python &> /dev/null; then
@@ -23,18 +23,18 @@ fi
 echo "✅ Python $python_version detected"
 
 # Install the package
-echo "📦 Installing Mock Spark..."
+echo "📦 Installing Sparkless..."
 pip install -e .
 
 # Run full test suite with proper isolation
 echo "🧪 Running full test suite..."
 bash tests/run_all_tests.sh
 
-echo "✅ Mock Spark installed successfully!"
+echo "✅ Sparkless installed successfully!"
 echo ""
 echo "Usage:"
-echo "  from mock_spark import MockSparkSession"
-echo "  spark = MockSparkSession('MyApp')"
+echo "  from sparkless.sql import SparkSession"
+echo "  spark = SparkSession('MyApp')"
 echo ""
 echo "For development:"
 echo "  pip install -e .[dev]"

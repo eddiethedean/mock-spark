@@ -4,7 +4,7 @@ This directory contains scripts that run against **real PySpark 3.2.4 + Delta La
 
 ## Purpose
 
-Before implementing features in mock-spark, we run exploration scripts to:
+Before implementing features in sparkless, we run exploration scripts to:
 1. Understand exactly how real PySpark behaves
 2. Document API signatures, return types, and edge cases
 3. Capture actual error messages and exceptions
@@ -32,5 +32,5 @@ python exploration/{script_name}.py > exploration/outputs/{script_name}_output.t
 ## Output
 
 Outputs are saved to `exploration/outputs/` and are NOT tracked in git.
-They serve as the specification for implementing features in mock-spark.
+They serve as the specification for implementing features in sparkless.
 

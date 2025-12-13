@@ -10,9 +10,9 @@ from types import ModuleType
 
 import pytest
 
-from mock_spark.sql import functions
-from mock_spark.sql.functions import col, upper, lit
-from mock_spark.sql.utils import (
+from sparkless.sql import functions
+from sparkless.sql.functions import col, upper, lit
+from sparkless.sql.utils import (
     AnalysisException,
     ParseException,
     IllegalArgumentException,
@@ -20,7 +20,7 @@ from mock_spark.sql.utils import (
     PySparkTypeError,
     PySparkRuntimeError,
 )
-from mock_spark.sql.types import StructType, StructField, StringType, IntegerType
+from sparkless.sql.types import StructType, StructField, StringType, IntegerType
 
 
 class TestFunctionsModuleCompatibility:
@@ -62,7 +62,7 @@ class TestFunctionsModuleCompatibility:
 
     def test_functions_f_namespace_still_works(self):
         """Test that F namespace still works for backward compatibility."""
-        from mock_spark.sql import functions as F
+        from sparkless.sql import functions as F
 
         assert hasattr(F, "col")
         assert hasattr(F, "upper")
@@ -72,7 +72,7 @@ class TestFunctionsModuleCompatibility:
     def test_functions_direct_import(self):
         """Test direct import of functions from sql.functions."""
         # This should work like PySpark
-        from mock_spark.sql import SparkSession
+        from sparkless.sql import SparkSession
 
         spark = SparkSession("test")
         try:
@@ -88,7 +88,7 @@ class TestFunctionsClassDeprecation:
 
     def test_functions_class_instantiation_warning(self):
         """Test that instantiating Functions() raises deprecation warning."""
-        from mock_spark.functions import Functions
+        from sparkless.functions import Functions
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -152,7 +152,7 @@ class TestSQLUtilsCompatibility:
 
     def test_all_exceptions_available(self):
         """Test that all common exceptions are available."""
-        from mock_spark.sql.utils import (
+        from sparkless.sql.utils import (
             QueryExecutionException,
             SparkUpgradeException,
             PySparkAttributeError,
@@ -208,8 +208,8 @@ class TestImportPathCompatibility:
     def test_functions_import_path(self):
         """Test that functions import path matches PySpark."""
         # PySpark: from pyspark.sql import functions as F
-        # Mock-Spark: from mock_spark.sql import functions as F
-        from mock_spark.sql import functions as F
+        # Sparkless: from sparkless.sql import functions as F
+        from sparkless.sql import functions as F
 
         assert isinstance(F, ModuleType)
         assert hasattr(F, "col")
@@ -217,14 +217,14 @@ class TestImportPathCompatibility:
     def test_utils_import_path(self):
         """Test that utils import path matches PySpark."""
         # PySpark: from pyspark.sql.utils import AnalysisException
-        # Mock-Spark: from mock_spark.sql.utils import AnalysisException
+        # Sparkless: from sparkless.sql.utils import AnalysisException
 
         assert AnalysisException is not None
 
     def test_types_import_path(self):
         """Test that types import path matches PySpark."""
         # PySpark: from pyspark.sql.types import StructType
-        # Mock-Spark: from mock_spark.sql.types import StructType
+        # Sparkless: from sparkless.sql.types import StructType
 
         assert StructType is not None
 
@@ -242,9 +242,9 @@ class TestImportPathCompatibility:
             pass
         else:
             # Mock-spark with same paths
-            from mock_spark.sql.types import StructType
-            from mock_spark.sql import functions as F
-            from mock_spark.sql.utils import AnalysisException
+            from sparkless.sql.types import StructType
+            from sparkless.sql import functions as F
+            from sparkless.sql.utils import AnalysisException
 
             # All should work
             assert StructType is not None
@@ -257,8 +257,8 @@ class TestBackwardCompatibility:
 
     def test_old_exception_import_still_works(self):
         """Test that old exception import path still works."""
-        # Old path: from mock_spark import AnalysisException
-        from mock_spark import AnalysisException
+        # Old path: from sparkless import AnalysisException
+        from sparkless import AnalysisException
 
         assert AnalysisException is not None
         with pytest.raises(AnalysisException):
@@ -266,8 +266,8 @@ class TestBackwardCompatibility:
 
     def test_old_functions_import_still_works(self):
         """Test that old functions import path still works."""
-        # Old path: from mock_spark import Functions, F
-        from mock_spark import Functions, F
+        # Old path: from sparkless import Functions, F
+        from sparkless import Functions, F
 
         assert Functions is not None
         assert F is not None
@@ -275,7 +275,7 @@ class TestBackwardCompatibility:
 
     def test_old_types_import_still_works(self):
         """Test that old types import path still works."""
-        # Old path: from mock_spark import StructType
-        from mock_spark import StructType
+        # Old path: from sparkless import StructType
+        from sparkless import StructType
 
         assert StructType is not None
