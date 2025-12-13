@@ -398,8 +398,7 @@ class ExpressionEvaluator:
                         col_name = operation.value.name
                         if not (
                             isinstance(col_name, str)
-                            and "<sparkless.functions.core.literals.Literal"
-                            in col_name
+                            and "<sparkless.functions.core.literals.Literal" in col_name
                         ):
                             all_values.append(row.get(col_name))
                     else:

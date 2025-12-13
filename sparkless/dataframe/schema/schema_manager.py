@@ -130,7 +130,9 @@ class SchemaManager:
                 cast_type = getattr(col_any, "value", None)
                 if isinstance(cast_type, str):
                     fields_map[col_name] = StructField(
-                        col_name, SchemaManager.parse_cast_type_string(cast_type), nullable=True
+                        col_name,
+                        SchemaManager.parse_cast_type_string(cast_type),
+                        nullable=True,
                     )
                 else:
                     # Already a DataType object
@@ -162,11 +164,17 @@ class SchemaManager:
                             except (TypeError, ValueError):
                                 # If type doesn't support nullable parameter, use as-is
                                 new_type = cast_type
-                        fields_map[col_name] = StructField(col_name, new_type, nullable=True)
+                        fields_map[col_name] = StructField(
+                            col_name, new_type, nullable=True
+                        )
                     elif cast_type is not None:
-                        fields_map[col_name] = StructField(col_name, cast_type, nullable=True)
+                        fields_map[col_name] = StructField(
+                            col_name, cast_type, nullable=True
+                        )
                     else:
-                        fields_map[col_name] = StructField(col_name, StringType(), nullable=True)
+                        fields_map[col_name] = StructField(
+                            col_name, StringType(), nullable=True
+                        )
             elif operation in ["+", "-", "*", "/", "%"]:
                 # Arithmetic operations - infer type from operands
                 data_type = SchemaManager._infer_arithmetic_type(col_any, base_schema)
@@ -219,11 +227,15 @@ class SchemaManager:
                 # This is handled by the operation check above, but if we reach here,
                 # it means the Literal itself is being used directly
                 # For None literals, default to StringType but make it nullable
-                fields_map[col_name] = StructField(col_name, col.data_type, nullable=True)
+                fields_map[col_name] = StructField(
+                    col_name, col.data_type, nullable=True
+                )
             else:
                 # For non-None literals, they are never nullable
                 field = SchemaManager._create_literal_field(col)
-                fields_map[col_name] = StructField(col_name, field.dataType, field.nullable)
+                fields_map[col_name] = StructField(
+                    col_name, field.dataType, field.nullable
+                )
         else:
             # fallback literal inference
             data_type = SchemaManager._infer_literal_type(col_any)

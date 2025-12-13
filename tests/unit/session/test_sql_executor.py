@@ -198,8 +198,7 @@ class TestSQLExecutor:
 
         # Create table with data
         df = spark.createDataFrame(
-            [("Alice", 25), ("Bob", 30), ("Charlie", 35)],
-            ["name", "age"]
+            [("Alice", 25), ("Bob", 30), ("Charlie", 35)], ["name", "age"]
         )
         df.write.mode("overwrite").saveAsTable("people")
 
@@ -224,8 +223,7 @@ class TestSQLExecutor:
 
         # Create table with data
         df = spark.createDataFrame(
-            [("Alice", 25), ("Bob", 30), ("Charlie", 35)],
-            ["name", "age"]
+            [("Alice", 25), ("Bob", 30), ("Charlie", 35)], ["name", "age"]
         )
         df.write.mode("overwrite").saveAsTable("people")
 
@@ -242,7 +240,7 @@ class TestSQLExecutor:
 
     def test_delete_preserves_schema(self):
         """Test DELETE preserves table schema."""
-        from sparkless import StringType, IntegerType
+        from sparkless import StringType
 
         spark = SparkSession("test")
         executor = SQLExecutor(spark)
@@ -264,6 +262,7 @@ class TestSQLExecutor:
         assert isinstance(name_field.dataType, StringType)
         # Note: Python int is inferred as LongType, not IntegerType
         from sparkless import LongType
+
         assert isinstance(age_field.dataType, LongType)
 
     def test_delete_nonexistent_table_error(self):

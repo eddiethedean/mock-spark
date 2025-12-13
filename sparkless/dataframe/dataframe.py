@@ -465,7 +465,7 @@ class DataFrame:
     def head(self, n: Optional[int] = None) -> Union["Row", list["Row"]]:
         """
         Return first n rows.
-        
+
         PySpark behavior:
         - head() (no args) returns a single Row
         - head(1) or head(n) returns a list of Rows
@@ -478,14 +478,18 @@ class DataFrame:
             if isinstance(result, list):
                 return result[0] if result else None  # type: ignore
             return result  # type: ignore
-        
+
         # Explicit n provided - return list (PySpark behavior)
         result = self._display.head(n)
+        # _display.head(n) always returns list[Row], but defensive check for None
         if result is None:
-            return []
+            return []  # type: ignore[unreachable]
+        # result is already a list from _display.head(), but handle defensively
         if isinstance(result, list):
             return result
-        return [result]
+        # Type narrowing: if we reach here, result is not None and not a list
+        # Wrap single Row in list (shouldn't happen, but defensive)
+        return [result]  # type: ignore[unreachable]
 
     def tail(self, n: int = 1) -> list["Row"]:
         """Return last n rows. Always returns a list, matching PySpark behavior."""

@@ -1020,13 +1020,15 @@ class SQLExecutor:
                 remaining_rows, table_schema
             )
             # Overwrite table with same format, preserving schema
-            remaining_dataframe.write.format(table_format).mode("overwrite").saveAsTable(
-                qualified_name
-            )
+            remaining_dataframe.write.format(table_format).mode(
+                "overwrite"
+            ).saveAsTable(qualified_name)
         else:
             # Empty result - clear table but preserve schema
             empty_df = self.session.createDataFrame([], table_schema)
-            empty_df.write.format(table_format).mode("overwrite").saveAsTable(qualified_name)
+            empty_df.write.format(table_format).mode("overwrite").saveAsTable(
+                qualified_name
+            )
 
         # Return empty DataFrame to indicate success
         from typing import cast

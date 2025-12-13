@@ -159,7 +159,7 @@ class PolarsExpressionTranslator:
                 lit_value = column._resolve_lazy_value()
             else:
                 lit_value = column.value
-            
+
             # For cast operations with None literals, we'll handle dtype in _translate_cast
             # For now, create the literal - the cast will handle the dtype
             left = pl.lit(lit_value)
@@ -176,6 +176,7 @@ class PolarsExpressionTranslator:
             # This handles F.lit(None).cast(TimestampType()) correctly
             if isinstance(column, Literal) and column.value is None:
                 from .type_mapper import mock_type_to_polars_dtype
+
                 polars_dtype = mock_type_to_polars_dtype(value)
                 return pl.lit(None, dtype=polars_dtype)
             return self._translate_cast(left, value)
@@ -491,12 +492,12 @@ class PolarsExpressionTranslator:
             # For None literals, Polars needs the dtype specified at creation time
             # Check if this is a literal expression that evaluates to None
             if hasattr(expr, "meta"):
-                try:
+                import contextlib
+
+                with contextlib.suppress(Exception):
                     # Try to see if this is a literal None
                     # For Polars, we need to create pl.lit(None, dtype=...) for typed nulls
                     # This is a workaround - we'll handle it by creating the literal with dtype
-                    pass
-                except Exception:
                     pass
         except Exception:
             pass

@@ -19,14 +19,39 @@ if _backend == BackendType.PYSPARK:
     try:
         from pyspark.sql import functions as F
         from pyspark.sql.types import (
-            StringType, IntegerType, DoubleType, LongType, TimestampType, DateType, BooleanType, StructField
+            StringType,
+            IntegerType,
+            DoubleType,
+            LongType,
+            TimestampType,
+            DateType,
+            BooleanType,
+            StructField,
         )
     except ImportError:
         from sparkless import functions as F
-        from sparkless import StringType, IntegerType, DoubleType, LongType, TimestampType, DateType, BooleanType, StructField
+        from sparkless import (
+            StringType,
+            IntegerType,
+            DoubleType,
+            LongType,
+            TimestampType,
+            DateType,
+            BooleanType,
+            StructField,
+        )
 else:
     from sparkless import functions as F
-    from sparkless import StringType, IntegerType, DoubleType, LongType, TimestampType, DateType, BooleanType, StructField
+    from sparkless import (
+        StringType,
+        IntegerType,
+        DoubleType,
+        LongType,
+        TimestampType,
+        DateType,
+        BooleanType,
+        StructField,
+    )
 
 
 @pytest.mark.xdist_group(name="delta_serial")
@@ -87,14 +112,14 @@ class TestDeltaLakeSchemaEvolution:
         date_field = next((f for f in schema.fields if f.name == "date_col"), None)
         bool_field = next((f for f in schema.fields if f.name == "bool_col"), None)
         long_field = next((f for f in schema.fields if f.name == "long_col"), None)
-        
+
         assert str_field is not None
         assert int_field is not None
         assert ts_field is not None
         assert date_field is not None
         assert bool_field is not None
         assert long_field is not None
-        
+
         # Check types using isinstance (PySpark API)
         assert isinstance(str_field.dataType, StringType)
         assert isinstance(int_field.dataType, IntegerType)
@@ -126,13 +151,14 @@ class TestDeltaLakeSchemaEvolution:
 
         # Add a null column with specific type
         df_with_timestamp = df.withColumn(
-            "created_at",
-            F.lit(None).cast(TimestampType())
+            "created_at", F.lit(None).cast(TimestampType())
         )
 
         # Verify the schema (PySpark API)
         assert "created_at" in df_with_timestamp.columns
-        created_at_field = next((f for f in df_with_timestamp.schema.fields if f.name == "created_at"), None)
+        created_at_field = next(
+            (f for f in df_with_timestamp.schema.fields if f.name == "created_at"), None
+        )
         assert created_at_field is not None
         assert isinstance(created_at_field.dataType, TimestampType)
         assert created_at_field.nullable is True
@@ -153,7 +179,9 @@ class TestDeltaLakeSchemaEvolution:
 
         # Verify schema evolution worked (PySpark API)
         assert "created_at" in df.columns
-        created_at_field = next((f for f in df.schema.fields if f.name == "created_at"), None)
+        created_at_field = next(
+            (f for f in df.schema.fields if f.name == "created_at"), None
+        )
         assert created_at_field is not None
         assert isinstance(created_at_field.dataType, TimestampType)
         assert created_at_field.nullable is True
@@ -176,7 +204,9 @@ class TestDeltaLakeSchemaEvolution:
 
         # Verify (PySpark API)
         assert "created_at" in df.columns
-        created_at_field = next((f for f in df.schema.fields if f.name == "created_at"), None)
+        created_at_field = next(
+            (f for f in df.schema.fields if f.name == "created_at"), None
+        )
         assert created_at_field is not None
         assert isinstance(created_at_field.dataType, TimestampType)
         rows = df.head(1)
@@ -206,13 +236,13 @@ class TestDeltaLakeSchemaEvolution:
         existing_schema = spark.table(table_name).schema
         for field in existing_schema.fields:
             if field.name not in new_df.columns:
-                new_df = new_df.withColumn(
-                    field.name, F.lit(None).cast(field.dataType)
-                )
+                new_df = new_df.withColumn(field.name, F.lit(None).cast(field.dataType))
 
         # Verify types are preserved (PySpark API)
         age_field = next((f for f in new_df.schema.fields if f.name == "age"), None)
-        salary_field = next((f for f in new_df.schema.fields if f.name == "salary"), None)
+        salary_field = next(
+            (f for f in new_df.schema.fields if f.name == "salary"), None
+        )
         assert age_field is not None
         assert salary_field is not None
         # Note: Python int is inferred as LongType, not IntegerType
@@ -437,7 +467,9 @@ class TestDeltaLakeSchemaEvolution:
 
         # Append with new column using mergeSchema
         df2 = spark.createDataFrame([("Bob", 30, "NYC")], ["name", "age", "city"])
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(table_name)
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable(table_name)
 
         # Verify merged schema
         result = spark.table(table_name)
@@ -473,16 +505,16 @@ class TestDeltaLakeSchemaEvolution:
         # Initial table with columns: name, age, salary (PySpark requires Delta format for mergeSchema)
         # Drop table first if it exists (Delta doesn't support truncate in batch mode)
         spark.sql(f"DROP TABLE IF EXISTS {table_name}")
-        df1 = spark.createDataFrame(
-            [("Alice", 25, 50000.0)], ["name", "age", "salary"]
-        )
+        df1 = spark.createDataFrame([("Alice", 25, 50000.0)], ["name", "age", "salary"])
         df1.write.format("delta").saveAsTable(table_name)
 
         # New DataFrame with columns: name, job
         df2 = spark.createDataFrame([("Bob", "engineer")], ["name", "job"])
 
         # Append with mergeSchema - should merge both ways
-        df2.write.format("delta").mode("append").option("mergeSchema", "true").saveAsTable(table_name)
+        df2.write.format("delta").mode("append").option(
+            "mergeSchema", "true"
+        ).saveAsTable(table_name)
 
         # Verify merged schema has all columns
         result = spark.table(table_name)
@@ -534,9 +566,7 @@ class TestDeltaLakeSchemaEvolution:
         # Add missing columns from existing schema
         for field in existing_schema.fields:
             if field.name not in df2.columns:
-                df2 = df2.withColumn(
-                    field.name, F.lit(None).cast(field.dataType)
-                )
+                df2 = df2.withColumn(field.name, F.lit(None).cast(field.dataType))
 
         # Step 4: Write with schema evolution
         df2.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(

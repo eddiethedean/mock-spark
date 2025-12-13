@@ -355,7 +355,9 @@ class CollectionHandler(Protocol):
         """Take first n rows."""
         ...
 
-    def head(self, data: list[dict[str, Any]], schema: "StructType", n: int = 1) -> list[Any]:
+    def head(
+        self, data: list[dict[str, Any]], schema: "StructType", n: int = 1
+    ) -> list[Any]:
         """Get first row(s)."""
         ...
 

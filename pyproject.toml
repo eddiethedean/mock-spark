@@ -15,7 +15,7 @@ maintainers = [
     {name = "Odos Matthews", email = "odosmatthews@gmail.com"}
 ]
 keywords = [
-    "spark", "pyspark", "mock", "testing", "development", "data-engineering",
+    "spark", "pyspark", "testing", "development", "data-engineering",
     "dataframe", "spark-session", "unit-testing", "type-safe", "mypy",
     "error-simulation", "performance-testing", "data-generation", "enterprise"
 ]

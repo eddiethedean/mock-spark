@@ -37,6 +37,7 @@ class CollectionHandler:
             return None
         # PySpark always returns a list, even when n=1
         from ..spark_types import Row
+
         rows = [Row(data[i], schema) for i in range(min(n, len(data)))]
         return rows
 
@@ -48,6 +49,7 @@ class CollectionHandler:
             return None
         # PySpark always returns a list, even when n=1
         from ..spark_types import Row
+
         rows = [Row(data[i], schema) for i in range(max(0, len(data) - n), len(data))]
         return rows
 

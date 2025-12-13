@@ -101,7 +101,7 @@ def spark(request):
     if hasattr(request, "node") and hasattr(request.node, "name"):
         # Include test name for better isolation
         test_name = f"test_{request.node.name[:50]}"  # Limit length
-    
+
     session = SparkBackend.create_session(
         app_name=test_name,
         backend=backend,

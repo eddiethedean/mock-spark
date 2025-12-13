@@ -41,7 +41,9 @@ class TestDeltaSchemaEvolution:
 
         assert schema.fieldNames() == ["id", "name", "favorite_color"]
         # Use PySpark API to get field by name
-        favorite_color_field = next((f for f in schema.fields if f.name == "favorite_color"), None)
+        favorite_color_field = next(
+            (f for f in schema.fields if f.name == "favorite_color"), None
+        )
         assert favorite_color_field is not None
         assert isinstance(favorite_color_field.dataType, StringType)
 

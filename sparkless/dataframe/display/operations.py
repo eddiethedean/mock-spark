@@ -193,7 +193,6 @@ class DisplayOperations:
 
     def head(self, n: int = 1) -> list[Row]:
         """Return first n rows. Always returns a list, matching PySpark behavior."""
-        from typing import cast
 
         if self._operations_queue:
             materialized = self._materialize_if_lazy()
@@ -202,13 +201,19 @@ class DisplayOperations:
             )
         else:
             result = self._get_collection_handler().head(self.data, self.schema, n)
-        
+
         # Ensure we always return a list (PySpark behavior)
+        # Defensive check: collection_handler.head() may return None
+        # Note: mypy sees this as unreachable because collection_handler.head()
+        # always returns a list in practice, but type annotation allows None
         if result is None:
-            return []
+            return []  # type: ignore[unreachable]
+        # result from collection_handler.head() may be Row or list[Row]
         if isinstance(result, list):
             return result
-        return [result]
+        # Type narrowing: if we reach here, result is not None and not a list
+        # Wrap single Row in list (defensive code, unlikely to execute)
+        return [result]  # type: ignore[unreachable]
 
     def tail(self, n: int = 1) -> Union[Row, list[Row], None]:
         """Return last n rows."""

@@ -19,9 +19,7 @@ sys.path.insert(0, str(repo_root))
 
 def get_implemented_functions():
     """Read the __all__ list from sparkless/functions/__init__.py"""
-    init_file = (
-        Path(__file__).parent.parent / "sparkless" / "functions" / "__init__.py"
-    )
+    init_file = Path(__file__).parent.parent / "sparkless" / "functions" / "__init__.py"
 
     with open(init_file) as f:
         content = f.read()

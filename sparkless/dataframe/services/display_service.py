@@ -214,7 +214,7 @@ class DisplayService:
             result = self._df._get_collection_handler().head(
                 self._df.data, self._df.schema, n
             )
-        
+
         # Ensure we always return a list (PySpark behavior)
         if result is None:
             return []
