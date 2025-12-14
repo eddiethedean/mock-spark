@@ -5,7 +5,10 @@ This module provides the SessionLifecycleManager class, which handles
 session startup, shutdown, and resource cleanup operations.
 """
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class SessionLifecycleManager:
@@ -27,15 +30,19 @@ class SessionLifecycleManager:
         try:
             if hasattr(storage, "close"):
                 storage.close()
-        except Exception:
-            pass  # Ignore errors during cleanup
+        except Exception as e:
+            logger.warning(
+                "Error closing storage backend during session shutdown: %s", e
+            )
 
         # Clear performance tracking data
         try:
             if hasattr(performance_tracker, "clear_cache"):
                 performance_tracker.clear_cache()
-        except Exception:
-            pass  # Ignore errors during cleanup
+        except Exception as e:
+            logger.warning(
+                "Error clearing performance tracker cache during session shutdown: %s", e
+            )
 
     def cleanup_resources(self, storage: Any) -> None:
         """Clean up storage and other resources.
@@ -47,5 +54,7 @@ class SessionLifecycleManager:
         try:
             if hasattr(storage, "close"):
                 storage.close()
-        except Exception:
-            pass  # Ignore errors during cleanup
+        except Exception as e:
+            logger.warning(
+                "Error closing storage backend during resource cleanup: %s", e
+            )

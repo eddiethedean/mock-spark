@@ -54,7 +54,17 @@ class AggregateFunctions:
             RuntimeError: If no active SparkSession is available
         """
         from sparkless.session.core.session import SparkSession
-
+        
+        # Check if we're running in PySpark mode by trying to import PySpark
+        try:
+            from pyspark.sql import SparkSession as PySparkSession
+            # If PySpark is available and has an active session, we're in PySpark mode
+            if PySparkSession.getActiveSession() is not None:
+                return  # Skip check in PySpark mode - PySpark handles session management
+        except (ImportError, AttributeError):
+            pass  # PySpark not available, continue with Sparkless check
+        
+        # Check for Sparkless session
         if not SparkSession._has_active_session():
             raise RuntimeError(
                 f"Cannot perform {operation_name}: "
@@ -378,7 +388,7 @@ class AggregateFunctions:
     @staticmethod
     def corr(
         column1: Union[Column, str], column2: Union[Column, str]
-    ) -> AggregateFunction:
+    ) -> ColumnOperation:
         """Correlation between two columns.
 
         Args:
@@ -386,18 +396,26 @@ class AggregateFunctions:
             column2: The second column.
 
         Returns:
-            AggregateFunction representing the corr function.
+            ColumnOperation representing the corr function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("corr aggregate function")
-        return AggregateFunction(column1, "corr", DoubleType())
+        col1 = Column(column1) if isinstance(column1, str) else column1
+        col2 = Column(column2) if isinstance(column2, str) else column2
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col1, "corr", value=col2, name=f"corr({col1.name}, {col2.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(col1, "corr", DoubleType())  # type: ignore
+        op._aggregate_function.ord_column = col2  # type: ignore
+        return op
 
     @staticmethod
     def covar_samp(
         column1: Union[Column, str], column2: Union[Column, str]
-    ) -> AggregateFunction:
+    ) -> ColumnOperation:
         """Sample covariance between two columns.
 
         Args:
@@ -405,13 +423,21 @@ class AggregateFunctions:
             column2: The second column.
 
         Returns:
-            AggregateFunction representing the covar_samp function.
+            ColumnOperation representing the covar_samp function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("covar_samp aggregate function")
-        return AggregateFunction(column1, "covar_samp", DoubleType())
+        col1 = Column(column1) if isinstance(column1, str) else column1
+        col2 = Column(column2) if isinstance(column2, str) else column2
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col1, "covar_samp", value=col2, name=f"covar_samp({col1.name}, {col2.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(col1, "covar_samp", DoubleType())  # type: ignore
+        op._aggregate_function.ord_column = col2  # type: ignore
+        return op
 
     @staticmethod
     def bool_and(column: Union[Column, str]) -> AggregateFunction:

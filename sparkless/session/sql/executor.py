@@ -527,7 +527,7 @@ class SQLExecutor:
             # Access storage through catalog (ISession protocol doesn't expose _storage)
             storage = getattr(self.session, "_storage", None)
             if storage is None:
-                storage = self.session.catalog._storage  # type: ignore[attr-defined]
+                storage = self.session.catalog.get_storage_backend()
             if schema_name is None:
                 schema_name = storage.get_current_schema()
 
@@ -599,7 +599,7 @@ class SQLExecutor:
             # Access storage through catalog (ISession protocol doesn't expose _storage)
             storage = getattr(self.session, "_storage", None)
             if storage is None:
-                storage = self.session.catalog._storage  # type: ignore[attr-defined]
+                storage = self.session.catalog.get_storage_backend()
             if schema_name is None:
                 schema_name = storage.get_current_schema()
 
@@ -811,6 +811,7 @@ class SQLExecutor:
         # Import required modules
         import re
         from types import SimpleNamespace
+        from ...core.safe_evaluator import SafeExpressionEvaluator
 
         # Helper function to evaluate condition for a row
         def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
@@ -819,7 +820,7 @@ class SQLExecutor:
             row_ns = SimpleNamespace(**row)
             context["target"] = row_ns
             try:
-                return bool(eval(condition, {"__builtins__": {}}, context))
+                return SafeExpressionEvaluator.evaluate_boolean(condition, context)
             except Exception:
                 return False
 
@@ -828,8 +829,17 @@ class SQLExecutor:
         if where_conditions:
             where_expr = where_conditions[0]
             # Normalize SQL expression to Python-compatible syntax
+            # Handle IS NOT NULL first (before NOT normalization)
             normalized_condition = re.sub(
-                r"\bAND\b", "and", where_expr, flags=re.IGNORECASE
+                r"\bIS\s+NOT\s+NULL\b", "is not None", where_expr, flags=re.IGNORECASE
+            )
+            # Handle IS NULL
+            normalized_condition = re.sub(
+                r"\bIS\s+NULL\b", "is None", normalized_condition, flags=re.IGNORECASE
+            )
+            # Normalize logical operators
+            normalized_condition = re.sub(
+                r"\bAND\b", "and", normalized_condition, flags=re.IGNORECASE
             )
             normalized_condition = re.sub(
                 r"\bOR\b", "or", normalized_condition, flags=re.IGNORECASE
@@ -867,13 +877,16 @@ class SQLExecutor:
                         return int(expr)
                 # Try to evaluate as expression (column reference or simple expression)
                 else:
+                    from ...core.safe_evaluator import SafeExpressionEvaluator
+                    
                     context = dict(row)
                     row_ns = SimpleNamespace(**row)
                     context["target"] = row_ns
                     # Normalize expression
                     normalized = re.sub(r"(?<![<>!=])=(?!=)", "==", expr)
                     try:
-                        return eval(normalized, {"__builtins__": {}}, context)
+                        result = SafeExpressionEvaluator.evaluate(normalized, context)
+                        return result if result is not None else expr
                     except Exception:
                         # If evaluation fails, return as string
                         return expr
@@ -990,11 +1003,13 @@ class SQLExecutor:
         # Helper function to evaluate condition for a row
         def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
             """Evaluate WHERE condition for a single row."""
+            from ...core.safe_evaluator import SafeExpressionEvaluator
+            
             context = dict(row)
             row_ns = SimpleNamespace(**row)
             context["target"] = row_ns
             try:
-                return bool(eval(condition, {"__builtins__": {}}, context))
+                return SafeExpressionEvaluator.evaluate_boolean(condition, context)
             except Exception:
                 return False
 
@@ -1142,7 +1157,7 @@ class SQLExecutor:
                 # Access storage through catalog (ISession protocol doesn't expose _storage)
                 storage = getattr(self.session, "_storage", None)
                 if storage is None:
-                    storage = self.session.catalog._storage  # type: ignore[attr-defined]
+                    storage = self.session.catalog.get_storage_backend()
                 meta = storage.get_table_metadata(schema_name, table_only)
 
                 if not meta or meta.get("format") != "delta":

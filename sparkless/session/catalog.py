@@ -99,6 +99,17 @@ class Catalog:
         self.spark = spark
         self._cached_tables: set[str] = set()  # Track cached tables
 
+    def get_storage_backend(self) -> IStorageManager:
+        """Get the storage backend instance.
+
+        Public accessor method for the storage backend, allowing access
+        without breaking encapsulation.
+
+        Returns:
+            The storage manager instance.
+        """
+        return self._storage
+
     def listDatabases(self) -> list[Database]:
         """List all databases.
 

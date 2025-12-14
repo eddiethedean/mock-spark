@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .spark_types import StructType
 
 from .functions import Column
+from .core.safe_evaluator import SafeExpressionEvaluator
 
 
 def _normalize_boolean_expression(expression: str) -> str:
@@ -345,7 +346,7 @@ class DeltaTable:
     ) -> bool:
         context = _build_eval_context(row, {alias, "target"})
         try:
-            return bool(eval(normalized_expression, {"__builtins__": {}}, context))
+            return SafeExpressionEvaluator.evaluate_boolean(normalized_expression, context)
         except Exception:
             return False
 
@@ -367,7 +368,8 @@ class DeltaTable:
             normalized = _normalize_boolean_expression(expr)
             context = _build_eval_context(row, {alias, "target"})
             try:
-                return eval(normalized, {"__builtins__": {}}, context)
+                result = SafeExpressionEvaluator.evaluate(normalized, context)
+                return result if result is not None else expr
             except Exception:
                 return expr
         return expression
@@ -615,6 +617,6 @@ class DeltaMergeBuilder:
 
         try:
             normalized = _normalize_boolean_expression(expression)
-            return bool(eval(normalized, {"__builtins__": {}}, context))
+            return SafeExpressionEvaluator.evaluate_boolean(normalized, context)
         except Exception:
             return False

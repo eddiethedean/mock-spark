@@ -1897,9 +1897,30 @@ class LazyEvaluationEngine:
             ]
         ):
             new_fields.append(StructField(col_name, IntegerType()))
+        elif (
+            isinstance(col, ColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation in ["==", "!=", ">", "<", ">=", "<=", "and", "or", "not", "like", "isin", "between", "isnull", "isnotnull"]
+        ):
+            # Boolean operations return BooleanType
+            new_fields.append(StructField(col_name, BooleanType()))
+        elif (
+            isinstance(col, ColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation in ["upper", "lower", "trim", "ltrim", "rtrim", "concat", "substring", "regexp_replace", "split", "length"]
+        ):
+            # String operations return StringType
+            new_fields.append(StructField(col_name, StringType()))
+        elif (
+            isinstance(col, ColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation in ["abs", "round", "ceil", "floor", "sqrt", "exp", "log", "log10", "log2", "sin", "cos", "tan", "asin", "acos", "atan"]
+        ):
+            # Math operations typically return DoubleType
+            new_fields.append(StructField(col_name, DoubleType()))
         else:
             # For other column types, default to StringType
-            # TODO: Add more sophisticated type inference for other operations
+            # Additional type inference can be added here for more operations
             new_fields.append(StructField(col_name, StringType()))
 
         return StructType(new_fields)

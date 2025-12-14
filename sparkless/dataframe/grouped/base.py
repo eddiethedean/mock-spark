@@ -61,11 +61,30 @@ class GroupedData:
             New DataFrame with aggregated results.
         """
         from ...functions import F
+        from ...core.type_utils import is_column, is_column_operation
 
         # Track expression processing order to preserve column ordering
         # For dict syntax, PySpark preserves dict order; otherwise we sort alphabetically
         expression_order: list[str] = []
         is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
+        
+        # PySpark-style strict validation: all expressions must be Column or ColumnOperation
+        # Skip this for dict syntax (handled separately below)
+        if not is_dict_syntax:
+            for i, expr in enumerate(exprs):
+                # Allow AggregateFunction for backward compatibility, but warn
+                # PySpark requires Column/ColumnOperation only
+                if isinstance(expr, AggregateFunction):
+                    raise AssertionError(
+                        f"all exprs should be Column, got {type(expr).__name__} at argument {i}. "
+                        "AggregateFunction objects should be converted to Column/ColumnOperation "
+                        "before passing to agg()."
+                    )
+                # Allow strings for backward compatibility
+                if not isinstance(expr, str) and not (is_column(expr) or is_column_operation(expr)):
+                    raise AssertionError(
+                        f"all exprs should be Column, got {type(expr).__name__} at argument {i}"
+                    )
 
         # Handle dictionary syntax: {"col": "agg_func"}
         if is_dict_syntax:
@@ -168,9 +187,22 @@ class GroupedData:
                 elif is_column_operation(expr):
                     # Handle ColumnOperation first (before AggregateFunction check)
                     # ColumnOperation has function_name but should be handled differently
-                    result_key, result_value = self._evaluate_column_expression(
-                        cast("Union[Column, ColumnOperation]", expr), group_rows
-                    )
+                    # Check if this ColumnOperation wraps an aggregate function (PySpark-style)
+                    if hasattr(expr, "_aggregate_function") and expr._aggregate_function is not None:
+                        # This is a ColumnOperation wrapping an AggregateFunction (e.g., corr, covar_samp)
+                        result_key, result_value = self._evaluate_aggregate_function(
+                            expr._aggregate_function, group_rows
+                        )
+                        # Use the alias from ColumnOperation if set
+                        if hasattr(expr, "_alias_name") and expr._alias_name:
+                            result_key = expr._alias_name
+                        elif hasattr(expr, "name"):
+                            result_key = expr.name
+                    else:
+                        # Regular ColumnOperation
+                        result_key, result_value = self._evaluate_column_expression(
+                            cast("Union[Column, ColumnOperation]", expr), group_rows
+                        )
                     # Check if this is a count function
                     if hasattr(expr, "operation") and expr.operation == "count":
                         non_nullable_keys.add(result_key)
@@ -1128,6 +1160,106 @@ class GroupedData:
                     return result_key, None
             else:
                 result_key = alias_name if alias_name else f"covar_pop({col_name})"
+                return result_key, None
+        elif func_name == "covar_samp":
+            # covar_samp(col1, col2) - sample covariance (divide by n-1 instead of n)
+            # Get both columns
+            if hasattr(expr, "ord_column") and expr.ord_column is not None:
+                col2_name = (
+                    expr.ord_column.name
+                    if hasattr(expr.ord_column, "name")
+                    else str(expr.ord_column)
+                )
+                values1 = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
+                values2 = [
+                    row.get(col2_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
+
+                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for sample covariance
+                    # Mypy has limitations with statistics.mean and list comprehensions
+                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
+                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
+                    if mean1 is not None and mean2 is not None:
+                        # Sample covariance: divide by (n-1) instead of n
+                        covar = sum(
+                            (x1 - mean1) * (x2 - mean2)
+                            for x1, x2 in zip(values1, values2)
+                        ) / (len(values1) - 1)
+                    else:
+                        covar = 0.0
+                    result_key = (
+                        alias_name
+                        if alias_name
+                        else f"covar_samp({col_name}, {col2_name})"
+                    )
+                    return result_key, covar
+                else:
+                    result_key = alias_name if alias_name else f"covar_samp({col_name})"
+                    return result_key, None
+            else:
+                result_key = alias_name if alias_name else f"covar_samp({col_name})"
+                return result_key, None
+        elif func_name == "corr":
+            # corr(col1, col2) - correlation coefficient
+            # Get both columns
+            if hasattr(expr, "ord_column") and expr.ord_column is not None:
+                col2_name = (
+                    expr.ord_column.name
+                    if hasattr(expr.ord_column, "name")
+                    else str(expr.ord_column)
+                )
+                values1 = [
+                    row.get(col_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
+                values2 = [
+                    row.get(col2_name)
+                    for row in group_rows
+                    if row.get(col_name) is not None and row.get(col2_name) is not None
+                ]
+
+                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for correlation
+                    # Mypy has limitations with statistics.mean and list comprehensions
+                    mean1 = statistics.mean(values1)  # type: ignore[type-var]
+                    mean2 = statistics.mean(values2)  # type: ignore[type-var]
+                    if mean1 is not None and mean2 is not None:
+                        # Calculate covariance
+                        covar = sum(
+                            (x1 - mean1) * (x2 - mean2)
+                            for x1, x2 in zip(values1, values2)
+                        ) / (len(values1) - 1)
+                        
+                        # Calculate standard deviations
+                        var1 = sum((x1 - mean1) ** 2 for x1 in values1) / (len(values1) - 1)
+                        var2 = sum((x2 - mean2) ** 2 for x2 in values2) / (len(values2) - 1)
+                        std1 = var1 ** 0.5 if var1 > 0 else 0.0
+                        std2 = var2 ** 0.5 if var2 > 0 else 0.0
+                        
+                        # Correlation = covariance / (std1 * std2)
+                        if std1 > 0 and std2 > 0:
+                            corr = covar / (std1 * std2)
+                        else:
+                            corr = 0.0 if len(values1) > 0 else None
+                    else:
+                        corr = 0.0
+                    result_key = (
+                        alias_name
+                        if alias_name
+                        else f"corr({col_name}, {col2_name})"
+                    )
+                    return result_key, corr
+                else:
+                    result_key = alias_name if alias_name else f"corr({col_name})"
+                    return result_key, None
+            else:
+                result_key = alias_name if alias_name else f"corr({col_name})"
                 return result_key, None
         elif func_name in [
             "regr_avgx",
