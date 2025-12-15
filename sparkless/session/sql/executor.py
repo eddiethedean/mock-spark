@@ -298,7 +298,9 @@ class SQLExecutor:
             # It works by extracting nested SELECT subqueries, executing them recursively via
             # _execute_select, and replacing them with their scalar results before applying
             # the remaining WHERE filters.
-            def extract_subquery(text: str) -> str | None:
+            from typing import Optional
+
+            def extract_subquery(text: str) -> Optional[str]:
                 """Extract first subquery from text, handling nested parentheses."""
                 start = text.find("(SELECT")
                 if start == -1:
