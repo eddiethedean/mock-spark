@@ -16,42 +16,42 @@ class TestNullHandlingFunctionsParity(ParityTestBase):
         """Test coalesce function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "coalesce")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.coalesce(df.col1, df.col2, df.col3).alias("first_non_null"))
+        result = df.select(F.coalesce(df.salary, F.lit(0)))
         self.assert_parity(result, expected)
 
     def test_isnull(self, spark):
         """Test isnull function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "isnull")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.isnull(df.value))
+        result = df.select(F.isnull(df.name))
         self.assert_parity(result, expected)
 
     def test_isnotnull(self, spark):
         """Test isnotnull function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "isnotnull")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.isnotnull(df.value))
+        result = df.select(F.isnotnull(df.name))
         self.assert_parity(result, expected)
 
     def test_when_otherwise(self, spark):
         """Test when/otherwise function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "when_otherwise")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.when(df.age > 30, "Senior").otherwise("Junior").alias("level"))
+        result = df.select(F.when(df.salary.isNull(), 0).otherwise(df.salary))
         self.assert_parity(result, expected)
 
     def test_nvl(self, spark):
         """Test nvl function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "nvl")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.nvl(df.value, 0))
+        result = df.select(F.nvl(df.salary, F.lit(0)))
         self.assert_parity(result, expected)
 
     def test_nullif(self, spark):
         """Test nullif function matches PySpark behavior."""
         expected = self.load_expected("null_handling", "nullif")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.nullif(df.col1, df.col2))
+        result = df.select(F.nullif(df.age, F.lit(30)))
         self.assert_parity(result, expected)
 
     def test_ifnull(self, spark):
