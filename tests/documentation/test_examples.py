@@ -53,7 +53,7 @@ def _validate_optional_dependency(package: str) -> Version | None:
     except PackageNotFoundError:
         pytest.skip(
             f"Optional dependency '{package}' is not installed; "
-            "install the 'mock-spark[pandas]' extra to run documentation examples.",
+            "install the 'sparkless[pandas]' extra to run documentation examples.",
             allow_module_level=True,
         )
 
@@ -112,7 +112,7 @@ class TestExampleScripts:
             env=env,
         )
         assert result.returncode == 0, f"basic_usage.py failed: {result.stderr}"
-        # Header should mention Sparkless basic usage example
+        # Header should mention the Sparkless basic usage example
         assert "Basic Usage Example" in result.stdout
         assert "Sparkless" in result.stdout
 

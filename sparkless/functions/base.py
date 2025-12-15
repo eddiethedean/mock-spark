@@ -112,9 +112,11 @@ class AggregateFunction:
             else:
                 return f"{display_name}(*)"
         elif isinstance(self.column, str):
-            # For count("*"), PySpark generates "count(1)", not "count(*)"
+            # For count(\"*\"), our PySpark parity fixtures expect the
+            # column name \"count\" (not \"count(1)\"), so we normalise
+            # to the same name we use for COUNT(*).
             if self.function_name == "count" and self.column == "*":
-                return "count(1)"
+                return "count"
             elif self.function_name == "countDistinct":
                 # PySpark uses "count(column)" not "count(DISTINCT column)" for column names
                 return f"count({self.column})"

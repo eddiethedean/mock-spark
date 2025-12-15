@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Usage Example for Mock Spark
+Comprehensive Usage Example for Sparkless
 
 Showcases advanced features including:
 - Analytics Engine with DuckDB
@@ -275,12 +275,12 @@ def demo_error_handling(spark: Any, df: Any) -> None:
 
 
 def main() -> None:
-    """Run comprehensive Mock Spark demonstration."""
-    print("🚀 Mock Spark - Comprehensive Feature Showcase")
+    """Run comprehensive Sparkless demonstration."""
+    print("🚀 Sparkless - Comprehensive Feature Showcase")
     print("=" * 60)
 
     # Initialize
-    print("\n📦 Initializing Mock Spark...")
+    print("\n📦 Initializing Sparkless...")
     spark = SparkSession("ComprehensiveDemo")
     print(f"   ✓ Session: {spark.app_name}")
 
@@ -331,7 +331,7 @@ def main() -> None:
     print("\n📚 Learn more:")
     print("   • Docs: docs/")
     print("   • API Reference: docs/api_reference.md")
-    print("   • GitHub: https://github.com/eddiethedean/mock-spark")
+    print("   • GitHub: https://github.com/eddiethedean/sparkless")
 
 
 if __name__ == "__main__":

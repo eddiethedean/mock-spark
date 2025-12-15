@@ -48,8 +48,10 @@ class TestWindowOperationsParity(ParityTestBase):
         expected = self.load_expected("windows", "sum_over_window")
         
         df = spark.createDataFrame(expected["input_data"])
-        window_spec = Window.partitionBy("dept").orderBy("salary").rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        result = df.withColumn("running_total", F.sum("salary").over(window_spec))
+        # Match PySpark fixture: total salary per department, repeated on each
+        # row for that department (not a running total).
+        window_spec = Window.partitionBy("department")
+        result = df.withColumn("dept_total", F.sum("salary").over(window_spec))
         
         self.assert_parity(result, expected)
 
@@ -59,7 +61,7 @@ class TestWindowOperationsParity(ParityTestBase):
         
         df = spark.createDataFrame(expected["input_data"])
         window_spec = Window.partitionBy("dept").orderBy("salary")
-        result = df.withColumn("prev_salary", F.lag("salary", 1).over(window_spec))
+        result = df.withColumn("lag_salary", F.lag("salary", 1).over(window_spec))
         
         self.assert_parity(result, expected)
 
@@ -69,7 +71,7 @@ class TestWindowOperationsParity(ParityTestBase):
         
         df = spark.createDataFrame(expected["input_data"])
         window_spec = Window.partitionBy("dept").orderBy("salary")
-        result = df.withColumn("next_salary", F.lead("salary", 1).over(window_spec))
+        result = df.withColumn("lead_salary", F.lead("salary", 1).over(window_spec))
         
         self.assert_parity(result, expected)
 
