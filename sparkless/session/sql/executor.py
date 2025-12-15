@@ -601,16 +601,23 @@ class SQLExecutor:
                                 col_name = col
                                 break
                     
-                    # If not found, try exact match with generated name
+                    # If not found in loop, try exact match with generated name or alias
                     if not col_name:
+                        # Try generated name first (e.g., "avg(salary)")
                         generated_name = f"{agg_func_name.lower()}({agg_col_name})"
                         if generated_name in df.columns:
                             col_name = generated_name
-                        # Also try alias pattern (lowercase with underscore)
                         else:
+                            # Try alias pattern (lowercase with underscore, e.g., "avg_salary")
                             alias_name = f"{agg_func_name.lower()}_{agg_col_name}"
                             if alias_name in df.columns:
                                 col_name = alias_name
+                            else:
+                                # Last resort: find any column that contains the function name and column name
+                                for col in df.columns:
+                                    if agg_func_name.lower() in col.lower() and agg_col_name.lower() in col.lower():
+                                        col_name = col
+                                        break
                     
                     # Apply filter if column found
                     if col_name and col_name in df.columns:
