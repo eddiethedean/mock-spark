@@ -2047,13 +2047,18 @@ class SQLExecutor:
             if not field:
                 return cast("IDataFrame", DataFrame([], StructType([])))
 
+            # Cast to StructField to access dataType attribute
+            from ...spark_types import StructField as StructFieldType
+            field = cast(StructFieldType, field)
+
+            comment = ""
+            if field.metadata is not None and hasattr(field.metadata, "get"):
+                comment = field.metadata.get("comment", "")
             data = [
                 {
                     "col_name": field.name,
                     "data_type": str(field.dataType),
-                    "comment": field.metadata.get("comment", "")
-                    if hasattr(field, "metadata") and hasattr(field.metadata, "get")
-                    else "",
+                    "comment": comment,
                 }
             ]
             result_schema = StructType(
@@ -2065,8 +2070,11 @@ class SQLExecutor:
             )
         else:
             # DESCRIBE table (all columns)
+            from ...spark_types import StructField as StructFieldType
             data = []
-            for field in schema.fields:
+            for f in schema.fields:
+                # Cast to StructField to access dataType attribute
+                field = cast(StructFieldType, f)
                 row = {
                     "col_name": field.name,
                     "data_type": str(field.dataType),
@@ -2074,7 +2082,7 @@ class SQLExecutor:
                 if is_extended:
                     # Add extended info
                     comment = ""
-                    if hasattr(field, "metadata") and hasattr(field.metadata, "get"):
+                    if field.metadata is not None and hasattr(field.metadata, "get"):
                         comment = field.metadata.get("comment", "")
                     row["comment"] = comment
                     # Add nullable info (basic)
