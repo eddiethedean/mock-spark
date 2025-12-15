@@ -64,20 +64,20 @@
     "data": [
       {
         "array_distinct(tags)": [
-          "python",
-          "data"
+          "data",
+          "python"
         ]
       },
       {
         "array_distinct(tags)": [
-          "java",
-          "backend"
+          "backend",
+          "java"
         ]
       },
       {
         "array_distinct(tags)": [
-          "python",
-          "ml"
+          "ml",
+          "python"
         ]
       }
     ],

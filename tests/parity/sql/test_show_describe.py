@@ -87,7 +87,6 @@ class TestSQLShowDescribeParity(ParityTestBase):
         # If the table isn't there, it might be a Sparkless bug in PySpark mode
         if "show_table" not in table_names:
             # Check if we're in PySpark mode and the table creation worked
-            # If so, this might be a Sparkless bug - skip for now
             import os
             if os.getenv("MOCK_SPARK_TEST_BACKEND") == "pyspark":
                 # Verify the table actually exists by querying it
@@ -97,8 +96,11 @@ class TestSQLShowDescribeParity(ParityTestBase):
                         pytest.skip("Sparkless SHOW TABLES IN database not working correctly in PySpark mode - table exists but not shown")
                 except Exception:
                     pass
-        
-        assert "show_table" in table_names
+            # If we can't verify or it's not PySpark mode, fail the assertion
+            assert "show_table" in table_names, f"Table 'show_table' not found in {table_names}"
+        else:
+            # Table is in the list, test passes
+            assert "show_table" in table_names
         
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS show_db.show_table")
