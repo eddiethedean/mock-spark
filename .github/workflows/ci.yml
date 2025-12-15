@@ -21,7 +21,7 @@ jobs:
       - name: Ruff lint
         run: ruff check .
       - name: Type check
-        run: mypy mock_spark tests
+        run: mypy sparkless tests
 
   test-unit:
     runs-on: ubuntu-latest
@@ -36,7 +36,7 @@ jobs:
       - name: Run unit tests (parallel)
         env:
           TZ: "America/New_York"
-        run: python3 -m pytest tests/unit/ -v -n 8 --dist loadfile --tb=short -m "not performance" --cov=mock_spark --cov-report=xml --cov-report=term-missing --cov-report=html
+        run: python3 -m pytest tests/unit/ -v -n 8 --dist loadfile --tb=short -m "not performance" --cov=sparkless --cov-report=xml --cov-report=term-missing --cov-report=html
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -110,7 +110,7 @@ jobs:
           TZ: "America/New_York"
         run: |
           set +e  # Don't exit on error
-          python3 -m pytest tests/unit/ -v -m performance --tb=short --cov=mock_spark --cov-report=xml --cov-report=term-missing --cov-report=html
+          python3 -m pytest tests/unit/ -v -m performance --tb=short --cov=sparkless --cov-report=xml --cov-report=term-missing --cov-report=html
           exit_code=$?
           set -e  # Re-enable exit on error
           # Exit code 5 means no tests collected - that's okay, just skip
@@ -142,7 +142,7 @@ jobs:
       - name: Run documentation tests (parallel)
         env:
           TZ: "America/New_York"
-        run: python3 -m pytest tests/documentation/ -v -n 8 --dist loadfile --tb=short --cov=mock_spark --cov-report=xml --cov-report=term-missing --cov-report=html
+        run: python3 -m pytest tests/documentation/ -v -n 8 --dist loadfile --tb=short --cov=sparkless --cov-report=xml --cov-report=term-missing --cov-report=html
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
