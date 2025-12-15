@@ -604,9 +604,10 @@ result = df.select(F.dayofmonth(df.date))
 ---
 
 ### BUG-020: Catalog.getTable with database parameter argument order incorrect
-**Status**: Open  
+**Status**: Fixed  
 **Severity**: Medium  
 **Discovered**: 2025-01-15  
+**Fixed**: 2025-01-15 (PR #37)  
 **Files**: `sparkless/session/catalog.py`
 
 **Description**:
@@ -630,6 +631,13 @@ table = spark.catalog.getTable("get_db", "get_table")  # Wrong argument order
 
 **Affected Tests**:
 - `test_get_table_in_database`
+
+**Resolution**:
+Fixed in PR #37. The `getTable()` method now supports both argument orders for PySpark compatibility:
+- Standard order: `getTable(tableName, dbName)`
+- PySpark order: `getTable(dbName, tableName)`
+
+The implementation automatically detects which order to use by trying the standard order first, and if the table isn't found, it tries the PySpark order by swapping the arguments. This maintains backward compatibility while supporting PySpark's expected API.
 
 ---
 
