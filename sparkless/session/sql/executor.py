@@ -335,6 +335,15 @@ class SQLExecutor:
                 if col_name in df.columns:
                     df = cast("DataFrame", df_ops.filter(F.col(col_name).like(pattern)))
                     df_ops = cast("SupportsDataFrameOps", df)
+            # Check for string equality: column = 'value'
+            elif re.search(r"(\w+)\s*=\s*['\"]", where_condition, re.IGNORECASE):
+                eq_match = re.search(r"(\w+)\s*=\s*['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE)
+                if eq_match:
+                    col_name = eq_match.group(1)
+                    value = eq_match.group(2)
+                    if col_name in df.columns:
+                        df = cast("DataFrame", df_ops.filter(F.col(col_name) == value))
+                        df_ops = cast("SupportsDataFrameOps", df)
             # Check for IN clause: column IN (value1, value2, ...)
             elif re.search(r"(\w+)\s+IN\s*\(", where_condition, re.IGNORECASE):
                 in_match = re.search(r"(\w+)\s+IN\s*\((.*?)\)", where_condition, re.IGNORECASE)
