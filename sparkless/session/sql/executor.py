@@ -1514,13 +1514,17 @@ class SQLExecutor:
         Returns:
             DataFrame with DESCRIBE results.
         """
-        # Check for DESCRIBE HISTORY
-        query = ast.query if hasattr(ast, "query") else ""
+        # Get original query string for parsing
+        original_query = ast.components.get("original_query", "")
+        if not original_query and hasattr(ast, "query"):
+            original_query = ast.query
+        
+        query = original_query.upper() if original_query else ""
 
-        if "HISTORY" in query.upper():
+        if "HISTORY" in query:
             # DESCRIBE HISTORY table_name
             match = re.search(
-                r"DESCRIBE\s+HISTORY\s+(\w+(?:\.\w+)?)", query, re.IGNORECASE
+                r"DESCRIBE\s+HISTORY\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE
             )
             if match:
                 table_name = match.group(1)
@@ -1584,13 +1588,8 @@ class SQLExecutor:
 
         # Parse DESCRIBE TABLE [table_name] [column_name]
         # Formats: DESCRIBE table_name, DESCRIBE EXTENDED table_name, DESCRIBE table_name column_name
-        query_upper = query.upper()
-        
         # Check for EXTENDED keyword
-        is_extended = "EXTENDED" in query_upper or "FORMATTED" in query_upper
-        
-        # Extract table name (use original query to preserve case)
-        original_query = ast.components.get("original_query", query)
+        is_extended = "EXTENDED" in query or "FORMATTED" in query
         # Match: DESCRIBE [EXTENDED|FORMATTED] table_name [column_name]
         # Need to explicitly match EXTENDED/FORMATTED followed by whitespace and table name
         table_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
