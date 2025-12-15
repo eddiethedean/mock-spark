@@ -582,7 +582,9 @@ class ArrayFunctions:
         # PySpark includes the lambda function in the column name for array_sort
         # This matches PySpark's behavior exactly
         pyspark_lambda = "lambdafunction((IF(((namedlambdavariable() IS NULL) AND (namedlambdavariable() IS NULL)), 0, (IF((namedlambdavariable() IS NULL), 1, (IF((namedlambdavariable() IS NULL), -1, (IF((namedlambdavariable() < namedlambdavariable()), -1, (IF((namedlambdavariable() > namedlambdavariable()), 1, 0)))))))))), namedlambdavariable(), namedlambdavariable())"
-        return ColumnOperation(column, "array_sort", name=f"array_sort({column.name}, {pyspark_lambda})")
+        return ColumnOperation(
+            column, "array_sort", name=f"array_sort({column.name}, {pyspark_lambda})"
+        )
 
     @staticmethod
     def array_contains(column: Union[Column, str], value: Any) -> ColumnOperation:

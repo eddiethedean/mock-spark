@@ -27,10 +27,13 @@ class WindowFunction:
         """
         self.function = function
         self.window_spec = window_spec
-        
+
         # Handle ColumnOperation wrapping AggregateFunction (PySpark-compatible)
         # When F.sum().over() is called, function is a ColumnOperation with _aggregate_function
-        if hasattr(function, "_aggregate_function") and function._aggregate_function is not None:
+        if (
+            hasattr(function, "_aggregate_function")
+            and function._aggregate_function is not None
+        ):
             # Unwrap the AggregateFunction from ColumnOperation
             agg_func = function._aggregate_function
             self.function_name = getattr(agg_func, "function_name", "window_function")

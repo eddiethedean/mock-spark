@@ -15,5 +15,3 @@ def test_sql_like_simple_prefix_pattern() -> None:
     finally:
         spark.sql("DROP TABLE IF EXISTS like_unit_test")
         spark.stop()
-
-

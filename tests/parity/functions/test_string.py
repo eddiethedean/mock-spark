@@ -4,7 +4,6 @@ PySpark parity tests for string functions.
 Tests validate that Sparkless string functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -158,4 +157,3 @@ class TestStringFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.reverse(df.name))
         self.assert_parity(result, expected)
-

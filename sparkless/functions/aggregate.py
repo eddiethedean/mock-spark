@@ -54,16 +54,17 @@ class AggregateFunctions:
             RuntimeError: If no active SparkSession is available
         """
         from sparkless.session.core.session import SparkSession
-        
+
         # Check if we're running in PySpark mode by trying to import PySpark
         try:
             from pyspark.sql import SparkSession as PySparkSession
+
             # If PySpark is available and has an active session, we're in PySpark mode
             if PySparkSession.getActiveSession() is not None:
                 return  # Skip check in PySpark mode - PySpark handles session management
         except (ImportError, AttributeError):
             pass  # PySpark not available, continue with Sparkless check
-        
+
         # Check for Sparkless session
         if not SparkSession._has_active_session():
             raise RuntimeError(
@@ -443,7 +444,9 @@ class AggregateFunctions:
         col2 = Column(column2) if isinstance(column2, str) else column2
         # Create ColumnOperation that wraps the aggregate function internally
         # This matches PySpark's behavior where aggregate functions return Column objects
-        op = ColumnOperation(col1, "corr", value=col2, name=f"corr({col1.name}, {col2.name})")
+        op = ColumnOperation(
+            col1, "corr", value=col2, name=f"corr({col1.name}, {col2.name})"
+        )
         # Store the aggregate function info for evaluation
         op._aggregate_function = AggregateFunction(col1, "corr", DoubleType())  # type: ignore
         op._aggregate_function.ord_column = col2  # type: ignore
@@ -470,7 +473,9 @@ class AggregateFunctions:
         col2 = Column(column2) if isinstance(column2, str) else column2
         # Create ColumnOperation that wraps the aggregate function internally
         # This matches PySpark's behavior where aggregate functions return Column objects
-        op = ColumnOperation(col1, "covar_samp", value=col2, name=f"covar_samp({col1.name}, {col2.name})")
+        op = ColumnOperation(
+            col1, "covar_samp", value=col2, name=f"covar_samp({col1.name}, {col2.name})"
+        )
         # Store the aggregate function info for evaluation
         op._aggregate_function = AggregateFunction(col1, "covar_samp", DoubleType())  # type: ignore
         op._aggregate_function.ord_column = col2  # type: ignore

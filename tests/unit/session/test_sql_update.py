@@ -25,5 +25,3 @@ def test_update_table_basic() -> None:
     finally:
         spark.sql("DROP TABLE IF EXISTS update_test")
         spark.stop()
-
-

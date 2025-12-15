@@ -4,7 +4,6 @@ PySpark parity tests for SQL DML operations.
 Tests validate that Sparkless SQL DML statements behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 
 
@@ -17,17 +16,17 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("insert_test")
-        
+
         # Insert new row
         spark.sql("INSERT INTO insert_test VALUES ('Bob', 30)")
-        
+
         # Verify data
         result = spark.sql("SELECT * FROM insert_test ORDER BY name")
         rows = result.collect()
         assert len(rows) == 2
         assert rows[0]["name"] == "Alice"
         assert rows[1]["name"] == "Bob"
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS insert_test")
 
@@ -37,10 +36,10 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25, "IT")]
         df = spark.createDataFrame(data, ["name", "age", "dept"])
         df.write.mode("overwrite").saveAsTable("insert_specific")
-        
+
         # Insert with specific columns
         spark.sql("INSERT INTO insert_specific (name, age) VALUES ('Bob', 30)")
-        
+
         # Verify data
         result = spark.sql("SELECT * FROM insert_specific ORDER BY name")
         rows = result.collect()
@@ -48,7 +47,7 @@ class TestSQLDMLParity(ParityTestBase):
         # Bob should have NULL for dept
         assert rows[1]["name"] == "Bob"
         assert rows[1]["age"] == 30
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS insert_specific")
 
@@ -58,15 +57,15 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("insert_multi")
-        
+
         # Insert multiple rows
         spark.sql("INSERT INTO insert_multi VALUES ('Bob', 30), ('Charlie', 35)")
-        
+
         # Verify data
         result = spark.sql("SELECT * FROM insert_multi ORDER BY name")
         rows = result.collect()
         assert len(rows) == 3
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS insert_multi")
 
@@ -76,16 +75,16 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("update_test")
-        
+
         # Update rows
         spark.sql("UPDATE update_test SET age = 26 WHERE name = 'Alice'")
-        
+
         # Verify update
         result = spark.sql("SELECT * FROM update_test WHERE name = 'Alice'")
         rows = result.collect()
         assert len(rows) == 1
         assert rows[0]["age"] == 26
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS update_test")
 
@@ -95,17 +94,17 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25, "IT")]
         df = spark.createDataFrame(data, ["name", "age", "dept"])
         df.write.mode("overwrite").saveAsTable("update_multi")
-        
+
         # Update multiple columns
         spark.sql("UPDATE update_multi SET age = 26, dept = 'HR' WHERE name = 'Alice'")
-        
+
         # Verify update
         result = spark.sql("SELECT * FROM update_multi WHERE name = 'Alice'")
         rows = result.collect()
         assert len(rows) == 1
         assert rows[0]["age"] == 26
         assert rows[0]["dept"] == "HR"
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS update_multi")
 
@@ -115,17 +114,17 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("delete_test")
-        
+
         # Delete rows
         spark.sql("DELETE FROM delete_test WHERE age > 30")
-        
+
         # Verify deletion
         result = spark.sql("SELECT * FROM delete_test ORDER BY name")
         rows = result.collect()
         assert len(rows) == 2
         assert rows[0]["name"] == "Alice"
         assert rows[1]["name"] == "Bob"
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS delete_test")
 
@@ -135,14 +134,14 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25), ("Bob", 30)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("delete_all")
-        
+
         # Delete all
         spark.sql("DELETE FROM delete_all")
-        
+
         # Verify all deleted
         result = spark.sql("SELECT * FROM delete_all")
         assert result.count() == 0
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS delete_all")
 
@@ -152,20 +151,21 @@ class TestSQLDMLParity(ParityTestBase):
         data = [("Alice", 25, "IT"), ("Bob", 30, "HR"), ("Charlie", 35, "IT")]
         df = spark.createDataFrame(data, ["name", "age", "dept"])
         df.write.mode("overwrite").saveAsTable("source_table")
-        
+
         # Create target table
         empty_df = spark.createDataFrame([], "name string, age int")
         empty_df.write.mode("overwrite").saveAsTable("target_table")
-        
+
         # Insert from select
-        spark.sql("INSERT INTO target_table SELECT name, age FROM source_table WHERE dept = 'IT'")
-        
+        spark.sql(
+            "INSERT INTO target_table SELECT name, age FROM source_table WHERE dept = 'IT'"
+        )
+
         # Verify
         result = spark.sql("SELECT * FROM target_table ORDER BY name")
         rows = result.collect()
         assert len(rows) == 2
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS source_table")
         spark.sql("DROP TABLE IF EXISTS target_table")
-

@@ -218,12 +218,14 @@ class SparkBackend:
                     # We must ensure no context exists so Delta JARs are loaded into a fresh context
                     try:
                         from pyspark import SparkContext
+
                         # Stop all active contexts FIRST
                         if hasattr(SparkContext, "_active_spark_context"):
                             active_ctx = SparkContext._active_spark_context
                             if active_ctx is not None:
                                 active_ctx.stop()
                                 import time
+
                                 time.sleep(0.3)  # Wait longer for context to fully stop
                             SparkContext._active_spark_context = None
                         # Also stop via SparkSession
@@ -232,6 +234,7 @@ class SparkBackend:
                             if active_session is not None:
                                 active_session.stop()
                                 import time
+
                                 time.sleep(0.3)
                         except Exception:
                             pass
@@ -242,6 +245,7 @@ class SparkBackend:
                                     inst_session.stop()
                                     PySparkSession._instantiatedSession = None
                                     import time
+
                                     time.sleep(0.3)
                         except Exception:
                             pass
@@ -436,7 +440,9 @@ class SparkBackend:
         if backend == BackendType.PYSPARK:
             # Explicitly enable Delta Lake for PySpark sessions
             enable_delta = kwargs.pop("enable_delta", True)
-            return SparkBackend.create_pyspark_session(app_name, enable_delta=enable_delta, **kwargs)
+            return SparkBackend.create_pyspark_session(
+                app_name, enable_delta=enable_delta, **kwargs
+            )
         else:
             return SparkBackend.create_mock_spark_session(app_name, **kwargs)
 

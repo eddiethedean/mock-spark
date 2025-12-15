@@ -113,7 +113,9 @@ def spark(request):
         # This handles known Python 3.11/PySpark 3.2.4 compatibility issues
         error_msg = str(e)
         if "Could not serialize" in error_msg or "pickle" in error_msg.lower():
-            pytest.skip(f"PySpark session creation failed due to serialization issue: {e}")
+            pytest.skip(
+                f"PySpark session creation failed due to serialization issue: {e}"
+            )
         raise
 
     yield session

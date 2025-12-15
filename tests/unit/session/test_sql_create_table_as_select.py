@@ -32,5 +32,3 @@ def test_create_table_as_select_basic() -> None:
         spark.sql("DROP TABLE IF EXISTS employees_ctas")
         spark.sql("DROP TABLE IF EXISTS it_employees_ctas")
         spark.stop()
-
-

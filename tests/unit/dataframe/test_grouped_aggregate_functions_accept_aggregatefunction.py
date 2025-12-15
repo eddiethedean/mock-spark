@@ -31,5 +31,3 @@ def test_groupby_agg_accepts_aggregate_function_objects() -> None:
         assert result.count() == 2
     finally:
         spark.stop()
-
-

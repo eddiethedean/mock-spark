@@ -4,7 +4,6 @@ PySpark parity tests for aggregate functions.
 Tests validate that Sparkless aggregate functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -46,4 +45,3 @@ class TestAggregateFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.groupBy("active").agg(F.min(df.salary))
         self.assert_parity(result, expected)
-

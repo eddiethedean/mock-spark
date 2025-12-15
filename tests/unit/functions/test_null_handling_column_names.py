@@ -21,5 +21,3 @@ def test_coalesce_column_name_matches_expected() -> None:
         assert result.columns == ["coalesce(salary, 0)"]
     finally:
         spark.stop()
-
-

@@ -41,7 +41,8 @@ class SessionLifecycleManager:
                 performance_tracker.clear_cache()
         except Exception as e:
             logger.warning(
-                "Error clearing performance tracker cache during session shutdown: %s", e
+                "Error clearing performance tracker cache during session shutdown: %s",
+                e,
             )
 
     def cleanup_resources(self, storage: Any) -> None:

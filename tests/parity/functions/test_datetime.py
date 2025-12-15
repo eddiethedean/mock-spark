@@ -4,7 +4,6 @@ PySpark parity tests for datetime functions.
 Tests validate that Sparkless datetime functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -67,4 +66,3 @@ class TestDatetimeFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.to_date(df.hire_date))
         self.assert_parity(result, expected)
-

@@ -4,7 +4,6 @@ PySpark parity tests for array functions.
 Tests validate that Sparkless array functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -81,4 +80,3 @@ class TestArrayFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.array_remove(df.scores, 90))
         self.assert_parity(result, expected)
-

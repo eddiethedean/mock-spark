@@ -590,7 +590,9 @@ class ColumnOperation(ColumnOperatorMixin):
 
     def alias(self, name: str) -> "ColumnOperation":
         """Create an alias for this operation."""
-        aliased_operation = ColumnOperation(self.column, self.operation, self.value, name=self._name)
+        aliased_operation = ColumnOperation(
+            self.column, self.operation, self.value, name=self._name
+        )
         aliased_operation._alias_name = name
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):

@@ -4,7 +4,6 @@ PySpark parity tests for aggregation operations.
 Tests validate that Sparkless aggregation operations behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -63,7 +62,9 @@ class TestAggregationsParity(ParityTestBase):
         """Test groupBy with multiple columns matches PySpark behavior."""
         expected = self.load_expected("aggregations", "groupby_multiple_columns")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.groupBy("department", "level").agg(F.avg(df.salary).alias("avg_salary"))
+        result = df.groupBy("department", "level").agg(
+            F.avg(df.salary).alias("avg_salary")
+        )
         self.assert_parity(result, expected)
 
     def test_global_aggregation(self, spark):
@@ -83,4 +84,3 @@ class TestAggregationsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.groupBy("department").agg(F.avg(df.salary).alias("avg_salary"))
         self.assert_parity(result, expected)
-

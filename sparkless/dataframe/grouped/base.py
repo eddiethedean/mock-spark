@@ -61,13 +61,12 @@ class GroupedData:
             New DataFrame with aggregated results.
         """
         from ...functions import F
-        from ...core.type_utils import is_column, is_column_operation
 
         # Track expression processing order to preserve column ordering
         # For dict syntax, PySpark preserves dict order; otherwise we sort alphabetically
         expression_order: list[str] = []
         is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
-        
+
         # PySpark-style strict validation: all expressions must be Column or ColumnOperation.
         # Skip this for dict syntax (handled separately below).
         # NOTE (BUG-022): PySpark also accepts AggregateFunction objects in many contexts
@@ -190,7 +189,10 @@ class GroupedData:
                     # Handle ColumnOperation first (before AggregateFunction check)
                     # ColumnOperation has function_name but should be handled differently
                     # Check if this ColumnOperation wraps an aggregate function (PySpark-style)
-                    if hasattr(expr, "_aggregate_function") and expr._aggregate_function is not None:
+                    if (
+                        hasattr(expr, "_aggregate_function")
+                        and expr._aggregate_function is not None
+                    ):
                         # This is a ColumnOperation wrapping an AggregateFunction (e.g., corr, covar_samp)
                         result_key, result_value = self._evaluate_aggregate_function(
                             expr._aggregate_function, group_rows
@@ -1183,7 +1185,9 @@ class GroupedData:
                     if row.get(col_name) is not None and row.get(col2_name) is not None
                 ]
 
-                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for sample covariance
+                if (
+                    len(values1) > 1 and len(values2) > 1
+                ):  # Need at least 2 points for sample covariance
                     # Mypy has limitations with statistics.mean and list comprehensions
                     mean1 = statistics.mean(values1)  # type: ignore[type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[type-var]
@@ -1227,7 +1231,9 @@ class GroupedData:
                     if row.get(col_name) is not None and row.get(col2_name) is not None
                 ]
 
-                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for correlation
+                if (
+                    len(values1) > 1 and len(values2) > 1
+                ):  # Need at least 2 points for correlation
                     # Mypy has limitations with statistics.mean and list comprehensions
                     mean1 = statistics.mean(values1)  # type: ignore[type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[type-var]
@@ -1237,13 +1243,17 @@ class GroupedData:
                             (x1 - mean1) * (x2 - mean2)
                             for x1, x2 in zip(values1, values2)
                         ) / (len(values1) - 1)
-                        
+
                         # Calculate standard deviations
-                        var1 = sum((x1 - mean1) ** 2 for x1 in values1) / (len(values1) - 1)
-                        var2 = sum((x2 - mean2) ** 2 for x2 in values2) / (len(values2) - 1)
-                        std1 = var1 ** 0.5 if var1 > 0 else 0.0
-                        std2 = var2 ** 0.5 if var2 > 0 else 0.0
-                        
+                        var1 = sum((x1 - mean1) ** 2 for x1 in values1) / (
+                            len(values1) - 1
+                        )
+                        var2 = sum((x2 - mean2) ** 2 for x2 in values2) / (
+                            len(values2) - 1
+                        )
+                        std1 = var1**0.5 if var1 > 0 else 0.0
+                        std2 = var2**0.5 if var2 > 0 else 0.0
+
                         # Correlation = covariance / (std1 * std2)
                         if std1 > 0 and std2 > 0:
                             corr = covar / (std1 * std2)
@@ -1252,9 +1262,7 @@ class GroupedData:
                     else:
                         corr = 0.0
                     result_key = (
-                        alias_name
-                        if alias_name
-                        else f"corr({col_name}, {col2_name})"
+                        alias_name if alias_name else f"corr({col_name}, {col2_name})"
                     )
                     return result_key, corr
                 else:

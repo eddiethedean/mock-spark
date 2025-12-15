@@ -203,23 +203,23 @@ class SQLExecutor:
                             # table_aliases maps table_name -> alias
                             table1_alias = table_aliases.get(table_name, table_name)
                             table2_alias = table_aliases.get(table2_name, table2_name)
-                            
+
                             # Map each alias to its corresponding DataFrame and column
                             df1_col = None
                             df2_col = None
-                            
+
                             # Check if alias1 refers to table1 (df1)
-                            if alias1 == table1_alias or alias1 == table_name:
+                            if alias1 in (table1_alias, table_name):
                                 df1_col = col1
                             # Check if alias1 refers to table2 (df2)
-                            elif alias1 == table2_alias or alias1 == table2_name:
+                            elif alias1 in (table2_alias, table2_name):
                                 df2_col = col1
-                            
+
                             # Check if alias2 refers to table1 (df1)
-                            if alias2 == table1_alias or alias2 == table_name:
+                            if alias2 in (table1_alias, table_name):
                                 df1_col = col2
                             # Check if alias2 refers to table2 (df2)
-                            elif alias2 == table2_alias or alias2 == table2_name:
+                            elif alias2 in (table2_alias, table2_name):
                                 df2_col = col2
 
                             if df1_col and df2_col:
@@ -227,37 +227,62 @@ class SQLExecutor:
                                 # This allows us to distinguish e.name from d.name after the join
                                 df1_renamed = df1
                                 df2_renamed = df2
-                                
+
                                 # Rename all columns in df1 with table1 alias prefix
                                 for col in df1.columns:
-                                    df1_renamed = cast("DataFrame", df1_renamed.withColumnRenamed(col, f"{table1_alias}_{col}"))
-                                
+                                    df1_renamed = cast(
+                                        "DataFrame",
+                                        df1_renamed.withColumnRenamed(
+                                            col, f"{table1_alias}_{col}"
+                                        ),
+                                    )
+
                                 # Rename all columns in df2 with table2 alias prefix
                                 for col in df2.columns:
-                                    df2_renamed = cast("DataFrame", df2_renamed.withColumnRenamed(col, f"{table2_alias}_{col}"))
-                                
+                                    df2_renamed = cast(
+                                        "DataFrame",
+                                        df2_renamed.withColumnRenamed(
+                                            col, f"{table2_alias}_{col}"
+                                        ),
+                                    )
+
                                 # Join column references use the renamed columns
                                 df1_join_col = f"{table1_alias}_{df1_col}"
                                 df2_join_col = f"{table2_alias}_{df2_col}"
-                                
+
                                 # Perform join with renamed columns
                                 # Get join type from join_info (default to "inner" if not specified)
                                 join_type = join_info.get("type", "inner")
-                                join_col = df1_renamed[df1_join_col] == df2_renamed[df2_join_col]
-                                df = cast("DataFrame", df1_renamed.join(df2_renamed, join_col, join_type))  # type: ignore[arg-type]
+                                join_col = (
+                                    df1_renamed[df1_join_col]
+                                    == df2_renamed[df2_join_col]
+                                )
+                                df = cast(
+                                    "DataFrame",
+                                    df1_renamed.join(df2_renamed, join_col, join_type),
+                                )  # type: ignore[arg-type]
                             else:
                                 # Fallback: try direct column names (assume col1 is from df1, col2 from df2)
                                 join_type = join_info.get("type", "inner")
                                 if col1 in df1.columns and col2 in df2.columns:
                                     join_col = df1[col1] == df2[col2]
-                                    df = cast("DataFrame", df1.join(df2, join_col, join_type))  # type: ignore[arg-type]
+                                    df = cast(
+                                        "DataFrame", df1.join(df2, join_col, join_type)
+                                    )  # type: ignore[arg-type]
                                 elif col2 in df1.columns and col1 in df2.columns:
                                     # Try reverse mapping
                                     join_col = df1[col2] == df2[col1]
-                                    df = cast("DataFrame", df1.join(df2, join_col, join_type))  # type: ignore[arg-type]
+                                    df = cast(
+                                        "DataFrame", df1.join(df2, join_col, join_type)
+                                    )  # type: ignore[arg-type]
                                 else:
                                     # Last resort: cross join
-                                    df = cast("DataFrame", df1.crossJoin(cast("SupportsDataFrameOps", df2)))
+                                    df = cast(
+                                        "DataFrame",
+                                        df1.crossJoin(
+                                            cast("SupportsDataFrameOps", df2)
+                                        ),
+                                    )
                         else:
                             # Fallback: try to join on common column names
                             join_type = join_info.get("type", "inner")
@@ -332,7 +357,7 @@ class SQLExecutor:
         if where_conditions:
             # Parse simple WHERE conditions like "column > value", "column < value", etc.
             where_condition = where_conditions[0]
-            
+
             # Handle subqueries in WHERE conditions (e.g., "column > (SELECT AVG(col) FROM table)").
             # This logic was introduced as part of BUG-008 (SQL subqueries support) and is
             # exercised by:
@@ -347,7 +372,7 @@ class SQLExecutor:
                 start = text.find("(SELECT")
                 if start == -1:
                     return None
-                
+
                 paren_count = 0
                 i = start
                 while i < len(text):
@@ -359,33 +384,37 @@ class SQLExecutor:
                             return text[start : i + 1]
                     i += 1
                 return None
-            
+
             # Extract and process all subqueries
             subquery = extract_subquery(where_condition)
             while subquery:
                 # Remove parentheses
                 subquery_text = subquery[1:-1].strip()
-                
+
                 # Execute the subquery
                 subquery_ast = self.parser.parse(subquery_text)
                 subquery_result = self._execute_select(subquery_ast)
-                
+
                 # Get scalar value from subquery result (assume single row, single column)
                 if subquery_result.count() > 0:
                     row = subquery_result.collect()[0]
                     # Get first column value
                     col_name = subquery_result.columns[0]
                     scalar_value = row[col_name]
-                    
+
                     # Replace subquery with scalar value in WHERE condition
-                    where_condition = where_condition.replace(subquery, str(scalar_value))
-                
+                    where_condition = where_condition.replace(
+                        subquery, str(scalar_value)
+                    )
+
                 # Look for next subquery
                 subquery = extract_subquery(where_condition)
-            
+
             # Try to parse different WHERE condition types
             # Check for LIKE clause: column LIKE 'pattern'
-            like_match = re.search(r"(\w+)\s+LIKE\s+['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE)
+            like_match = re.search(
+                r"(\w+)\s+LIKE\s+['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE
+            )
             if like_match:
                 col_name = like_match.group(1)
                 pattern = like_match.group(2)
@@ -394,7 +423,9 @@ class SQLExecutor:
                     df_ops = cast("SupportsDataFrameOps", df)
             # Check for string equality: column = 'value'
             elif re.search(r"(\w+)\s*=\s*['\"]", where_condition, re.IGNORECASE):
-                eq_match = re.search(r"(\w+)\s*=\s*['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE)
+                eq_match = re.search(
+                    r"(\w+)\s*=\s*['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE
+                )
                 if eq_match:
                     col_name = eq_match.group(1)
                     value = eq_match.group(2)
@@ -403,7 +434,9 @@ class SQLExecutor:
                         df_ops = cast("SupportsDataFrameOps", df)
             # Check for IN clause: column IN (value1, value2, ...)
             elif re.search(r"(\w+)\s+IN\s*\(", where_condition, re.IGNORECASE):
-                in_match = re.search(r"(\w+)\s+IN\s*\((.*?)\)", where_condition, re.IGNORECASE)
+                in_match = re.search(
+                    r"(\w+)\s+IN\s*\((.*?)\)", where_condition, re.IGNORECASE
+                )
                 if in_match:
                     col_name = in_match.group(1)
                     values_str = in_match.group(2).strip()
@@ -421,9 +454,11 @@ class SQLExecutor:
                             # Remove quotes if present
                             val = val.strip("'\"")
                             values.append(val)
-                    
+
                     if col_name in df.columns:
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name).isin(values)))
+                        df = cast(
+                            "DataFrame", df_ops.filter(F.col(col_name).isin(values))
+                        )
                         df_ops = cast("SupportsDataFrameOps", df)
             # Check for comparison operators: column > value, column < value, etc.
             else:
@@ -443,15 +478,25 @@ class SQLExecutor:
                     # Check if column exists in DataFrame
                     if col_name in df.columns:
                         if operator == ">":
-                            df = cast("DataFrame", df_ops.filter(F.col(col_name) > value))
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) > value)
+                            )
                         elif operator == "<":
-                            df = cast("DataFrame", df_ops.filter(F.col(col_name) < value))
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) < value)
+                            )
                         elif operator in ("=", "=="):
-                            df = cast("DataFrame", df_ops.filter(F.col(col_name) == value))
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) == value)
+                            )
                         elif operator == ">=":
-                            df = cast("DataFrame", df_ops.filter(F.col(col_name) >= value))
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                            )
                         elif operator == "<=":
-                            df = cast("DataFrame", df_ops.filter(F.col(col_name) <= value))
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                            )
                         df_ops = cast("SupportsDataFrameOps", df)
 
         # Check if we have GROUP BY
@@ -566,15 +611,40 @@ class SQLExecutor:
                         temp_col_name = f"_group_by_expr_{i}"
                         # Create a boolean column expression
                         if operator == ">":
-                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) > value))
+                            temp_df = cast(
+                                "DataFrame",
+                                temp_df.withColumn(
+                                    temp_col_name, F.col(col_name) > value
+                                ),
+                            )
                         elif operator == "<":
-                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) < value))
+                            temp_df = cast(
+                                "DataFrame",
+                                temp_df.withColumn(
+                                    temp_col_name, F.col(col_name) < value
+                                ),
+                            )
                         elif operator in ("=", "=="):
-                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) == value))
+                            temp_df = cast(
+                                "DataFrame",
+                                temp_df.withColumn(
+                                    temp_col_name, F.col(col_name) == value
+                                ),
+                            )
                         elif operator == ">=":
-                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) >= value))
+                            temp_df = cast(
+                                "DataFrame",
+                                temp_df.withColumn(
+                                    temp_col_name, F.col(col_name) >= value
+                                ),
+                            )
                         elif operator == "<=":
-                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) <= value))
+                            temp_df = cast(
+                                "DataFrame",
+                                temp_df.withColumn(
+                                    temp_col_name, F.col(col_name) <= value
+                                ),
+                            )
                         else:
                             # Fallback: use as column name
                             temp_col_name = col_expr
@@ -586,7 +656,7 @@ class SQLExecutor:
                 else:
                     # Regular column name
                     group_by_cols.append(col_expr)
-            
+
             grouped = df_ops.groupBy(*group_by_cols)
             if agg_exprs:
                 # Only add aggregate expressions - group by columns are automatically included
@@ -606,11 +676,13 @@ class SQLExecutor:
                 # Parse HAVING condition - simple implementation
                 # Example: "AVG(salary) > 55000" or "avg_salary > 55000"
                 having_condition = having_conditions[0]
-                
+
                 # Try to match aggregate function patterns like "AVG(salary) > 55000"
                 # Match patterns like "AGG_FUNC(col) > value" or "column_alias > value"
                 agg_func_match = re.search(
-                    r"(\w+)\s*\(\s*(\w+)\s*\)\s*([><=]+)\s*(\d+)", having_condition, re.IGNORECASE
+                    r"(\w+)\s*\(\s*(\w+)\s*\)\s*([><=]+)\s*(\d+)",
+                    having_condition,
+                    re.IGNORECASE,
                 )
                 if agg_func_match:
                     # HAVING with aggregate function: "AVG(salary) > 55000"
@@ -618,7 +690,7 @@ class SQLExecutor:
                     agg_col_name = agg_func_match.group(2)
                     operator = agg_func_match.group(3)
                     value = int(agg_func_match.group(4))
-                    
+
                     # Find matching column in result - check both aliased and generated names
                     # The column might be aliased (e.g., "avg_salary") or use generated name (e.g., "avg(salary)")
                     col_name = None
@@ -626,26 +698,42 @@ class SQLExecutor:
                     for col in df_ops.columns:
                         # Check if column name matches the aggregate function pattern
                         if agg_func_name in ["AVG", "MEAN"]:
-                            if col.lower() == f"avg({agg_col_name})" or col.lower() == "avg_salary" or "avg" in col.lower():
+                            if (
+                                col.lower() == f"avg({agg_col_name})"
+                                or col.lower() == "avg_salary"
+                                or "avg" in col.lower()
+                            ):
                                 col_name = col
                                 break
                         elif agg_func_name == "SUM":
-                            if col.lower() == f"sum({agg_col_name})" or "sum" in col.lower():
+                            if (
+                                col.lower() == f"sum({agg_col_name})"
+                                or "sum" in col.lower()
+                            ):
                                 col_name = col
                                 break
                         elif agg_func_name == "COUNT":
-                            if col.lower() == f"count({agg_col_name})" or col.lower() == "count" or "count" in col.lower():
+                            if (
+                                col.lower() == f"count({agg_col_name})"
+                                or col.lower() == "count"
+                                or "count" in col.lower()
+                            ):
                                 col_name = col
                                 break
                         elif agg_func_name == "MAX":
-                            if col.lower() == f"max({agg_col_name})" or "max" in col.lower():
+                            if (
+                                col.lower() == f"max({agg_col_name})"
+                                or "max" in col.lower()
+                            ):
                                 col_name = col
                                 break
-                        elif agg_func_name == "MIN":
-                            if col.lower() == f"min({agg_col_name})" or "min" in col.lower():
-                                col_name = col
-                                break
-                    
+                        elif agg_func_name == "MIN" and (
+                            col.lower() == f"min({agg_col_name})"
+                            or "min" in col.lower()
+                        ):
+                            col_name = col
+                            break
+
                     # If not found in loop, try exact match with generated name or alias
                     if not col_name:
                         # Try generated name first (e.g., "avg(salary)")
@@ -660,10 +748,13 @@ class SQLExecutor:
                             else:
                                 # Last resort: find any column that contains the function name and column name
                                 for col in df_ops.columns:
-                                    if agg_func_name.lower() in col.lower() and agg_col_name.lower() in col.lower():
+                                    if (
+                                        agg_func_name.lower() in col.lower()
+                                        and agg_col_name.lower() in col.lower()
+                                    ):
                                         col_name = col
                                         break
-                    
+
                     # Apply filter if column found
                     # Check in df_ops.columns since that's what we're filtering
                     if col_name and col_name in df_ops.columns:
@@ -691,7 +782,9 @@ class SQLExecutor:
                         df_ops = cast("SupportsDataFrameOps", df)
                     else:
                         # Try simple pattern match for column name > value
-                        simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
+                        simple_match = re.search(
+                            r"(\w+)\s*([><=]+)\s*(\d+)", having_condition
+                        )
                         if simple_match:
                             col_name = simple_match.group(1)
                             operator = simple_match.group(2)
@@ -701,160 +794,218 @@ class SQLExecutor:
                             if col_name in df_ops.columns:
                                 if operator == ">":
                                     df = cast(
-                                        "DataFrame", df_ops.filter(F.col(col_name) > value)
+                                        "DataFrame",
+                                        df_ops.filter(F.col(col_name) > value),
                                     )
                                 elif operator == "<":
                                     df = cast(
-                                        "DataFrame", df_ops.filter(F.col(col_name) < value)
+                                        "DataFrame",
+                                        df_ops.filter(F.col(col_name) < value),
                                     )
                                 elif operator in ("=", "=="):
                                     df = cast(
-                                        "DataFrame", df_ops.filter(F.col(col_name) == value)
+                                        "DataFrame",
+                                        df_ops.filter(F.col(col_name) == value),
                                     )
                                 elif operator == ">=":
                                     df = cast(
-                                        "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                                        "DataFrame",
+                                        df_ops.filter(F.col(col_name) >= value),
                                     )
                                 elif operator == "<=":
                                     df = cast(
-                                        "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                                        "DataFrame",
+                                        df_ops.filter(F.col(col_name) <= value),
                                     )
                                 df_ops = cast("SupportsDataFrameOps", df)
-            
+
             # Now apply column selection after HAVING (if needed)
             # If SELECT clause doesn't include group-by columns, exclude them from result
             # (e.g., "SELECT COUNT(*) FROM ... GROUP BY (age > 30)" should only return count)
             select_columns = components.get("select_columns", ["*"])
             if select_columns != ["*"]:
                 # Check if any group-by columns are in the SELECT
-                select_col_names = [col.split(" AS ")[0].strip().split(".")[-1] for col in select_columns]
+                select_col_names = [
+                    col.split(" AS ")[0].strip().split(".")[-1]
+                    for col in select_columns
+                ]
                 # Also check for aliases in SELECT (e.g., "AVG(salary) as avg_salary")
                 select_aliases = []
                 for col in select_columns:
                     alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
                     if alias_match:
                         select_aliases.append(alias_match.group(1))
-                
+
                 # Remove temporary group-by columns that aren't in SELECT
                 cols_to_keep = []
                 for col in df_ops.columns:
                     # Keep if it's in SELECT or if it's a regular group-by column (not temporary)
-                    if col in select_col_names or col in select_aliases or not col.startswith("_group_by_expr_"):
+                    if (
+                        col in select_col_names
+                        or col in select_aliases
+                        or not col.startswith("_group_by_expr_")
+                    ):
                         # But only if it's actually in SELECT or is a regular group-by column
-                        if col in select_col_names or col in select_aliases or col in group_by_columns:
+                        if (
+                            col in select_col_names
+                            or col in select_aliases
+                            or col in group_by_columns
+                        ):
                             cols_to_keep.append(col)
                     # Always keep aggregate columns (like count, avg_salary) if they're in SELECT
-                    elif any(agg in col.lower() for agg in ["count", "sum", "avg", "max", "min"]):
-                        # Check if this aggregate column matches something in SELECT
-                        if any(agg in sel_col.lower() for sel_col in select_columns for agg in ["count", "sum", "avg", "max", "min"]):
-                            cols_to_keep.append(col)
-                
+                    elif any(
+                        agg in col.lower()
+                        for agg in ["count", "sum", "avg", "max", "min"]
+                    ) and any(
+                        agg in sel_col.lower()
+                        for sel_col in select_columns
+                        for agg in ["count", "sum", "avg", "max", "min"]
+                    ):
+                        cols_to_keep.append(col)
+
                 # Select only the columns we want to keep
                 if cols_to_keep:
                     df = cast("DataFrame", df_ops.select(*cols_to_keep))
                     df_ops = cast("SupportsDataFrameOps", df)
                 else:
                     # Fallback: select all columns that match SELECT clause
-                    df = cast("DataFrame", df_ops.select(*[F.col(c) for c in df_ops.columns if c in select_col_names or c in select_aliases or any(agg in c.lower() for agg in ["count", "sum", "avg", "max", "min"])]))
+                    df = cast(
+                        "DataFrame",
+                        df_ops.select(
+                            *[
+                                F.col(c)
+                                for c in df_ops.columns
+                                if c in select_col_names
+                                or c in select_aliases
+                                or any(
+                                    agg in c.lower()
+                                    for agg in ["count", "sum", "avg", "max", "min"]
+                                )
+                            ]
+                        ),
+                    )
                     df_ops = cast("SupportsDataFrameOps", df)
             else:
                 # Try simple pattern match for column name > value
-                    simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
-                    if simple_match:
-                        col_name = simple_match.group(1)
-                        operator = simple_match.group(2)
-                        value = int(simple_match.group(3))
+                simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
+                if simple_match:
+                    col_name = simple_match.group(1)
+                    operator = simple_match.group(2)
+                    value = int(simple_match.group(3))
 
-                        # Check if column exists in result
-                        if col_name in df.columns:
-                            if operator == ">":
-                                df = cast(
-                                    "DataFrame", df_ops.filter(F.col(col_name) > value)
-                                )
-                            elif operator == "<":
-                                df = cast(
-                                    "DataFrame", df_ops.filter(F.col(col_name) < value)
-                                )
-                            elif operator in ("=", "=="):
-                                df = cast(
-                                    "DataFrame", df_ops.filter(F.col(col_name) == value)
-                                )
-                            elif operator == ">=":
-                                df = cast(
-                                    "DataFrame", df_ops.filter(F.col(col_name) >= value)
-                                )
-                            elif operator == "<=":
-                                df = cast(
-                                    "DataFrame", df_ops.filter(F.col(col_name) <= value)
-                                )
-                            df_ops = cast("SupportsDataFrameOps", df)
+                    # Check if column exists in result
+                    if col_name in df.columns:
+                        if operator == ">":
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) > value)
+                            )
+                        elif operator == "<":
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) < value)
+                            )
+                        elif operator in ("=", "=="):
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) == value)
+                            )
+                        elif operator == ">=":
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                            )
+                        elif operator == "<=":
+                            df = cast(
+                                "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                            )
+                        df_ops = cast("SupportsDataFrameOps", df)
         else:
             # No GROUP BY - check if we have aggregate functions (like SELECT AVG(col) FROM table)
             # If so, we need to aggregate over all rows
             select_columns = components.get("select_columns", ["*"])
             has_aggregates = False
-            
+
             if select_columns != ["*"]:
                 for col in select_columns:
                     col_upper = col.upper().strip()
                     # Check for aggregate functions
                     if any(
                         col_upper.startswith(agg)
-                        for agg in ["COUNT(", "SUM(", "AVG(", "MAX(", "MIN(", "AVERAGE("]
+                        for agg in [
+                            "COUNT(",
+                            "SUM(",
+                            "AVG(",
+                            "MAX(",
+                            "MIN(",
+                            "AVERAGE(",
+                        ]
                     ):
                         has_aggregates = True
                         break
-            
+
             if has_aggregates:
                 # We have aggregate functions without GROUP BY - aggregate over all rows
                 agg_exprs = []
-                
+
                 for col_expr in select_columns:
                     col_expr = col_expr.strip()
-                    
+
                     # Extract alias if present
                     alias = None
                     alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col_expr)
                     if alias_match:
                         alias = alias_match.group(1)
                         col_expr = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col_expr).strip()
-                    
+
                     col_upper = col_expr.upper()
-                    
+
                     # Parse aggregate functions
                     if col_upper.startswith("COUNT("):
                         if "*" in col_expr:
                             expr = F.count("*")
                         else:
-                            inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                            inner = col_expr[
+                                col_expr.index("(") + 1 : col_expr.rindex(")")
+                            ].strip()
                             expr = F.count(inner)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
-                    elif col_upper.startswith("AVG(") or col_upper.startswith("AVERAGE("):
-                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                    elif col_upper.startswith("AVG(") or col_upper.startswith(
+                        "AVERAGE("
+                    ):
+                        inner = col_expr[
+                            col_expr.index("(") + 1 : col_expr.rindex(")")
+                        ].strip()
                         expr = F.avg(inner)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("SUM("):
-                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        inner = col_expr[
+                            col_expr.index("(") + 1 : col_expr.rindex(")")
+                        ].strip()
                         expr = F.sum(inner)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("MAX("):
-                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        inner = col_expr[
+                            col_expr.index("(") + 1 : col_expr.rindex(")")
+                        ].strip()
                         expr = F.max(inner)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("MIN("):
-                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        inner = col_expr[
+                            col_expr.index("(") + 1 : col_expr.rindex(")")
+                        ].strip()
                         expr = F.min(inner)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
                     else:
                         # Non-aggregate column in aggregate query - use F.col()
                         col_name = col_expr
-                        if "." in col_name and not col_name.startswith("'") and not col_name.startswith('"'):
+                        if (
+                            "." in col_name
+                            and not col_name.startswith("'")
+                            and not col_name.startswith('"')
+                        ):
                             parts = col_name.split(".", 1)
                             if len(parts) == 2:
                                 col_name = parts[1]
                         expr = F.col(col_name)
                         agg_exprs.append(expr.alias(alias) if alias else expr)
-                
+
                 # Aggregate over all rows (no grouping columns)
                 df = cast("DataFrame", df_ops.agg(*agg_exprs))
             else:
@@ -871,12 +1022,13 @@ class SQLExecutor:
                             alias = alias_match.group(1)
                             # Remove alias from col expression
                             col = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col).strip()
-                        
+
                         # Check if this is a CASE WHEN expression
                         col_upper = col.upper().strip()
                         if col_upper.startswith("CASE") and "END" in col_upper:
                             # Parse CASE WHEN expression using SQLExprParser
                             from ...functions.core.sql_expr_parser import SQLExprParser
+
                             case_expr = SQLExprParser._parse_expression(col)
                             if alias:
                                 case_expr.alias(alias)  # type: ignore
@@ -903,13 +1055,13 @@ class SQLExecutor:
                                     col_name = col
                             else:
                                 col_name = col
-                            
+
                             # Create column expression with alias if specified
                             if alias:
                                 select_exprs.append(F.col(col_name).alias(alias))
                             else:
                                 select_exprs.append(F.col(col_name))
-                    
+
                     df = cast("DataFrame", df_ops.select(*select_exprs))
             df_ops = cast("SupportsDataFrameOps", df)
 
@@ -952,56 +1104,57 @@ class SQLExecutor:
             DataFrame with UNION results.
         """
         components = ast.components
-        
+
         # Get left and right queries
         left_query = components.get("left_query", "")
         right_query = components.get("right_query", "")
-        
+
         if not left_query or not right_query:
             raise QueryExecutionException("UNION requires two SELECT statements")
-        
+
         # Execute both SELECT queries
         left_ast = self.parser.parse(left_query)
         right_ast = self.parser.parse(right_query)
-        
+
         if left_ast.query_type != "SELECT" or right_ast.query_type != "SELECT":
             raise QueryExecutionException("UNION can only combine SELECT statements")
-        
+
         left_df = self._execute_select(left_ast)
         right_df = self._execute_select(right_ast)
-        
+
         # Convert to DataFrame if needed
         from ...dataframe import DataFrame
-        from ...dataframe.protocols import SupportsDataFrameOps
-        
+
         if not isinstance(left_df, DataFrame):
             from ...spark_types import StructType
+
             schema = (
                 StructType(left_df.schema.fields)  # type: ignore[arg-type]
                 if hasattr(left_df.schema, "fields")
                 else StructType([])
             )
             left_df = DataFrame(left_df.collect(), schema)
-        
+
         if not isinstance(right_df, DataFrame):
             from ...spark_types import StructType
+
             schema = (
                 StructType(right_df.schema.fields)  # type: ignore[arg-type]
                 if hasattr(right_df.schema, "fields")
                 else StructType([])
             )
             right_df = DataFrame(right_df.collect(), schema)
-        
+
         # Perform union (removes duplicates like UNION, not UNION ALL)
         result = cast("DataFrame", left_df.union(right_df))
-        
+
         # Materialize if lazy (union() may queue operations)
         if hasattr(result, "_materialize_if_lazy"):
             result = cast("DataFrame", result._materialize_if_lazy())
         elif hasattr(result, "_operations_queue") and result._operations_queue:
             # Force materialization if operations are queued
             result = cast("DataFrame", result._materialize_if_lazy())
-        
+
         return cast("IDataFrame", result)
 
     def _execute_create(self, ast: SQLAST) -> IDataFrame:
@@ -1067,7 +1220,9 @@ class SQLExecutor:
                 # Save the result as a table
                 # Convert to DataFrame if needed
                 if not isinstance(result_df, DataFrame):
-                    result_df = DataFrame(result_df.collect(), StructType(result_df.schema.fields))  # type: ignore[arg-type]
+                    result_df = DataFrame(
+                        result_df.collect(), StructType(result_df.schema.fields)
+                    )  # type: ignore[arg-type]
 
                 # Build table full name
                 table_full_name = (
@@ -1208,11 +1363,7 @@ class SQLExecutor:
             columns = components.get("columns", [])
 
             # If columns specified, use them; otherwise use the expected column order
-            if columns:
-                target_columns = columns
-            else:
-                # Use the expected column order (which matches how data was originally stored)
-                target_columns = expected_column_order
+            target_columns = columns or expected_column_order
 
             # Convert string values to Python types
             for row_values in values:
@@ -1437,7 +1588,7 @@ class SQLExecutor:
                 # Try to evaluate as expression (column reference or simple expression)
                 else:
                     from ...core.safe_evaluator import SafeExpressionEvaluator
-                    
+
                     context = dict(row)
                     row_ns = SimpleNamespace(**row)
                     context["target"] = row_ns
@@ -1563,7 +1714,7 @@ class SQLExecutor:
         def evaluate_condition(row: dict[str, Any], condition: str) -> bool:
             """Evaluate WHERE condition for a single row."""
             from ...core.safe_evaluator import SafeExpressionEvaluator
-            
+
             context = dict(row)
             row_ns = SimpleNamespace(**row)
             context["target"] = row_ns
@@ -1653,10 +1804,10 @@ class SQLExecutor:
 
     def _execute_show(self, ast: SQLAST) -> IDataFrame:
         """Execute SHOW query.
-        
+
         Args:
             ast: Parsed SQL AST.
-        
+
         Returns:
             DataFrame with SHOW results that reflect the real catalog and
             match PySpark's formats where applicable.
@@ -1664,17 +1815,17 @@ class SQLExecutor:
         from typing import cast
         from ...dataframe import DataFrame
         from ...spark_types import StructType, StructField, StringType, BooleanType
-        
+
         original_query = ast.components.get("original_query", "") or ""
         query_lower = original_query.lower()
-        
+
         # SHOW DATABASES
         if "show databases" in query_lower:
             databases = self.session.catalog.listDatabases()
             data = [{"databaseName": db.name} for db in databases]
             schema = StructType([StructField("databaseName", StringType())])
             return cast("IDataFrame", DataFrame(data, schema))
-        
+
         # SHOW TABLES [IN db] or SHOW TABLES
         if "show tables" in query_lower:
             db_name = None
@@ -1683,10 +1834,10 @@ class SQLExecutor:
             )
             if match:
                 db_name = match.group(1).strip("`")
-            
+
             if db_name is None:
                 db_name = self.session.catalog.currentDatabase()
-            
+
             tables = self.session.catalog.listTables(dbName=db_name)
             # PySpark SHOW TABLES returns columns: database, tableName, isTemporary
             data = [
@@ -1705,7 +1856,7 @@ class SQLExecutor:
                 ]
             )
             return cast("IDataFrame", DataFrame(data, schema))
-        
+
         # Fallback: unsupported SHOW variant
         return cast("IDataFrame", DataFrame([], StructType([])))
 
@@ -1722,7 +1873,7 @@ class SQLExecutor:
         original_query = ast.components.get("original_query", "")
         if not original_query and hasattr(ast, "query"):
             original_query = ast.query
-        
+
         query = original_query.upper() if original_query else ""
 
         if "HISTORY" in query:
@@ -1788,7 +1939,6 @@ class SQLExecutor:
         from ...dataframe import DataFrame
         from ...spark_types import StructType, StructField, StringType
         from typing import cast
-        import re
 
         # Parse DESCRIBE TABLE [table_name] [column_name]
         # Formats: DESCRIBE table_name, DESCRIBE EXTENDED table_name, DESCRIBE table_name column_name
@@ -1796,35 +1946,50 @@ class SQLExecutor:
         is_extended = "EXTENDED" in query or "FORMATTED" in query
         # Match: DESCRIBE [EXTENDED|FORMATTED] table_name [column_name]
         # Need to explicitly match EXTENDED/FORMATTED followed by whitespace and table name
-        table_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+        table_match = re.search(
+            r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+(\w+(?:\.\w+)?)",
+            original_query,
+            re.IGNORECASE,
+        )
         if not table_match:
             # Try without EXTENDED/FORMATTED
-            table_match = re.search(r"DESCRIBE\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+            table_match = re.search(
+                r"DESCRIBE\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE
+            )
         if not table_match:
             return cast("IDataFrame", DataFrame([], StructType([])))
-        
+
         table_name = table_match.group(1)
-        
+
         # Check if specific column is requested: DESCRIBE [EXTENDED] table_name column_name
         # Only match if there's a word after the table name (not the table name itself)
         # First check if EXTENDED/FORMATTED is present - if so, only match column if there's something after table
         if is_extended:
             # For EXTENDED/FORMATTED, column must come after table name
-            col_match = re.search(rf"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+{re.escape(table_name)}\s+(\w+)", original_query, re.IGNORECASE)
+            col_match = re.search(
+                rf"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+{re.escape(table_name)}\s+(\w+)",
+                original_query,
+                re.IGNORECASE,
+            )
         else:
             # For regular DESCRIBE, match column name after table
-            col_match = re.search(rf"DESCRIBE\s+{re.escape(table_name)}\s+(\w+)", original_query, re.IGNORECASE)
+            col_match = re.search(
+                rf"DESCRIBE\s+{re.escape(table_name)}\s+(\w+)",
+                original_query,
+                re.IGNORECASE,
+            )
         column_name = col_match.group(1) if col_match else None
-        
+
         # Get table
         try:
             table_df = self.session.table(table_name)
         except Exception:
             from ...errors import AnalysisException
+
             raise AnalysisException(f"Table or view not found: {table_name}")
-        
+
         schema = table_df.schema
-        
+
         if column_name:
             # DESCRIBE specific column
             field = None
@@ -1834,17 +1999,23 @@ class SQLExecutor:
                     break
             if not field:
                 return cast("IDataFrame", DataFrame([], StructType([])))
-            
-            data = [{
-                "col_name": field.name,
-                "data_type": str(field.dataType),
-                "comment": field.metadata.get("comment", "") if hasattr(field, "metadata") and hasattr(field.metadata, "get") else ""
-            }]
-            result_schema = StructType([
-                StructField("col_name", StringType()),
-                StructField("data_type", StringType()),
-                StructField("comment", StringType()),
-            ])
+
+            data = [
+                {
+                    "col_name": field.name,
+                    "data_type": str(field.dataType),
+                    "comment": field.metadata.get("comment", "")
+                    if hasattr(field, "metadata") and hasattr(field.metadata, "get")
+                    else "",
+                }
+            ]
+            result_schema = StructType(
+                [
+                    StructField("col_name", StringType()),
+                    StructField("data_type", StringType()),
+                    StructField("comment", StringType()),
+                ]
+            )
         else:
             # DESCRIBE table (all columns)
             data = []
@@ -1862,54 +2033,63 @@ class SQLExecutor:
                     # Add nullable info (basic)
                     row["nullable"] = "true" if field.nullable else "false"
                 data.append(row)
-            
+
             if is_extended:
                 # Add extended metadata rows after column info (PySpark format)
                 # Add separator row
-                data.append({
-                    "col_name": "",
-                    "data_type": "",
-                    "comment": "",
-                    "nullable": ""
-                })
+                data.append(
+                    {"col_name": "", "data_type": "", "comment": "", "nullable": ""}
+                )
                 # Add table metadata rows
-                data.append({
-                    "col_name": "# Detailed Table Information",
-                    "data_type": "",
-                    "comment": "",
-                    "nullable": ""
-                })
-                data.append({
-                    "col_name": "Name",
-                    "data_type": table_name,
-                    "comment": "",
-                    "nullable": ""
-                })
-                data.append({
-                    "col_name": "Type",
-                    "data_type": "MANAGED",
-                    "comment": "",
-                    "nullable": ""
-                })
-                data.append({
-                    "col_name": "Provider",
-                    "data_type": "sparkless",
-                    "comment": "",
-                    "nullable": ""
-                })
-                
-                result_schema = StructType([
-                    StructField("col_name", StringType()),
-                    StructField("data_type", StringType()),
-                    StructField("comment", StringType()),
-                    StructField("nullable", StringType()),
-                ])
+                data.append(
+                    {
+                        "col_name": "# Detailed Table Information",
+                        "data_type": "",
+                        "comment": "",
+                        "nullable": "",
+                    }
+                )
+                data.append(
+                    {
+                        "col_name": "Name",
+                        "data_type": table_name,
+                        "comment": "",
+                        "nullable": "",
+                    }
+                )
+                data.append(
+                    {
+                        "col_name": "Type",
+                        "data_type": "MANAGED",
+                        "comment": "",
+                        "nullable": "",
+                    }
+                )
+                data.append(
+                    {
+                        "col_name": "Provider",
+                        "data_type": "sparkless",
+                        "comment": "",
+                        "nullable": "",
+                    }
+                )
+
+                result_schema = StructType(
+                    [
+                        StructField("col_name", StringType()),
+                        StructField("data_type", StringType()),
+                        StructField("comment", StringType()),
+                        StructField("nullable", StringType()),
+                    ]
+                )
             else:
-                result_schema = StructType([
-                    StructField("col_name", StringType()),
-                    StructField("data_type", StringType()),
-                ])
-        
+                result_schema = StructType(
+                    [
+                        StructField("col_name", StringType()),
+                        StructField("data_type", StringType()),
+                    ]
+                )
+
         return cast("IDataFrame", DataFrame(data, result_schema))
 
     def _execute_merge(self, ast: SQLAST) -> IDataFrame:

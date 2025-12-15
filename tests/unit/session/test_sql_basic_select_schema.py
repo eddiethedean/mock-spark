@@ -1,5 +1,3 @@
-import pytest
-
 from sparkless.sql import SparkSession
 
 
@@ -34,5 +32,3 @@ def test_sql_basic_select_schema_matches_dataframe_select() -> None:
         assert len(result_star.schema.fields) == 4
     finally:
         spark.stop()
-
-

@@ -4,7 +4,6 @@ PySpark parity tests for SparkSession operations.
 Tests validate that Sparkless SparkSession operations behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless.spark_types import StructType, StructField, StringType, IntegerType
 
@@ -14,7 +13,7 @@ class TestSessionParity(ParityTestBase):
 
     def test_createDataFrame_from_list_of_dicts(self, spark):
         """Test createDataFrame from list of dicts matches PySpark behavior.
-        
+
         Note: This is a foundational operation. PySpark behavior is verified
         indirectly through all other tests that use createDataFrame.
         For direct parity testing, we verify the basic structure matches.
@@ -39,10 +38,12 @@ class TestSessionParity(ParityTestBase):
             {"name": "Alice", "age": 25},
             {"name": "Bob", "age": 30},
         ]
-        schema = StructType([
-            StructField("name", StringType(), True),
-            StructField("age", IntegerType(), True),
-        ])
+        schema = StructType(
+            [
+                StructField("name", StringType(), True),
+                StructField("age", IntegerType(), True),
+            ]
+        )
         df = spark.createDataFrame(data, schema)
 
         # Verify schema is applied correctly
@@ -57,4 +58,3 @@ class TestSessionParity(ParityTestBase):
 
         assert df.count() == 0
         assert len(df.columns) == 0
-

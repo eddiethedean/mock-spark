@@ -1038,12 +1038,13 @@ class SQLParser:
             Dictionary of parsed components.
         """
         components: dict[str, Any] = {}
-        
+
         # Split by UNION (case insensitive, match whole word)
         import re
+
         # Use word boundary to match UNION as whole word, not part of another word
         parts = re.split(r"\bUNION\b", query, flags=re.IGNORECASE)
-        
+
         if len(parts) < 2:
             # For now, only support single UNION (two SELECT statements)
             # Could extend to support multiple UNIONs
@@ -1055,8 +1056,10 @@ class SQLParser:
             # parts[0] = first SELECT statement
             # parts[1] = second SELECT statement (may have leading whitespace from UNION)
             left_query = parts[0].strip()
-            right_query = " ".join(parts[1:]).strip()  # Join any additional parts (shouldn't happen with single UNION)
+            right_query = " ".join(
+                parts[1:]
+            ).strip()  # Join any additional parts (shouldn't happen with single UNION)
             components["left_query"] = left_query
             components["right_query"] = right_query
-        
+
         return components
