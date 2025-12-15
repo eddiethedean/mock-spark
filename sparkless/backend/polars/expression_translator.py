@@ -2112,7 +2112,10 @@ class PolarsExpressionTranslator:
             "size": lambda e: e.list.len(),
             "array_max": lambda e: e.list.max(),
             "array_min": lambda e: e.list.min(),
-            "array_distinct": lambda e: e.list.unique(),
+            "array_distinct": lambda e: e.map_elements(
+                lambda arr: list(dict.fromkeys(arr)) if isinstance(arr, list) else arr,
+                return_dtype=pl.List(pl.Utf8),
+            ),
             # Note: explode/explode_outer expressions just return the array column
             # The actual row expansion is handled in operation_executor
             "explode": lambda e: e,  # Return the array column as-is, will be exploded in operation_executor
