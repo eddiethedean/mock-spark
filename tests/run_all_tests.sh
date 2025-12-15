@@ -43,22 +43,17 @@ if [ $unit_exit -eq 124 ]; then
     echo "❌ Unit tests timed out after 30 minutes"
 fi
 
-# Step 2: Compatibility tests - validate against expected outputs (no PySpark required)
-echo "Running compatibility tests..."
-echo "  - DataFrame operations compatibility"
-echo "  - Function operations compatibility" 
-echo "  - Join operations compatibility"
-echo "  - Aggregation operations compatibility"
-echo "  - Window functions compatibility"
-echo "  - Array functions compatibility"
-echo "  - Datetime functions compatibility"
-echo "  - Null handling compatibility"
-echo "  - Set operations compatibility"
-echo "  - Complex scenarios compatibility"
-"$SCRIPT_DIR/run_with_timeout.sh" 1800 python3 -m pytest tests/compatibility/ -v $PARALLEL_FLAGS --tb=short
-compatibility_exit=$?
-if [ $compatibility_exit -eq 124 ]; then
-    echo "❌ Compatibility tests timed out after 30 minutes"
+# Step 2: Parity tests - validate PySpark parity using expected outputs (no PySpark required)
+echo "Running parity tests (PySpark parity validation)..."
+echo "  - DataFrame operations parity"
+echo "  - Function operations parity" 
+echo "  - Join operations parity"
+echo "  - SQL operations parity"
+echo "  - Internal operations parity"
+"$SCRIPT_DIR/run_with_timeout.sh" 1800 python3 -m pytest tests/parity/ -v $PARALLEL_FLAGS --tb=short
+parity_exit=$?
+if [ $parity_exit -eq 124 ]; then
+    echo "❌ Parity tests timed out after 30 minutes"
 fi
 
 # Step 3: Performance tests - run in parallel
@@ -88,7 +83,7 @@ echo ""
 echo "Test Summary"
 echo "============"
 echo "Unit tests: $([ $unit_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
-echo "Compatibility tests: $([ $compatibility_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
+echo "Parity tests: $([ $parity_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
 echo "Performance tests: $([ $performance_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
 echo "Documentation tests: $([ $doc_exit -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED")"
 
@@ -111,7 +106,7 @@ except:
 echo "Total tests: $total_tests"
 
 # Final result
-if [ $unit_exit -ne 0 ] || [ $compatibility_exit -ne 0 ] || [ $performance_exit -ne 0 ] || [ $doc_exit -ne 0 ]; then
+if [ $unit_exit -ne 0 ] || [ $parity_exit -ne 0 ] || [ $performance_exit -ne 0 ] || [ $doc_exit -ne 0 ]; then
     echo ""
     echo "❌ Test suite FAILED"
     exit 1

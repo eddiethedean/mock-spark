@@ -1,0 +1,111 @@
+"""
+Base classes and utilities for PySpark parity testing.
+
+This module provides standard patterns for all parity tests that validate
+Sparkless behavior against pre-generated PySpark expected outputs.
+"""
+
+from typing import Any, Optional
+import pytest
+from sparkless import SparkSession
+from tests.tools.output_loader import load_expected_output
+from tests.tools.comparison_utils import assert_dataframes_equal, compare_dataframes
+
+
+class ParityTestBase:
+    """Base class for all PySpark parity tests.
+    
+    All parity tests should inherit from this class to ensure consistent
+    patterns and behavior across the test suite.
+    """
+    
+    @pytest.fixture
+    def spark(self):
+        """Create a Sparkless SparkSession for testing.
+        
+        This fixture provides a Sparkless session for executing test operations.
+        The session is automatically cleaned up after each test.
+        """
+        session = SparkSession(f"{self.__class__.__name__}_test")
+        yield session
+        session.stop()
+    
+    def load_expected(self, category: str, test_name: str, pyspark_version: str = "3.2") -> dict[str, Any]:
+        """Load expected output for a test case.
+        
+        Args:
+            category: Test category (e.g., 'dataframe', 'functions', 'sql')
+            test_name: Name of the test case
+            pyspark_version: PySpark version to use (default: "3.2")
+            
+        Returns:
+            Dictionary containing expected output data
+        """
+        return load_expected_output(category, test_name, pyspark_version)
+    
+    def assert_parity(
+        self,
+        actual_df: Any,
+        expected_output: dict[str, Any],
+        tolerance: float = 1e-6,
+        msg: str = "",
+    ) -> None:
+        """Assert that Sparkless result matches PySpark expected output.
+        
+        Args:
+            actual_df: Sparkless DataFrame result
+            expected_output: Expected output dictionary from load_expected_output
+            tolerance: Numerical tolerance for floating point comparisons
+            msg: Optional custom error message
+            
+        Raises:
+            AssertionError: If results don't match expected output
+        """
+        assert_dataframes_equal(
+            actual_df,
+            expected_output,
+            tolerance=tolerance,
+            msg=msg,
+        )
+    
+    def compare_parity(
+        self,
+        actual_df: Any,
+        expected_output: dict[str, Any],
+        tolerance: float = 1e-6,
+    ) -> tuple[bool, Optional[str]]:
+        """Compare Sparkless result with PySpark expected output.
+        
+        Args:
+            actual_df: Sparkless DataFrame result
+            expected_output: Expected output dictionary from load_expected_output
+            tolerance: Numerical tolerance for floating point comparisons
+            
+        Returns:
+            Tuple of (is_equal, error_message)
+        """
+        result = compare_dataframes(
+            actual_df,
+            expected_output,
+            tolerance=tolerance,
+        )
+        if result.equivalent:
+            return True, None
+        else:
+            return False, "\n".join(result.errors)
+
+
+def create_test_dataframe(spark: SparkSession, data: list[dict[str, Any]]) -> Any:
+    """Create a DataFrame from test data.
+    
+    This is a convenience function for creating DataFrames in tests.
+    
+    Args:
+        spark: Sparkless SparkSession
+        data: List of dictionaries representing rows
+        
+    Returns:
+        DataFrame
+    """
+    return spark.createDataFrame(data)
+

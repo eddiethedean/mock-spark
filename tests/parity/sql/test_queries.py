@@ -1,0 +1,59 @@
+"""
+PySpark parity tests for SQL query execution.
+
+Tests validate that Sparkless SQL queries behave identically to PySpark.
+"""
+
+import pytest
+from tests.fixtures.parity_base import ParityTestBase
+
+
+class TestSQLQueriesParity(ParityTestBase):
+    """Test SQL query execution parity with PySpark."""
+
+    def test_basic_select(self, spark):
+        """Test basic SELECT matches PySpark behavior."""
+        expected = self.load_expected("sql_operations", "basic_select")
+        
+        # Create table from input data
+        df = spark.createDataFrame(expected["input_data"])
+        df.write.mode("overwrite").saveAsTable("test_table")
+        
+        # Execute SQL query
+        result = spark.sql("SELECT * FROM test_table")
+        
+        self.assert_parity(result, expected)
+
+    def test_filtered_select(self, spark):
+        """Test filtered SELECT matches PySpark behavior."""
+        expected = self.load_expected("sql_operations", "filtered_select")
+        
+        df = spark.createDataFrame(expected["input_data"])
+        df.write.mode("overwrite").saveAsTable("test_table")
+        
+        result = spark.sql("SELECT * FROM test_table WHERE age > 25")
+        
+        self.assert_parity(result, expected)
+
+    def test_group_by(self, spark):
+        """Test GROUP BY matches PySpark behavior."""
+        expected = self.load_expected("sql_operations", "group_by")
+        
+        df = spark.createDataFrame(expected["input_data"])
+        df.write.mode("overwrite").saveAsTable("test_table")
+        
+        result = spark.sql("SELECT department, COUNT(*) as count FROM test_table GROUP BY department")
+        
+        self.assert_parity(result, expected)
+
+    def test_aggregation(self, spark):
+        """Test aggregation in SQL matches PySpark behavior."""
+        expected = self.load_expected("sql_operations", "aggregation")
+        
+        df = spark.createDataFrame(expected["input_data"])
+        df.write.mode("overwrite").saveAsTable("test_table")
+        
+        result = spark.sql("SELECT department, AVG(salary) as avg_salary, COUNT(*) as count FROM test_table GROUP BY department")
+        
+        self.assert_parity(result, expected)
+
