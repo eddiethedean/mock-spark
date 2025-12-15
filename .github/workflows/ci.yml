@@ -84,7 +84,17 @@ jobs:
       - name: Run compatibility tests (parallel)
         env:
           TZ: "America/New_York"
-        run: python3 -m pytest tests/compatibility/ -v -n 8 --dist loadfile --tb=short --cov=sparkless --cov-report=xml --cov-report=term-missing --cov-report=html
+        run: |
+          set +e  # Don't exit on error
+          python3 -m pytest tests/compatibility/ -v -n 8 --dist loadfile --tb=short --cov=sparkless --cov-report=xml --cov-report=term-missing --cov-report=html
+          exit_code=$?
+          set -e  # Re-enable exit on error
+          # Exit code 5 means no tests collected - that's okay, just skip
+          if [ $exit_code -eq 5 ]; then
+            echo "No compatibility tests found, skipping..."
+            exit 0
+          fi
+          exit $exit_code
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
