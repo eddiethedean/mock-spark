@@ -597,35 +597,10 @@ class SQLExecutor:
                     df = cast("DataFrame", grouped.agg(*select_exprs))
                 else:
                     df = cast("DataFrame", grouped.agg())
-            
-            # If SELECT clause doesn't include group-by columns, exclude them from result
-            # (e.g., "SELECT COUNT(*) FROM ... GROUP BY (age > 30)" should only return count)
-            select_columns = components.get("select_columns", ["*"])
-            if select_columns != ["*"]:
-                # Check if any group-by columns are in the SELECT
-                select_col_names = [col.split(" AS ")[0].strip().split(".")[-1] for col in select_columns]
-                # Remove temporary group-by columns that aren't in SELECT
-                cols_to_keep = []
-                for col in df.columns:
-                    # Keep if it's in SELECT or if it's a regular group-by column (not temporary)
-                    if col in select_col_names or not col.startswith("_group_by_expr_"):
-                        # But only if it's actually in SELECT or is a regular group-by column
-                        if col in select_col_names or col in group_by_columns:
-                            cols_to_keep.append(col)
-                    # Always keep aggregate columns (like count)
-                    elif any(agg in col.lower() for agg in ["count", "sum", "avg", "max", "min"]):
-                        cols_to_keep.append(col)
-                
-                # Select only the columns we want to keep
-                if cols_to_keep:
-                    df = cast("DataFrame", df.select(*cols_to_keep))
-                else:
-                    # Fallback: select all columns that match SELECT clause
-                    df = cast("DataFrame", df.select(*[F.col(c) for c in df.columns if c in select_col_names or any(agg in c.lower() for agg in ["count", "sum", "avg", "max", "min"])]))
 
             df_ops = cast("SupportsDataFrameOps", df)
 
-            # Apply HAVING conditions (after GROUP BY)
+            # Apply HAVING conditions (after GROUP BY, before column selection)
             having_conditions = components.get("having_conditions", [])
             if having_conditions:
                 # Parse HAVING condition - simple implementation
@@ -647,7 +622,8 @@ class SQLExecutor:
                     # Find matching column in result - check both aliased and generated names
                     # The column might be aliased (e.g., "avg_salary") or use generated name (e.g., "avg(salary)")
                     col_name = None
-                    for col in df.columns:
+                    # Check in df_ops.columns since that's what we're filtering
+                    for col in df_ops.columns:
                         # Check if column name matches the aggregate function pattern
                         if agg_func_name in ["AVG", "MEAN"]:
                             if col.lower() == f"avg({agg_col_name})" or col.lower() == "avg_salary" or "avg" in col.lower():
@@ -674,22 +650,23 @@ class SQLExecutor:
                     if not col_name:
                         # Try generated name first (e.g., "avg(salary)")
                         generated_name = f"{agg_func_name.lower()}({agg_col_name})"
-                        if generated_name in df.columns:
+                        if generated_name in df_ops.columns:
                             col_name = generated_name
                         else:
                             # Try alias pattern (lowercase with underscore, e.g., "avg_salary")
                             alias_name = f"{agg_func_name.lower()}_{agg_col_name}"
-                            if alias_name in df.columns:
+                            if alias_name in df_ops.columns:
                                 col_name = alias_name
                             else:
                                 # Last resort: find any column that contains the function name and column name
-                                for col in df.columns:
+                                for col in df_ops.columns:
                                     if agg_func_name.lower() in col.lower() and agg_col_name.lower() in col.lower():
                                         col_name = col
                                         break
                     
                     # Apply filter if column found
-                    if col_name and col_name in df.columns:
+                    # Check in df_ops.columns since that's what we're filtering
+                    if col_name and col_name in df_ops.columns:
                         if operator == ">":
                             df = cast(
                                 "DataFrame", df_ops.filter(F.col(col_name) > value)
@@ -710,9 +687,78 @@ class SQLExecutor:
                             df = cast(
                                 "DataFrame", df_ops.filter(F.col(col_name) <= value)
                             )
+                        # Update df_ops after filter for all operators
                         df_ops = cast("SupportsDataFrameOps", df)
+                    else:
+                        # Try simple pattern match for column name > value
+                        simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
+                        if simple_match:
+                            col_name = simple_match.group(1)
+                            operator = simple_match.group(2)
+                            value = int(simple_match.group(3))
+
+                            # Check if column exists in result
+                            if col_name in df_ops.columns:
+                                if operator == ">":
+                                    df = cast(
+                                        "DataFrame", df_ops.filter(F.col(col_name) > value)
+                                    )
+                                elif operator == "<":
+                                    df = cast(
+                                        "DataFrame", df_ops.filter(F.col(col_name) < value)
+                                    )
+                                elif operator in ("=", "=="):
+                                    df = cast(
+                                        "DataFrame", df_ops.filter(F.col(col_name) == value)
+                                    )
+                                elif operator == ">=":
+                                    df = cast(
+                                        "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                                    )
+                                elif operator == "<=":
+                                    df = cast(
+                                        "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                                    )
+                                df_ops = cast("SupportsDataFrameOps", df)
+            
+            # Now apply column selection after HAVING (if needed)
+            # If SELECT clause doesn't include group-by columns, exclude them from result
+            # (e.g., "SELECT COUNT(*) FROM ... GROUP BY (age > 30)" should only return count)
+            select_columns = components.get("select_columns", ["*"])
+            if select_columns != ["*"]:
+                # Check if any group-by columns are in the SELECT
+                select_col_names = [col.split(" AS ")[0].strip().split(".")[-1] for col in select_columns]
+                # Also check for aliases in SELECT (e.g., "AVG(salary) as avg_salary")
+                select_aliases = []
+                for col in select_columns:
+                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
+                    if alias_match:
+                        select_aliases.append(alias_match.group(1))
+                
+                # Remove temporary group-by columns that aren't in SELECT
+                cols_to_keep = []
+                for col in df_ops.columns:
+                    # Keep if it's in SELECT or if it's a regular group-by column (not temporary)
+                    if col in select_col_names or col in select_aliases or not col.startswith("_group_by_expr_"):
+                        # But only if it's actually in SELECT or is a regular group-by column
+                        if col in select_col_names or col in select_aliases or col in group_by_columns:
+                            cols_to_keep.append(col)
+                    # Always keep aggregate columns (like count, avg_salary) if they're in SELECT
+                    elif any(agg in col.lower() for agg in ["count", "sum", "avg", "max", "min"]):
+                        # Check if this aggregate column matches something in SELECT
+                        if any(agg in sel_col.lower() for sel_col in select_columns for agg in ["count", "sum", "avg", "max", "min"]):
+                            cols_to_keep.append(col)
+                
+                # Select only the columns we want to keep
+                if cols_to_keep:
+                    df = cast("DataFrame", df_ops.select(*cols_to_keep))
+                    df_ops = cast("SupportsDataFrameOps", df)
                 else:
-                    # Try simple pattern match for column name > value
+                    # Fallback: select all columns that match SELECT clause
+                    df = cast("DataFrame", df_ops.select(*[F.col(c) for c in df_ops.columns if c in select_col_names or c in select_aliases or any(agg in c.lower() for agg in ["count", "sum", "avg", "max", "min"])]))
+                    df_ops = cast("SupportsDataFrameOps", df)
+            else:
+                # Try simple pattern match for column name > value
                     simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
                     if simple_match:
                         col_name = simple_match.group(1)
