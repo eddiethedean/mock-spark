@@ -135,7 +135,7 @@ class SQLExecutor:
         if not from_tables:
             # Query without FROM clause (e.g., SELECT 1 as test_col)
             # Create a single row DataFrame with the literal values
-            from ...dataframe import DataFrame
+            # DataFrame is already imported at module level
             from ...spark_types import (
                 StructType,
             )
@@ -167,7 +167,8 @@ class SQLExecutor:
                             if hasattr(df1_any.schema, "fields")
                             else StructType([])
                         )
-                        df1 = DataFrame(df1_any.collect(), schema)
+                        # DataFrame is imported at module level
+                        df1 = DataFrame(df1_any.collect(), schema)  # type: ignore[name-defined]
                     else:
                         df1 = df1_any  # type: ignore[unreachable]
 
@@ -188,7 +189,7 @@ class SQLExecutor:
                     else:
                         df2 = df2_any  # type: ignore[unreachable]
 
-                    # Parse join condition (e.g., "u.id = d.id")
+                    # Parse join condition (e.g., "e.dept_id = d.id")
                     join_condition = join_info.get("condition", "")
                     if join_condition:
                         # Extract column names from join condition
@@ -198,23 +199,62 @@ class SQLExecutor:
                         )
                         if match:
                             alias1, col1, alias2, col2 = match.groups()
-                            # Find actual table names from aliases
-                            table1_col = None
-                            table2_col = None
-                            for table, alias in table_aliases.items():
-                                if alias == alias1:
-                                    table1_col = col1
-                                if alias == alias2:
-                                    table2_col = col2
+                            # Determine which table each alias refers to
+                            # table_aliases maps table_name -> alias
+                            table1_alias = table_aliases.get(table_name, table_name)
+                            table2_alias = table_aliases.get(table2_name, table2_name)
+                            
+                            # Map each alias to its corresponding DataFrame and column
+                            df1_col = None
+                            df2_col = None
+                            
+                            # Check if alias1 refers to table1 (df1)
+                            if alias1 == table1_alias or alias1 == table_name:
+                                df1_col = col1
+                            # Check if alias1 refers to table2 (df2)
+                            elif alias1 == table2_alias or alias1 == table2_name:
+                                df2_col = col1
+                            
+                            # Check if alias2 refers to table1 (df1)
+                            if alias2 == table1_alias or alias2 == table_name:
+                                df1_col = col2
+                            # Check if alias2 refers to table2 (df2)
+                            elif alias2 == table2_alias or alias2 == table2_name:
+                                df2_col = col2
 
-                            if table1_col and table2_col:
-                                # Perform join
-                                join_col = df1[table1_col] == df2[table2_col]
-                                df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                            if df1_col and df2_col:
+                                # Rename columns to avoid conflicts (prefix with table alias)
+                                # This allows us to distinguish e.name from d.name after the join
+                                df1_renamed = df1
+                                df2_renamed = df2
+                                
+                                # Rename all columns in df1 with table1 alias prefix
+                                for col in df1.columns:
+                                    df1_renamed = cast("DataFrame", df1_renamed.withColumnRenamed(col, f"{table1_alias}_{col}"))
+                                
+                                # Rename all columns in df2 with table2 alias prefix
+                                for col in df2.columns:
+                                    df2_renamed = cast("DataFrame", df2_renamed.withColumnRenamed(col, f"{table2_alias}_{col}"))
+                                
+                                # Join column references use the renamed columns
+                                df1_join_col = f"{table1_alias}_{df1_col}"
+                                df2_join_col = f"{table2_alias}_{df2_col}"
+                                
+                                # Perform join with renamed columns
+                                join_col = df1_renamed[df1_join_col] == df2_renamed[df2_join_col]
+                                df = cast("DataFrame", df1_renamed.join(df2_renamed, join_col, "inner"))  # type: ignore[arg-type]
                             else:
-                                # Fallback: try direct column names
-                                join_col = df1[col1] == df2[col2]
-                                df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                                # Fallback: try direct column names (assume col1 is from df1, col2 from df2)
+                                if col1 in df1.columns and col2 in df2.columns:
+                                    join_col = df1[col1] == df2[col2]
+                                    df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                                elif col2 in df1.columns and col1 in df2.columns:
+                                    # Try reverse mapping
+                                    join_col = df1[col2] == df2[col1]
+                                    df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                                else:
+                                    # Last resort: cross join
+                                    df = cast("DataFrame", df1.crossJoin(cast("SupportsDataFrameOps", df2)))
                         else:
                             # Fallback: try to join on common column names
                             common_cols = set(df1.columns) & set(df2.columns)
@@ -245,11 +285,9 @@ class SQLExecutor:
                             "DataFrame",
                             df1.crossJoin(cast("SupportsDataFrameOps", df2)),
                         )
-                except Exception:
-                    from ...dataframe import DataFrame
-                    from ...spark_types import StructType
-
-                    return DataFrame([], StructType([]))  # type: ignore[return-value]
+                except Exception as e:
+                    # Re-raise with more context to debug the issue
+                    raise RuntimeError(f"Join execution failed: {e}") from e
             else:
                 # Single table (no JOIN)
                 table_name = from_tables[0]
@@ -257,7 +295,7 @@ class SQLExecutor:
                 try:
                     df_any = self.session.table(table_name)
                     # Convert IDataFrame to DataFrame if needed
-                    from ...dataframe import DataFrame
+                    # DataFrame is already imported at module level
 
                     if isinstance(df_any, DataFrame):  # type: ignore[unreachable]
                         df = df_any  # type: ignore[unreachable]
@@ -273,7 +311,7 @@ class SQLExecutor:
                         df = DataFrame(df_any.collect(), schema)
                 except Exception:
                     # If table doesn't exist, return empty DataFrame
-                    from ...dataframe import DataFrame
+                    # DataFrame is already imported at module level
                     from ...spark_types import StructType
 
                     # Log the error for debugging (can be removed in production)
@@ -722,7 +760,8 @@ class SQLExecutor:
                                 case_expr.alias(alias)  # type: ignore
                             select_exprs.append(case_expr)
                         else:
-                            # Handle table alias prefix (e.g., "u.name" -> "name")
+                            # Handle table alias prefix (e.g., "e.name" -> "e_name" after join)
+                            # After a join, columns are renamed with table alias prefix
                             if (
                                 "." in col
                                 and not col.startswith("'")
@@ -730,7 +769,14 @@ class SQLExecutor:
                             ):
                                 parts = col.split(".", 1)
                                 if len(parts) == 2:
-                                    col_name = parts[1]  # Use column name without table alias
+                                    table_alias, base_col = parts
+                                    # Check if this column exists with the alias prefix (from join)
+                                    prefixed_col = f"{table_alias}_{base_col}"
+                                    if prefixed_col in df.columns:
+                                        col_name = prefixed_col
+                                    else:
+                                        # Fallback to base column name
+                                        col_name = base_col
                                 else:
                                     col_name = col
                             else:
