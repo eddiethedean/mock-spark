@@ -27,12 +27,24 @@ class WindowFunction:
         """
         self.function = function
         self.window_spec = window_spec
-        self.function_name = getattr(function, "function_name", "window_function")
-        self.column_name = getattr(function, "column", None)
-        if self.column_name and hasattr(self.column_name, "name"):
+        
+        # Handle ColumnOperation wrapping AggregateFunction (PySpark-compatible)
+        # When F.sum().over() is called, function is a ColumnOperation with _aggregate_function
+        if hasattr(function, "_aggregate_function") and function._aggregate_function is not None:
+            # Unwrap the AggregateFunction from ColumnOperation
+            agg_func = function._aggregate_function
+            self.function_name = getattr(agg_func, "function_name", "window_function")
+            self.column_name = getattr(agg_func, "column_name", None)
+        else:
+            # Regular function (not wrapping AggregateFunction)
+            self.function_name = getattr(function, "function_name", "window_function")
+            self.column_name = getattr(function, "column", None)
+        # Process column_name to extract string name
+        if self.column_name and isinstance(self.column_name, str):
+            # Already a string (from AggregateFunction.column_name property)
+            pass  # Keep as is
+        elif self.column_name and hasattr(self.column_name, "name"):
             self.column_name = self.column_name.name
-        elif self.column_name and isinstance(self.column_name, str):
-            self.column_name = self.column_name
         elif self.column_name and hasattr(self.column_name, "column"):
             # Handle Column objects
             if hasattr(self.column_name.column, "name"):
