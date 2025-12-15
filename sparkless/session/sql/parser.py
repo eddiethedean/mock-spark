@@ -442,6 +442,24 @@ class SQLParser:
             alias2 = from_match.group(4)
             join_condition = from_match.group(5)
 
+            # Extract join type (INNER, LEFT, RIGHT, FULL OUTER)
+            join_type = "inner"  # default
+            join_type_match = re.search(
+                r"(INNER|LEFT|RIGHT|FULL\s+OUTER)\s+JOIN",
+                query,
+                re.IGNORECASE,
+            )
+            if join_type_match:
+                join_type_str = join_type_match.group(1).upper()
+                if "LEFT" in join_type_str:
+                    join_type = "left"
+                elif "RIGHT" in join_type_str:
+                    join_type = "right"
+                elif "FULL" in join_type_str:
+                    join_type = "full"
+                else:
+                    join_type = "inner"
+
             # Store table and alias mappings
             table_aliases = {table1: alias1 or table1}
             if table2:
@@ -451,6 +469,7 @@ class SQLParser:
                         "table": table2,
                         "alias": alias2 or table2,
                         "condition": join_condition.strip() if join_condition else None,
+                        "type": join_type,
                     }
                 ]
 
