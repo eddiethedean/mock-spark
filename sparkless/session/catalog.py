@@ -606,19 +606,24 @@ class Catalog:
             dbName = databaseName
         
         # Handle PySpark compatibility: when called with two positional args,
-        # PySpark accepts (dbName, tableName) order
-        # Detect this by checking if we have two positional args and need to swap
+        # PySpark accepts (dbName, tableName) order as an alternative
+        # We need to detect which order was intended. Try both and see which works.
         if tableName is not None and dbName is not None and databaseName is None:
-            # Check if this looks like PySpark order: (dbName, tableName)
-            # Heuristic: if tableName doesn't look like a qualified name and dbName doesn't either,
-            # and the first arg (tableName) when used as dbName + second arg (dbName) as tableName
-            # would make more sense, swap them
-            # Actually, simpler: if called with two args positionally, assume PySpark order
-            # and swap them
-            actual_table_name = dbName  # Second arg is table name in PySpark order
-            actual_db_name = tableName   # First arg is db name in PySpark order
-            tableName = actual_table_name
-            dbName = actual_db_name
+            # Try standard order first: (tableName, dbName)
+            # If that doesn't work, try PySpark order: (dbName, tableName)
+            # Check if standard order would work by testing table existence
+            if self._storage.table_exists(dbName, tableName):
+                # Standard order works, use it
+                pass
+            else:
+                # Standard order doesn't work, try PySpark order (swap)
+                actual_table_name = dbName  # Second arg is table name in PySpark order
+                actual_db_name = tableName   # First arg is db name in PySpark order
+                # Only swap if the swapped version would work
+                if self._storage.table_exists(actual_db_name, actual_table_name):
+                    tableName = actual_table_name
+                    dbName = actual_db_name
+                # If neither works, proceed with standard order and let the error happen below
         
         # Handle case where only one positional arg is provided
         if tableName is None:
