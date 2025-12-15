@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING, cast
+
 from sparkless.sql import SparkSession
+
+if TYPE_CHECKING:
+    from sparkless.dataframe import DataFrame
 
 
 def test_sql_basic_select_schema_matches_dataframe_select() -> None:
@@ -16,7 +21,8 @@ def test_sql_basic_select_schema_matches_dataframe_select() -> None:
         # projected SELECT list.
         rows = [{"id": 1, "name": "Alice", "age": 25}]
         df = spark.createDataFrame(rows)
-        df = df.withColumn("salary", df.id * 1000)
+
+        df = cast("DataFrame", df.withColumn("salary", df.id * 1000))  # noqa: F821
 
         # Save as table and query via SQL
         df.write.mode("overwrite").saveAsTable("test_table")

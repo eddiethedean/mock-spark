@@ -21,8 +21,8 @@ def test_groupby_agg_accepts_aggregate_function_objects() -> None:
 
         # Use AggregateFunction-returning helpers directly
         result = df.groupBy("dept").agg(
-            F.first("salary"),  # type: ignore[arg-type]
-            F.last("salary"),  # type: ignore[arg-type]
+            F.first("salary"),  # type: ignore[operator]
+            F.last("salary"),  # type: ignore[operator]
         )
 
         # Should not raise, and should include both aggregates in schema

@@ -17,7 +17,7 @@ def test_coalesce_column_name_matches_expected() -> None:
             ]
         )
 
-        result = df.select(F.coalesce(df.salary, F.lit(0)))
+        result = df.select(F.coalesce(df.salary, F.lit(0)))  # type: ignore[operator]
         assert result.columns == ["coalesce(salary, 0)"]
     finally:
         spark.stop()

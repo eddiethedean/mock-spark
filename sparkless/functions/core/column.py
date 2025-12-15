@@ -596,7 +596,7 @@ class ColumnOperation(ColumnOperatorMixin):
         aliased_operation._alias_name = name
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)
         if hasattr(self, "_aggregate_function"):
-            aliased_operation._aggregate_function = self._aggregate_function
+            aliased_operation._aggregate_function = self._aggregate_function  # type: ignore[attr-defined]
         return aliased_operation
 
     def over(self, window_spec: "WindowSpec") -> "WindowFunction":

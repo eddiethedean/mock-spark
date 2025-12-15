@@ -161,7 +161,7 @@ class GroupedData:
         for group_key, group_rows in groups.items():
             result_row = dict(zip(self.group_columns, group_key))
 
-            for expr in exprs:  # type: ignore[assignment]
+            for expr in exprs:
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key, result_value = self._evaluate_string_expression(
@@ -314,7 +314,7 @@ class GroupedData:
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
         literal_keys: set[str] = set()
-        for expr in exprs:  # type: ignore[assignment]
+        for expr in exprs:
             if is_literal_type(expr):
                 lit_key = get_expression_name(expr)
                 literal_keys.add(lit_key)
@@ -395,7 +395,7 @@ class GroupedData:
 
             # Infer schema from aggregation expressions
             # (literal_keys already defined above)
-            for expr in exprs:  # type: ignore[assignment]
+            for expr in exprs:
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key = expr  # Use expression as key

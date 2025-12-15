@@ -110,7 +110,7 @@ class DataFrameFactory:
                         }
                         reordered_data.append(row_dict)
                     else:
-                        reordered_data.append(row)  # type: ignore[unreachable]
+                        reordered_data.append(row)
                 data = reordered_data
 
                 # Infer types without changing the user-provided column order

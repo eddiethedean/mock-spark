@@ -20,7 +20,7 @@ Example:
     >>> result.show()
 """
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 import re
 from ...core.exceptions.execution import QueryExecutionException
 from ...core.interfaces.dataframe import IDataFrame
@@ -31,6 +31,10 @@ from .parser import SQLAST
 
 if TYPE_CHECKING:
     from ...dataframe.protocols import SupportsDataFrameOps
+    from ...functions.core.column import ColumnOperation
+    from ...functions.base import AggregateFunction
+    from ...functions.conditional import CaseWhen
+    from ...functions.core.literals import Literal
 
 
 class SQLExecutor:
@@ -168,7 +172,7 @@ class SQLExecutor:
                             else StructType([])
                         )
                         # DataFrame is imported at module level
-                        df1 = DataFrame(df1_any.collect(), schema)  # type: ignore[name-defined]
+                        df1 = DataFrame(df1_any.collect(), schema)
                     else:
                         df1 = df1_any  # type: ignore[unreachable]
 
@@ -257,24 +261,42 @@ class SQLExecutor:
                                     df1_renamed[df1_join_col]
                                     == df2_renamed[df2_join_col]
                                 )
+                                # join_col is a ColumnOperation (boolean expression)
+
                                 df = cast(
                                     "DataFrame",
-                                    df1_renamed.join(df2_renamed, join_col, join_type),
-                                )  # type: ignore[arg-type]
+                                    df1_renamed.join(
+                                        cast("SupportsDataFrameOps", df2_renamed),
+                                        cast("ColumnOperation", join_col),
+                                        join_type,
+                                    ),
+                                )
                             else:
                                 # Fallback: try direct column names (assume col1 is from df1, col2 from df2)
                                 join_type = join_info.get("type", "inner")
                                 if col1 in df1.columns and col2 in df2.columns:
                                     join_col = df1[col1] == df2[col2]
+
                                     df = cast(
-                                        "DataFrame", df1.join(df2, join_col, join_type)
-                                    )  # type: ignore[arg-type]
+                                        "DataFrame",
+                                        df1.join(
+                                            cast("SupportsDataFrameOps", df2),
+                                            cast("ColumnOperation", join_col),
+                                            join_type,
+                                        ),
+                                    )
                                 elif col2 in df1.columns and col1 in df2.columns:
                                     # Try reverse mapping
                                     join_col = df1[col2] == df2[col1]
+
                                     df = cast(
-                                        "DataFrame", df1.join(df2, join_col, join_type)
-                                    )  # type: ignore[arg-type]
+                                        "DataFrame",
+                                        df1.join(
+                                            cast("SupportsDataFrameOps", df2),
+                                            cast("ColumnOperation", join_col),
+                                            join_type,
+                                        ),
+                                    )
                                 else:
                                     # Last resort: cross join
                                     df = cast(
@@ -292,11 +314,12 @@ class SQLExecutor:
                                 join_condition = (
                                     df1[join_col_name] == df2[join_col_name]
                                 )
+
                                 df = cast(
                                     "DataFrame",
                                     df1.join(
                                         cast("SupportsDataFrameOps", df2),
-                                        join_condition,  # type: ignore[arg-type]
+                                        cast("ColumnOperation", join_condition),
                                         join_type,
                                     ),
                                 )
@@ -399,8 +422,8 @@ class SQLExecutor:
                 if subquery_result.count() > 0:
                     row = subquery_result.collect()[0]
                     # Get first column value
-                    col_name = subquery_result.columns[0]
-                    scalar_value = row[col_name]
+                    subquery_col_name = subquery_result.columns[0]
+                    scalar_value = row[subquery_col_name]
 
                     # Replace subquery with scalar value in WHERE condition
                     where_condition = where_condition.replace(
@@ -441,7 +464,7 @@ class SQLExecutor:
                     col_name = in_match.group(1)
                     values_str = in_match.group(2).strip()
                     # Parse values (handle both numbers and strings)
-                    values = []
+                    values: list[Union[float, int, str]] = []
                     for val in values_str.split(","):
                         val = val.strip()
                         # Try to parse as number
@@ -507,7 +530,9 @@ class SQLExecutor:
             # Parse aggregate functions from SELECT columns
             from ...functions import F
 
-            agg_exprs = []
+            agg_exprs: list[
+                Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
+            ] = []
             select_exprs = []
 
             for col_expr in select_columns:
@@ -594,7 +619,7 @@ class SQLExecutor:
             # Perform GROUP BY with aggregations
             # Handle boolean expressions in GROUP BY (e.g., "GROUP BY (age > 30)")
             group_by_cols = []
-            temp_df = df_ops
+            temp_df: DataFrame = cast("DataFrame", df_ops)
             for i, col_expr in enumerate(group_by_columns):
                 col_expr = col_expr.strip()
                 # Check if this is a boolean expression like "(age > 30)"
@@ -693,7 +718,7 @@ class SQLExecutor:
 
                     # Find matching column in result - check both aliased and generated names
                     # The column might be aliased (e.g., "avg_salary") or use generated name (e.g., "avg(salary)")
-                    col_name = None
+                    having_col_name: Optional[str] = None
                     # Check in df_ops.columns since that's what we're filtering
                     for col in df_ops.columns:
                         # Check if column name matches the aggregate function pattern
@@ -703,14 +728,14 @@ class SQLExecutor:
                                 or col.lower() == "avg_salary"
                                 or "avg" in col.lower()
                             ):
-                                col_name = col
+                                having_col_name = col
                                 break
                         elif agg_func_name == "SUM":
                             if (
                                 col.lower() == f"sum({agg_col_name})"
                                 or "sum" in col.lower()
                             ):
-                                col_name = col
+                                having_col_name = col
                                 break
                         elif agg_func_name == "COUNT":
                             if (
@@ -718,33 +743,33 @@ class SQLExecutor:
                                 or col.lower() == "count"
                                 or "count" in col.lower()
                             ):
-                                col_name = col
+                                having_col_name = col
                                 break
                         elif agg_func_name == "MAX":
                             if (
                                 col.lower() == f"max({agg_col_name})"
                                 or "max" in col.lower()
                             ):
-                                col_name = col
+                                having_col_name = col
                                 break
                         elif agg_func_name == "MIN" and (
                             col.lower() == f"min({agg_col_name})"
                             or "min" in col.lower()
                         ):
-                            col_name = col
+                            having_col_name = col
                             break
 
                     # If not found in loop, try exact match with generated name or alias
-                    if not col_name:
+                    if not having_col_name:
                         # Try generated name first (e.g., "avg(salary)")
                         generated_name = f"{agg_func_name.lower()}({agg_col_name})"
                         if generated_name in df_ops.columns:
-                            col_name = generated_name
+                            having_col_name = generated_name
                         else:
                             # Try alias pattern (lowercase with underscore, e.g., "avg_salary")
                             alias_name = f"{agg_func_name.lower()}_{agg_col_name}"
                             if alias_name in df_ops.columns:
-                                col_name = alias_name
+                                having_col_name = alias_name
                             else:
                                 # Last resort: find any column that contains the function name and column name
                                 for col in df_ops.columns:
@@ -752,31 +777,31 @@ class SQLExecutor:
                                         agg_func_name.lower() in col.lower()
                                         and agg_col_name.lower() in col.lower()
                                     ):
-                                        col_name = col
+                                        having_col_name = col
                                         break
 
                     # Apply filter if column found
                     # Check in df_ops.columns since that's what we're filtering
-                    if col_name and col_name in df_ops.columns:
+                    if having_col_name and having_col_name in df_ops.columns:
                         if operator == ">":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) > value)
+                                "DataFrame", df_ops.filter(F.col(having_col_name) > value)
                             )
                         elif operator == "<":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) < value)
+                                "DataFrame", df_ops.filter(F.col(having_col_name) < value)
                             )
                         elif operator in ("=", "=="):
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) == value)
+                                "DataFrame", df_ops.filter(F.col(having_col_name) == value)
                             )
                         elif operator == ">=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                                "DataFrame", df_ops.filter(F.col(having_col_name) >= value)
                             )
                         elif operator == "<=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                                "DataFrame", df_ops.filter(F.col(having_col_name) <= value)
                             )
                         # Update df_ops after filter for all operators
                         df_ops = cast("SupportsDataFrameOps", df)
@@ -942,7 +967,9 @@ class SQLExecutor:
 
             if has_aggregates:
                 # We have aggregate functions without GROUP BY - aggregate over all rows
-                agg_exprs = []
+                agg_exprs_no_group: list[
+                    Union[ColumnOperation, AggregateFunction, CaseWhen, Literal]
+                ] = []
 
                 for col_expr in select_columns:
                     col_expr = col_expr.strip()
@@ -965,7 +992,7 @@ class SQLExecutor:
                                 col_expr.index("(") + 1 : col_expr.rindex(")")
                             ].strip()
                             expr = F.count(inner)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("AVG(") or col_upper.startswith(
                         "AVERAGE("
                     ):
@@ -973,25 +1000,25 @@ class SQLExecutor:
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.avg(inner)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("SUM("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.sum(inner)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("MAX("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.max(inner)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
                     elif col_upper.startswith("MIN("):
                         inner = col_expr[
                             col_expr.index("(") + 1 : col_expr.rindex(")")
                         ].strip()
                         expr = F.min(inner)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_exprs_no_group.append(expr.alias(alias) if alias else expr)
                     else:
                         # Non-aggregate column in aggregate query - use F.col()
                         col_name = col_expr
@@ -1003,16 +1030,22 @@ class SQLExecutor:
                             parts = col_name.split(".", 1)
                             if len(parts) == 2:
                                 col_name = parts[1]
-                        expr = F.col(col_name)
-                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                        agg_expr: Any = F.col(col_name)
+                        agg_exprs_no_group.append(
+                            agg_expr.alias(alias) if alias else agg_expr
+                        )
 
                 # Aggregate over all rows (no grouping columns)
-                df = cast("DataFrame", df_ops.agg(*agg_exprs))
+                # Convert to DataFrame and group by nothing to aggregate all rows
+                df_dataframe = cast("DataFrame", df_ops)
+                # Type ignore needed because agg accepts Union[str, Column, ColumnOperation, AggregateFunction, dict[str, str]]
+                # but we're passing a list that may contain Column which is compatible
+                df = df_dataframe.groupBy().agg(*agg_exprs_no_group)  # type: ignore[arg-type]
             else:
                 # No GROUP BY, no aggregates - just apply column selection
                 if select_columns != ["*"]:
                     # Parse column expressions with aliases, table prefixes, and CASE WHEN
-                    select_exprs = []
+                    select_exprs_no_group: list[Any] = []
                     for col in select_columns:
                         col = col.strip()
                         # Extract alias if present (handle both " AS " and " as ")
@@ -1031,8 +1064,8 @@ class SQLExecutor:
 
                             case_expr = SQLExprParser._parse_expression(col)
                             if alias:
-                                case_expr.alias(alias)  # type: ignore
-                            select_exprs.append(case_expr)
+                                case_expr = case_expr.alias(alias)
+                            select_exprs_no_group.append(case_expr)
                         else:
                             # Handle table alias prefix (e.g., "e.name" -> "e_name" after join)
                             # After a join, columns are renamed with table alias prefix
@@ -1058,11 +1091,13 @@ class SQLExecutor:
 
                             # Create column expression with alias if specified
                             if alias:
-                                select_exprs.append(F.col(col_name).alias(alias))
+                                select_exprs_no_group.append(
+                                    F.col(col_name).alias(alias)
+                                )
                             else:
-                                select_exprs.append(F.col(col_name))
+                                select_exprs_no_group.append(F.col(col_name))
 
-                    df = cast("DataFrame", df_ops.select(*select_exprs))
+                    df = cast("DataFrame", df_ops.select(*select_exprs_no_group))
             df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply ORDER BY
@@ -1125,7 +1160,7 @@ class SQLExecutor:
         # Convert to DataFrame if needed
         from ...dataframe import DataFrame
 
-        if not isinstance(left_df, DataFrame):
+        if not isinstance(left_df, DataFrame):  # type: ignore[unreachable]
             from ...spark_types import StructType
 
             schema = (
@@ -1133,9 +1168,9 @@ class SQLExecutor:
                 if hasattr(left_df.schema, "fields")
                 else StructType([])
             )
-            left_df = DataFrame(left_df.collect(), schema)
+            left_df = DataFrame(left_df.collect(), schema)  # type: ignore[assignment]
 
-        if not isinstance(right_df, DataFrame):
+        if not isinstance(right_df, DataFrame):  # type: ignore[unreachable]
             from ...spark_types import StructType
 
             schema = (
@@ -1143,7 +1178,7 @@ class SQLExecutor:
                 if hasattr(right_df.schema, "fields")
                 else StructType([])
             )
-            right_df = DataFrame(right_df.collect(), schema)
+            right_df = DataFrame(right_df.collect(), schema)  # type: ignore[assignment]
 
         # Perform union (removes duplicates like UNION, not UNION ALL)
         result = cast("DataFrame", left_df.union(right_df))
@@ -1219,10 +1254,15 @@ class SQLExecutor:
 
                 # Save the result as a table
                 # Convert to DataFrame if needed
-                if not isinstance(result_df, DataFrame):
-                    result_df = DataFrame(
-                        result_df.collect(), StructType(result_df.schema.fields)
-                    )  # type: ignore[arg-type]
+                if not isinstance(result_df, DataFrame):  # type: ignore[unreachable]
+                    from ...spark_types import StructField
+
+                    # Convert IStructField list to StructField list
+                    fields = [
+                        StructField(f.name, f.data_type, f.nullable)
+                        for f in result_df.schema.fields
+                    ]
+                    result_df = DataFrame(result_df.collect(), StructType(fields))  # type: ignore[assignment]
 
                 # Build table full name
                 table_full_name = (
@@ -1530,7 +1570,8 @@ class SQLExecutor:
             row_ns = SimpleNamespace(**row)
             context["target"] = row_ns
             try:
-                return SafeExpressionEvaluator.evaluate_boolean(condition, context)
+                result = SafeExpressionEvaluator.evaluate_boolean(condition, context)
+                return bool(result)
             except Exception:
                 return False
 
@@ -1719,7 +1760,8 @@ class SQLExecutor:
             row_ns = SimpleNamespace(**row)
             context["target"] = row_ns
             try:
-                return SafeExpressionEvaluator.evaluate_boolean(condition, context)
+                result = SafeExpressionEvaluator.evaluate_boolean(condition, context)
+                return bool(result)
             except Exception:
                 return False
 

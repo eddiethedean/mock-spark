@@ -930,27 +930,27 @@ class Functions:
 
     # Aggregate functions
     @staticmethod
-    def count(column: Union[Column, str, None] = None) -> AggregateFunction:
+    def count(column: Union[Column, str, None] = None) -> ColumnOperation:
         """Count values."""
         return AggregateFunctions.count(column)
 
     @staticmethod
-    def sum(column: Union[Column, str]) -> AggregateFunction:
+    def sum(column: Union[Column, str]) -> ColumnOperation:
         """Sum values."""
         return AggregateFunctions.sum(column)
 
     @staticmethod
-    def avg(column: Union[Column, str]) -> AggregateFunction:
+    def avg(column: Union[Column, str]) -> ColumnOperation:
         """Average values."""
         return AggregateFunctions.avg(column)
 
     @staticmethod
-    def max(column: Union[Column, str]) -> AggregateFunction:
+    def max(column: Union[Column, str]) -> ColumnOperation:
         """Maximum value."""
         return AggregateFunctions.max(column)
 
     @staticmethod
-    def min(column: Union[Column, str]) -> AggregateFunction:
+    def min(column: Union[Column, str]) -> ColumnOperation:
         """Minimum value."""
         return AggregateFunctions.min(column)
 
@@ -1029,14 +1029,14 @@ class Functions:
     @staticmethod
     def corr(
         column1: Union[Column, str], column2: Union[Column, str]
-    ) -> AggregateFunction:
+    ) -> ColumnOperation:
         """Correlation between two columns."""
         return AggregateFunctions.corr(column1, column2)
 
     @staticmethod
     def covar_samp(
         column1: Union[Column, str], column2: Union[Column, str]
-    ) -> AggregateFunction:
+    ) -> ColumnOperation:
         """Sample covariance between two columns."""
         return AggregateFunctions.covar_samp(column1, column2)
 

@@ -165,6 +165,16 @@ class ICatalog(ABC):
         """Get table information."""
         pass
 
+    @abstractmethod
+    def currentDatabase(self) -> str:
+        """Get current database name."""
+        pass
+
+    @abstractmethod
+    def get_storage_backend(self) -> Any:
+        """Get the storage backend instance."""
+        pass
+
 
 class IConfiguration(ABC):
     """Abstract interface for configuration management."""
