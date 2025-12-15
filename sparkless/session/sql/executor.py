@@ -1574,11 +1574,91 @@ class SQLExecutor:
 
         # Default DESCRIBE implementation
         from ...dataframe import DataFrame
-        from ...spark_types import StructType
-
+        from ...spark_types import StructType, StructField, StringType
         from typing import cast
+        import re
 
-        return cast("IDataFrame", DataFrame([], StructType([])))
+        # Parse DESCRIBE TABLE [table_name] [column_name]
+        # Formats: DESCRIBE table_name, DESCRIBE EXTENDED table_name, DESCRIBE table_name column_name
+        query_upper = query.upper()
+        
+        # Check for EXTENDED keyword
+        is_extended = "EXTENDED" in query_upper or "FORMATTED" in query_upper
+        
+        # Extract table name (use original query to preserve case)
+        original_query = ast.components.get("original_query", query)
+        # Match: DESCRIBE [EXTENDED|FORMATTED] table_name [column_name]
+        table_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED\s+)?(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+        if not table_match:
+            return cast("IDataFrame", DataFrame([], StructType([])))
+        
+        table_name = table_match.group(1)
+        
+        # Check if specific column is requested: DESCRIBE table_name column_name
+        col_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED\s+)?\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
+        column_name = col_match.group(1) if col_match else None
+        
+        # Get table
+        try:
+            table_df = self.session.table(table_name)
+        except Exception:
+            from ...errors import AnalysisException
+            raise AnalysisException(f"Table or view not found: {table_name}")
+        
+        schema = table_df.schema
+        
+        if column_name:
+            # DESCRIBE specific column
+            field = None
+            for f in schema.fields:
+                if f.name.lower() == column_name.lower():
+                    field = f
+                    break
+            if not field:
+                return cast("IDataFrame", DataFrame([], StructType([])))
+            
+            data = [{
+                "col_name": field.name,
+                "data_type": str(field.dataType),
+                "comment": field.metadata.get("comment", "") if hasattr(field, "metadata") and hasattr(field.metadata, "get") else ""
+            }]
+            result_schema = StructType([
+                StructField("col_name", StringType()),
+                StructField("data_type", StringType()),
+                StructField("comment", StringType()),
+            ])
+        else:
+            # DESCRIBE table (all columns)
+            data = []
+            for field in schema.fields:
+                row = {
+                    "col_name": field.name,
+                    "data_type": str(field.dataType),
+                }
+                if is_extended:
+                    # Add extended info
+                    comment = ""
+                    if hasattr(field, "metadata") and hasattr(field.metadata, "get"):
+                        comment = field.metadata.get("comment", "")
+                    row["comment"] = comment
+                    # Add nullable info (basic)
+                    row["nullable"] = "true" if field.nullable else "false"
+                data.append(row)
+            
+            if is_extended:
+                result_schema = StructType([
+                    StructField("col_name", StringType()),
+                    StructField("data_type", StringType()),
+                    StructField("comment", StringType()),
+                    StructField("nullable", StringType()),
+                ])
+            else:
+                result_schema = StructType([
+                    StructField("col_name", StringType()),
+                    StructField("data_type", StringType()),
+                ])
+        
+        return cast("IDataFrame", DataFrame(data, result_schema))
 
     def _execute_merge(self, ast: SQLAST) -> IDataFrame:
         """Execute MERGE INTO query.
