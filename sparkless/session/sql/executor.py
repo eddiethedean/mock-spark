@@ -113,6 +113,15 @@ class SQLExecutor:
     def _execute_select(self, ast: SQLAST) -> IDataFrame:
         """Execute SELECT query.
 
+        Notes (BUG-021 - schema parity):
+            Basic SELECT queries must preserve a PySpark-compatible schema:
+            - ``SELECT * FROM table`` returns the full table schema.
+            - ``SELECT id, name, age FROM table`` projects exactly those
+              columns, in order.
+            This behavior is covered by:
+            - ``tests/unit/session/test_sql_basic_select_schema.py``
+            - ``tests/parity/sql/test_queries.py::TestSQLQueriesParity``.
+
         Args:
             ast: Parsed SQL AST.
 
