@@ -44,7 +44,9 @@ class TestSQLQueriesParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         df.write.mode("overwrite").saveAsTable("test_table")
         
-        result = spark.sql("SELECT department, COUNT(*) as count FROM test_table GROUP BY department")
+        # Use the query from expected output: GROUP BY (age > 30)
+        # This groups by boolean: False (age <= 30) -> 2 rows, True (age > 30) -> 1 row
+        result = spark.sql("SELECT COUNT(*) as count FROM test_table GROUP BY (age > 30)")
         
         self.assert_parity(result, expected)
 
