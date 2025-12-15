@@ -521,7 +521,7 @@ class SQLExecutor:
         else:
             # No GROUP BY - just apply column selection
             if select_columns != ["*"]:
-                # Parse column expressions with aliases and table prefixes
+                # Parse column expressions with aliases, table prefixes, and CASE WHEN
                 select_exprs = []
                 for col in select_columns:
                     col = col.strip()
@@ -533,25 +533,35 @@ class SQLExecutor:
                         # Remove alias from col expression
                         col = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col).strip()
                     
-                    # Handle table alias prefix (e.g., "u.name" -> "name")
-                    if (
-                        "." in col
-                        and not col.startswith("'")
-                        and not col.startswith('"')
-                    ):
-                        parts = col.split(".", 1)
-                        if len(parts) == 2:
-                            col_name = parts[1]  # Use column name without table alias
+                    # Check if this is a CASE WHEN expression
+                    col_upper = col.upper().strip()
+                    if col_upper.startswith("CASE") and "END" in col_upper:
+                        # Parse CASE WHEN expression using SQLExprParser
+                        from ...functions.core.sql_expr_parser import SQLExprParser
+                        case_expr = SQLExprParser._parse_expression(col)
+                        if alias:
+                            case_expr.alias(alias)  # type: ignore
+                        select_exprs.append(case_expr)
+                    else:
+                        # Handle table alias prefix (e.g., "u.name" -> "name")
+                        if (
+                            "." in col
+                            and not col.startswith("'")
+                            and not col.startswith('"')
+                        ):
+                            parts = col.split(".", 1)
+                            if len(parts) == 2:
+                                col_name = parts[1]  # Use column name without table alias
+                            else:
+                                col_name = col
                         else:
                             col_name = col
-                    else:
-                        col_name = col
-                    
-                    # Create column expression with alias if specified
-                    if alias:
-                        select_exprs.append(F.col(col_name).alias(alias))
-                    else:
-                        select_exprs.append(F.col(col_name))
+                        
+                        # Create column expression with alias if specified
+                        if alias:
+                            select_exprs.append(F.col(col_name).alias(alias))
+                        else:
+                            select_exprs.append(F.col(col_name))
                 
                 df = cast("DataFrame", df_ops.select(*select_exprs))
             df_ops = cast("SupportsDataFrameOps", df)
