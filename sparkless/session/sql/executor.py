@@ -2050,7 +2050,7 @@ class SQLExecutor:
             data = [
                 {
                     "col_name": field.name,
-                    "data_type": str(field.data_type),
+                    "data_type": str(field.dataType),
                     "comment": field.metadata.get("comment", "")
                     if hasattr(field, "metadata") and hasattr(field.metadata, "get")
                     else "",
@@ -2069,7 +2069,7 @@ class SQLExecutor:
             for field in schema.fields:
                 row = {
                     "col_name": field.name,
-                    "data_type": str(field.data_type),
+                    "data_type": str(field.dataType),
                 }
                 if is_extended:
                     # Add extended info
