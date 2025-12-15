@@ -2050,7 +2050,7 @@ class SQLExecutor:
             # Cast to StructField to access dataType attribute
             from ...spark_types import StructField as StructFieldType
 
-            field = cast(StructFieldType, field)
+            field = cast("StructFieldType", field)
 
             comment = ""
             if field.metadata is not None and hasattr(field.metadata, "get"):
@@ -2076,7 +2076,7 @@ class SQLExecutor:
             data = []
             for f in schema.fields:
                 # Cast to StructField to access dataType attribute
-                field = cast(StructFieldType, f)
+                field = cast("StructFieldType", f)
                 row = {
                     "col_name": field.name,
                     "data_type": str(field.dataType),
