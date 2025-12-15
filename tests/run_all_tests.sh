@@ -11,7 +11,7 @@ fi
 # Ensure project root is the first entry on PYTHONPATH so the local package is exercised
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH}"
 
-echo "Running Mock Spark Test Suite (Overhauled)"
+echo "Running Sparkless Test Suite (Overhauled)"
 echo "=========================================="
 
 # Check backend selection
@@ -26,8 +26,10 @@ echo ""
 
 # Check if pytest-xdist is available for parallel execution
 if python3 -c "import pytest_xdist" 2>/dev/null; then
-    echo "✅ pytest-xdist available - using parallel execution (8 workers)"
-    PARALLEL_FLAGS="-n 8"
+    # Allow override of worker count via SPARKLESS_TEST_WORKERS, default to 8
+    WORKERS="${SPARKLESS_TEST_WORKERS:-8}"
+    echo "✅ pytest-xdist available - using parallel execution (${WORKERS} workers)"
+    PARALLEL_FLAGS="-n ${WORKERS}"
 else
     echo "⚠️  pytest-xdist not available - running serially"
     echo "   Install with: pip install pytest-xdist"
@@ -114,6 +116,6 @@ else
     echo ""
     echo "✅ Test suite PASSED"
     echo "✅ All tests completed successfully without PySpark runtime dependency"
-    echo "✅ Comprehensive compatibility testing across all major MockSpark features"
+    echo "✅ Comprehensive compatibility testing across all major Sparkless features"
     exit 0
 fi

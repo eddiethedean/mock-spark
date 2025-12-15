@@ -16,25 +16,25 @@ December 2024
 ### ✅ col(name: str) -> Column
 **Status**: Compatible
 - PySpark: `col(colName: str) -> Column`
-- Mock-spark: `col(name: str) -> Column`
+- Sparkless: `col(name: str) -> Column`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ lit(value: Any) -> Literal
 **Status**: Compatible
 - PySpark: `lit(col: Any) -> Column`
-- Mock-spark: `lit(value: Any) -> Literal`
+- Sparkless: `lit(value: Any) -> Literal`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ expr(expression: str) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `expr(str: str) -> Column`
-- Mock-spark: `expr(expression: str) -> ColumnOperation`
+- Sparkless: `expr(expression: str) -> ColumnOperation`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ when(condition: Any, value: Any = None) -> CaseWhen
 **Status**: Compatible
 - PySpark: `when(condition: Column, value: Any) -> Column`
-- Mock-spark: `when(condition: Any, value: Any = None) -> CaseWhen`
+- Sparkless: `when(condition: Any, value: Any = None) -> CaseWhen`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ## Aggregate Functions
@@ -42,28 +42,28 @@ December 2024
 ### ✅ count(column: Union[Column, str, None] = None) -> AggregateFunction
 **Status**: Compatible
 - PySpark: `count(col: ColumnOrName) -> Column`
-- Mock-spark: `count(column: Union[Column, str, None] = None) -> AggregateFunction`
+- Sparkless: `count(column: Union[Column, str, None] = None) -> AggregateFunction`
 - **Note**: Supports `count(*)` with None parameter, matches PySpark
 
 ### ✅ sum(column: Union[Column, str]) -> AggregateFunction
 **Status**: Compatible
 - PySpark: `sum(col: ColumnOrName) -> Column`
-- Mock-spark: `sum(column: Union[Column, str]) -> AggregateFunction`
+- Sparkless: `sum(column: Union[Column, str]) -> AggregateFunction`
 
 ### ✅ avg(column: Union[Column, str]) -> AggregateFunction
 **Status**: Compatible
 - PySpark: `avg(col: ColumnOrName) -> Column`
-- Mock-spark: `avg(column: Union[Column, str]) -> AggregateFunction`
+- Sparkless: `avg(column: Union[Column, str]) -> AggregateFunction`
 
 ### ✅ max(column: Union[Column, str]) -> AggregateFunction
 **Status**: Compatible
 - PySpark: `max(col: ColumnOrName) -> Column`
-- Mock-spark: `max(column: Union[Column, str]) -> AggregateFunction`
+- Sparkless: `max(column: Union[Column, str]) -> AggregateFunction`
 
 ### ✅ min(column: Union[Column, str]) -> AggregateFunction
 **Status**: Compatible
 - PySpark: `min(col: ColumnOrName) -> Column`
-- Mock-spark: `min(column: Union[Column, str]) -> AggregateFunction`
+- Sparkless: `min(column: Union[Column, str]) -> AggregateFunction`
 
 **All aggregate functions**: Now require active SparkSession (PySpark behavior)
 
@@ -72,31 +72,31 @@ December 2024
 ### ✅ row_number() -> ColumnOperation
 **Status**: Compatible
 - PySpark: `row_number() -> Column`
-- Mock-spark: `row_number() -> ColumnOperation`
+- Sparkless: `row_number() -> ColumnOperation`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ rank() -> ColumnOperation
 **Status**: Compatible
 - PySpark: `rank() -> Column`
-- Mock-spark: `rank() -> ColumnOperation`
+- Sparkless: `rank() -> ColumnOperation`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ dense_rank() -> ColumnOperation
 **Status**: Compatible
 - PySpark: `dense_rank() -> Column`
-- Mock-spark: `dense_rank() -> ColumnOperation`
+- Sparkless: `dense_rank() -> ColumnOperation`
 - **Note**: Now requires active SparkSession (PySpark behavior)
 
 ### ✅ lag(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `lag(col: ColumnOrName, offset: int = 1, default: Any = None) -> Column`
-- Mock-spark: `lag(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation`
+- Sparkless: `lag(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation`
 - **Note**: Parameter name now matches PySpark exactly (`default`)
 
 ### ✅ lead(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `lead(col: ColumnOrName, offset: int = 1, default: Any = None) -> Column`
-- Mock-spark: `lead(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation`
+- Sparkless: `lead(column: Union[Column, str], offset: int = 1, default: Any = None) -> ColumnOperation`
 - **Note**: Parameter name now matches PySpark exactly (`default`)
 
 **All window functions**: Now require active SparkSession (PySpark behavior)
@@ -106,7 +106,7 @@ December 2024
 ### ✅ current_date() -> ColumnOperation
 **Status**: Compatible
 - PySpark: `current_date() -> Column`
-- Mock-spark: `current_date() -> ColumnOperation`
+- Sparkless: `current_date() -> ColumnOperation`
 - **Note**: 
   - Now requires active SparkSession (PySpark behavior)
   - Verified: NOT a DataFrame method (correctly implemented as function)
@@ -114,7 +114,7 @@ December 2024
 ### ✅ current_timestamp() -> ColumnOperation
 **Status**: Compatible
 - PySpark: `current_timestamp() -> Column`
-- Mock-spark: `current_timestamp() -> ColumnOperation`
+- Sparkless: `current_timestamp() -> ColumnOperation`
 - **Note**: 
   - Now requires active SparkSession (PySpark behavior)
   - Verified: NOT a DataFrame method (correctly implemented as function)
@@ -122,20 +122,20 @@ December 2024
 ### ✅ datediff(end: Union[Column, str], start: Union[Column, str]) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `datediff(end: ColumnOrName, start: ColumnOrName) -> Column`
-- Mock-spark: `datediff(end: Union[Column, str], start: Union[Column, str]) -> ColumnOperation`
+- Sparkless: `datediff(end: Union[Column, str], start: Union[Column, str]) -> ColumnOperation`
 - **Parameter Order**: ✅ Correct (end, start)
 - **Note**: Matches PySpark parameter order exactly
 
 ### ✅ to_date(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `to_date(col: ColumnOrName, format: Optional[str] = None) -> Column`
-- Mock-spark: `to_date(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation`
+- Sparkless: `to_date(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation`
 - **Note**: Now enforces StringType input (PySpark behavior)
 
 ### ✅ to_timestamp(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation
 **Status**: Compatible
 - PySpark: `to_timestamp(col: ColumnOrName, format: Optional[str] = None) -> Column`
-- Mock-spark: `to_timestamp(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation`
+- Sparkless: `to_timestamp(column: Union[Column, str], format: Optional[str] = None) -> ColumnOperation`
 - **Note**: Now enforces StringType input (PySpark behavior)
 
 ## Key Findings
@@ -157,7 +157,7 @@ December 2024
    - Now matches PySpark exactly: `lead(col, offset=1, default=None)`
 
 ### ⚠️ Minor Differences (Acceptable - Implementation Details)
-1. **Return types**: Mock-spark uses `ColumnOperation`/`AggregateFunction` instead of PySpark's `Column`
+1. **Return types**: Sparkless uses `ColumnOperation`/`AggregateFunction` instead of PySpark's `Column`
    - This is acceptable as it's an implementation detail for the mock
    - The behavior is compatible
    - Users interact with these the same way as PySpark's Column objects

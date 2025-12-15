@@ -6,7 +6,7 @@ This guide explains the two ways to manage databases and tables in sparkless, an
 
 ## Overview
 
-Mock-spark provides two APIs for managing storage:
+Sparkless provides two APIs for managing storage:
 
 1. **PySpark-Compatible APIs** (SQL commands) - ✅ Use for compatibility with PySpark
 2. **sparkless Convenience APIs** (`._storage` API) - ⚠️ Private sparkless-specific, not available in PySpark
