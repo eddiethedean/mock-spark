@@ -33,7 +33,7 @@ class TestSQLQueriesParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         df.write.mode("overwrite").saveAsTable("test_table")
         
-        result = spark.sql("SELECT * FROM test_table WHERE age > 25")
+        result = spark.sql("SELECT * FROM test_table WHERE age > 30")
         
         self.assert_parity(result, expected)
 
