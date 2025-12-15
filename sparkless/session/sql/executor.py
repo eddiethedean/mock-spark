@@ -281,12 +281,64 @@ class SQLExecutor:
         if where_conditions:
             # Parse simple WHERE conditions like "column > value", "column < value", etc.
             where_condition = where_conditions[0]
+            
+            # Handle subqueries in WHERE conditions (e.g., "column > (SELECT AVG(col) FROM table)")
+            # Extract and execute subqueries first, then replace them with their scalar results
+            # Use proper parenthesis matching to handle nested parentheses in aggregate functions
+            def extract_subquery(text: str) -> str | None:
+                """Extract first subquery from text, handling nested parentheses."""
+                start = text.find("(SELECT")
+                if start == -1:
+                    return None
+                
+                paren_count = 0
+                i = start
+                while i < len(text):
+                    if text[i] == "(":
+                        paren_count += 1
+                    elif text[i] == ")":
+                        paren_count -= 1
+                        if paren_count == 0:
+                            return text[start : i + 1]
+                    i += 1
+                return None
+            
+            # Extract and process all subqueries
+            subquery = extract_subquery(where_condition)
+            while subquery:
+                # Remove parentheses
+                subquery_text = subquery[1:-1].strip()
+                
+                # Execute the subquery
+                subquery_ast = self.parser.parse(subquery_text)
+                subquery_result = self._execute_select(subquery_ast)
+                
+                # Get scalar value from subquery result (assume single row, single column)
+                if subquery_result.count() > 0:
+                    row = subquery_result.collect()[0]
+                    # Get first column value
+                    col_name = subquery_result.columns[0]
+                    scalar_value = row[col_name]
+                    
+                    # Replace subquery with scalar value in WHERE condition
+                    where_condition = where_condition.replace(subquery, str(scalar_value))
+                
+                # Look for next subquery
+                subquery = extract_subquery(where_condition)
+            
             # Try to parse simple conditions
-            match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", where_condition)
+            match = re.search(r"(\w+)\s*([><=]+)\s*([0-9.]+)", where_condition)
             if match:
                 col_name = match.group(1)
                 operator = match.group(2)
-                value = int(match.group(3))
+                # Try to parse as float first, then int
+                try:
+                    value = float(match.group(3))
+                    # If it's a whole number, use int for cleaner comparison
+                    if value.is_integer():
+                        value = int(value)
+                except ValueError:
+                    value = match.group(3)
 
                 # Check if column exists in DataFrame
                 if col_name in df.columns:
@@ -519,51 +571,120 @@ class SQLExecutor:
                                 )
                             df_ops = cast("SupportsDataFrameOps", df)
         else:
-            # No GROUP BY - just apply column selection
+            # No GROUP BY - check if we have aggregate functions (like SELECT AVG(col) FROM table)
+            # If so, we need to aggregate over all rows
+            select_columns = components.get("select_columns", ["*"])
+            has_aggregates = False
+            
             if select_columns != ["*"]:
-                # Parse column expressions with aliases, table prefixes, and CASE WHEN
-                select_exprs = []
                 for col in select_columns:
-                    col = col.strip()
-                    # Extract alias if present (handle both " AS " and " as ")
+                    col_upper = col.upper().strip()
+                    # Check for aggregate functions
+                    if any(
+                        col_upper.startswith(agg)
+                        for agg in ["COUNT(", "SUM(", "AVG(", "MAX(", "MIN(", "AVERAGE("]
+                    ):
+                        has_aggregates = True
+                        break
+            
+            if has_aggregates:
+                # We have aggregate functions without GROUP BY - aggregate over all rows
+                agg_exprs = []
+                
+                for col_expr in select_columns:
+                    col_expr = col_expr.strip()
+                    
+                    # Extract alias if present
                     alias = None
-                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
+                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col_expr)
                     if alias_match:
                         alias = alias_match.group(1)
-                        # Remove alias from col expression
-                        col = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col).strip()
+                        col_expr = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col_expr).strip()
                     
-                    # Check if this is a CASE WHEN expression
-                    col_upper = col.upper().strip()
-                    if col_upper.startswith("CASE") and "END" in col_upper:
-                        # Parse CASE WHEN expression using SQLExprParser
-                        from ...functions.core.sql_expr_parser import SQLExprParser
-                        case_expr = SQLExprParser._parse_expression(col)
-                        if alias:
-                            case_expr.alias(alias)  # type: ignore
-                        select_exprs.append(case_expr)
+                    col_upper = col_expr.upper()
+                    
+                    # Parse aggregate functions
+                    if col_upper.startswith("COUNT("):
+                        if "*" in col_expr:
+                            expr = F.count("*")
+                        else:
+                            inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                            expr = F.count(inner)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                    elif col_upper.startswith("AVG(") or col_upper.startswith("AVERAGE("):
+                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        expr = F.avg(inner)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                    elif col_upper.startswith("SUM("):
+                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        expr = F.sum(inner)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                    elif col_upper.startswith("MAX("):
+                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        expr = F.max(inner)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                    elif col_upper.startswith("MIN("):
+                        inner = col_expr[col_expr.index("(") + 1 : col_expr.rindex(")")].strip()
+                        expr = F.min(inner)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
                     else:
-                        # Handle table alias prefix (e.g., "u.name" -> "name")
-                        if (
-                            "." in col
-                            and not col.startswith("'")
-                            and not col.startswith('"')
-                        ):
-                            parts = col.split(".", 1)
+                        # Non-aggregate column in aggregate query - use F.col()
+                        col_name = col_expr
+                        if "." in col_name and not col_name.startswith("'") and not col_name.startswith('"'):
+                            parts = col_name.split(".", 1)
                             if len(parts) == 2:
-                                col_name = parts[1]  # Use column name without table alias
+                                col_name = parts[1]
+                        expr = F.col(col_name)
+                        agg_exprs.append(expr.alias(alias) if alias else expr)
+                
+                # Aggregate over all rows (no grouping columns)
+                df = cast("DataFrame", df_ops.agg(*agg_exprs))
+            else:
+                # No GROUP BY, no aggregates - just apply column selection
+                if select_columns != ["*"]:
+                    # Parse column expressions with aliases, table prefixes, and CASE WHEN
+                    select_exprs = []
+                    for col in select_columns:
+                        col = col.strip()
+                        # Extract alias if present (handle both " AS " and " as ")
+                        alias = None
+                        alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
+                        if alias_match:
+                            alias = alias_match.group(1)
+                            # Remove alias from col expression
+                            col = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col).strip()
+                        
+                        # Check if this is a CASE WHEN expression
+                        col_upper = col.upper().strip()
+                        if col_upper.startswith("CASE") and "END" in col_upper:
+                            # Parse CASE WHEN expression using SQLExprParser
+                            from ...functions.core.sql_expr_parser import SQLExprParser
+                            case_expr = SQLExprParser._parse_expression(col)
+                            if alias:
+                                case_expr.alias(alias)  # type: ignore
+                            select_exprs.append(case_expr)
+                        else:
+                            # Handle table alias prefix (e.g., "u.name" -> "name")
+                            if (
+                                "." in col
+                                and not col.startswith("'")
+                                and not col.startswith('"')
+                            ):
+                                parts = col.split(".", 1)
+                                if len(parts) == 2:
+                                    col_name = parts[1]  # Use column name without table alias
+                                else:
+                                    col_name = col
                             else:
                                 col_name = col
-                        else:
-                            col_name = col
-                        
-                        # Create column expression with alias if specified
-                        if alias:
-                            select_exprs.append(F.col(col_name).alias(alias))
-                        else:
-                            select_exprs.append(F.col(col_name))
-                
-                df = cast("DataFrame", df_ops.select(*select_exprs))
+                            
+                            # Create column expression with alias if specified
+                            if alias:
+                                select_exprs.append(F.col(col_name).alias(alias))
+                            else:
+                                select_exprs.append(F.col(col_name))
+                    
+                    df = cast("DataFrame", df_ops.select(*select_exprs))
             df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply ORDER BY
