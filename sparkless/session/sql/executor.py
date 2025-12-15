@@ -1592,7 +1592,11 @@ class SQLExecutor:
         # Extract table name (use original query to preserve case)
         original_query = ast.components.get("original_query", query)
         # Match: DESCRIBE [EXTENDED|FORMATTED] table_name [column_name]
-        table_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED\s+)?(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+        # Need to explicitly match EXTENDED/FORMATTED followed by whitespace and table name
+        table_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
+        if not table_match:
+            # Try without EXTENDED/FORMATTED
+            table_match = re.search(r"DESCRIBE\s+(\w+(?:\.\w+)?)", original_query, re.IGNORECASE)
         if not table_match:
             return cast("IDataFrame", DataFrame([], StructType([])))
         
