@@ -1026,18 +1026,9 @@ class SQLExecutor:
                 f"Failed to get schema for table {schema_name}.{table_name}"
             )
 
-        # Get table data to determine original column order from first row
-        # This helps us match VALUES order to the order used when creating the table
-        table_data = storage.get_data(schema_name, table_name)
-        
-        # Determine expected column order: if table has data, use the keys from first row
-        # Otherwise, fall back to schema field order
-        if table_data and len(table_data) > 0:
-            # Use the order from actual data (which preserves DataFrame column order)
-            expected_column_order = list(table_data[0].keys())
-        else:
-            # No data yet, use schema field order
-            expected_column_order = [field.name for field in table_schema.fields]
+        # For INSERT VALUES, use the schema field order (PySpark behavior)
+        # The schema field order is the canonical order for mapping VALUES to columns
+        expected_column_order = [field.name for field in table_schema.fields]
 
         data: list[dict[str, Any]] = []
 
@@ -1085,8 +1076,15 @@ class SQLExecutor:
                     "SELECT query is missing in INSERT ... SELECT"
                 )
 
-            # Execute SELECT query
-            select_df = self.session.sql(f"SELECT {select_query}")
+            # Execute the SELECT part of INSERT ... SELECT.
+            # The parser may return either a full SELECT statement or just the
+            # projection/FROM fragment, so avoid blindly prefixing with another
+            # SELECT (BUG-014).
+            query = select_query.strip()
+            if not query.upper().startswith("SELECT"):
+                query = f"SELECT {query}"
+
+            select_df = self.session.sql(query)
             # Convert DataFrame to list of dictionaries
             data = [
                 dict(row) if hasattr(row, "__dict__") else row
