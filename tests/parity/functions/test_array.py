@@ -52,6 +52,9 @@ class TestArrayFunctionsParity(ParityTestBase):
         expected = self.load_expected("arrays", "array_distinct")
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.array_distinct(df.tags))
+        # array_distinct doesn't guarantee order of elements within arrays
+        # The comparison utility should handle this, but if it doesn't, we may need to skip
+        # For now, let's try without sorting - the comparison should handle it
         self.assert_parity(result, expected)
 
     def test_array_join(self, spark):

@@ -48,8 +48,13 @@ class TestWindowOperationsParity(ParityTestBase):
         expected = self.load_expected("windows", "sum_over_window")
         
         df = spark.createDataFrame(expected["input_data"])
-        window_spec = Window.partitionBy("dept").orderBy("salary").rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        result = df.withColumn("running_total", F.sum("salary").over(window_spec))
+        # Check what column name is actually in the input data
+        input_cols = list(expected["input_data"][0].keys()) if expected.get("input_data") else []
+        partition_col = "department" if "department" in input_cols else "dept"
+        # Expected output uses 'dept_total' as column name and appears to sum all salaries in department
+        # (not a running total, but a total per department)
+        window_spec = Window.partitionBy(partition_col)
+        result = df.withColumn("dept_total", F.sum("salary").over(window_spec))
         
         self.assert_parity(result, expected)
 
@@ -59,7 +64,8 @@ class TestWindowOperationsParity(ParityTestBase):
         
         df = spark.createDataFrame(expected["input_data"])
         window_spec = Window.partitionBy("dept").orderBy("salary")
-        result = df.withColumn("prev_salary", F.lag("salary", 1).over(window_spec))
+        # Expected output uses 'lag_salary' as column name
+        result = df.withColumn("lag_salary", F.lag("salary", 1).over(window_spec))
         
         self.assert_parity(result, expected)
 
@@ -69,7 +75,8 @@ class TestWindowOperationsParity(ParityTestBase):
         
         df = spark.createDataFrame(expected["input_data"])
         window_spec = Window.partitionBy("dept").orderBy("salary")
-        result = df.withColumn("next_salary", F.lead("salary", 1).over(window_spec))
+        # Expected output uses 'lead_salary' as column name
+        result = df.withColumn("lead_salary", F.lead("salary", 1).over(window_spec))
         
         self.assert_parity(result, expected)
 

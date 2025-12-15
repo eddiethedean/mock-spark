@@ -34,6 +34,9 @@ class TestSQLShowDescribeParity(ParityTestBase):
 
     def test_show_tables(self, spark):
         """Test SHOW TABLES matches PySpark behavior."""
+        # Clean up any existing tables first
+        spark.sql("DROP TABLE IF EXISTS show_test_table")
+        
         # Create a table
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
@@ -43,7 +46,7 @@ class TestSQLShowDescribeParity(ParityTestBase):
         result = spark.sql("SHOW TABLES")
         table_names = [row["tableName"] for row in result.collect()]
         
-        # Should contain our table
+        # Should contain our table (may have other tables from previous tests)
         assert "show_test_table" in table_names
         
         # Cleanup
