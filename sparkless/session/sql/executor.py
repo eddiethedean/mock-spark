@@ -326,33 +326,67 @@ class SQLExecutor:
                 # Look for next subquery
                 subquery = extract_subquery(where_condition)
             
-            # Try to parse simple conditions
-            match = re.search(r"(\w+)\s*([><=]+)\s*([0-9.]+)", where_condition)
-            if match:
-                col_name = match.group(1)
-                operator = match.group(2)
-                # Try to parse as float first, then int
-                try:
-                    value = float(match.group(3))
-                    # If it's a whole number, use int for cleaner comparison
-                    if value.is_integer():
-                        value = int(value)
-                except ValueError:
-                    value = match.group(3)
-
-                # Check if column exists in DataFrame
+            # Try to parse different WHERE condition types
+            # Check for LIKE clause: column LIKE 'pattern'
+            like_match = re.search(r"(\w+)\s+LIKE\s+['\"]([^'\"]+)['\"]", where_condition, re.IGNORECASE)
+            if like_match:
+                col_name = like_match.group(1)
+                pattern = like_match.group(2)
                 if col_name in df.columns:
-                    if operator == ">":
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) > value))
-                    elif operator == "<":
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) < value))
-                    elif operator in ("=", "=="):
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) == value))
-                    elif operator == ">=":
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) >= value))
-                    elif operator == "<=":
-                        df = cast("DataFrame", df_ops.filter(F.col(col_name) <= value))
+                    df = cast("DataFrame", df_ops.filter(F.col(col_name).like(pattern)))
                     df_ops = cast("SupportsDataFrameOps", df)
+            # Check for IN clause: column IN (value1, value2, ...)
+            elif re.search(r"(\w+)\s+IN\s*\(", where_condition, re.IGNORECASE):
+                in_match = re.search(r"(\w+)\s+IN\s*\((.*?)\)", where_condition, re.IGNORECASE)
+                if in_match:
+                    col_name = in_match.group(1)
+                    values_str = in_match.group(2).strip()
+                    # Parse values (handle both numbers and strings)
+                    values = []
+                    for val in values_str.split(","):
+                        val = val.strip()
+                        # Try to parse as number
+                        try:
+                            if "." in val:
+                                values.append(float(val))
+                            else:
+                                values.append(int(val))
+                        except ValueError:
+                            # Remove quotes if present
+                            val = val.strip("'\"")
+                            values.append(val)
+                    
+                    if col_name in df.columns:
+                        df = cast("DataFrame", df_ops.filter(F.col(col_name).isin(values)))
+                        df_ops = cast("SupportsDataFrameOps", df)
+            # Check for comparison operators: column > value, column < value, etc.
+            else:
+                match = re.search(r"(\w+)\s*([><=]+)\s*([0-9.]+)", where_condition)
+                if match:
+                    col_name = match.group(1)
+                    operator = match.group(2)
+                    # Try to parse as float first, then int
+                    try:
+                        value = float(match.group(3))
+                        # If it's a whole number, use int for cleaner comparison
+                        if value.is_integer():
+                            value = int(value)
+                    except ValueError:
+                        value = match.group(3)
+
+                    # Check if column exists in DataFrame
+                    if col_name in df.columns:
+                        if operator == ">":
+                            df = cast("DataFrame", df_ops.filter(F.col(col_name) > value))
+                        elif operator == "<":
+                            df = cast("DataFrame", df_ops.filter(F.col(col_name) < value))
+                        elif operator in ("=", "=="):
+                            df = cast("DataFrame", df_ops.filter(F.col(col_name) == value))
+                        elif operator == ">=":
+                            df = cast("DataFrame", df_ops.filter(F.col(col_name) >= value))
+                        elif operator == "<=":
+                            df = cast("DataFrame", df_ops.filter(F.col(col_name) <= value))
+                        df_ops = cast("SupportsDataFrameOps", df)
 
         # Check if we have GROUP BY
         group_by_columns = components.get("group_by_columns", [])
