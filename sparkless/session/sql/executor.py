@@ -446,10 +446,19 @@ class SQLExecutor:
         else:
             # No GROUP BY - just apply column selection
             if select_columns != ["*"]:
-                # Handle table aliases (e.g., "u.name" -> "name")
-                cleaned_columns = []
+                # Parse column expressions with aliases and table prefixes
+                select_exprs = []
                 for col in select_columns:
-                    # Remove table alias prefix if present (e.g., "u.name" -> "name")
+                    col = col.strip()
+                    # Extract alias if present (handle both " AS " and " as ")
+                    alias = None
+                    alias_match = re.search(r"\s+[Aa][Ss]\s+(\w+)$", col)
+                    if alias_match:
+                        alias = alias_match.group(1)
+                        # Remove alias from col expression
+                        col = re.sub(r"\s+[Aa][Ss]\s+\w+$", "", col).strip()
+                    
+                    # Handle table alias prefix (e.g., "u.name" -> "name")
                     if (
                         "." in col
                         and not col.startswith("'")
@@ -457,14 +466,19 @@ class SQLExecutor:
                     ):
                         parts = col.split(".", 1)
                         if len(parts) == 2:
-                            cleaned_columns.append(
-                                parts[1]
-                            )  # Use column name without alias
+                            col_name = parts[1]  # Use column name without table alias
                         else:
-                            cleaned_columns.append(col)
+                            col_name = col
                     else:
-                        cleaned_columns.append(col)
-                df = cast("DataFrame", df_ops.select(*cleaned_columns))
+                        col_name = col
+                    
+                    # Create column expression with alias if specified
+                    if alias:
+                        select_exprs.append(F.col(col_name).alias(alias))
+                    else:
+                        select_exprs.append(F.col(col_name))
+                
+                df = cast("DataFrame", df_ops.select(*select_exprs))
             df_ops = cast("SupportsDataFrameOps", df)
 
         # Apply ORDER BY
