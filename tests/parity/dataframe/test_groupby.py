@@ -17,7 +17,8 @@ class TestGroupByParity(ParityTestBase):
         expected = self.load_expected("dataframe_operations", "group_by")
         
         df = spark.createDataFrame(expected["input_data"])
-        result = df.groupBy("department").agg(F.count("*"))
+        # PySpark names count(*) as count(1), so we need to alias it to match expected output
+        result = df.groupBy("department").agg(F.count("*").alias("count"))
         
         self.assert_parity(result, expected)
 

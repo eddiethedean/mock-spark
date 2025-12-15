@@ -31,7 +31,13 @@ class TestSQLAdvancedParity(ParityTestBase):
         """)
         
         rows = result.collect()
-        assert len(rows) == 2  # Only Alice and Bob have matching dept
+        # PySpark returns 2 rows: Alice (IT) and Bob (HR)
+        # Charlie (dept_id=3) has no matching department
+        assert len(rows) == 2
+        names = {row["name"] for row in rows}
+        assert "Alice" in names
+        assert "Bob" in names
+        assert "Charlie" not in names
         
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS employees")
@@ -116,8 +122,9 @@ class TestSQLAdvancedParity(ParityTestBase):
         """)
         
         rows = result.collect()
-        assert len(rows) == 1  # Only IT has avg > 55000
-        assert rows[0]["dept"] == "IT"
+        # IT avg = (50000 + 60000) / 2 = 55000, HR avg = 55000
+        # HAVING AVG(salary) > 55000 returns 0 rows (both are exactly 55000, not > 55000)
+        assert len(rows) == 0
         
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS having_test")
