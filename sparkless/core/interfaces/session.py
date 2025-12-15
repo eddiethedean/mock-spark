@@ -115,7 +115,7 @@ class ICatalog(ABC):
         pass
 
     @abstractmethod
-    def listTables(self, db_name: Optional[str] = None) -> list[Any]:
+    def listTables(self, dbName: Optional[str] = None) -> list[Any]:
         """List tables in database."""
         pass
 
