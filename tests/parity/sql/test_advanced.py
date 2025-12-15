@@ -103,7 +103,9 @@ class TestSQLAdvancedParity(ParityTestBase):
     def test_sql_with_having(self, spark):
         """Test SQL HAVING clause matches PySpark behavior."""
         # Create table
-        data = [("Alice", "IT", 50000), ("Bob", "IT", 60000), ("Charlie", "HR", 55000)]
+        # IT: (50000 + 60001) / 2 = 55000.5 > 55000
+        # HR: 55000 (not > 55000)
+        data = [("Alice", "IT", 50000), ("Bob", "IT", 60001), ("Charlie", "HR", 55000)]
         df = spark.createDataFrame(data, ["name", "dept", "salary"])
         df.write.mode("overwrite").saveAsTable("having_test")
         
