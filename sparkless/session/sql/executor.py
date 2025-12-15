@@ -291,9 +291,13 @@ class SQLExecutor:
             # Parse simple WHERE conditions like "column > value", "column < value", etc.
             where_condition = where_conditions[0]
             
-            # Handle subqueries in WHERE conditions (e.g., "column > (SELECT AVG(col) FROM table)")
-            # Extract and execute subqueries first, then replace them with their scalar results
-            # Use proper parenthesis matching to handle nested parentheses in aggregate functions
+            # Handle subqueries in WHERE conditions (e.g., "column > (SELECT AVG(col) FROM table)").
+            # This logic was introduced as part of BUG-008 (SQL subqueries support) and is
+            # exercised by:
+            #   - tests/parity/sql/test_advanced.py::TestSQLAdvancedParity::test_sql_with_subquery
+            # It works by extracting nested SELECT subqueries, executing them recursively via
+            # _execute_select, and replacing them with their scalar results before applying
+            # the remaining WHERE filters.
             def extract_subquery(text: str) -> str | None:
                 """Extract first subquery from text, handling nested parentheses."""
                 start = text.find("(SELECT")

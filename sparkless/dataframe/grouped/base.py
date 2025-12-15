@@ -77,7 +77,13 @@ class GroupedData:
         if not is_dict_syntax:
             for i, expr in enumerate(exprs):
                 # Allow strings for backward compatibility
-                if not isinstance(expr, str) and not (is_column(expr) or is_column_operation(expr)):
+                if isinstance(expr, str):
+                    continue
+                # Allow AggregateFunction instances - they are handled explicitly
+                # later in this method (see the AggregateFunction branch below).
+                if isinstance(expr, AggregateFunction):
+                    continue
+                if not (is_column(expr) or is_column_operation(expr)):
                     raise AssertionError(
                         f"all exprs should be Column, got {type(expr).__name__} at argument {i}"
                     )
