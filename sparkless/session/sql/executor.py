@@ -1472,38 +1472,61 @@ class SQLExecutor:
 
     def _execute_show(self, ast: SQLAST) -> IDataFrame:
         """Execute SHOW query.
-
+        
         Args:
             ast: Parsed SQL AST.
-
+        
         Returns:
-            DataFrame with SHOW results.
+            DataFrame with SHOW results that reflect the real catalog and
+            match PySpark's formats where applicable.
         """
-        # Mock implementation - show databases or tables
+        from typing import cast
         from ...dataframe import DataFrame
-
-        # Simple mock data for SHOW commands
-        if "databases" in ast.components.get("original_query", "").lower():
-            data = [{"databaseName": "default"}, {"databaseName": "test"}]
-            from ...spark_types import StructType, StructField, StringType
-
+        from ...spark_types import StructType, StructField, StringType, BooleanType
+        
+        original_query = ast.components.get("original_query", "") or ""
+        query_lower = original_query.lower()
+        
+        # SHOW DATABASES
+        if "show databases" in query_lower:
+            databases = self.session.catalog.listDatabases()
+            data = [{"databaseName": db.name} for db in databases]
             schema = StructType([StructField("databaseName", StringType())])
-            from typing import cast
-
             return cast("IDataFrame", DataFrame(data, schema))
-        elif "tables" in ast.components.get("original_query", "").lower():
-            data = [{"tableName": "users"}, {"tableName": "orders"}]
-            from ...spark_types import StructType, StructField, StringType
-
-            schema = StructType([StructField("tableName", StringType())])
-            from typing import cast
-
+        
+        # SHOW TABLES [IN db] or SHOW TABLES
+        if "show tables" in query_lower:
+            db_name = None
+            match = re.search(
+                r"show\s+tables\s+in\s+([`\\w]+)", original_query, re.IGNORECASE
+            )
+            if match:
+                db_name = match.group(1).strip("`")
+            
+            if db_name is None:
+                db_name = self.session.catalog.currentDatabase()
+            
+            tables = self.session.catalog.listTables(dbName=db_name)
+            # PySpark SHOW TABLES returns columns: database, tableName, isTemporary
+            data = [
+                {
+                    "database": tbl.database,
+                    "tableName": tbl.name,
+                    "isTemporary": False,
+                }
+                for tbl in tables
+            ]
+            schema = StructType(
+                [
+                    StructField("database", StringType()),
+                    StructField("tableName", StringType()),
+                    StructField("isTemporary", BooleanType()),
+                ]
+            )
             return cast("IDataFrame", DataFrame(data, schema))
-        else:
-            from ...spark_types import StructType
-            from typing import cast
-
-            return cast("IDataFrame", DataFrame([], StructType([])))
+        
+        # Fallback: unsupported SHOW variant
+        return cast("IDataFrame", DataFrame([], StructType([])))
 
     def _execute_describe(self, ast: SQLAST) -> IDataFrame:
         """Execute DESCRIBE query.
