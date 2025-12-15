@@ -57,7 +57,9 @@ class TestSQLQueriesParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         df.write.mode("overwrite").saveAsTable("test_table")
         
-        result = spark.sql("SELECT department, AVG(salary) as avg_salary, COUNT(*) as count FROM test_table GROUP BY department")
+        # Use the query from expected output: SELECT AVG(salary) as avg_salary FROM employees
+        # This aggregates over all rows (no GROUP BY)
+        result = spark.sql("SELECT AVG(salary) as avg_salary FROM test_table")
         
         self.assert_parity(result, expected)
 
