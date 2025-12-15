@@ -868,9 +868,9 @@ class SQLExecutor:
                 # Save the result as a table
                 # Convert to DataFrame if needed
                 from ...dataframe import DataFrame
+                from ...spark_types import StructType
 
                 if not isinstance(result_df, DataFrame):
-                    from ...spark_types import StructType
                     result_df = DataFrame(result_df.collect(), StructType(result_df.schema.fields))  # type: ignore[arg-type]
 
                 # Build table full name
