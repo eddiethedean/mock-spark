@@ -68,18 +68,14 @@ class GroupedData:
         expression_order: list[str] = []
         is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
         
-        # PySpark-style strict validation: all expressions must be Column or ColumnOperation
-        # Skip this for dict syntax (handled separately below)
+        # PySpark-style strict validation: all expressions must be Column or ColumnOperation.
+        # Skip this for dict syntax (handled separately below).
+        # NOTE (BUG-022): PySpark also accepts AggregateFunction objects in many contexts
+        # (e.g., F.first, F.last, F.collect_list). We therefore allow AggregateFunction
+        # instances through validation and handle them explicitly later in this method
+        # instead of rejecting them up-front.
         if not is_dict_syntax:
             for i, expr in enumerate(exprs):
-                # Allow AggregateFunction for backward compatibility, but warn
-                # PySpark requires Column/ColumnOperation only
-                if isinstance(expr, AggregateFunction):
-                    raise AssertionError(
-                        f"all exprs should be Column, got {type(expr).__name__} at argument {i}. "
-                        "AggregateFunction objects should be converted to Column/ColumnOperation "
-                        "before passing to agg()."
-                    )
                 # Allow strings for backward compatibility
                 if not isinstance(expr, str) and not (is_column(expr) or is_column_operation(expr)):
                     raise AssertionError(
