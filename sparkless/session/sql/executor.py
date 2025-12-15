@@ -858,13 +858,34 @@ class SQLExecutor:
                 # Table exists and IF NOT EXISTS is specified, skip creation
                 return cast("IDataFrame", DataFrame([], StructType([])))
 
+            # Check if this is CREATE TABLE AS SELECT
+            select_query = components.get("select_query")
+            if select_query:
+                # Execute the SELECT query
+                select_ast = self.parser.parse(select_query)
+                result_df = self._execute_select(select_ast)
+
+                # Save the result as a table
+                # Convert to DataFrame if needed
+                from ...dataframe import DataFrame
+
+                if not isinstance(result_df, DataFrame):
+                    from ...spark_types import StructType
+                    result_df = DataFrame(result_df.collect(), StructType(result_df.schema.fields))  # type: ignore[arg-type]
+
+                # Write to table using saveAsTable
+                result_df.write.mode("overwrite").saveAsTable(table_full_name)
+
+                # Return empty DataFrame to indicate success
+                return cast("IDataFrame", DataFrame([], StructType([])))
+
             # Parse column definitions
             column_definitions = components.get("column_definitions", "")
             if not column_definitions:
                 from ...errors import QueryExecutionException
 
                 raise QueryExecutionException(
-                    "CREATE TABLE requires column definitions"
+                    "CREATE TABLE requires column definitions or AS SELECT clause"
                 )
 
             # Parse DDL schema using DDL adapter
