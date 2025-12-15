@@ -428,11 +428,12 @@ class SQLParser:
                 components["select_columns"] = columns
 
         # Extract FROM tables (handle aliases and JOINs)
-        # Pattern: FROM table [alias] [JOIN table2 [alias2] ON condition]
+        # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
+        # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
-            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+(.+?))?)?",
+            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
             query,
-            re.IGNORECASE,
+            re.IGNORECASE | re.DOTALL,
         )
         if from_match:
             table1 = from_match.group(1)
