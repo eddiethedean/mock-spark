@@ -1629,7 +1629,7 @@ class SQLExecutor:
         if "show tables" in query_lower:
             db_name = None
             match = re.search(
-                r"show\s+tables\s+in\s+([`\\w]+)", original_query, re.IGNORECASE
+                r"show\s+tables\s+in\s+([`\w]+)", original_query, re.IGNORECASE
             )
             if match:
                 db_name = match.group(1).strip("`")
@@ -1814,6 +1814,40 @@ class SQLExecutor:
                 data.append(row)
             
             if is_extended:
+                # Add extended metadata rows after column info (PySpark format)
+                # Add separator row
+                data.append({
+                    "col_name": "",
+                    "data_type": "",
+                    "comment": "",
+                    "nullable": ""
+                })
+                # Add table metadata rows
+                data.append({
+                    "col_name": "# Detailed Table Information",
+                    "data_type": "",
+                    "comment": "",
+                    "nullable": ""
+                })
+                data.append({
+                    "col_name": "Name",
+                    "data_type": table_name,
+                    "comment": "",
+                    "nullable": ""
+                })
+                data.append({
+                    "col_name": "Type",
+                    "data_type": "MANAGED",
+                    "comment": "",
+                    "nullable": ""
+                })
+                data.append({
+                    "col_name": "Provider",
+                    "data_type": "sparkless",
+                    "comment": "",
+                    "nullable": ""
+                })
+                
                 result_schema = StructType([
                     StructField("col_name", StringType()),
                     StructField("data_type", StringType()),
