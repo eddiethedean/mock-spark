@@ -785,23 +785,28 @@ class SQLExecutor:
                     if having_col_name and having_col_name in df_ops.columns:
                         if operator == ">":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(having_col_name) > value)
+                                "DataFrame",
+                                df_ops.filter(F.col(having_col_name) > value),
                             )
                         elif operator == "<":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(having_col_name) < value)
+                                "DataFrame",
+                                df_ops.filter(F.col(having_col_name) < value),
                             )
                         elif operator in ("=", "=="):
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(having_col_name) == value)
+                                "DataFrame",
+                                df_ops.filter(F.col(having_col_name) == value),
                             )
                         elif operator == ">=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(having_col_name) >= value)
+                                "DataFrame",
+                                df_ops.filter(F.col(having_col_name) >= value),
                             )
                         elif operator == "<=":
                             df = cast(
-                                "DataFrame", df_ops.filter(F.col(having_col_name) <= value)
+                                "DataFrame",
+                                df_ops.filter(F.col(having_col_name) <= value),
                             )
                         # Update df_ops after filter for all operators
                         df_ops = cast("SupportsDataFrameOps", df)
