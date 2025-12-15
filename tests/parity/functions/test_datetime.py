@@ -30,7 +30,7 @@ class TestDatetimeFunctionsParity(ParityTestBase):
         """Test dayofmonth function matches PySpark behavior."""
         expected = self.load_expected("datetime", "dayofmonth")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.dayofmonth(df.hire_date))
+        result = df.select(F.dayofmonth(df.date))
         self.assert_parity(result, expected)
 
     def test_dayofweek(self, spark):
