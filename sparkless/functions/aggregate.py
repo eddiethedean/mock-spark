@@ -74,84 +74,121 @@ class AggregateFunctions:
             )
 
     @staticmethod
-    def count(column: Union[Column, str, None] = None) -> AggregateFunction:
+    def count(column: Union[Column, str, None] = None) -> ColumnOperation:
         """Count non-null values.
 
         Args:
             column: The column to count (None for count(*)).
 
         Returns:
-            AggregateFunction representing the count function.
+            ColumnOperation representing the count function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("count aggregate function")
-        return AggregateFunction(column, "count", LongType(nullable=False))
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create AggregateFunction first to get correct name generation
+        agg_func = AggregateFunction(column, "count", LongType(nullable=False))
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "count", value=None, name=agg_func.name)
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = agg_func  # type: ignore
+        return op
 
     @staticmethod
-    def sum(column: Union[Column, str]) -> AggregateFunction:
+    def sum(column: Union[Column, str]) -> ColumnOperation:
         """Sum values.
 
         Args:
             column: The column to sum.
 
         Returns:
-            AggregateFunction representing the sum function.
+            ColumnOperation representing the sum function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("sum aggregate function")
-        return AggregateFunction(column, "sum", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "sum", value=None, name=f"sum({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "sum", DoubleType())  # type: ignore
+        return op
 
     @staticmethod
-    def avg(column: Union[Column, str]) -> AggregateFunction:
+    def avg(column: Union[Column, str]) -> ColumnOperation:
         """Average values.
 
         Args:
             column: The column to average.
 
         Returns:
-            AggregateFunction representing the avg function.
+            ColumnOperation representing the avg function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("avg aggregate function")
-        return AggregateFunction(column, "avg", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "avg", value=None, name=f"avg({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "avg", DoubleType())  # type: ignore
+        return op
 
     @staticmethod
-    def max(column: Union[Column, str]) -> AggregateFunction:
+    def max(column: Union[Column, str]) -> ColumnOperation:
         """Maximum value.
 
         Args:
             column: The column to get max of.
 
         Returns:
-            AggregateFunction representing the max function.
+            ColumnOperation representing the max function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("max aggregate function")
-        return AggregateFunction(column, "max", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "max", value=None, name=f"max({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "max", DoubleType())  # type: ignore
+        return op
 
     @staticmethod
-    def min(column: Union[Column, str]) -> AggregateFunction:
+    def min(column: Union[Column, str]) -> ColumnOperation:
         """Minimum value.
 
         Args:
             column: The column to get min of.
 
         Returns:
-            AggregateFunction representing the min function.
+            ColumnOperation representing the min function (PySpark-compatible).
 
         Raises:
             RuntimeError: If no active SparkSession is available
         """
         AggregateFunctions._require_active_session("min aggregate function")
-        return AggregateFunction(column, "min", DoubleType())
+        # Convert string to Column if needed
+        col = Column(column) if isinstance(column, str) else column
+        # Create ColumnOperation that wraps the aggregate function internally
+        # This matches PySpark's behavior where aggregate functions return Column objects
+        op = ColumnOperation(col, "min", value=None, name=f"min({col.name})")
+        # Store the aggregate function info for evaluation
+        op._aggregate_function = AggregateFunction(column, "min", DoubleType())  # type: ignore
+        return op
 
     @staticmethod
     def first(column: Union[Column, str]) -> AggregateFunction:
