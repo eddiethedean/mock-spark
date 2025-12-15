@@ -1602,10 +1602,14 @@ class SQLExecutor:
         table_name = table_match.group(1)
         
         # Check if specific column is requested: DESCRIBE [EXTENDED] table_name column_name
-        # First try with EXTENDED/FORMATTED, then without
-        col_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
-        if not col_match:
-            col_match = re.search(r"DESCRIBE\s+\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
+        # Only match if there's a word after the table name (not the table name itself)
+        # First check if EXTENDED/FORMATTED is present - if so, only match column if there's something after table
+        if is_extended:
+            # For EXTENDED/FORMATTED, column must come after table name
+            col_match = re.search(rf"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+{re.escape(table_name)}\s+(\w+)", original_query, re.IGNORECASE)
+        else:
+            # For regular DESCRIBE, match column name after table
+            col_match = re.search(rf"DESCRIBE\s+{re.escape(table_name)}\s+(\w+)", original_query, re.IGNORECASE)
         column_name = col_match.group(1) if col_match else None
         
         # Get table
