@@ -551,6 +551,33 @@ class SQLParser:
                 "definition": query,
             }
 
+        # Parse CREATE TABLE [IF NOT EXISTS] [schema.]table_name AS SELECT ...
+        create_table_as_select_match = re.search(
+            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)\s+AS\s+(SELECT.*)",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if create_table_as_select_match:
+            table_name = create_table_as_select_match.group(1).strip("`")
+            select_query = create_table_as_select_match.group(2).strip()
+            if_not_exists = "IF NOT EXISTS" in query.upper()
+
+            # Parse schema.table or just table
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
+            else:
+                schema = None  # Will use current schema
+                table = table_name
+
+            return {
+                "object_type": "TABLE",
+                "object_name": table,
+                "schema_name": schema,
+                "select_query": select_query,
+                "ignore_if_exists": if_not_exists,
+                "definition": query,
+            }
+
         # Parse CREATE TABLE [IF NOT EXISTS] [schema.]table_name (column_definitions)
         create_table_match = re.match(
             r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)\s*\((.*?)\)",
