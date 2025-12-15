@@ -19,8 +19,10 @@ class TestSQLQueriesParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         df.write.mode("overwrite").saveAsTable("test_table")
         
-        # Execute SQL query
-        result = spark.sql("SELECT * FROM test_table")
+        # Execute SQL query - use the query from expected output
+        # The expected output was generated with "SELECT id, name, age FROM employees"
+        # So we need to use the same query pattern
+        result = spark.sql("SELECT id, name, age FROM test_table")
         
         self.assert_parity(result, expected)
 
