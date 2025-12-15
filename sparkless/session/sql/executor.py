@@ -1601,8 +1601,11 @@ class SQLExecutor:
         
         table_name = table_match.group(1)
         
-        # Check if specific column is requested: DESCRIBE table_name column_name
-        col_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED\s+)?\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
+        # Check if specific column is requested: DESCRIBE [EXTENDED] table_name column_name
+        # First try with EXTENDED/FORMATTED, then without
+        col_match = re.search(r"DESCRIBE\s+(?:EXTENDED|FORMATTED)\s+\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
+        if not col_match:
+            col_match = re.search(r"DESCRIBE\s+\w+(?:\.\w+)?\s+(\w+)", original_query, re.IGNORECASE)
         column_name = col_match.group(1) if col_match else None
         
         # Get table
