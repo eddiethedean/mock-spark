@@ -543,7 +543,47 @@ class SQLExecutor:
                         )
 
             # Perform GROUP BY with aggregations
-            grouped = df_ops.groupBy(*group_by_columns)
+            # Handle boolean expressions in GROUP BY (e.g., "GROUP BY (age > 30)")
+            group_by_cols = []
+            temp_df = df_ops
+            for i, col_expr in enumerate(group_by_columns):
+                col_expr = col_expr.strip()
+                # Check if this is a boolean expression like "(age > 30)"
+                if col_expr.startswith("(") and col_expr.endswith(")"):
+                    # Extract the expression inside parentheses
+                    expr_str = col_expr[1:-1].strip()
+                    # Try to parse as a comparison expression (e.g., "age > 30")
+                    comparison_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", expr_str)
+                    if comparison_match:
+                        col_name = comparison_match.group(1)
+                        operator = comparison_match.group(2)
+                        value = int(comparison_match.group(3))
+                        # Create a temporary column for the boolean expression
+                        temp_col_name = f"_group_by_expr_{i}"
+                        # Create a boolean column expression
+                        if operator == ">":
+                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) > value))
+                        elif operator == "<":
+                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) < value))
+                        elif operator in ("=", "=="):
+                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) == value))
+                        elif operator == ">=":
+                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) >= value))
+                        elif operator == "<=":
+                            temp_df = cast("DataFrame", temp_df.withColumn(temp_col_name, F.col(col_name) <= value))
+                        else:
+                            # Fallback: use as column name
+                            temp_col_name = col_expr
+                        group_by_cols.append(temp_col_name)
+                        df_ops = cast("SupportsDataFrameOps", temp_df)
+                    else:
+                        # Not a comparison, use as column name
+                        group_by_cols.append(col_expr)
+                else:
+                    # Regular column name
+                    group_by_cols.append(col_expr)
+            
+            grouped = df_ops.groupBy(*group_by_cols)
             if agg_exprs:
                 # Only add aggregate expressions - group by columns are automatically included
                 df = cast("DataFrame", grouped.agg(*agg_exprs))
@@ -553,6 +593,31 @@ class SQLExecutor:
                     df = cast("DataFrame", grouped.agg(*select_exprs))
                 else:
                     df = cast("DataFrame", grouped.agg())
+            
+            # If SELECT clause doesn't include group-by columns, exclude them from result
+            # (e.g., "SELECT COUNT(*) FROM ... GROUP BY (age > 30)" should only return count)
+            select_columns = components.get("select_columns", ["*"])
+            if select_columns != ["*"]:
+                # Check if any group-by columns are in the SELECT
+                select_col_names = [col.split(" AS ")[0].strip().split(".")[-1] for col in select_columns]
+                # Remove temporary group-by columns that aren't in SELECT
+                cols_to_keep = []
+                for col in df.columns:
+                    # Keep if it's in SELECT or if it's a regular group-by column (not temporary)
+                    if col in select_col_names or not col.startswith("_group_by_expr_"):
+                        # But only if it's actually in SELECT or is a regular group-by column
+                        if col in select_col_names or col in group_by_columns:
+                            cols_to_keep.append(col)
+                    # Always keep aggregate columns (like count)
+                    elif any(agg in col.lower() for agg in ["count", "sum", "avg", "max", "min"]):
+                        cols_to_keep.append(col)
+                
+                # Select only the columns we want to keep
+                if cols_to_keep:
+                    df = cast("DataFrame", df.select(*cols_to_keep))
+                else:
+                    # Fallback: select all columns that match SELECT clause
+                    df = cast("DataFrame", df.select(*[F.col(c) for c in df.columns if c in select_col_names or any(agg in c.lower() for agg in ["count", "sum", "avg", "max", "min"])]))
 
             df_ops = cast("SupportsDataFrameOps", df)
 
