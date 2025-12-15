@@ -21,6 +21,7 @@ Example:
 """
 
 from typing import Any
+import re
 from ...core.exceptions.analysis import ParseException
 
 
@@ -281,7 +282,10 @@ class SQLParser:
         """
         query_upper = query.upper().strip()
 
-        if query_upper.startswith("SELECT"):
+        # Check for UNION before SELECT (since UNION queries start with SELECT)
+        if " UNION " in query_upper or re.search(r"\bUNION\b", query_upper):
+            return "UNION"
+        elif query_upper.startswith("SELECT"):
             return "SELECT"
         elif query_upper.startswith("INSERT"):
             return "INSERT"
@@ -336,6 +340,8 @@ class SQLParser:
 
         if query_type == "SELECT":
             components.update(self._parse_select_query(query))
+        elif query_type == "UNION":
+            components.update(self._parse_union_query(query))
         elif query_type == "CREATE":
             components.update(self._parse_create_query(query))
         elif query_type == "DROP":
@@ -973,4 +979,37 @@ class SQLParser:
 
         components["when_not_matched"] = not_matched_clauses
 
+        return components
+
+    def _parse_union_query(self, query: str) -> dict[str, Any]:
+        """Parse UNION query.
+
+        Args:
+            query: SQL query string.
+
+        Returns:
+            Dictionary of parsed components.
+        """
+        components: dict[str, Any] = {}
+        
+        # Split by UNION (case insensitive, match whole word)
+        import re
+        # Use word boundary to match UNION as whole word, not part of another word
+        parts = re.split(r"\bUNION\b", query, flags=re.IGNORECASE)
+        
+        if len(parts) < 2:
+            # For now, only support single UNION (two SELECT statements)
+            # Could extend to support multiple UNIONs
+            components["left_query"] = query.strip()
+            components["right_query"] = None
+        else:
+            # Split into left and right queries
+            # The UNION keyword is between them, so we have:
+            # parts[0] = first SELECT statement
+            # parts[1] = second SELECT statement (may have leading whitespace from UNION)
+            left_query = parts[0].strip()
+            right_query = " ".join(parts[1:]).strip()  # Join any additional parts (shouldn't happen with single UNION)
+            components["left_query"] = left_query
+            components["right_query"] = right_query
+        
         return components

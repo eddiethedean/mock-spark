@@ -80,6 +80,8 @@ class SQLExecutor:
             # Execute based on query type
             if ast.query_type == "SELECT":
                 return self._execute_select(ast)
+            elif ast.query_type == "UNION":
+                return self._execute_union(ast)
             elif ast.query_type == "CREATE":
                 return self._execute_create(ast)
             elif ast.query_type == "DROP":
@@ -495,6 +497,68 @@ class SQLExecutor:
             df_ops = cast("SupportsDataFrameOps", df)
 
         return cast("IDataFrame", df)
+
+    def _execute_union(self, ast: SQLAST) -> IDataFrame:
+        """Execute UNION query.
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            DataFrame with UNION results.
+        """
+        components = ast.components
+        
+        # Get left and right queries
+        left_query = components.get("left_query", "")
+        right_query = components.get("right_query", "")
+        
+        if not left_query or not right_query:
+            raise QueryExecutionException("UNION requires two SELECT statements")
+        
+        # Execute both SELECT queries
+        left_ast = self.parser.parse(left_query)
+        right_ast = self.parser.parse(right_query)
+        
+        if left_ast.query_type != "SELECT" or right_ast.query_type != "SELECT":
+            raise QueryExecutionException("UNION can only combine SELECT statements")
+        
+        left_df = self._execute_select(left_ast)
+        right_df = self._execute_select(right_ast)
+        
+        # Convert to DataFrame if needed
+        from ...dataframe import DataFrame
+        from ...dataframe.protocols import SupportsDataFrameOps
+        
+        if not isinstance(left_df, DataFrame):
+            from ...spark_types import StructType
+            schema = (
+                StructType(left_df.schema.fields)  # type: ignore[arg-type]
+                if hasattr(left_df.schema, "fields")
+                else StructType([])
+            )
+            left_df = DataFrame(left_df.collect(), schema)
+        
+        if not isinstance(right_df, DataFrame):
+            from ...spark_types import StructType
+            schema = (
+                StructType(right_df.schema.fields)  # type: ignore[arg-type]
+                if hasattr(right_df.schema, "fields")
+                else StructType([])
+            )
+            right_df = DataFrame(right_df.collect(), schema)
+        
+        # Perform union (removes duplicates like UNION, not UNION ALL)
+        result = cast("DataFrame", left_df.union(right_df))
+        
+        # Materialize if lazy (union() may queue operations)
+        if hasattr(result, "_materialize_if_lazy"):
+            result = cast("DataFrame", result._materialize_if_lazy())
+        elif hasattr(result, "_operations_queue") and result._operations_queue:
+            # Force materialization if operations are queued
+            result = cast("DataFrame", result._materialize_if_lazy())
+        
+        return cast("IDataFrame", result)
 
     def _execute_create(self, ast: SQLAST) -> IDataFrame:
         """Execute CREATE query.
