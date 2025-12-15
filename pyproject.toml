@@ -183,11 +183,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+norecursedirs = ["archive"]
 addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
     "--disable-warnings",
+    "--ignore=tests/archive",
     "--cov=sparkless",
     "--cov-report=term-missing",
     "--cov-report=html",
