@@ -873,6 +873,11 @@ class SQLExecutor:
                     from ...spark_types import StructType
                     result_df = DataFrame(result_df.collect(), StructType(result_df.schema.fields))  # type: ignore[arg-type]
 
+                # Build table full name
+                table_full_name = (
+                    f"{schema_name}.{object_name}" if schema_name else object_name
+                )
+
                 # Write to table using saveAsTable
                 result_df.write.mode("overwrite").saveAsTable(table_full_name)
 
