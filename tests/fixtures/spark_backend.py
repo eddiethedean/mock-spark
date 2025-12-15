@@ -209,7 +209,8 @@ class SparkBackend:
                     from delta import configure_spark_with_delta_pip
 
                     # configure_spark_with_delta_pip must be called on a fresh builder
-                    # It adds the Delta JARs and configures extensions/catalog
+                    # It adds the Delta JARs, but we need to explicitly set extensions/catalog
+                    # to ensure they're applied correctly
                     builder = configure_spark_with_delta_pip(
                         PySparkSession.builder.master(unique_master)
                         .appName(unique_app_name)
@@ -222,14 +223,15 @@ class SparkBackend:
                             "spark.sql.adaptive.coalescePartitions.enabled", "false"
                         )
                         .config("spark.sql.warehouse.dir", unique_warehouse)
-                        .config(
-                            "spark.sql.extensions",
-                            "io.delta.sql.DeltaSparkSessionExtension",
-                        )
-                        .config(
-                            "spark.sql.catalog.spark_catalog",
-                            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-                        )
+                    )
+                    # Explicitly set Delta extensions and catalog AFTER configure_spark_with_delta_pip
+                    # This ensures they're applied correctly (configure_spark_with_delta_pip may not set them)
+                    builder = builder.config(
+                        "spark.sql.extensions",
+                        "io.delta.sql.DeltaSparkSessionExtension",
+                    ).config(
+                        "spark.sql.catalog.spark_catalog",
+                        "org.apache.spark.sql.delta.catalog.DeltaCatalog",
                     )
                     # Apply any additional config from kwargs
                     for key, value in kwargs.items():
@@ -390,7 +392,9 @@ class SparkBackend:
             )
 
         if backend == BackendType.PYSPARK:
-            return SparkBackend.create_pyspark_session(app_name, **kwargs)
+            # Explicitly enable Delta Lake for PySpark sessions
+            enable_delta = kwargs.pop("enable_delta", True)
+            return SparkBackend.create_pyspark_session(app_name, enable_delta=enable_delta, **kwargs)
         else:
             return SparkBackend.create_mock_spark_session(app_name, **kwargs)
 
