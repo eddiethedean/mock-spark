@@ -55,7 +55,6 @@ class TestArrayFunctionsParity(ParityTestBase):
         # array_distinct doesn't guarantee order of elements within arrays
         # PySpark may return arrays in different order than expected
         # Sort the arrays within each row for comparison
-        from sparkless import functions as F
         result = result.withColumn("array_distinct(tags)", F.array_sort(F.col("array_distinct(tags)")))
         self.assert_parity(result, expected)
 
