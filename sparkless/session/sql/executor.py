@@ -241,22 +241,26 @@ class SQLExecutor:
                                 df2_join_col = f"{table2_alias}_{df2_col}"
                                 
                                 # Perform join with renamed columns
+                                # Get join type from join_info (default to "inner" if not specified)
+                                join_type = join_info.get("type", "inner")
                                 join_col = df1_renamed[df1_join_col] == df2_renamed[df2_join_col]
-                                df = cast("DataFrame", df1_renamed.join(df2_renamed, join_col, "inner"))  # type: ignore[arg-type]
+                                df = cast("DataFrame", df1_renamed.join(df2_renamed, join_col, join_type))  # type: ignore[arg-type]
                             else:
                                 # Fallback: try direct column names (assume col1 is from df1, col2 from df2)
+                                join_type = join_info.get("type", "inner")
                                 if col1 in df1.columns and col2 in df2.columns:
                                     join_col = df1[col1] == df2[col2]
-                                    df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                                    df = cast("DataFrame", df1.join(df2, join_col, join_type))  # type: ignore[arg-type]
                                 elif col2 in df1.columns and col1 in df2.columns:
                                     # Try reverse mapping
                                     join_col = df1[col2] == df2[col1]
-                                    df = cast("DataFrame", df1.join(df2, join_col, "inner"))  # type: ignore[arg-type]
+                                    df = cast("DataFrame", df1.join(df2, join_col, join_type))  # type: ignore[arg-type]
                                 else:
                                     # Last resort: cross join
                                     df = cast("DataFrame", df1.crossJoin(cast("SupportsDataFrameOps", df2)))
                         else:
                             # Fallback: try to join on common column names
+                            join_type = join_info.get("type", "inner")
                             common_cols = set(df1.columns) & set(df2.columns)
                             if common_cols:
                                 join_col_name = list(common_cols)[0]
@@ -268,7 +272,7 @@ class SQLExecutor:
                                     df1.join(
                                         cast("SupportsDataFrameOps", df2),
                                         join_condition,  # type: ignore[arg-type]
-                                        "inner",
+                                        join_type,
                                     ),
                                 )
                             else:
