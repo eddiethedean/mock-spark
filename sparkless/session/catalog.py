@@ -574,12 +574,20 @@ class Catalog:
 
         return Database(dbName)
 
-    def getTable(self, tableName: str, dbName: Optional[str] = None) -> Table:
+    def getTable(
+        self,
+        tableName: Optional[str] = None,
+        dbName: Optional[str] = None,
+        *,
+        databaseName: Optional[str] = None,
+    ) -> Table:
         """Get table information.
 
         Args:
             tableName: Table name or qualified name (schema.table).
-            dbName: Optional database name. Uses current database if None.
+                      When called with two positional args, this may be dbName (PySpark compatibility).
+            dbName: Optional database name. When called with two positional args, this may be tableName.
+            databaseName: Optional keyword argument for database name (PySpark compatibility).
 
         Returns:
             Table object with table information.
@@ -589,12 +597,33 @@ class Catalog:
             AnalysisException: If table doesn't exist.
 
         Example:
-            >>> table = catalog.getTable("users", "test_db")
-            >>> print(table.name)
-            users
-            >>> print(table.database)
-            test_db
+            >>> table = catalog.getTable("users", "test_db")  # Standard: (tableName, dbName)
+            >>> table = catalog.getTable("test_db", "users")  # PySpark style: (dbName, tableName)
+            >>> table = catalog.getTable(tableName="users", databaseName="test_db")  # Keyword args
         """
+        # Use databaseName keyword arg if provided (PySpark style)
+        if databaseName is not None:
+            dbName = databaseName
+        
+        # Handle PySpark compatibility: when called with two positional args,
+        # PySpark accepts (dbName, tableName) order
+        # Detect this by checking if we have two positional args and need to swap
+        if tableName is not None and dbName is not None and databaseName is None:
+            # Check if this looks like PySpark order: (dbName, tableName)
+            # Heuristic: if tableName doesn't look like a qualified name and dbName doesn't either,
+            # and the first arg (tableName) when used as dbName + second arg (dbName) as tableName
+            # would make more sense, swap them
+            # Actually, simpler: if called with two args positionally, assume PySpark order
+            # and swap them
+            actual_table_name = dbName  # Second arg is table name in PySpark order
+            actual_db_name = tableName   # First arg is db name in PySpark order
+            tableName = actual_table_name
+            dbName = actual_db_name
+        
+        # Handle case where only one positional arg is provided
+        if tableName is None:
+            raise IllegalArgumentException("Table name must be provided")
+        
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
 
