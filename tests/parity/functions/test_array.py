@@ -68,7 +68,6 @@ class TestArrayFunctionsParity(ParityTestBase):
         result = df.select(F.array_union(df.arr1, df.arr2))
         self.assert_parity(result, expected)
 
-    @pytest.mark.skip(reason="BUG-017: Column name mismatch - PySpark generates complex lambda function name in column, mock generates simpler name. Function works correctly, data values match.")
     def test_array_sort(self, spark):
         """Test array_sort function matches PySpark behavior."""
         expected = self.load_expected("arrays", "array_sort")
