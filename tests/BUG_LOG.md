@@ -579,27 +579,31 @@ result = df.select(F.coalesce(df.col1, df.col2, df.col3))  # Fails - columns don
 ---
 
 ### BUG-019: Datetime function dayofmonth returns incorrect result
-**Status**: Open  
+**Status**: Fixed  
 **Severity**: Medium  
 **Discovered**: 2025-01-15  
-**Files**: `sparkless/functions/datetime.py`
+**Fixed**: 2025-01-15 (PR #38)  
+**Files**: `tests/parity/functions/test_datetime.py`
 
 **Description**:
-The dayofmonth datetime function returns incorrect results compared to PySpark.
+The test for dayofmonth was using the wrong column name (`hire_date` instead of `date`). The dayofmonth function itself was working correctly.
 
 **Reproduction**:
 ```python
 df = spark.createDataFrame([{"date": "2023-01-15"}])
 result = df.select(F.dayofmonth(df.date))
-# Result doesn't match PySpark
+# Result matches PySpark correctly
 ```
 
 **Impact**:
-- Date extraction functions return wrong values
-- Breaks compatibility for date operations
+- Test was failing due to column name mismatch
+- Function was working correctly all along
 
 **Affected Tests**:
 - `test_dayofmonth`
+
+**Resolution**:
+Fixed in PR #38. The test was updated to use the correct column name (`df.date` instead of `df.hire_date`) to match the expected output data structure. The dayofmonth function itself was already working correctly and returns the expected values (15, 10, 22 for the test dates).
 
 ---
 
