@@ -840,11 +840,18 @@ class SQLExecutor:
         # Default to True for backward compatibility and safer behavior
         ignore_if_exists = components.get("ignore_if_exists", True)
 
+        # Import required types (used by all code paths)
+        from ...dataframe import DataFrame
+        from ...spark_types import StructType
+        from typing import cast
+
         # Handle both DATABASE and SCHEMA keywords (they're synonymous in Spark)
         if object_type in ("DATABASE", "SCHEMA"):
             self.session.catalog.createDatabase(
                 object_name, ignoreIfExists=ignore_if_exists
             )
+            # Return empty DataFrame to indicate success
+            return cast("IDataFrame", DataFrame([], StructType([])))
         elif object_type == "TABLE":
             # Parse schema and table name
             schema_name = components.get("schema_name")
@@ -876,9 +883,6 @@ class SQLExecutor:
 
                 # Save the result as a table
                 # Convert to DataFrame if needed
-                from ...dataframe import DataFrame
-                from ...spark_types import StructType
-
                 if not isinstance(result_df, DataFrame):
                     result_df = DataFrame(result_df.collect(), StructType(result_df.schema.fields))  # type: ignore[arg-type]
 
