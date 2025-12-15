@@ -2049,6 +2049,7 @@ class SQLExecutor:
 
             # Cast to StructField to access dataType attribute
             from ...spark_types import StructField as StructFieldType
+
             field = cast(StructFieldType, field)
 
             comment = ""
@@ -2071,6 +2072,7 @@ class SQLExecutor:
         else:
             # DESCRIBE table (all columns)
             from ...spark_types import StructField as StructFieldType
+
             data = []
             for f in schema.fields:
                 # Cast to StructField to access dataType attribute
