@@ -1000,6 +1000,19 @@ class SQLExecutor:
                 f"Failed to get schema for table {schema_name}.{table_name}"
             )
 
+        # Get table data to determine original column order from first row
+        # This helps us match VALUES order to the order used when creating the table
+        table_data = storage.get_data(schema_name, table_name)
+        
+        # Determine expected column order: if table has data, use the keys from first row
+        # Otherwise, fall back to schema field order
+        if table_data and len(table_data) > 0:
+            # Use the order from actual data (which preserves DataFrame column order)
+            expected_column_order = list(table_data[0].keys())
+        else:
+            # No data yet, use schema field order
+            expected_column_order = [field.name for field in table_schema.fields]
+
         data: list[dict[str, Any]] = []
 
         if insert_type == "VALUES":
@@ -1007,8 +1020,12 @@ class SQLExecutor:
             values = components.get("values", [])
             columns = components.get("columns", [])
 
-            # If columns specified, use them; otherwise use all table columns in order
-            target_columns = columns or [field.name for field in table_schema.fields]
+            # If columns specified, use them; otherwise use the expected column order
+            if columns:
+                target_columns = columns
+            else:
+                # Use the expected column order (which matches how data was originally stored)
+                target_columns = expected_column_order
 
             # Convert string values to Python types
             for row_values in values:
@@ -1021,10 +1038,16 @@ class SQLExecutor:
                     parsed_value = self._parse_sql_value(value_str.strip())
                     row_dict[col_name] = parsed_value
 
-                # Fill missing columns with None
-                for field in table_schema.fields:
-                    if field.name not in row_dict:
-                        row_dict[field.name] = None
+                # Fill missing columns with None (only if columns were specified)
+                if columns:
+                    for field in table_schema.fields:
+                        if field.name not in row_dict:
+                            row_dict[field.name] = None
+                else:
+                    # All columns were provided in VALUES, ensure all are present
+                    for field in table_schema.fields:
+                        if field.name not in row_dict:
+                            row_dict[field.name] = None
 
                 data.append(row_dict)
 
