@@ -1580,7 +1580,8 @@ class GroupedData:
             DataFrame with count aggregations.
         """
         if not columns:
-            # Use AggregateFunction for count(*) to get proper naming
+            # AggregateFunctions.count() returns ColumnOperation (PySpark-compatible)
+            # which wraps AggregateFunction internally
             from ...functions.aggregate import AggregateFunctions
 
             return self.agg(AggregateFunctions.count())

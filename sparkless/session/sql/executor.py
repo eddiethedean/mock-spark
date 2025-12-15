@@ -80,6 +80,8 @@ class SQLExecutor:
             # Execute based on query type
             if ast.query_type == "SELECT":
                 return self._execute_select(ast)
+            elif ast.query_type == "UNION":
+                return self._execute_union(ast)
             elif ast.query_type == "CREATE":
                 return self._execute_create(ast)
             elif ast.query_type == "DROP":
@@ -410,18 +412,60 @@ class SQLExecutor:
             having_conditions = components.get("having_conditions", [])
             if having_conditions:
                 # Parse HAVING condition - simple implementation
-                # Example: "SUM(quantity * price) > 100"
+                # Example: "AVG(salary) > 55000" or "avg_salary > 55000"
                 having_condition = having_conditions[0]
-                # Try to parse simple conditions like "column > value" or "column < value"
-                # Match patterns like "SUM(...) > 100" or "total_spent > 100"
-                match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
-                if match:
-                    col_name = match.group(1)
-                    operator = match.group(2)
-                    value = int(match.group(3))
-
-                    # Check if column exists in result
-                    if col_name in df.columns:
+                
+                # Try to match aggregate function patterns like "AVG(salary) > 55000"
+                # Match patterns like "AGG_FUNC(col) > value" or "column_alias > value"
+                agg_func_match = re.search(
+                    r"(\w+)\s*\(\s*(\w+)\s*\)\s*([><=]+)\s*(\d+)", having_condition, re.IGNORECASE
+                )
+                if agg_func_match:
+                    # HAVING with aggregate function: "AVG(salary) > 55000"
+                    agg_func_name = agg_func_match.group(1).upper()
+                    agg_col_name = agg_func_match.group(2)
+                    operator = agg_func_match.group(3)
+                    value = int(agg_func_match.group(4))
+                    
+                    # Find matching column in result - check both aliased and generated names
+                    # The column might be aliased (e.g., "avg_salary") or use generated name (e.g., "avg(salary)")
+                    col_name = None
+                    for col in df.columns:
+                        # Check if column name matches the aggregate function pattern
+                        if agg_func_name in ["AVG", "MEAN"]:
+                            if col.lower() == f"avg({agg_col_name})" or col.lower() == "avg_salary" or "avg" in col.lower():
+                                col_name = col
+                                break
+                        elif agg_func_name == "SUM":
+                            if col.lower() == f"sum({agg_col_name})" or "sum" in col.lower():
+                                col_name = col
+                                break
+                        elif agg_func_name == "COUNT":
+                            if col.lower() == f"count({agg_col_name})" or col.lower() == "count" or "count" in col.lower():
+                                col_name = col
+                                break
+                        elif agg_func_name == "MAX":
+                            if col.lower() == f"max({agg_col_name})" or "max" in col.lower():
+                                col_name = col
+                                break
+                        elif agg_func_name == "MIN":
+                            if col.lower() == f"min({agg_col_name})" or "min" in col.lower():
+                                col_name = col
+                                break
+                    
+                    # If not found, try exact match with generated name
+                    if not col_name:
+                        generated_name = f"{agg_func_name.lower()}({agg_col_name})"
+                        if generated_name in df.columns:
+                            col_name = generated_name
+                        # Also try alias pattern (lowercase with underscore)
+                        else:
+                            alias_name = f"{agg_func_name.lower()}_{agg_col_name}"
+                            if alias_name in df.columns:
+                                col_name = alias_name
+                    
+                    # Apply filter if column found
+                    if col_name and col_name in df.columns:
                         if operator == ">":
                             df = cast(
                                 "DataFrame", df_ops.filter(F.col(col_name) > value)
@@ -443,6 +487,37 @@ class SQLExecutor:
                                 "DataFrame", df_ops.filter(F.col(col_name) <= value)
                             )
                         df_ops = cast("SupportsDataFrameOps", df)
+                else:
+                    # Try simple pattern match for column name > value
+                    simple_match = re.search(r"(\w+)\s*([><=]+)\s*(\d+)", having_condition)
+                    if simple_match:
+                        col_name = simple_match.group(1)
+                        operator = simple_match.group(2)
+                        value = int(simple_match.group(3))
+
+                        # Check if column exists in result
+                        if col_name in df.columns:
+                            if operator == ">":
+                                df = cast(
+                                    "DataFrame", df_ops.filter(F.col(col_name) > value)
+                                )
+                            elif operator == "<":
+                                df = cast(
+                                    "DataFrame", df_ops.filter(F.col(col_name) < value)
+                                )
+                            elif operator in ("=", "=="):
+                                df = cast(
+                                    "DataFrame", df_ops.filter(F.col(col_name) == value)
+                                )
+                            elif operator == ">=":
+                                df = cast(
+                                    "DataFrame", df_ops.filter(F.col(col_name) >= value)
+                                )
+                            elif operator == "<=":
+                                df = cast(
+                                    "DataFrame", df_ops.filter(F.col(col_name) <= value)
+                                )
+                            df_ops = cast("SupportsDataFrameOps", df)
         else:
             # No GROUP BY - just apply column selection
             if select_columns != ["*"]:
@@ -519,6 +594,68 @@ class SQLExecutor:
             df_ops = cast("SupportsDataFrameOps", df)
 
         return cast("IDataFrame", df)
+
+    def _execute_union(self, ast: SQLAST) -> IDataFrame:
+        """Execute UNION query.
+
+        Args:
+            ast: Parsed SQL AST.
+
+        Returns:
+            DataFrame with UNION results.
+        """
+        components = ast.components
+        
+        # Get left and right queries
+        left_query = components.get("left_query", "")
+        right_query = components.get("right_query", "")
+        
+        if not left_query or not right_query:
+            raise QueryExecutionException("UNION requires two SELECT statements")
+        
+        # Execute both SELECT queries
+        left_ast = self.parser.parse(left_query)
+        right_ast = self.parser.parse(right_query)
+        
+        if left_ast.query_type != "SELECT" or right_ast.query_type != "SELECT":
+            raise QueryExecutionException("UNION can only combine SELECT statements")
+        
+        left_df = self._execute_select(left_ast)
+        right_df = self._execute_select(right_ast)
+        
+        # Convert to DataFrame if needed
+        from ...dataframe import DataFrame
+        from ...dataframe.protocols import SupportsDataFrameOps
+        
+        if not isinstance(left_df, DataFrame):
+            from ...spark_types import StructType
+            schema = (
+                StructType(left_df.schema.fields)  # type: ignore[arg-type]
+                if hasattr(left_df.schema, "fields")
+                else StructType([])
+            )
+            left_df = DataFrame(left_df.collect(), schema)
+        
+        if not isinstance(right_df, DataFrame):
+            from ...spark_types import StructType
+            schema = (
+                StructType(right_df.schema.fields)  # type: ignore[arg-type]
+                if hasattr(right_df.schema, "fields")
+                else StructType([])
+            )
+            right_df = DataFrame(right_df.collect(), schema)
+        
+        # Perform union (removes duplicates like UNION, not UNION ALL)
+        result = cast("DataFrame", left_df.union(right_df))
+        
+        # Materialize if lazy (union() may queue operations)
+        if hasattr(result, "_materialize_if_lazy"):
+            result = cast("DataFrame", result._materialize_if_lazy())
+        elif hasattr(result, "_operations_queue") and result._operations_queue:
+            # Force materialization if operations are queued
+            result = cast("DataFrame", result._materialize_if_lazy())
+        
+        return cast("IDataFrame", result)
 
     def _execute_create(self, ast: SQLAST) -> IDataFrame:
         """Execute CREATE query.
