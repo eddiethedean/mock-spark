@@ -318,11 +318,12 @@ class Column(ColumnOperatorMixin):
         return ColumnOperation(self, "bitwise_not", name=f"~{self.name}")
 
 
-class ColumnOperation(ColumnOperatorMixin):
+class ColumnOperation(Column):
     """Represents a column operation (comparison, arithmetic, etc.).
 
     This class encapsulates column operations and their operands for evaluation
-    during DataFrame operations.
+    during DataFrame operations. Inherits from Column to ensure isinstance() checks
+    pass for PySpark compatibility.
     """
 
     def __init__(
@@ -340,115 +341,42 @@ class ColumnOperation(ColumnOperatorMixin):
             value: The value or operand for the operation.
             name: Optional custom name for the operation.
         """
+        # Set attributes needed for _generate_name() before calling super().__init__()
         self.column = column
         self.operation = operation
         self.value = value
-        self._name = name or self._generate_name()
-        self._alias_name: Optional[str] = None
+        
+        # Generate the name for the Column base class
+        # We need to compute this before calling super().__init__()
+        generated_name = name or self._generate_name_early()
+        
+        # Call super().__init__() with the generated name
+        # This ensures ColumnOperation is a proper Column instance
+        super().__init__(generated_name)
+        
+        # Override _name with the actual generated name (in case name was provided)
+        if name is not None:
+            self._name = name
+        
+        # Set ColumnOperation-specific attributes
         self.function_name = operation
         self.return_type: Optional[Any] = None  # Type hint for return type
+        
+        # Ensure column_name is set (Column.__init__ sets it, but we want the operation name)
+        self.column_name = self._name
 
-    @property
-    def name(self) -> str:
-        """Get column name."""
-        # If there's an alias, use it
-        if hasattr(self, "_alias_name") and self._alias_name:
-            return self._alias_name
-        # For cast operations, PySpark keeps the original column name
-        if (
-            self.operation == "cast"
-            and hasattr(self, "column")
-            and hasattr(self.column, "name")
-        ):
-            col_name = getattr(self.column, "name", "")
-            return col_name if isinstance(col_name, str) else str(col_name)
-        # If _name was explicitly set (e.g., by datetime functions), use it
-        if self._name and self._name != self._generate_name():
-            return self._name
-        # For datetime and comparison operations, use the SQL representation
-        if self.operation in [
-            "hour",
-            "minute",
-            "second",
-            "year",
-            "month",
-            "day",
-            "dayofmonth",
-            "dayofweek",
-            "dayofyear",
-            "weekofyear",
-            "quarter",
-            "to_date",
-            "to_timestamp",
-            "==",
-            "!=",
-            "<",
-            ">",
-            "<=",
-            ">=",
-        ]:
-            return str(self)
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set column name."""
-        self._name = value
-
-    def __str__(self) -> str:
-        """Generate SQL representation of this operation."""
-        # For datetime functions, generate proper SQL
-        if self.operation in ["hour", "minute", "second"]:
-            return f"extract({self.operation} from TRY_CAST({self.column.name} AS TIMESTAMP))"
-        elif self.operation in ["year", "month", "day", "dayofmonth"]:
-            part = "day" if self.operation == "dayofmonth" else self.operation
-            return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
-        elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
-            part_map = {
-                "dayofweek": "dow",
-                "dayofyear": "doy",
-                "weekofyear": "week",
-                "quarter": "quarter",
-            }
-            part = part_map.get(self.operation, self.operation)
-
-            # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
-            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6) - NOTE: DuckDB backend only
-            # Add 1 to dayofweek to match PySpark
-            if self.operation == "dayofweek":
-                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) + 1 AS INTEGER)"
-            else:
-                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) AS INTEGER)"
-        elif self.operation in ["to_date", "to_timestamp"]:
-            if self.value is not None:
-                return f"STRPTIME({self.column.name}, '{self.value}')"
-            else:
-                target_type = "DATE" if self.operation == "to_date" else "TIMESTAMP"
-                return f"TRY_CAST({self.column.name} AS {target_type})"
-        elif self.operation in ["==", "!=", "<", ">", "<=", ">="]:
-            # For comparison operations, generate proper SQL
-            left = (
-                str(self.column)
-                if hasattr(self.column, "__str__")
-                else self.column.name
-            )
-            right = str(self.value) if self.value is not None else "NULL"
-            return f"({left} {self.operation} {right})"
-        elif self.operation == "cast":
-            # For cast operations, use the generated name which handles proper SQL syntax
-            return self._generate_name()
-        else:
-            # For other operations, use the generated name
-            return self._generate_name()
-
-    def _generate_name(self) -> str:
-        """Generate a name for this operation."""
+    def _generate_name_early(self) -> str:
+        """Generate a name for this operation (called before super().__init__()).
+        
+        This is a helper method that contains the same logic as _generate_name()
+        but can be called before the Column base class is fully initialized.
+        """
         # Extract value from Literal if needed
         if hasattr(self.value, "value") and hasattr(self.value, "data_type"):
             # This is a Literal
             value_str = str(self.value.value)
         else:
-            value_str = str(self.value)
+            value_str = str(self.value) if self.value is not None else "None"
 
         # Handle column reference - use str() to get proper SQL for ColumnOperation
         if self.column is None:
@@ -459,7 +387,7 @@ class ColumnOperation(ColumnOperatorMixin):
             column_ref = self.column.name
         else:
             # For ColumnOperation or other types, use string representation
-            column_ref = str(self.column)
+            column_ref = str(self.column) if self.column is not None else "None"
 
         if self.operation == "bitwise_not":
             # PySpark uses ~column for bitwise_not
@@ -586,7 +514,113 @@ class ColumnOperation(ColumnOperatorMixin):
             # Fallback to default
             return "struct(...)"
         else:
-            return f"{self.column.name} {self.operation} {self.value}"
+            # For aggregate functions and other operations, generate a standard name
+            if hasattr(self.column, "name"):
+                return f"{self.operation}({self.column.name})"
+            else:
+                return f"{self.operation}({column_ref})"
+
+    @property
+    def name(self) -> str:
+        """Get column name."""
+        # If there's an alias, use it
+        if hasattr(self, "_alias_name") and self._alias_name:
+            return self._alias_name
+        # For cast operations, PySpark keeps the original column name
+        if (
+            self.operation == "cast"
+            and hasattr(self, "column")
+            and hasattr(self.column, "name")
+        ):
+            col_name = getattr(self.column, "name", "")
+            return col_name if isinstance(col_name, str) else str(col_name)
+        # If _name was explicitly set (e.g., by datetime functions), use it
+        if self._name and self._name != self._generate_name():
+            return self._name
+        # For datetime and comparison operations, use the SQL representation
+        if self.operation in [
+            "hour",
+            "minute",
+            "second",
+            "year",
+            "month",
+            "day",
+            "dayofmonth",
+            "dayofweek",
+            "dayofyear",
+            "weekofyear",
+            "quarter",
+            "to_date",
+            "to_timestamp",
+            "==",
+            "!=",
+            "<",
+            ">",
+            "<=",
+            ">=",
+        ]:
+            return str(self)
+        return self._name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """Set column name."""
+        self._name = value
+
+    def __str__(self) -> str:
+        """Generate SQL representation of this operation."""
+        # For datetime functions, generate proper SQL
+        if self.operation in ["hour", "minute", "second"]:
+            return f"extract({self.operation} from TRY_CAST({self.column.name} AS TIMESTAMP))"
+        elif self.operation in ["year", "month", "day", "dayofmonth"]:
+            part = "day" if self.operation == "dayofmonth" else self.operation
+            return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
+        elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
+            part_map = {
+                "dayofweek": "dow",
+                "dayofyear": "doy",
+                "weekofyear": "week",
+                "quarter": "quarter",
+            }
+            part = part_map.get(self.operation, self.operation)
+
+            # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
+            # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6) - NOTE: DuckDB backend only
+            # Add 1 to dayofweek to match PySpark
+            if self.operation == "dayofweek":
+                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) + 1 AS INTEGER)"
+            else:
+                return f"CAST(extract({part} from TRY_CAST({self.column.name} AS DATE)) AS INTEGER)"
+        elif self.operation in ["to_date", "to_timestamp"]:
+            if self.value is not None:
+                return f"STRPTIME({self.column.name}, '{self.value}')"
+            else:
+                target_type = "DATE" if self.operation == "to_date" else "TIMESTAMP"
+                return f"TRY_CAST({self.column.name} AS {target_type})"
+        elif self.operation in ["==", "!=", "<", ">", "<=", ">="]:
+            # For comparison operations, generate proper SQL
+            left = (
+                str(self.column)
+                if hasattr(self.column, "__str__")
+                else self.column.name
+            )
+            right = str(self.value) if self.value is not None else "NULL"
+            return f"({left} {self.operation} {right})"
+        elif self.operation == "cast":
+            # For cast operations, use the generated name which handles proper SQL syntax
+            return self._generate_name()
+        else:
+            # For other operations, use the generated name
+            return self._generate_name()
+
+    def _generate_name(self) -> str:
+        """Generate a name for this operation.
+        
+        This method delegates to _generate_name_early() which contains
+        the actual implementation. This allows the same logic to be used
+        both before and after super().__init__() is called.
+        """
+        return self._generate_name_early()
 
     def alias(self, name: str) -> "ColumnOperation":
         """Create an alias for this operation."""
