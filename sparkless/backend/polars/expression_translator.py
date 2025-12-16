@@ -149,10 +149,11 @@ class PolarsExpressionTranslator:
         value = op.value
 
         # Translate left side
-        if isinstance(column, Column):
-            left = pl.col(column.name)
-        elif isinstance(column, ColumnOperation):
+        # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
+        if isinstance(column, ColumnOperation):
             left = self._translate_operation(column)
+        elif isinstance(column, Column):
+            left = pl.col(column.name)
         elif isinstance(column, Literal):
             # Resolve lazy literals before translating
             if hasattr(column, "_is_lazy") and column._is_lazy:
@@ -339,10 +340,11 @@ class PolarsExpressionTranslator:
                 raise ValueError(f"Unsupported unary operation: {operation}")
 
         # Translate right side
-        if isinstance(value, Column):
-            right = pl.col(value.name)
-        elif isinstance(value, ColumnOperation):
+        # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
+        if isinstance(value, ColumnOperation):
             right = self._translate_operation(value)
+        elif isinstance(value, Column):
+            right = pl.col(value.name)
         elif isinstance(value, Literal):
             # Resolve lazy literals before translating
             if hasattr(value, "_is_lazy") and value._is_lazy:
