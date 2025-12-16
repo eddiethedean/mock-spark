@@ -753,10 +753,11 @@ class PolarsExpressionTranslator:
                 return pl.int_range(pl.len())
 
         # Translate column expression
-        if isinstance(column, Column):
-            col_expr = pl.col(column.name)
-        elif isinstance(column, ColumnOperation):
+        # Check ColumnOperation BEFORE Column since ColumnOperation inherits from Column
+        if isinstance(column, ColumnOperation):
             col_expr = self._translate_operation(column)
+        elif isinstance(column, Column):
+            col_expr = pl.col(column.name)
         elif isinstance(column, str):
             col_expr = pl.col(column)
         else:
@@ -1437,6 +1438,13 @@ class PolarsExpressionTranslator:
                 raise ValueError(
                     "from_utc_timestamp requires Python evaluation for timezone conversion"
                 )
+            elif operation == "nanvl":
+                # nanvl(col1, col2) - returns col1 if not NaN, col2 if col1 is NaN
+                # PySpark generates: CASE WHEN (NOT (col1 = col1)) THEN col2 ELSE col1 END
+                # Polars: use is_nan() check
+                col2_expr = self.translate(op.value)
+                # Check if col1 is NaN: return col2 if col1 is NaN, otherwise return col1
+                return pl.when(col_expr.is_nan()).then(col2_expr).otherwise(col_expr)
             elif operation == "array_intersect":
                 # array_intersect(col1, col2) - intersection of two arrays
                 col2_expr = self.translate(op.value)
