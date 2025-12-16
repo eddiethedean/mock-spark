@@ -4,20 +4,14 @@ PySpark parity tests for datetime functions.
 Tests validate that Sparkless datetime functions behave identically to PySpark.
 """
 
-import pytest
 
 from tests.fixtures.parity_base import ParityTestBase
-from tests.fixtures.spark_backend import get_backend_type, BackendType
 from tests.fixtures.spark_imports import get_spark_imports
 
 
 class TestDatetimeFunctionsParity(ParityTestBase):
     """Test datetime function parity with PySpark."""
 
-    @pytest.mark.skipif(
-        get_backend_type() == BackendType.MOCK,
-        reason="Skipped in mock mode due to column name format mismatch. See issue #104",
-    )
     def test_year(self, spark):
         """Test year function matches PySpark behavior."""
         imports = get_spark_imports()
@@ -27,10 +21,6 @@ class TestDatetimeFunctionsParity(ParityTestBase):
         result = df.select(F.year(df.hire_date))
         self.assert_parity(result, expected)
 
-    @pytest.mark.skipif(
-        get_backend_type() == BackendType.MOCK,
-        reason="Skipped in mock mode due to column name format mismatch. See issue #104",
-    )
     def test_month(self, spark):
         """Test month function matches PySpark behavior."""
         imports = get_spark_imports()
@@ -49,10 +39,6 @@ class TestDatetimeFunctionsParity(ParityTestBase):
         result = df.select(F.dayofmonth(df.date))
         self.assert_parity(result, expected)
 
-    @pytest.mark.skipif(
-        get_backend_type() == BackendType.MOCK,
-        reason="Skipped in mock mode due to column name format mismatch. See issue #104",
-    )
     def test_dayofweek(self, spark):
         """Test dayofweek function matches PySpark behavior."""
         imports = get_spark_imports()
@@ -89,10 +75,6 @@ class TestDatetimeFunctionsParity(ParityTestBase):
         result = df.select(F.date_format(df.hire_date, "yyyy-MM"))
         self.assert_parity(result, expected)
 
-    @pytest.mark.skipif(
-        get_backend_type() == BackendType.MOCK,
-        reason="Skipped in mock mode due to column name format mismatch. See issue #104",
-    )
     def test_to_date(self, spark):
         """Test to_date function matches PySpark behavior."""
         imports = get_spark_imports()

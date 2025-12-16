@@ -389,7 +389,7 @@ class PolarsExpressionTranslator:
         # isin is handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             # operation is guaranteed to be a string in ColumnOperation
-            op_str: str = operation  # type: ignore[assignment]
+            op_str: str = operation
             return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
@@ -712,7 +712,7 @@ class PolarsExpressionTranslator:
             Polars expression for function call
         """
         # op.operation is guaranteed to be a string in ColumnOperation
-        op_operation: str = op.operation  # type: ignore[assignment]
+        op_operation: str = op.operation
         function_name = getattr(op, "function_name", op_operation)
         if function_name is None:
             function_name = op_operation
