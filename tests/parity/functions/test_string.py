@@ -4,7 +4,6 @@ PySpark parity tests for string functions.
 Tests validate that Sparkless string functions behave identically to PySpark.
 """
 
-
 from tests.fixtures.parity_base import ParityTestBase
 from tests.fixtures.spark_imports import get_spark_imports
 

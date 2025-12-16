@@ -5,7 +5,7 @@ This module translates Sparkless column expressions (Column, ColumnOperation)
 to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 import polars as pl
 import math
 import threading
@@ -389,7 +389,7 @@ class PolarsExpressionTranslator:
         # isin is handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             # operation is guaranteed to be a string in ColumnOperation
-            op_str: str = operation
+            op_str = cast("str", operation)
             return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
@@ -712,7 +712,7 @@ class PolarsExpressionTranslator:
             Polars expression for function call
         """
         # op.operation is guaranteed to be a string in ColumnOperation
-        op_operation: str = op.operation
+        op_operation = cast("str", op.operation)
         function_name = getattr(op, "function_name", op_operation)
         if function_name is None:
             function_name = op_operation
@@ -1203,9 +1203,9 @@ class PolarsExpressionTranslator:
                     # For string columns, try datetime format first (handles "2024-01-15 10:30:00")
                     # then fall back to date format (handles "2024-01-15")
                     # Use map_elements to handle both formats
-                    def parse_and_format(val: str) -> Optional[str]:
+                    def parse_and_format(val: Optional[str]) -> Optional[str]:
                         if val is None:
-                            return None  # type: ignore[unreachable]
+                            return None
                         from datetime import datetime
 
                         # Try datetime format first
