@@ -72,6 +72,13 @@ class TestSessionValidation:
 
     def test_aggregate_functions_require_session(self):
         """Test that aggregate functions require active session."""
+        # In PySpark mode, aggregate functions don't require session check
+        # They're called on DataFrames that already have sessions
+        # Skip this test in PySpark mode as it's Sparkless-specific validation
+        import os
+        if os.getenv("MOCK_SPARK_TEST_BACKEND") == "pyspark":
+            pytest.skip("This test is Sparkless-specific and doesn't apply to PySpark mode")
+        
         SparkSession._active_sessions.clear()
         SparkSession._singleton_session = None
 
