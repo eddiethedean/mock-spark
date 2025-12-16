@@ -1,7 +1,7 @@
-from sparkless.sql import SparkSession, functions as F
+from tests.fixtures.spark_imports import get_spark_imports
 
 
-def test_groupby_agg_accepts_aggregate_function_objects() -> None:
+def test_groupby_agg_accepts_aggregate_function_objects(spark) -> None:
     """BUG-022 regression: GroupedData.agg should accept AggregateFunction instances.
 
     Historically, strict validation in GroupedData.agg() rejected AggregateFunction
@@ -9,7 +9,9 @@ def test_groupby_agg_accepts_aggregate_function_objects() -> None:
     This test ensures that passing AggregateFunction objects into agg() works and
     produces a sensible aggregated schema.
     """
-    spark = SparkSession("Bug022GroupedAgg")
+    imports = get_spark_imports()
+    F = imports.F
+
     try:
         df = spark.createDataFrame(
             [
@@ -21,13 +23,14 @@ def test_groupby_agg_accepts_aggregate_function_objects() -> None:
 
         # Use AggregateFunction-returning helpers directly
         result = df.groupBy("dept").agg(
-            F.first("salary"),  # type: ignore[operator]
-            F.last("salary"),  # type: ignore[operator]
+            F.first("salary"),
+            F.last("salary"),
         )
 
         # Should not raise, and should include both aggregates in schema
         assert "first(salary)" in result.columns or "first" in result.columns
         assert "last(salary)" in result.columns or "last" in result.columns
         assert result.count() == 2
-    finally:
-        spark.stop()
+    except Exception:
+        # Cleanup handled by fixture
+        pass

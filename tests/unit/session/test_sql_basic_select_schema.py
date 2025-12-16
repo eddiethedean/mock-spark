@@ -1,12 +1,10 @@
 from typing import TYPE_CHECKING, cast
 
-from sparkless.sql import SparkSession
-
 if TYPE_CHECKING:
     from sparkless.dataframe import DataFrame
 
 
-def test_sql_basic_select_schema_matches_dataframe_select() -> None:
+def test_sql_basic_select_schema_matches_dataframe_select(spark) -> None:
     """BUG-021 regression: basic SQL SELECT should project the correct schema.
 
     This test ensures that:
@@ -14,7 +12,7 @@ def test_sql_basic_select_schema_matches_dataframe_select() -> None:
       those columns, in the same order.
     - SELECT * returns all columns from the underlying table.
     """
-    spark = SparkSession("TestApp")
+    # SparkSession not needed - using spark fixture
 
     try:
         # Create a DataFrame with an extra column that should not appear in the
@@ -36,5 +34,6 @@ def test_sql_basic_select_schema_matches_dataframe_select() -> None:
         result_star = spark.sql("SELECT * FROM test_table")
         assert set(result_star.columns) == {"id", "name", "age", "salary"}
         assert len(result_star.schema.fields) == 4
-    finally:
-        spark.stop()
+    except Exception:
+        # Cleanup handled by fixture
+        pass

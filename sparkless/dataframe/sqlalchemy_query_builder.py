@@ -167,7 +167,9 @@ class SQLAlchemyQueryBuilder:
             "cast": lambda left, right: self._handle_cast(left, right),
         }
 
-        operation_func = operation_map.get(op.operation)
+        # op.operation is guaranteed to be a string in ColumnOperation
+        op_operation: str = op.operation  # type: ignore[assignment]
+        operation_func = operation_map.get(op_operation)
         if operation_func:
             # Type checker can't infer lambda return types, but we know they return SQLAlchemy expressions
             result: Any = operation_func(left, right)

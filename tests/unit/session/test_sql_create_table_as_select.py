@@ -1,9 +1,21 @@
-from sparkless.sql import SparkSession
+import pytest
+from tests.fixtures.spark_backend import get_backend_type, BackendType
 
 
-def test_create_table_as_select_basic() -> None:
+def _is_pyspark_mode() -> bool:
+    """Check if running in PySpark mode."""
+    backend = get_backend_type()
+    return backend == BackendType.PYSPARK
+
+
+@pytest.mark.skipif(  # type: ignore[untyped-decorator]
+    _is_pyspark_mode(),
+    reason="CREATE TABLE AS SELECT requires Hive support in PySpark, which is not enabled by default",
+)
+def test_create_table_as_select_basic(spark) -> None:
     """BUG-011 regression: CREATE TABLE AS SELECT should create a table from a query."""
-    spark = SparkSession("Bug011CTAS")
+    # SparkSession not needed - using spark fixture
+
     try:
         # Create source table
         df = spark.createDataFrame(
@@ -31,4 +43,3 @@ def test_create_table_as_select_basic() -> None:
     finally:
         spark.sql("DROP TABLE IF EXISTS employees_ctas")
         spark.sql("DROP TABLE IF EXISTS it_employees_ctas")
-        spark.stop()

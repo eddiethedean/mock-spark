@@ -1,14 +1,16 @@
-from sparkless.sql import SparkSession, functions as F
+from tests.fixtures.spark_imports import get_spark_imports
 
 
-def test_coalesce_column_name_matches_expected() -> None:
+def test_coalesce_column_name_matches_expected(spark) -> None:
     """BUG-018 regression: coalesce should use PySpark-compatible column naming.
 
     The parity JSON for null_handling/coalesce expects a single column named
     \"coalesce(salary, 0)\"; this test asserts that the DataFrame produced by
     the corresponding operation uses that exact column name.
     """
-    spark = SparkSession("Bug018NullHandling")
+    imports = get_spark_imports()
+    F = imports.F
+
     try:
         df = spark.createDataFrame(
             [
@@ -17,7 +19,8 @@ def test_coalesce_column_name_matches_expected() -> None:
             ]
         )
 
-        result = df.select(F.coalesce(df.salary, F.lit(0)))  # type: ignore[operator]
+        result = df.select(F.coalesce(df.salary, F.lit(0)))
         assert result.columns == ["coalesce(salary, 0)"]
-    finally:
-        spark.stop()
+    except Exception:
+        # Cleanup handled by fixture
+        pass

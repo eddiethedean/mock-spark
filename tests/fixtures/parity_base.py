@@ -6,7 +6,6 @@ Sparkless behavior against pre-generated PySpark expected outputs.
 """
 
 from typing import Any, Optional
-import pytest
 from sparkless import SparkSession
 from tests.tools.output_loader import load_expected_output
 from tests.tools.comparison_utils import assert_dataframes_equal, compare_dataframes
@@ -17,18 +16,10 @@ class ParityTestBase:
 
     All parity tests should inherit from this class to ensure consistent
     patterns and behavior across the test suite.
+
+    Note: Tests should use the unified `spark` fixture from conftest.py
+    which works with both sparkless and PySpark backends.
     """
-
-    @pytest.fixture
-    def spark(self):
-        """Create a Sparkless SparkSession for testing.
-
-        This fixture provides a Sparkless session for executing test operations.
-        The session is automatically cleaned up after each test.
-        """
-        session = SparkSession(f"{self.__class__.__name__}_test")
-        yield session
-        session.stop()
 
     def load_expected(
         self, category: str, test_name: str, pyspark_version: str = "3.2"

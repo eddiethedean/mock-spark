@@ -10,6 +10,42 @@ import pytest
 from typing import Optional, Any
 from enum import Enum
 
+# Set JAVA_HOME at module level if not already set - PySpark needs this before import
+# Resolve to actual Java installation path (not symlink) for better compatibility
+if "JAVA_HOME" not in os.environ:
+    # Try common Java installation paths (macOS Homebrew)
+    java_home_candidates = [
+        "/opt/homebrew/opt/openjdk@11",
+        "/opt/homebrew/opt/openjdk@17",
+        "/opt/homebrew/opt/openjdk",
+    ]
+    for candidate in java_home_candidates:
+        java_bin_path = os.path.join(candidate, "bin", "java")
+        if os.path.exists(java_bin_path):
+            # Resolve symlink to actual Java installation
+            try:
+                actual_java_path = os.path.realpath(java_bin_path)
+                # Go up from bin/java to find actual JAVA_HOME
+                actual_java_bin = os.path.dirname(actual_java_path)
+                actual_java_home = os.path.dirname(actual_java_bin)
+                # Verify this is a valid Java home
+                if os.path.exists(actual_java_home) and os.path.exists(
+                    os.path.join(actual_java_home, "bin", "java")
+                ):
+                    os.environ["JAVA_HOME"] = actual_java_home
+                    # Also add to PATH to ensure java command is found
+                    java_bin = os.path.join(actual_java_home, "bin")
+                    if java_bin not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = f"{java_bin}:{os.environ.get('PATH', '')}"
+                    break
+            except Exception:
+                # Fallback to candidate if resolution fails
+                os.environ["JAVA_HOME"] = candidate
+                java_bin = os.path.join(candidate, "bin")
+                if java_bin not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = f"{java_bin}:{os.environ.get('PATH', '')}"
+                break
+
 
 class BackendType(Enum):
     """Backend type enumeration."""
@@ -121,20 +157,103 @@ class SparkBackend:
             ImportError: If PySpark is not available.
             RuntimeError: If PySpark session creation fails.
         """
-        try:
-            from pyspark.sql import SparkSession as PySparkSession
-        except ImportError:
-            raise ImportError(
-                "PySpark is not available. Install with: pip install pyspark"
-            )
-
-        # Set environment variables for PySpark
+        # Set environment variables for PySpark BEFORE importing PySpark
+        # PySpark reads JAVA_HOME at import time, so it must be set first
         import sys
 
         python_executable = sys.executable
         os.environ.setdefault("PYSPARK_PYTHON", python_executable)
         os.environ.setdefault("PYSPARK_DRIVER_PYTHON", python_executable)
         os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
+
+        # Set JAVA_HOME if not already set - critical for PySpark JVM startup
+        # Must be set BEFORE importing PySpark
+        # Resolve to actual Java installation path (not symlink) for better compatibility
+        if "JAVA_HOME" not in os.environ:
+            # Try common Java installation paths (macOS Homebrew)
+            java_home_candidates = [
+                "/opt/homebrew/opt/openjdk@11",
+                "/opt/homebrew/opt/openjdk@17",
+                "/opt/homebrew/opt/openjdk",
+            ]
+            for candidate in java_home_candidates:
+                java_bin_path = os.path.join(candidate, "bin", "java")
+                if os.path.exists(java_bin_path):
+                    # Resolve symlink to actual Java installation
+                    try:
+                        actual_java_path = os.path.realpath(java_bin_path)
+                        # Go up from bin/java to find actual JAVA_HOME
+                        actual_java_bin = os.path.dirname(actual_java_path)
+                        actual_java_home = os.path.dirname(actual_java_bin)
+                        # Verify this is a valid Java home
+                        if os.path.exists(actual_java_home) and os.path.exists(
+                            os.path.join(actual_java_home, "bin", "java")
+                        ):
+                            os.environ["JAVA_HOME"] = actual_java_home
+                            break
+                    except Exception:
+                        # Fallback to candidate if resolution fails
+                        os.environ["JAVA_HOME"] = candidate
+                        break
+
+            # If still not set, try to find Java via 'java' command
+            if "JAVA_HOME" not in os.environ:
+                try:
+                    import subprocess
+
+                    result = subprocess.run(
+                        ["which", "java"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0:
+                        java_path = result.stdout.strip()
+                        # Resolve symlink to actual path
+                        java_path = os.path.realpath(java_path)
+                        # Go up from bin/java to find JAVA_HOME
+                        java_bin = os.path.dirname(java_path)
+                        java_home = os.path.dirname(java_bin)
+                        if os.path.exists(java_home) and os.path.exists(
+                            os.path.join(java_home, "bin", "java")
+                        ):
+                            os.environ["JAVA_HOME"] = java_home
+                except Exception:
+                    pass
+
+        # Ensure JAVA_HOME is set and resolve it to actual path
+        if "JAVA_HOME" in os.environ:
+            # Verify and resolve JAVA_HOME to actual path
+            java_home = os.environ["JAVA_HOME"]
+            java_bin_path = os.path.join(java_home, "bin", "java")
+            if os.path.exists(java_bin_path):
+                try:
+                    actual_java_path = os.path.realpath(java_bin_path)
+                    actual_java_bin = os.path.dirname(actual_java_path)
+                    actual_java_home = os.path.dirname(actual_java_bin)
+                    if os.path.exists(actual_java_home):
+                        os.environ["JAVA_HOME"] = actual_java_home
+                except Exception:
+                    pass  # Keep original if resolution fails
+
+        # Ensure JAVA_HOME is set - PySpark requires this
+        if "JAVA_HOME" not in os.environ:
+            raise RuntimeError(
+                "JAVA_HOME is not set and could not be automatically detected. "
+                "Please set JAVA_HOME environment variable to your Java installation path."
+            )
+
+        # Also ensure Java bin is in PATH for PySpark subprocess
+        java_bin = os.path.join(os.environ["JAVA_HOME"], "bin")
+        if java_bin not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = f"{java_bin}:{os.environ.get('PATH', '')}"
+
+        try:
+            from pyspark.sql import SparkSession as PySparkSession
+        except ImportError:
+            raise ImportError(
+                "PySpark is not available. Install with: pip install pyspark"
+            )
 
         try:
             import uuid
@@ -171,10 +290,10 @@ class SparkBackend:
                 pass
 
             try:
-                existing_session = PySparkSession._instantiatedSession
+                existing_session = getattr(PySparkSession, "_instantiatedSession", None)
                 if existing_session is not None:
                     existing_session.stop()
-                    PySparkSession._instantiatedSession = None
+                    setattr(PySparkSession, "_instantiatedSession", None)
                     # Wait a bit for the session to fully stop
                     import time
 
@@ -243,7 +362,9 @@ class SparkBackend:
                                 inst_session = PySparkSession._instantiatedSession
                                 if inst_session is not None:
                                     inst_session.stop()
-                                    PySparkSession._instantiatedSession = None
+                                    setattr(
+                                        PySparkSession, "_instantiatedSession", None
+                                    )
                                     import time
 
                                     time.sleep(0.3)
@@ -269,6 +390,8 @@ class SparkBackend:
                         )
                         .config("spark.sql.warehouse.dir", unique_warehouse)
                         .config("spark.jars.packages", delta_package)
+                        .config("spark.driver.memory", "1g")
+                        .config("spark.executor.memory", "1g")
                         .config(
                             "spark.sql.extensions",
                             "io.delta.sql.DeltaSparkSessionExtension",
@@ -278,6 +401,16 @@ class SparkBackend:
                             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
                         )
                     )
+                    # Explicitly set Java home if available - PySpark needs this for JVM startup
+                    if "JAVA_HOME" in os.environ:
+                        java_home = os.environ["JAVA_HOME"]
+                        # Set both as environment variable and in Spark config
+                        builder = builder.config(
+                            "spark.executorEnv.JAVA_HOME", java_home
+                        )
+                        builder = builder.config(
+                            "spark.driver.extraJavaOptions", f"-Djava.home={java_home}"
+                        )
                     # Apply any additional config from kwargs
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
@@ -295,7 +428,7 @@ class SparkBackend:
                     ):
                         # Session was reused with wrong warehouse - force stop and recreate
                         session.stop()
-                        PySparkSession._instantiatedSession = None
+                        setattr(PySparkSession, "_instantiatedSession", None)
                         # Stop the SparkContext to force a new one
                         try:
                             from pyspark import SparkContext
@@ -343,7 +476,7 @@ class SparkBackend:
                         or actual_warehouse == f"file:{expected_warehouse}"
                     ):
                         session.stop()
-                        PySparkSession._instantiatedSession = None
+                        setattr(PySparkSession, "_instantiatedSession", None)
                         try:
                             from pyspark import SparkContext
 
@@ -374,6 +507,26 @@ class SparkBackend:
                     "spark.sql.adaptive.coalescePartitions.enabled", "false"
                 )
                 builder = builder.config("spark.sql.warehouse.dir", unique_warehouse)
+                # Set Java memory limits to prevent OOM errors
+                builder = builder.config("spark.driver.memory", "1g")
+                builder = builder.config("spark.executor.memory", "1g")
+                # Explicitly set Java home if available
+                if "JAVA_HOME" in os.environ:
+                    builder = builder.config(
+                        "spark.driver.extraJavaOptions",
+                        f"-Djava.home={os.environ['JAVA_HOME']}",
+                    )
+                    # Set Java memory limits to prevent OOM errors
+                    builder = builder.config("spark.driver.memory", "1g")
+                    builder = builder.config("spark.executor.memory", "1g")
+                # Explicitly set Java home if available - PySpark needs this for JVM startup
+                if "JAVA_HOME" in os.environ:
+                    java_home = os.environ["JAVA_HOME"]
+                    # Set both as environment variable and in Spark config
+                    builder = builder.config("spark.executorEnv.JAVA_HOME", java_home)
+                    builder = builder.config(
+                        "spark.driver.extraJavaOptions", f"-Djava.home={java_home}"
+                    )
                 for key, value in kwargs.items():
                     if key.startswith("spark."):
                         builder = builder.config(key, str(value))
@@ -386,7 +539,7 @@ class SparkBackend:
                     or actual_warehouse == f"file:{expected_warehouse}"
                 ):
                     session.stop()
-                    PySparkSession._instantiatedSession = None
+                    setattr(PySparkSession, "_instantiatedSession", None)
                     try:
                         from pyspark import SparkContext
 

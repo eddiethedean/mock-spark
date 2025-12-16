@@ -13,6 +13,13 @@ import pytest
 
 from tests.fixtures.spark_backend import get_backend_type, BackendType
 
+
+def _is_sparkless_mode() -> bool:
+    """Check if running in sparkless mode."""
+    backend = get_backend_type()
+    return backend == BackendType.MOCK
+
+
 # Import appropriate types and functions based on backend
 _backend = get_backend_type()
 if _backend == BackendType.PYSPARK:

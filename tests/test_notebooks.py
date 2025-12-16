@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 """Test script to verify notebook code works."""
 
-from sparkless import SparkSession, F
+from tests.fixtures.spark_imports import get_spark_imports
 import random
 from datetime import datetime, timedelta
 import time
 
 
-def test_quickstart():
+def test_quickstart(spark):
     """Test quickstart notebook code."""
+    imports = get_spark_imports()
+    F = imports.F
+
     print("Testing Quickstart Tutorial...")
 
-    # Step 1: Create session
-    spark = SparkSession("QuickstartTutorial")
-    print(f"✅ Session created: {spark.app_name}")
+    # Step 1: Use provided session
+    app_name = (
+        spark.appName
+        if hasattr(spark, "appName")
+        else getattr(spark, "app_name", "test")
+    )
+    print(f"✅ Session created: {app_name}")
 
     # Step 2: Create DataFrame
     data = [
@@ -129,15 +136,15 @@ def test_quickstart():
     elapsed = time.time() - start_time
     print(f"✅ Performance test: {elapsed:.4f} seconds for {len(result)} results")
 
-    spark.stop()
     print("✅ Quickstart tutorial: ALL TESTS PASSED\n")
 
 
-def test_dataframe_operations():
+def test_dataframe_operations(spark):
     """Test dataframe operations notebook code."""
-    print("Testing DataFrame Operations Tutorial...")
+    imports = get_spark_imports()
+    F = imports.F
 
-    spark = SparkSession("DataFrameOps")
+    print("Testing DataFrame Operations Tutorial...")
 
     # Create test data
     employees = [
@@ -196,26 +203,9 @@ def test_dataframe_operations():
     assert city_count >= 1  # At least one city
     print("✅ Distinct works")
 
-    spark.stop()
     print("✅ DataFrame Operations tutorial: ALL TESTS PASSED\n")
 
 
-if __name__ == "__main__":
-    print("\n" + "=" * 70)
-    print("TESTING NOTEBOOK CODE")
-    print("=" * 70 + "\n")
-
-    try:
-        test_quickstart()
-        test_dataframe_operations()
-
-        print("=" * 70)
-        print("✅ ALL NOTEBOOK TESTS PASSED!")
-        print("=" * 70 + "\n")
-
-    except Exception as e:
-        print(f"\n❌ TEST FAILED: {e}")
-        import traceback
-
-        traceback.print_exc()
-        exit(1)
+# Note: These test functions require pytest fixtures (spark parameter)
+# To run them, use: pytest tests/test_notebooks.py
+# The __main__ block is removed because these tests require pytest fixtures

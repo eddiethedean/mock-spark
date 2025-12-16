@@ -1,9 +1,22 @@
-from sparkless.sql import SparkSession
+import pytest
+from tests.fixtures.spark_backend import get_backend_type, BackendType
 
 
-def test_update_table_basic() -> None:
-    """BUG-013 regression: UPDATE should modify rows and persist changes."""
-    spark = SparkSession("Bug013Update")
+def _is_pyspark_mode() -> bool:
+    """Check if running in PySpark mode."""
+    backend = get_backend_type()
+    return backend == BackendType.PYSPARK
+
+
+@pytest.mark.skipif(  # type: ignore[untyped-decorator]
+    _is_pyspark_mode(),
+    reason="UPDATE TABLE is not supported in PySpark - this is a sparkless-specific feature",
+)
+def test_update_table_basic(spark) -> None:
+    """BUG-013 regression: UPDATE should modify rows and persist changes.
+
+    This test is sparkless-specific as PySpark does not support UPDATE TABLE.
+    """
     try:
         # Create source table
         data = [("Alice", 25), ("Bob", 30)]
@@ -24,4 +37,3 @@ def test_update_table_basic() -> None:
         assert rows[1]["age"] == 30
     finally:
         spark.sql("DROP TABLE IF EXISTS update_test")
-        spark.stop()

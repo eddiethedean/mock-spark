@@ -13,6 +13,42 @@ import pytest
 # Prevent numpy crashes on macOS ARM chips with Python 3.9
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 
+# Set JAVA_HOME for PySpark if not already set - must be done before any PySpark imports
+# Resolve to actual Java installation path (not symlink) for better compatibility
+if "JAVA_HOME" not in os.environ:
+    # Try common Java installation paths (macOS Homebrew)
+    java_home_candidates = [
+        "/opt/homebrew/opt/openjdk@11",
+        "/opt/homebrew/opt/openjdk@17",
+        "/opt/homebrew/opt/openjdk",
+    ]
+    for candidate in java_home_candidates:
+        java_bin_path = os.path.join(candidate, "bin", "java")
+        if os.path.exists(java_bin_path):
+            # Resolve symlink to actual Java installation
+            try:
+                actual_java_path = os.path.realpath(java_bin_path)
+                # Go up from bin/java to find actual JAVA_HOME
+                actual_java_bin = os.path.dirname(actual_java_path)
+                actual_java_home = os.path.dirname(actual_java_bin)
+                # Verify this is a valid Java home
+                if os.path.exists(actual_java_home) and os.path.exists(
+                    os.path.join(actual_java_home, "bin", "java")
+                ):
+                    os.environ["JAVA_HOME"] = actual_java_home
+                    # Also add to PATH to ensure java command is found
+                    java_bin = os.path.join(actual_java_home, "bin")
+                    if java_bin not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = f"{java_bin}:{os.environ.get('PATH', '')}"
+                    break
+            except Exception:
+                # Fallback to candidate if resolution fails
+                os.environ["JAVA_HOME"] = candidate
+                java_bin = os.path.join(candidate, "bin")
+                if java_bin not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = f"{java_bin}:{os.environ.get('PATH', '')}"
+                break
+
 
 @pytest.fixture(scope="function", autouse=True)
 def cleanup_after_each_test():

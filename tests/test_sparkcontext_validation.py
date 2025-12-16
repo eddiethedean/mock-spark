@@ -76,9 +76,12 @@ class TestSessionValidation:
         # They're called on DataFrames that already have sessions
         # Skip this test in PySpark mode as it's Sparkless-specific validation
         import os
+
         if os.getenv("MOCK_SPARK_TEST_BACKEND") == "pyspark":
-            pytest.skip("This test is Sparkless-specific and doesn't apply to PySpark mode")
-        
+            pytest.skip(
+                "This test is Sparkless-specific and doesn't apply to PySpark mode"
+            )
+
         SparkSession._active_sessions.clear()
         SparkSession._singleton_session = None
 

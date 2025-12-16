@@ -4,7 +4,15 @@ PySpark parity tests for SQL DML operations.
 Tests validate that Sparkless SQL DML statements behave identically to PySpark.
 """
 
+import pytest
 from tests.fixtures.parity_base import ParityTestBase
+from tests.fixtures.spark_backend import get_backend_type, BackendType
+
+
+def _is_pyspark_mode() -> bool:
+    """Check if running in PySpark mode."""
+    backend = get_backend_type()
+    return backend == BackendType.PYSPARK
 
 
 class TestSQLDMLParity(ParityTestBase):
@@ -69,8 +77,15 @@ class TestSQLDMLParity(ParityTestBase):
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS insert_multi")
 
+    @pytest.mark.skipif(
+        _is_pyspark_mode(),
+        reason="UPDATE TABLE is not supported in PySpark - this is a sparkless-specific feature",
+    )
     def test_update_table(self, spark):
-        """Test UPDATE matches PySpark behavior."""
+        """Test UPDATE matches PySpark behavior.
+
+        Note: This is a sparkless-specific feature. PySpark does not support UPDATE TABLE.
+        """
         # Create table
         data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
         df = spark.createDataFrame(data, ["name", "age"])
@@ -88,8 +103,15 @@ class TestSQLDMLParity(ParityTestBase):
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS update_test")
 
+    @pytest.mark.skipif(
+        _is_pyspark_mode(),
+        reason="UPDATE TABLE is not supported in PySpark - this is a sparkless-specific feature",
+    )
     def test_update_multiple_columns(self, spark):
-        """Test UPDATE multiple columns matches PySpark behavior."""
+        """Test UPDATE multiple columns matches PySpark behavior.
+
+        Note: This is a sparkless-specific feature. PySpark does not support UPDATE TABLE.
+        """
         # Create table
         data = [("Alice", 25, "IT")]
         df = spark.createDataFrame(data, ["name", "age", "dept"])
@@ -108,8 +130,15 @@ class TestSQLDMLParity(ParityTestBase):
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS update_multi")
 
+    @pytest.mark.skipif(
+        _is_pyspark_mode(),
+        reason="DELETE FROM TABLE is not supported in PySpark - this is a sparkless-specific feature",
+    )
     def test_delete_from_table(self, spark):
-        """Test DELETE FROM matches PySpark behavior."""
+        """Test DELETE FROM matches PySpark behavior.
+
+        Note: This is a sparkless-specific feature. PySpark does not support DELETE FROM TABLE.
+        """
         # Create table
         data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
         df = spark.createDataFrame(data, ["name", "age"])
@@ -128,8 +157,15 @@ class TestSQLDMLParity(ParityTestBase):
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS delete_test")
 
+    @pytest.mark.skipif(
+        _is_pyspark_mode(),
+        reason="DELETE FROM TABLE is not supported in PySpark - this is a sparkless-specific feature",
+    )
     def test_delete_all_rows(self, spark):
-        """Test DELETE without WHERE matches PySpark behavior."""
+        """Test DELETE without WHERE matches PySpark behavior.
+
+        Note: This is a sparkless-specific feature. PySpark does not support DELETE FROM TABLE.
+        """
         # Create table
         data = [("Alice", 25), ("Bob", 30)]
         df = spark.createDataFrame(data, ["name", "age"])

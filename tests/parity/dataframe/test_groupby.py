@@ -5,7 +5,7 @@ Tests validate that Sparkless groupBy operations behave identically to PySpark.
 """
 
 from tests.fixtures.parity_base import ParityTestBase
-from sparkless import F
+from tests.fixtures.spark_imports import get_spark_imports
 
 
 class TestGroupByParity(ParityTestBase):
@@ -13,6 +13,8 @@ class TestGroupByParity(ParityTestBase):
 
     def test_group_by(self, spark):
         """Test groupBy matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
         expected = self.load_expected("dataframe_operations", "group_by")
 
         df = spark.createDataFrame(expected["input_data"])
@@ -22,6 +24,8 @@ class TestGroupByParity(ParityTestBase):
 
     def test_aggregation(self, spark):
         """Test aggregation matches PySpark behavior."""
+        imports = get_spark_imports()
+        F = imports.F
         expected = self.load_expected("dataframe_operations", "aggregation")
 
         df = spark.createDataFrame(expected["input_data"])

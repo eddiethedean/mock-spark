@@ -533,9 +533,9 @@ class ConditionEvaluator:
                 return sorted(col_value, key=str, reverse=not asc)
         else:
             # For other functions, delegate to the existing function evaluation
-            return ConditionEvaluator._evaluate_function_operation(
-                col_value, operation_type
-            )
+            # operation_type is guaranteed to be a string in ColumnOperation
+            op_str: str = operation_type  # type: ignore[assignment]
+            return ConditionEvaluator._evaluate_function_operation(col_value, op_str)
 
     @staticmethod
     def _evaluate_comparison_operation(
@@ -624,8 +624,10 @@ class ConditionEvaluator:
 
         # Comparison operations
         if operation_type in ["==", "!=", ">", ">=", "<", "<="]:
+            # operation_type is guaranteed to be a string in ColumnOperation
+            op_str: str = operation_type  # type: ignore[assignment]
             return ConditionEvaluator._evaluate_comparison(
-                col_value, operation_type, operation.value
+                col_value, op_str, operation.value
             )
 
         # String operations
@@ -712,11 +714,11 @@ class ConditionEvaluator:
             "unix_timestamp",
             "from_unixtime",
         ]:
+            # operation_type is guaranteed to be a string in ColumnOperation
+            op_str2: str = operation_type  # type: ignore[assignment]
             return cast(
                 "bool",
-                ConditionEvaluator._evaluate_function_operation(
-                    col_value, operation_type
-                ),
+                ConditionEvaluator._evaluate_function_operation(col_value, op_str2),
             )
         elif operation_type == "transform":
             return cast(

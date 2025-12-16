@@ -388,7 +388,9 @@ class PolarsExpressionTranslator:
             return self._translate_cast(left, value)
         # isin is handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
-            return self._translate_string_operation(left, operation, value)
+            # operation is guaranteed to be a string in ColumnOperation
+            op_str: str = operation  # type: ignore[assignment]
+            return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
             return self._translate_function_call(op)
@@ -709,7 +711,12 @@ class PolarsExpressionTranslator:
         Returns:
             Polars expression for function call
         """
-        function_name = getattr(op, "function_name", op.operation).lower()
+        # op.operation is guaranteed to be a string in ColumnOperation
+        op_operation: str = op.operation  # type: ignore[assignment]
+        function_name = getattr(op, "function_name", op_operation)
+        if function_name is None:
+            function_name = op_operation
+        function_name = function_name.lower()
         column = op.column
 
         # Handle functions without column first (e.g., current_timestamp, current_date, monotonically_increasing_id)

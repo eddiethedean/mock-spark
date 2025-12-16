@@ -5,94 +5,119 @@ This test suite verifies that columns created in transforms require
 materialization before they can be accessed, matching PySpark behavior.
 """
 
-from sparkless import SparkSession, functions as F
+from tests.fixtures.spark_imports import get_spark_imports
+from tests.fixtures.spark_backend import get_backend_type, BackendType
+
+
+def _is_sparkless_mode() -> bool:
+    """Check if running in sparkless mode."""
+    backend = get_backend_type()
+    return backend == BackendType.MOCK
 
 
 class TestColumnAvailability:
     """Test column materialization requirements."""
 
-    def test_materialized_columns_are_available(self):
+    def test_materialized_columns_are_available(self, spark):
         """Test that materialized columns are available."""
-        spark = SparkSession("test")
-        try:
-            df = spark.createDataFrame([{"id": 1, "value": 10}], ["id", "value"])
+        df = spark.createDataFrame([{"id": 1, "value": 10}], ["id", "value"])
 
-            # Columns from created DataFrame should be immediately available
+        # Test public API - columns should be accessible
+        assert "id" in df.columns
+        assert "value" in df.columns
+
+        # Test sparkless internals only when in sparkless mode
+        if _is_sparkless_mode():
             available = df._get_available_columns()
             assert "id" in available
             assert "value" in available
-        finally:
-            spark.stop()
 
-    def test_columns_available_after_collect(self):
+    def test_columns_available_after_collect(self, spark):
         """Test that columns are available after collect()."""
-        spark = SparkSession("test")
-        try:
-            from sparkless.spark_types import IntegerType, StructType, StructField
+        imports = get_spark_imports()
+        F = imports.F
+        StructType = imports.StructType
+        StructField = imports.StructField
+        IntegerType = imports.IntegerType
 
-            schema = StructType(
-                [
-                    StructField("id", IntegerType(), True),
-                    StructField("value", IntegerType(), True),
-                ]
-            )
-            df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
-            df = df.withColumn("new_col", F.col("value") + 1)
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("value", IntegerType(), True),
+            ]
+        )
+        df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
+        df = df.withColumn("new_col", F.col("value") + 1)
 
-            # Materialize by collecting
-            df.collect()
+        # Materialize by collecting
+        df.collect()
 
-            # Now new_col should be available
+        # Test public API - new_col should be in columns
+        assert "new_col" in df.columns
+
+        # Test sparkless internals only when in sparkless mode
+        if _is_sparkless_mode():
             available = df._get_available_columns()
             assert "new_col" in available
-        finally:
-            spark.stop()
 
-    def test_columns_available_after_show(self):
+    def test_columns_available_after_show(self, spark):
         """Test that columns are available after show()."""
-        spark = SparkSession("test")
-        try:
-            from sparkless.spark_types import IntegerType, StructType, StructField
+        imports = get_spark_imports()
+        F = imports.F
+        StructType = imports.StructType
+        StructField = imports.StructField
+        IntegerType = imports.IntegerType
 
-            schema = StructType(
-                [
-                    StructField("id", IntegerType(), True),
-                    StructField("value", IntegerType(), True),
-                ]
-            )
-            df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
-            df = df.withColumn("new_col", F.col("value") + 1)
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("value", IntegerType(), True),
+            ]
+        )
+        df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
+        df = df.withColumn("new_col", F.col("value") + 1)
 
-            # Materialize by showing
-            df.show()
+        # Materialize by showing
+        df.show()
 
-            # Now new_col should be available
+        # Test public API - new_col should be in columns
+        assert "new_col" in df.columns
+
+        # Test sparkless internals only when in sparkless mode
+        if _is_sparkless_mode():
             available = df._get_available_columns()
             assert "new_col" in available
-        finally:
-            spark.stop()
 
-    def test_dataframe_is_marked_materialized(self):
+    def test_dataframe_is_marked_materialized(self, spark):
         """Test that DataFrame is marked as materialized after actions."""
-        spark = SparkSession("test")
-        try:
-            from sparkless.spark_types import IntegerType, StructType, StructField
+        imports = get_spark_imports()
+        F = imports.F
+        StructType = imports.StructType
+        StructField = imports.StructField
+        IntegerType = imports.IntegerType
 
-            schema = StructType(
-                [
-                    StructField("id", IntegerType(), True),
-                    StructField("value", IntegerType(), True),
-                ]
-            )
-            df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("value", IntegerType(), True),
+            ]
+        )
+        df = spark.createDataFrame([{"id": 1, "value": 10}], schema=schema)
+
+        # Test sparkless internals only when in sparkless mode
+        if _is_sparkless_mode():
             assert df._materialized is True  # Created from data, so materialized
 
-            df2 = df.withColumn("new", F.col("value") + 1)
-            # After transform, may not be materialized yet
-            # (depends on implementation)
+        df2 = df.withColumn("new", F.col("value") + 1)
+        # After transform, may not be materialized yet
+        # (depends on implementation)
 
-            # After action, should be materialized
-            df2.collect()
+        # After action, should be materialized
+        df2.collect()
+
+        # Test public API - columns should be accessible
+        assert "new" in df2.columns
+
+        # Test sparkless internals only when in sparkless mode
+        if _is_sparkless_mode():
             assert df2._materialized is True
-        finally:
-            spark.stop()

@@ -342,103 +342,129 @@ class ColumnOperation(Column):
             name: Optional custom name for the operation.
         """
         # Set attributes needed for _generate_name() before calling super().__init__()
+        # Store these temporarily since Column.__init__ will set operation to None
         self.column = column
-        self.operation = operation
         self.value = value
-        
+        # Store operation in a temporary variable to avoid mypy issues
+        _operation = operation
+
         # Generate the name for the Column base class
         # We need to compute this before calling super().__init__()
-        generated_name = name or self._generate_name_early()
-        
+        generated_name = name or ColumnOperation._generate_name_early_helper(
+            column, _operation, value
+        )
+
         # Call super().__init__() with the generated name
         # This ensures ColumnOperation is a proper Column instance
         super().__init__(generated_name)
-        
+
+        # Set ColumnOperation-specific attributes AFTER super().__init__()
+        # (Column.__init__ sets self.operation = None, so we override it here)
+        # Type annotation ensures mypy knows this is always a string in ColumnOperation
+        self.operation = _operation  # type: ignore[assignment]
+        self.function_name = _operation
+        self.return_type: Optional[Any] = None  # Type hint for return type
+
         # Override _name with the actual generated name (in case name was provided)
         if name is not None:
             self._name = name
-        
-        # Set ColumnOperation-specific attributes
-        self.function_name = operation
-        self.return_type: Optional[Any] = None  # Type hint for return type
-        
+
         # Ensure column_name is set (Column.__init__ sets it, but we want the operation name)
         self.column_name = self._name
 
-    def _generate_name_early(self) -> str:
-        """Generate a name for this operation (called before super().__init__()).
-        
-        This is a helper method that contains the same logic as _generate_name()
+    @staticmethod
+    def _generate_name_early_helper(column: Any, operation: str, value: Any) -> str:
+        """Generate a name for this operation (static helper for use before super().__init__()).
+
+        This is a static helper method that contains the same logic as _generate_name()
         but can be called before the Column base class is fully initialized.
         """
         # Extract value from Literal if needed
-        if hasattr(self.value, "value") and hasattr(self.value, "data_type"):
+        if hasattr(value, "value") and hasattr(value, "data_type"):
             # This is a Literal
-            value_str = str(self.value.value)
+            value_str = str(value.value)
         else:
-            value_str = str(self.value) if self.value is not None else "None"
+            value_str = str(value) if value is not None else "None"
 
         # Handle column reference - use str() to get proper SQL for ColumnOperation
-        if self.column is None:
+        if column is None:
             # For functions without column input (like current_date, current_timestamp)
-            return self.operation + "()"
+            return operation + "()"
         # Handle Column objects properly
-        if hasattr(self.column, "name"):
-            column_ref = self.column.name
+        if hasattr(column, "name"):
+            column_ref = column.name
         else:
             # For ColumnOperation or other types, use string representation
-            column_ref = str(self.column) if self.column is not None else "None"
+            column_ref = str(column) if column is not None else "None"
 
-        if self.operation == "bitwise_not":
+        if operation == "bitwise_not":
             # PySpark uses ~column for bitwise_not
             return f"~{column_ref}"
-        elif self.operation == "==":
+        elif operation == "==":
             return f"{column_ref} = {value_str}"
-        elif self.operation == "!=":
+        elif operation == "!=":
             return f"{column_ref} != {value_str}"
-        elif self.operation == "<":
+        elif operation == "<":
             return f"{column_ref} < {value_str}"
-        elif self.operation == "<=":
+        elif operation == "<=":
             return f"{column_ref} <= {value_str}"
-        elif self.operation == ">":
+        elif operation == ">":
             return f"{column_ref} > {value_str}"
-        elif self.operation == ">=":
+        elif operation == ">=":
             return f"{column_ref} >= {value_str}"
-        elif self.operation == "+":
+        elif operation == "+":
             return f"({column_ref} + {value_str})"
-        elif self.operation == "-":
+        elif operation == "-":
             return f"({column_ref} - {value_str})"
-        elif self.operation == "*":
+        elif operation == "*":
             return f"({column_ref} * {value_str})"
-        elif self.operation == "/":
+        elif operation == "/":
             return f"({column_ref} / {value_str})"
-        elif self.operation == "%":
+        elif operation == "%":
             return f"({column_ref} % {value_str})"
-        elif self.operation == "&":
+        elif operation == "&":
             return f"({column_ref} & {value_str})"
-        elif self.operation == "|":
+        elif operation == "|":
             return f"({column_ref} | {value_str})"
-        elif self.operation == "!":
+        elif operation == "!":
             return f"(CASE WHEN {column_ref} THEN FALSE ELSE TRUE END)"
-        elif self.operation == "isnull":
-            return f"{self.column.name} IS NULL"
-        elif self.operation == "isnotnull":
-            return f"{self.column.name} IS NOT NULL"
-        elif self.operation == "isin":
-            return f"{self.column.name} IN {self.value}"
-        elif self.operation == "between":
-            if self.value is None:
-                return f"{self.column.name} BETWEEN NULL AND NULL"
-            return f"{self.column.name} BETWEEN {self.value[0]} AND {self.value[1]}"
-        elif self.operation == "like":
-            return f"{self.column.name} LIKE {self.value}"
-        elif self.operation == "rlike":
-            return f"{self.column.name} RLIKE {self.value}"
-        elif self.operation == "asc":
-            return f"{self.column.name} ASC"
-        elif self.operation == "desc":
-            return f"{self.column.name} DESC"
-        elif self.operation == "cast":
+        elif operation == "isnull":
+            if column is None or not hasattr(column, "name"):
+                return "IS NULL"
+            return f"{column.name} IS NULL"
+        elif operation == "isnotnull":
+            if column is None or not hasattr(column, "name"):
+                return "IS NOT NULL"
+            return f"{column.name} IS NOT NULL"
+        elif operation == "isin":
+            if column is None or not hasattr(column, "name"):
+                return f"IN {value}"
+            return f"{column.name} IN {value}"
+        elif operation == "between":
+            if column is None or not hasattr(column, "name"):
+                if value is None:
+                    return "BETWEEN NULL AND NULL"
+                return f"BETWEEN {value[0]} AND {value[1]}"
+            if value is None:
+                return f"{column.name} BETWEEN NULL AND NULL"
+            return f"{column.name} BETWEEN {value[0]} AND {value[1]}"
+        elif operation == "like":
+            if column is None or not hasattr(column, "name"):
+                return f"LIKE {value}"
+            return f"{column.name} LIKE {value}"
+        elif operation == "rlike":
+            if column is None or not hasattr(column, "name"):
+                return f"RLIKE {value}"
+            return f"{column.name} RLIKE {value}"
+        elif operation == "asc":
+            if column is None or not hasattr(column, "name"):
+                return "ASC"
+            return f"{column.name} ASC"
+        elif operation == "desc":
+            if column is None or not hasattr(column, "name"):
+                return "DESC"
+            return f"{column.name} DESC"
+        elif operation == "cast":
             # Map PySpark type names to DuckDB/SQL type names (DuckDB backend only)
             type_mapping = {
                 "int": "INTEGER",
@@ -454,42 +480,66 @@ class ColumnOperation(Column):
                 "date": "DATE",
                 "timestamp": "TIMESTAMP",
             }
-            if isinstance(self.value, str):
-                sql_type = type_mapping.get(self.value.lower(), self.value.upper())
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
+            else:
+                col_name = column.name
+            if isinstance(value, str):
+                sql_type = type_mapping.get(value.lower(), value.upper())
             else:
                 # If value is a DataType, use its SQL representation
-                sql_type = str(self.value)
-            return f"CAST({self.column.name} AS {sql_type})"
-        elif self.operation == "from_unixtime":
+                sql_type = str(value)
+            return f"CAST({col_name} AS {sql_type})"
+        elif operation == "from_unixtime":
             # Handle from_unixtime function properly
-            if self.value is not None:
-                return f"from_unixtime({self.column.name}, '{self.value}')"
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
             else:
-                return f"from_unixtime({self.column.name})"
-        elif self.operation == "array_sort":
+                col_name = column.name
+            if value is not None:
+                return f"from_unixtime({col_name}, '{value}')"
+            else:
+                return f"from_unixtime({col_name})"
+        elif operation == "array_sort":
             # Handle array_sort -> LIST_SORT or LIST_REVERSE_SORT
-            asc = getattr(self, "value", True)
-            if asc:
-                return f"LIST_SORT({self.column.name})"
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
             else:
-                return f"LIST_REVERSE_SORT({self.column.name})"
-        elif self.operation == "array_reverse":
-            return f"LIST_REVERSE({self.column.name})"
-        elif self.operation == "array_size":
-            return f"LEN({self.column.name})"
-        elif self.operation == "array_max":
-            return f"LIST_MAX({self.column.name})"
-        elif self.operation == "array_min":
-            return f"LIST_MIN({self.column.name})"
-        elif self.operation == "struct":
+                col_name = column.name
+            asc = value if isinstance(value, bool) else True
+            if asc:
+                return f"LIST_SORT({col_name})"
+            else:
+                return f"LIST_REVERSE_SORT({col_name})"
+        elif operation == "array_reverse":
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
+            else:
+                col_name = column.name
+            return f"LIST_REVERSE({col_name})"
+        elif operation == "array_size":
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
+            else:
+                col_name = column.name
+            return f"LEN({col_name})"
+        elif operation == "array_max":
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
+            else:
+                col_name = column.name
+            return f"LIST_MAX({col_name})"
+        elif operation == "array_min":
+            if column is None or not hasattr(column, "name"):
+                col_name = "column"
+            else:
+                col_name = column.name
+            return f"LIST_MIN({col_name})"
+        elif operation == "struct":
             # Generate struct name from columns/literals in value
-            if (
-                hasattr(self, "value")
-                and self.value is not None
-                and isinstance(self.value, (list, tuple))
-            ):
+            if value is not None and isinstance(value, (list, tuple)):
                 col_names = []
-                for col in self.value:
+                for col in value:
                     if hasattr(col, "value") and hasattr(col, "data_type"):
                         # It's a Literal
                         col_names.append(str(col.value))
@@ -498,27 +548,36 @@ class ColumnOperation(Column):
                     else:
                         col_names.append(str(col))
                 # Also include the first column if it's not a dummy
-                if self.column and self.column.name != "__struct_dummy__":
-                    if hasattr(self.column, "value") and hasattr(
-                        self.column, "data_type"
-                    ):
-                        col_names.insert(0, str(self.column.value))
+                if (
+                    column
+                    and hasattr(column, "name")
+                    and column.name != "__struct_dummy__"
+                ):
+                    if hasattr(column, "value") and hasattr(column, "data_type"):
+                        col_names.insert(0, str(column.value))
                     else:
-                        col_names.insert(
-                            0,
-                            self.column.name
-                            if hasattr(self.column, "name")
-                            else str(self.column),
-                        )
+                        col_names.insert(0, column.name)
                 return f"struct({', '.join(col_names)})"
             # Fallback to default
             return "struct(...)"
         else:
             # For aggregate functions and other operations, generate a standard name
-            if hasattr(self.column, "name"):
-                return f"{self.operation}({self.column.name})"
+            if column is not None and hasattr(column, "name"):
+                return f"{operation}({column.name})"
             else:
-                return f"{self.operation}({column_ref})"
+                return f"{operation}({column_ref})"
+
+    def _generate_name_early(self) -> str:
+        """Generate a name for this operation (called before super().__init__()).
+
+        This method delegates to the static helper method.
+        """
+        # Use the instance attributes which are set after super().__init__()
+        # self.operation is guaranteed to be a string in ColumnOperation
+        op_str: str = self.operation  # type: ignore[assignment]
+        return ColumnOperation._generate_name_early_helper(
+            self.column, op_str, self.value
+        )
 
     @property
     def name(self) -> str:
@@ -527,8 +586,10 @@ class ColumnOperation(Column):
         if hasattr(self, "_alias_name") and self._alias_name:
             return self._alias_name
         # For cast operations, PySpark keeps the original column name
+        # self.operation is guaranteed to be a string in ColumnOperation
+        op_str: str = self.operation  # type: ignore[assignment]
         if (
-            self.operation == "cast"
+            op_str == "cast"
             and hasattr(self, "column")
             and hasattr(self.column, "name")
         ):
@@ -538,7 +599,8 @@ class ColumnOperation(Column):
         if self._name and self._name != self._generate_name():
             return self._name
         # For datetime and comparison operations, use the SQL representation
-        if self.operation in [
+        # self.operation is guaranteed to be a string in ColumnOperation
+        if op_str in [
             "hour",
             "minute",
             "second",
@@ -576,13 +638,15 @@ class ColumnOperation(Column):
             part = "day" if self.operation == "dayofmonth" else self.operation
             return f"extract({part} from TRY_CAST({self.column.name} AS DATE))"
         elif self.operation in ["dayofweek", "dayofyear", "weekofyear", "quarter"]:
-            part_map = {
+            part_map: dict[str, str] = {
                 "dayofweek": "dow",
                 "dayofyear": "doy",
                 "weekofyear": "week",
                 "quarter": "quarter",
             }
-            part = part_map.get(self.operation, self.operation)
+            # self.operation is guaranteed to be a string in ColumnOperation
+            op_str: str = self.operation  # type: ignore[assignment]
+            part = part_map.get(op_str, op_str)
 
             # PySpark dayofweek returns 1-7 (Sunday=1, Saturday=7)
             # DuckDB DOW returns 0-6 (Sunday=0, Saturday=6) - NOTE: DuckDB backend only
@@ -615,7 +679,7 @@ class ColumnOperation(Column):
 
     def _generate_name(self) -> str:
         """Generate a name for this operation.
-        
+
         This method delegates to _generate_name_early() which contains
         the actual implementation. This allows the same logic to be used
         both before and after super().__init__() is called.
@@ -624,8 +688,10 @@ class ColumnOperation(Column):
 
     def alias(self, name: str) -> "ColumnOperation":
         """Create an alias for this operation."""
+        # self.operation is guaranteed to be a string in ColumnOperation
+        op_str: str = self.operation  # type: ignore[assignment]
         aliased_operation = ColumnOperation(
-            self.column, self.operation, self.value, name=self._name
+            self.column, op_str, self.value, name=self._name
         )
         aliased_operation._alias_name = name
         # Preserve _aggregate_function if present (for PySpark-compatible aggregate functions)

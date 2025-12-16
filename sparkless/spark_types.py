@@ -46,16 +46,18 @@ try:
 except ImportError:
     PYSPARK_AVAILABLE = False
     # Create dummy base classes for type hints
-    PySparkDataType = object
-    PySparkStructType = object
-    PySparkStructField = object
-    PySparkStringType = object
-    PySparkIntegerType = object
-    PySparkLongType = object
-    PySparkDoubleType = object
-    PySparkBooleanType = object
-    PySparkDateType = object
-    PySparkTimestampType = object
+    # These are only used for type checking when PySpark is not available
+    # Use type: ignore[no-redef] to suppress redefinition errors
+    PySparkDataType: type[object] = object  # type: ignore[no-redef]
+    PySparkStructType: type[object] = object  # type: ignore[no-redef]
+    PySparkStructField: type[object] = object  # type: ignore[no-redef]
+    PySparkStringType: type[object] = object  # type: ignore[no-redef]
+    PySparkIntegerType: type[object] = object  # type: ignore[no-redef]
+    PySparkLongType: type[object] = object  # type: ignore[no-redef]
+    PySparkDoubleType: type[object] = object  # type: ignore[no-redef]
+    PySparkBooleanType: type[object] = object  # type: ignore[no-redef]
+    PySparkDateType: type[object] = object  # type: ignore[no-redef]
+    PySparkTimestampType: type[object] = object  # type: ignore[no-redef]
 
 
 _DataTypeBase = PySparkDataType if PYSPARK_AVAILABLE else object

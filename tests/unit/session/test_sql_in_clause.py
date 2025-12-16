@@ -1,9 +1,7 @@
-from sparkless.sql import SparkSession
-
-
-def test_sql_in_clause_basic() -> None:
+def test_sql_in_clause_basic(spark) -> None:
     """BUG-010 regression: basic IN (25, 35) should filter correctly."""
-    spark = SparkSession("Bug010InClause")
+    # SparkSession not needed - using spark fixture
+
     try:
         df = spark.createDataFrame(
             [("Alice", 25), ("Bob", 30), ("Charlie", 35)], ["name", "age"]
@@ -16,4 +14,3 @@ def test_sql_in_clause_basic() -> None:
         assert names == ["Alice", "Charlie"]
     finally:
         spark.sql("DROP TABLE IF EXISTS in_unit_test")
-        spark.stop()
