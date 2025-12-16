@@ -389,7 +389,7 @@ class PolarsExpressionTranslator:
         # isin is handled earlier, before value translation
         elif operation in ["startswith", "endswith"]:
             # operation is guaranteed to be a string in ColumnOperation
-            op_str: str = operation  # type: ignore[assignment]
+            op_str: str = operation
             return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
@@ -712,7 +712,7 @@ class PolarsExpressionTranslator:
             Polars expression for function call
         """
         # op.operation is guaranteed to be a string in ColumnOperation
-        op_operation: str = op.operation  # type: ignore[assignment]
+        op_operation: str = op.operation
         function_name = getattr(op, "function_name", op_operation)
         if function_name is None:
             function_name = op_operation
@@ -762,10 +762,21 @@ class PolarsExpressionTranslator:
         else:
             col_expr = self.translate(column)
 
+        # Handle array_sort before other checks since it can have op.value=None or op.value=bool
+        # Extract operation for use in comparisons
+        operation = op.operation  # Extract operation for use in comparisons
+        if operation == "array_sort":
+            # array_sort(col, asc) - sort array elements
+            # op.value can be None (default ascending) or a boolean
+            asc = True  # Default to ascending
+            if op.value is not None:
+                asc = op.value if isinstance(op.value, bool) else bool(op.value)
+            # Polars list.sort() with descending=False for ascending, descending=True for descending
+            return col_expr.list.sort(descending=not asc)
+
         # Map function names to Polars expressions
-        # Handle functions with arguments
+        # Handle functions with arguments (operation is already extracted above)
         if op.value is not None:
-            operation = op.operation  # Extract operation for use in comparisons
             if operation == "substring":
                 # substring(col, start, length) - Polars uses 0-indexed, PySpark uses 1-indexed
                 if isinstance(op.value, tuple):
@@ -1449,6 +1460,34 @@ class PolarsExpressionTranslator:
                 # array_except(col1, col2) - elements in col1 but not in col2
                 col2_expr = self.translate(op.value)
                 return col_expr.list.set_difference(col2_expr)
+            elif operation == "array_join":
+                # array_join(col, delimiter, null_replacement) - join array elements with delimiter
+                # op.value is a tuple: (delimiter, null_replacement)
+                if isinstance(op.value, tuple) and len(op.value) >= 1:
+                    delimiter = op.value[0]
+                    null_replacement = op.value[1] if len(op.value) > 1 else None
+                    # Polars list.join() takes a separator string
+                    # Handle null_replacement by filtering nulls and replacing them before joining
+                    if null_replacement is not None:
+                        # Replace nulls with null_replacement string, then join
+                        return col_expr.list.eval(
+                            pl.element()
+                            .fill_null(pl.lit(null_replacement))
+                            .cast(pl.Utf8)
+                        ).list.join(str(delimiter))
+                    else:
+                        # Filter out nulls and join with delimiter
+                        return col_expr.list.eval(
+                            pl.element()
+                            .filter(pl.element().is_not_null())
+                            .cast(pl.Utf8)
+                        ).list.join(str(delimiter))
+                else:
+                    # Fallback: just delimiter
+                    delimiter = op.value if isinstance(op.value, str) else str(op.value)
+                    return col_expr.list.eval(
+                        pl.element().filter(pl.element().is_not_null()).cast(pl.Utf8)
+                    ).list.join(delimiter)
             elif operation == "arrays_overlap":
                 # arrays_overlap(col1, col2) - check if arrays have common elements
                 col2_expr = self.translate(op.value)
@@ -2043,6 +2082,7 @@ class PolarsExpressionTranslator:
             ),
             "ucase": lambda e: e.str.to_uppercase(),  # Alias for upper
             "lcase": lambda e: e.str.to_lowercase(),  # Alias for lower
+            "initcap": lambda e: e.str.to_titlecase(),  # Capitalize first letter of each word
             "positive": lambda e: e,  # Identity function
             "negative": lambda e: -e,  # Negate
             "power": lambda e: e,  # Will be handled in operation-specific code below
