@@ -596,10 +596,21 @@ class ColumnOperation(Column):
             col_name = getattr(self.column, "name", "")
             return col_name if isinstance(col_name, str) else str(col_name)
         # If _name was explicitly set (e.g., by datetime functions), use it
-        if self._name and self._name != self._generate_name():
-            return self._name
+        # Check this BEFORE falling back to SQL representation for datetime operations
+        # This ensures PySpark-style names (like "year(hire_date)") are used instead of SQL
+        if self._name:
+            # Check if _name was explicitly provided and differs from what _generate_name() would produce
+            # For datetime functions, this will be the PySpark-style name like "year(hire_date)"
+            generated_name = self._generate_name()
+            if self._name != generated_name:
+                return self._name
+            # Also check if _name differs from SQL representation (str(self))
+            # This catches cases where _name was set to PySpark-style but str(self) returns SQL-style
+            sql_repr = str(self)
+            if self._name != sql_repr:
+                return self._name
         # For datetime and comparison operations, use the SQL representation
-        # self.operation is guaranteed to be a string in ColumnOperation
+        # But only if _name wasn't explicitly set to a different value
         if op_str in [
             "hour",
             "minute",

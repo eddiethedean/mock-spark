@@ -96,10 +96,6 @@ class TestExampleScripts:
         os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
         reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
     )
-    @pytest.mark.skipif(
-        os.environ.get("MOCK_SPARK_TEST_BACKEND") == "mock",
-        reason="Skipped in mock mode - round() with ColumnOperation uses expression name as column name. See issue #103",
-    )
     def test_basic_usage_runs(self):
         """Test that basic_usage.py runs successfully."""
         env = os.environ.copy()
@@ -123,10 +119,6 @@ class TestExampleScripts:
     @pytest.mark.skipif(
         os.environ.get("MOCK_SPARK_TEST_BACKEND") == "pyspark",
         reason="Skip documentation tests in PySpark mode (subprocess interference in parallel execution)",
-    )
-    @pytest.mark.skipif(
-        os.environ.get("MOCK_SPARK_TEST_BACKEND") == "mock",
-        reason="Skipped in mock mode - round() with ColumnOperation uses expression name as column name. See issue #103",
     )
     def test_comprehensive_usage_runs(self):
         """Test that comprehensive_usage.py runs successfully."""
