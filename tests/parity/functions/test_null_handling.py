@@ -80,5 +80,5 @@ class TestNullHandlingFunctionsParity(ParityTestBase):
         F = imports.F
         expected = self.load_expected("functions", "nanvl")
         df = spark.createDataFrame(expected["input_data"])
-        result = df.select(F.nanvl(df.salary, 0))
+        result = df.select(F.nanvl(df.salary, F.lit(0)))
         self.assert_parity(result, expected)
