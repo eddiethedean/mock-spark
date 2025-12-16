@@ -237,6 +237,10 @@ class PolarsSchema:
         Returns:
             PolarsTable instance
         """
+        # If table already exists, return existing instance to avoid overwriting data
+        if table in self.tables:
+            return self.tables[table]
+
         schema = StructType(columns) if isinstance(columns, list) else columns
 
         polars_table = PolarsTable(
