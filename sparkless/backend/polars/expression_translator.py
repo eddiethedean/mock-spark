@@ -65,10 +65,10 @@ class PolarsExpressionTranslator:
             if cached is not None:
                 return cached
 
-        if isinstance(expr, Column):
-            result = self._translate_column(expr)
-        elif isinstance(expr, ColumnOperation):
+        if isinstance(expr, ColumnOperation):
             result = self._translate_operation(expr)
+        elif isinstance(expr, Column):
+            result = self._translate_column(expr)
         elif isinstance(expr, Literal):
             result = self._translate_literal(expr)
         elif isinstance(expr, AggregateFunction):
