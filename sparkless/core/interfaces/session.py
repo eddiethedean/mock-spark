@@ -115,7 +115,7 @@ class ICatalog(ABC):
         pass
 
     @abstractmethod
-    def listTables(self, db_name: Optional[str] = None) -> list[Any]:
+    def listTables(self, dbName: Optional[str] = None) -> list[Any]:
         """List tables in database."""
         pass
 
@@ -163,6 +163,16 @@ class ICatalog(ABC):
     @abstractmethod
     def getTable(self, table_name: str, db_name: Optional[str] = None) -> Any:
         """Get table information."""
+        pass
+
+    @abstractmethod
+    def currentDatabase(self) -> str:
+        """Get current database name."""
+        pass
+
+    @abstractmethod
+    def get_storage_backend(self) -> Any:
+        """Get the storage backend instance."""
         pass
 
 

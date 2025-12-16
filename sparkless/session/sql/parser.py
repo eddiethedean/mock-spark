@@ -428,11 +428,12 @@ class SQLParser:
                 components["select_columns"] = columns
 
         # Extract FROM tables (handle aliases and JOINs)
-        # Pattern: FROM table [alias] [JOIN table2 [alias2] ON condition]
+        # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
+        # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
-            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+(.+?))?)?",
+            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
             query,
-            re.IGNORECASE,
+            re.IGNORECASE | re.DOTALL,
         )
         if from_match:
             table1 = from_match.group(1)
@@ -440,6 +441,24 @@ class SQLParser:
             table2 = from_match.group(3)
             alias2 = from_match.group(4)
             join_condition = from_match.group(5)
+
+            # Extract join type (INNER, LEFT, RIGHT, FULL OUTER)
+            join_type = "inner"  # default
+            join_type_match = re.search(
+                r"(INNER|LEFT|RIGHT|FULL\s+OUTER)\s+JOIN",
+                query,
+                re.IGNORECASE,
+            )
+            if join_type_match:
+                join_type_str = join_type_match.group(1).upper()
+                if "LEFT" in join_type_str:
+                    join_type = "left"
+                elif "RIGHT" in join_type_str:
+                    join_type = "right"
+                elif "FULL" in join_type_str:
+                    join_type = "full"
+                else:
+                    join_type = "inner"
 
             # Store table and alias mappings
             table_aliases = {table1: alias1 or table1}
@@ -450,6 +469,7 @@ class SQLParser:
                         "table": table2,
                         "alias": alias2 or table2,
                         "condition": join_condition.strip() if join_condition else None,
+                        "type": join_type,
                     }
                 ]
 
@@ -1018,12 +1038,13 @@ class SQLParser:
             Dictionary of parsed components.
         """
         components: dict[str, Any] = {}
-        
+
         # Split by UNION (case insensitive, match whole word)
         import re
+
         # Use word boundary to match UNION as whole word, not part of another word
         parts = re.split(r"\bUNION\b", query, flags=re.IGNORECASE)
-        
+
         if len(parts) < 2:
             # For now, only support single UNION (two SELECT statements)
             # Could extend to support multiple UNIONs
@@ -1035,8 +1056,10 @@ class SQLParser:
             # parts[0] = first SELECT statement
             # parts[1] = second SELECT statement (may have leading whitespace from UNION)
             left_query = parts[0].strip()
-            right_query = " ".join(parts[1:]).strip()  # Join any additional parts (shouldn't happen with single UNION)
+            right_query = " ".join(
+                parts[1:]
+            ).strip()  # Join any additional parts (shouldn't happen with single UNION)
             components["left_query"] = left_query
             components["right_query"] = right_query
-        
+
         return components

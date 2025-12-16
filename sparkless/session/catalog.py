@@ -604,7 +604,7 @@ class Catalog:
         # Use databaseName keyword arg if provided (PySpark style)
         if databaseName is not None:
             dbName = databaseName
-        
+
         # Handle PySpark compatibility: when called with two positional args,
         # PySpark accepts (dbName, tableName) order as an alternative
         # We need to detect which order was intended. Try both and see which works.
@@ -618,17 +618,17 @@ class Catalog:
             else:
                 # Standard order doesn't work, try PySpark order (swap)
                 actual_table_name = dbName  # Second arg is table name in PySpark order
-                actual_db_name = tableName   # First arg is db name in PySpark order
+                actual_db_name = tableName  # First arg is db name in PySpark order
                 # Only swap if the swapped version would work
                 if self._storage.table_exists(actual_db_name, actual_table_name):
                     tableName = actual_table_name
                     dbName = actual_db_name
                 # If neither works, proceed with standard order and let the error happen below
-        
+
         # Handle case where only one positional arg is provided
         if tableName is None:
             raise IllegalArgumentException("Table name must be provided")
-        
+
         if not isinstance(tableName, str):
             raise IllegalArgumentException("Table name must be a string")
 

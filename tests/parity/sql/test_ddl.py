@@ -4,7 +4,6 @@ PySpark parity tests for SQL DDL operations.
 Tests validate that Sparkless SQL DDL statements behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 
 
@@ -15,12 +14,12 @@ class TestSQLDDLParity(ParityTestBase):
         """Test CREATE DATABASE matches PySpark behavior."""
         # Create database
         spark.sql("CREATE DATABASE IF NOT EXISTS test_db")
-        
+
         # Verify it exists
         databases = spark.catalog.listDatabases()
         db_names = [db.name for db in databases]
         assert "test_db" in db_names
-        
+
         # Cleanup
         spark.sql("DROP DATABASE IF EXISTS test_db")
 
@@ -28,15 +27,15 @@ class TestSQLDDLParity(ParityTestBase):
         """Test CREATE DATABASE IF NOT EXISTS matches PySpark behavior."""
         # First create
         spark.sql("CREATE DATABASE IF NOT EXISTS test_db2")
-        
+
         # Second create should not fail
         spark.sql("CREATE DATABASE IF NOT EXISTS test_db2")
-        
+
         # Verify it exists
         databases = spark.catalog.listDatabases()
         db_names = [db.name for db in databases]
         assert "test_db2" in db_names
-        
+
         # Cleanup
         spark.sql("DROP DATABASE IF EXISTS test_db2")
 
@@ -44,10 +43,10 @@ class TestSQLDDLParity(ParityTestBase):
         """Test DROP DATABASE matches PySpark behavior."""
         # Create database
         spark.sql("CREATE DATABASE IF NOT EXISTS test_db3")
-        
+
         # Drop it
         spark.sql("DROP DATABASE IF EXISTS test_db3")
-        
+
         # Verify it doesn't exist
         databases = spark.catalog.listDatabases()
         db_names = [db.name for db in databases]
@@ -57,17 +56,17 @@ class TestSQLDDLParity(ParityTestBase):
         """Test CREATE TABLE from DataFrame matches PySpark behavior."""
         data = [("Alice", 25), ("Bob", 30), ("Charlie", 35)]
         df = spark.createDataFrame(data, ["name", "age"])
-        
+
         # Create table
         df.write.mode("overwrite").saveAsTable("test_users")
-        
+
         # Verify table exists
         assert spark.catalog.tableExists("test_users")
-        
+
         # Verify we can query it
         result = spark.sql("SELECT * FROM test_users")
         assert result.count() == 3
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS test_users")
 
@@ -76,15 +75,17 @@ class TestSQLDDLParity(ParityTestBase):
         data = [("Alice", 25, "IT"), ("Bob", 30, "HR"), ("Charlie", 35, "IT")]
         df = spark.createDataFrame(data, ["name", "age", "dept"])
         df.write.mode("overwrite").saveAsTable("employees")
-        
+
         # Create table from SELECT
-        spark.sql("CREATE TABLE IF NOT EXISTS it_employees AS SELECT name, age FROM employees WHERE dept = 'IT'")
-        
+        spark.sql(
+            "CREATE TABLE IF NOT EXISTS it_employees AS SELECT name, age FROM employees WHERE dept = 'IT'"
+        )
+
         # Verify table exists and has correct data
         assert spark.catalog.tableExists("it_employees")
         result = spark.sql("SELECT * FROM it_employees")
         assert result.count() == 2
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS employees")
         spark.sql("DROP TABLE IF EXISTS it_employees")
@@ -94,13 +95,13 @@ class TestSQLDDLParity(ParityTestBase):
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("temp_table")
-        
+
         # Verify exists
         assert spark.catalog.tableExists("temp_table")
-        
+
         # Drop it
         spark.sql("DROP TABLE IF EXISTS temp_table")
-        
+
         # Verify doesn't exist
         assert not spark.catalog.tableExists("temp_table")
 
@@ -108,7 +109,7 @@ class TestSQLDDLParity(ParityTestBase):
         """Test DROP TABLE IF EXISTS matches PySpark behavior."""
         # Should not fail even if table doesn't exist
         spark.sql("DROP TABLE IF EXISTS non_existent_table")
-        
+
         # Should work on existing table
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
@@ -120,12 +121,12 @@ class TestSQLDDLParity(ParityTestBase):
         """Test CREATE SCHEMA matches PySpark behavior (same as DATABASE)."""
         # SCHEMA is synonymous with DATABASE in Spark
         spark.sql("CREATE SCHEMA IF NOT EXISTS test_schema")
-        
+
         # Verify it exists (checking as database)
         databases = spark.catalog.listDatabases()
         db_names = [db.name for db in databases]
         assert "test_schema" in db_names
-        
+
         # Cleanup
         spark.sql("DROP SCHEMA IF EXISTS test_schema")
 
@@ -133,18 +134,18 @@ class TestSQLDDLParity(ParityTestBase):
         """Test setting current database matches PySpark behavior."""
         # Create database
         spark.sql("CREATE DATABASE IF NOT EXISTS test_current_db")
-        
+
         # Set as current
         spark.catalog.setCurrentDatabase("test_current_db")
-        
+
         # Create table in current database
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
         df.write.mode("overwrite").saveAsTable("current_db_table")
-        
+
         # Verify it exists in the current database
         assert spark.catalog.tableExists("current_db_table", "test_current_db")
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS test_current_db.current_db_table")
         spark.sql("DROP DATABASE IF EXISTS test_current_db")
@@ -153,16 +154,17 @@ class TestSQLDDLParity(ParityTestBase):
         """Test creating table in specific database matches PySpark behavior."""
         # Create database
         spark.sql("CREATE DATABASE IF NOT EXISTS test_db_specific")
-        
+
         # Create table in specific database
         data = [("Alice", 25)]
         df = spark.createDataFrame(data, ["name", "age"])
-        df.write.mode("overwrite").option("path", "/tmp/test_path").saveAsTable("test_db_specific.specific_table")
-        
+        df.write.mode("overwrite").option("path", "/tmp/test_path").saveAsTable(
+            "test_db_specific.specific_table"
+        )
+
         # Verify it exists
         assert spark.catalog.tableExists("specific_table", "test_db_specific")
-        
+
         # Cleanup
         spark.sql("DROP TABLE IF EXISTS test_db_specific.specific_table")
         spark.sql("DROP DATABASE IF EXISTS test_db_specific")
-

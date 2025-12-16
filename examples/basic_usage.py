@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Basic Usage Example for Mock Spark
+Basic Usage Example for Sparkless
 
-Demonstrates core Mock Spark functionality with practical examples.
+Demonstrates core Sparkless functionality with practical examples.
 
 Status: 515 tests passing (100%) | Production Ready | Version 2.0.0
 Features: 100% Zero Raw SQL | Database Agnostic | Pure SQLAlchemy
@@ -18,10 +18,10 @@ from sparkless.sql import SparkSession, functions as F, Window
 
 
 def main() -> None:
-    """Demonstrate basic Mock Spark usage."""
+    """Demonstrate basic Sparkless usage."""
     # Default to fast mode unless explicitly requested to run full demo
     if os.environ.get("MOCK_SPARK_EXAMPLES_FULL") != "1":
-        print("🚀 Mock Spark - Basic Usage Example (fast mode)")
+        print("🚀 Sparkless - Basic Usage Example (fast mode)")
         spark = SparkSession("BasicExampleFast")
         df = spark.createDataFrame([{"id": 1, "name": "Alice", "salary": 80000}])
         _ = df.select(
@@ -29,11 +29,11 @@ def main() -> None:
         ).collect()
         spark.stop()
         return
-    print("🚀 Mock Spark - Basic Usage Example")
+    print("🚀 Sparkless - Basic Usage Example")
     print("=" * 60)
 
     # 1. Create Session
-    print("\n1️⃣  Creating Mock Spark Session...")
+    print("\n1️⃣  Creating Sparkless Session...")
     spark = SparkSession("BasicExample")
     print(f"   ✓ Session created: {spark.app_name}")
 
@@ -141,7 +141,7 @@ def main() -> None:
 
     print("\n✨ Example completed successfully!")
     print("\n💡 Key Takeaways:")
-    print("   • Mock Spark provides drop-in PySpark replacement")
+    print("   • Sparkless provides drop-in PySpark replacement")
     print("   • No JVM required - 10x faster tests")
     print("   • Full API compatibility with lazy evaluation")
     print("   • Perfect for unit testing and CI/CD")

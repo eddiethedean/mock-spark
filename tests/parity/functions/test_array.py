@@ -4,7 +4,6 @@ PySpark parity tests for array functions.
 Tests validate that Sparkless array functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -73,7 +72,6 @@ class TestArrayFunctionsParity(ParityTestBase):
         result = df.select(F.array_union(df.arr1, df.arr2))
         self.assert_parity(result, expected)
 
-    @pytest.mark.skip(reason="BUG-017: Column name mismatch - PySpark generates complex lambda function name in column, mock generates simpler name. Function works correctly, data values match.")
     def test_array_sort(self, spark):
         """Test array_sort function matches PySpark behavior."""
         expected = self.load_expected("arrays", "array_sort")
@@ -87,4 +85,3 @@ class TestArrayFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.array_remove(df.scores, 90))
         self.assert_parity(result, expected)
-

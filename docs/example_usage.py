@@ -11,7 +11,7 @@ def main() -> None:
     print("🚀 Sparkless Example Usage")
     print("=" * 40)
 
-    # Create a mock Spark session
+    # Create a Sparkless session
     spark = SparkSession("ExampleApp")
     print("✅ Created SparkSession")
 

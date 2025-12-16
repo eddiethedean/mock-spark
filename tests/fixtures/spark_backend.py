@@ -206,11 +206,57 @@ class SparkBackend:
             # Build SparkSession with Delta Lake if enabled
             if enable_delta:
                 try:
-                    from delta import configure_spark_with_delta_pip
+                    import importlib_metadata
 
-                    # configure_spark_with_delta_pip must be called on a fresh builder
-                    # It adds the Delta JARs and configures extensions/catalog
-                    builder = configure_spark_with_delta_pip(
+                    # Get Delta version for JAR specification
+                    try:
+                        delta_version = importlib_metadata.version("delta_spark")
+                    except Exception:
+                        delta_version = "3.0.0"  # Fallback version
+
+                    # CRITICAL: Stop ALL existing SparkContexts BEFORE creating Delta session
+                    # We must ensure no context exists so Delta JARs are loaded into a fresh context
+                    try:
+                        from pyspark import SparkContext
+
+                        # Stop all active contexts FIRST
+                        if hasattr(SparkContext, "_active_spark_context"):
+                            active_ctx = SparkContext._active_spark_context
+                            if active_ctx is not None:
+                                active_ctx.stop()
+                                import time
+
+                                time.sleep(0.3)  # Wait longer for context to fully stop
+                            SparkContext._active_spark_context = None
+                        # Also stop via SparkSession
+                        try:
+                            active_session = PySparkSession.getActiveSession()
+                            if active_session is not None:
+                                active_session.stop()
+                                import time
+
+                                time.sleep(0.3)
+                        except Exception:
+                            pass
+                        try:
+                            if hasattr(PySparkSession, "_instantiatedSession"):
+                                inst_session = PySparkSession._instantiatedSession
+                                if inst_session is not None:
+                                    inst_session.stop()
+                                    PySparkSession._instantiatedSession = None
+                                    import time
+
+                                    time.sleep(0.3)
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+
+                    # Manually specify Delta JARs using spark.jars.packages
+                    # This is more reliable than configure_spark_with_delta_pip when contexts are reused
+                    # Format: io.delta:delta-spark_2.12:VERSION
+                    delta_package = f"io.delta:delta-spark_2.12:{delta_version}"
+                    builder = (
                         PySparkSession.builder.master(unique_master)
                         .appName(unique_app_name)
                         .config("spark.driver.bindAddress", "127.0.0.1")
@@ -222,6 +268,7 @@ class SparkBackend:
                             "spark.sql.adaptive.coalescePartitions.enabled", "false"
                         )
                         .config("spark.sql.warehouse.dir", unique_warehouse)
+                        .config("spark.jars.packages", delta_package)
                         .config(
                             "spark.sql.extensions",
                             "io.delta.sql.DeltaSparkSessionExtension",
@@ -235,6 +282,7 @@ class SparkBackend:
                     for key, value in kwargs.items():
                         if key.startswith("spark."):
                             builder = builder.config(key, str(value))
+                    # Create session - this should create a NEW context with Delta JARs loaded
                     session = builder.getOrCreate()
                     # CRITICAL FIX: Verify warehouse directory is correct
                     # PySpark's getOrCreate() may reuse a session with wrong warehouse dir
@@ -390,7 +438,11 @@ class SparkBackend:
             )
 
         if backend == BackendType.PYSPARK:
-            return SparkBackend.create_pyspark_session(app_name, **kwargs)
+            # Explicitly enable Delta Lake for PySpark sessions
+            enable_delta = kwargs.pop("enable_delta", True)
+            return SparkBackend.create_pyspark_session(
+                app_name, enable_delta=enable_delta, **kwargs
+            )
         else:
             return SparkBackend.create_mock_spark_session(app_name, **kwargs)
 

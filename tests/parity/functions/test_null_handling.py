@@ -4,7 +4,6 @@ PySpark parity tests for null handling functions.
 Tests validate that Sparkless null handling functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -67,4 +66,3 @@ class TestNullHandlingFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.nanvl(df.salary, 0))
         self.assert_parity(result, expected)
-

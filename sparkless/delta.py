@@ -346,7 +346,9 @@ class DeltaTable:
     ) -> bool:
         context = _build_eval_context(row, {alias, "target"})
         try:
-            return SafeExpressionEvaluator.evaluate_boolean(normalized_expression, context)
+            return SafeExpressionEvaluator.evaluate_boolean(
+                normalized_expression, context
+            )
         except Exception:
             return False
 

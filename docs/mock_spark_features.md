@@ -4,7 +4,7 @@ This guide explains sparkless-specific features that are not available in PySpar
 
 ## Overview
 
-Mock-spark provides two categories of APIs:
+Sparkless provides two categories of APIs:
 
 1. **PySpark-Compatible APIs** - Use these for code that needs to work with both sparkless and PySpark
 2. **sparkless Convenience APIs** - Use these for sparkless-specific test utilities and convenience features
@@ -110,7 +110,7 @@ df = spark._storage.get_table("test_db", "users")
 
 ### Enhanced Error Messages
 
-Mock-spark provides enhanced error messages with migration guidance:
+Sparkless provides enhanced error messages with migration guidance:
 
 ```python
 from sparkless.core.exceptions.analysis import AnalysisException
@@ -128,7 +128,7 @@ The error messages automatically detect common patterns and provide hints:
 
 ### Enhanced Explain Method
 
-Mock-spark's `explain()` method provides detailed execution plans:
+Sparkless's `explain()` method provides detailed execution plans:
 
 ```python
 df.explain()  # Basic plan
@@ -142,7 +142,7 @@ Shows:
 
 ### DataFrameWriter.delta() Convenience Method
 
-Mock-spark provides a convenience method for Delta Lake format:
+Sparkless provides a convenience method for Delta Lake format:
 
 ```python
 # Convenience method (sparkless)

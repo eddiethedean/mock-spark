@@ -39,10 +39,10 @@ class SafeExpressionEvaluator:
         try:
             # Parse the expression into an AST
             tree = ast.parse(expression, mode="eval")
-            
+
             # Evaluate the AST safely
             return SafeExpressionEvaluator._evaluate_ast(tree.body, context)
-        except SyntaxError as e:
+        except SyntaxError:
             # Return False for invalid syntax in boolean contexts (PySpark compatibility)
             return False
         except Exception:
@@ -104,7 +104,7 @@ class SafeExpressionEvaluator:
         elif isinstance(node, ast.BinOp):
             left = SafeExpressionEvaluator._evaluate_ast(node.left, context)
             right = SafeExpressionEvaluator._evaluate_ast(node.right, context)
-            
+
             if isinstance(node.op, ast.Add):
                 # Handle string concatenation and numeric addition
                 if left is None or right is None:
@@ -135,10 +135,10 @@ class SafeExpressionEvaluator:
         elif isinstance(node, ast.Compare):
             left = SafeExpressionEvaluator._evaluate_ast(node.left, context)
             result = True
-            
+
             for op, comparator in zip(node.ops, node.comparators):
                 right = SafeExpressionEvaluator._evaluate_ast(comparator, context)
-                
+
                 # Handle 'is' and 'is not' operators first (identity operators)
                 if isinstance(op, ast.Is):
                     # Handle 'is' operator (e.g., 'value is None')
@@ -150,7 +150,7 @@ class SafeExpressionEvaluator:
                     result = result and (left is not right)
                     left = right  # For chained comparisons
                     continue
-                
+
                 # Handle None comparisons for other operators
                 if left is None or right is None:
                     # NULL comparisons - == returns True only if both are None
@@ -162,7 +162,7 @@ class SafeExpressionEvaluator:
                         # Other comparisons with None return False
                         result = result and False
                     continue
-                
+
                 if isinstance(op, ast.Eq):
                     result = result and (left == right)
                 elif isinstance(op, ast.NotEq):
@@ -177,13 +177,16 @@ class SafeExpressionEvaluator:
                     result = result and (left >= right)
                 else:
                     result = False
-                    
+
                 left = right  # For chained comparisons
-                
+
             return result
         elif isinstance(node, ast.BoolOp):
-            values = [SafeExpressionEvaluator._evaluate_ast(child, context) for child in node.values]
-            
+            values = [
+                SafeExpressionEvaluator._evaluate_ast(child, context)
+                for child in node.values
+            ]
+
             if isinstance(node.op, ast.And):
                 return all(bool(v) if v is not None else False for v in values)
             elif isinstance(node.op, ast.Or):
@@ -192,7 +195,7 @@ class SafeExpressionEvaluator:
                 return False
         elif isinstance(node, ast.UnaryOp):
             operand = SafeExpressionEvaluator._evaluate_ast(node.operand, context)
-            
+
             if isinstance(node.op, ast.Not):
                 return not bool(operand) if operand is not None else True
             elif isinstance(node.op, ast.USub):
@@ -210,4 +213,3 @@ class SafeExpressionEvaluator:
         else:
             # Unsupported node type - return None (safe fallback)
             return None
-

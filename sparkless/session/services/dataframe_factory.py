@@ -86,20 +86,68 @@ class DataFrameFactory:
 
             # Convert tuples to dictionaries using provided column names first
             if data and isinstance(data[0], tuple):
-                reordered_data = []
+                # IMPORTANT (BUG-57): When users provide a column-name list,
+                # PySpark preserves that order in the resulting schema.
+                # We therefore:
+                #   1) Convert tuple rows into dicts keyed by the provided
+                #      column names.
+                #   2) Infer types column-by-column in *the provided order*
+                #      instead of alphabetically (SchemaInferenceEngine
+                #      sorts keys alphabetically by design).
+                #   3) Normalize data to ensure all rows contain all columns.
+                from sparkless.core.schema_inference import (
+                    SchemaInferenceEngine,
+                    normalize_data_for_schema,
+                )
+
+                reordered_data: list[dict[str, Any]] = []
                 column_names = schema
                 for row in data:
                     if isinstance(row, tuple):
-                        row_dict = {column_names[i]: row[i] for i in range(len(row))}
+                        row_dict = {
+                            column_names[i]: row[i]
+                            for i in range(min(len(column_names), len(row)))
+                        }
                         reordered_data.append(row_dict)
                     else:
                         reordered_data.append(row)
                 data = reordered_data
 
-                # Now infer schema from the converted data
-                from sparkless.core.schema_inference import SchemaInferenceEngine
+                # Infer types without changing the user-provided column order
+                fields: list[StructField] = []
+                for name in column_names:
+                    # Collect non-null values for this column
+                    values_for_key = [
+                        row[name]
+                        for row in data
+                        if isinstance(row, dict)
+                        and name in row
+                        and row[name] is not None
+                    ]
+                    if not values_for_key:
+                        # Match SchemaInferenceEngine behavior for all-null columns
+                        raise ValueError(
+                            "Some of types cannot be determined after inferring"
+                        )
 
-                schema, data = SchemaInferenceEngine.infer_from_data(data)
+                    field_type = SchemaInferenceEngine._infer_type(values_for_key[0])
+                    # Check for type conflicts across rows (same logic as
+                    # SchemaInferenceEngine.infer_from_data)
+                    for value in values_for_key[1:]:
+                        inferred_type = SchemaInferenceEngine._infer_type(value)
+                        if type(field_type) is not type(inferred_type):
+                            raise TypeError(
+                                f"field {name}: Can not merge type "
+                                f"{type(field_type).__name__} and "
+                                f"{type(inferred_type).__name__}"
+                            )
+
+                    nullable = getattr(field_type, "nullable", True)
+                    fields.append(StructField(name, field_type, nullable=nullable))
+
+                schema = StructType(fields)
+                # Normalize data so every row has every column in schema order
+                data = normalize_data_for_schema(data, schema)
             else:
                 # For non-tuple data with column names, use StringType as default
                 fields = [StructField(name, StringType()) for name in schema]

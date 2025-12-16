@@ -4,7 +4,6 @@ PySpark parity tests for math functions.
 Tests validate that Sparkless math functions behave identically to PySpark.
 """
 
-import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless import F
 
@@ -102,4 +101,3 @@ class TestMathFunctionsParity(ParityTestBase):
         df = spark.createDataFrame(expected["input_data"])
         result = df.select(F.least(df.a, df.b, df.c))
         self.assert_parity(result, expected)
-

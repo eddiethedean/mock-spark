@@ -5,7 +5,7 @@ Tests corr() and covar_samp() aggregate functions that were recently implemented
 """
 
 import pytest
-from sparkless import SparkSession, F
+from sparkless import F
 
 
 @pytest.mark.unit
@@ -20,9 +20,9 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "y").alias("correlation")).collect()[0]
-        
+
         # Perfect positive correlation should be close to 1.0
         assert abs(result["correlation"] - 1.0) < 0.001
 
@@ -34,9 +34,9 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 2.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "y").alias("corr")).collect()[0]
-        
+
         # Perfect negative correlation should be close to -1.0
         assert abs(result["corr"] - (-1.0)) < 0.001
 
@@ -49,9 +49,9 @@ class TestCorrelationFunctions:
             {"x": 4.0, "y": 4.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "y").alias("corr")).collect()[0]
-        
+
         # Correlation should be between -1 and 1
         assert -1.0 <= result["corr"] <= 1.0
 
@@ -64,9 +64,9 @@ class TestCorrelationFunctions:
             {"x": None, "y": 8.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "y").alias("corr")).collect()[0]
-        
+
         # Should handle nulls gracefully - only pairs with both non-null are used
         assert result["corr"] is not None or result["corr"] is None
 
@@ -74,9 +74,9 @@ class TestCorrelationFunctions:
         """Test that correlation with less than 2 values returns None."""
         data = [{"x": 1.0, "y": 2.0}]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "y").alias("corr")).collect()[0]
-        
+
         # Need at least 2 points for correlation
         assert result["corr"] is None
 
@@ -88,9 +88,9 @@ class TestCorrelationFunctions:
             {"a": 3.0, "b": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr(F.col("a"), F.col("b")).alias("corr")).collect()[0]
-        
+
         assert abs(result["corr"] - 1.0) < 0.001
 
     def test_covar_samp_basic(self, spark):
@@ -101,9 +101,9 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.covar_samp("x", "y").alias("covar")).collect()[0]
-        
+
         # Sample covariance should be positive for positive correlation
         assert result["covar"] > 0
 
@@ -115,9 +115,9 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 2.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.covar_samp("x", "y").alias("covar")).collect()[0]
-        
+
         # Sample covariance should be negative for negative correlation
         assert result["covar"] < 0
 
@@ -129,10 +129,10 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result_samp = df.agg(F.covar_samp("x", "y").alias("covar_samp")).collect()[0]
         result_pop = df.agg(F.covar_pop("x", "y").alias("covar_pop")).collect()[0]
-        
+
         # Sample covariance should be larger (divide by n-1 instead of n)
         # For n=3: covar_samp = covar_pop * (n/(n-1)) = covar_pop * 1.5
         assert abs(result_samp["covar_samp"] - result_pop["covar_pop"] * 1.5) < 0.001
@@ -145,9 +145,9 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.covar_samp("x", "y").alias("covar")).collect()[0]
-        
+
         # Should handle nulls - only pairs with both non-null are used
         assert result["covar"] is not None
 
@@ -155,9 +155,9 @@ class TestCorrelationFunctions:
         """Test that sample covariance with less than 2 values returns None."""
         data = [{"x": 1.0, "y": 2.0}]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.covar_samp("x", "y").alias("covar")).collect()[0]
-        
+
         # Need at least 2 points for sample covariance (n-1 denominator)
         assert result["covar"] is None
 
@@ -169,12 +169,12 @@ class TestCorrelationFunctions:
             {"x": 3.0, "y": 6.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(
             F.corr("x", "y").alias("corr"),
             F.covar_samp("x", "y").alias("covar_samp"),
         ).collect()[0]
-        
+
         assert abs(result["corr"] - 1.0) < 0.001
         assert result["covar_samp"] > 0
 
@@ -187,11 +187,9 @@ class TestCorrelationFunctions:
             {"group": "B", "x": 2.0, "y": 4.0},
         ]
         df = spark.createDataFrame(data)
-        
-        result = df.groupBy("group").agg(
-            F.corr("x", "y").alias("corr")
-        ).collect()
-        
+
+        result = df.groupBy("group").agg(F.corr("x", "y").alias("corr")).collect()
+
         assert len(result) == 2
         # Group A has positive correlation
         group_a = [r for r in result if r["group"] == "A"][0]
@@ -209,11 +207,13 @@ class TestCorrelationFunctions:
             {"group": "B", "x": 2.0, "y": 4.0},
         ]
         df = spark.createDataFrame(data)
-        
-        result = df.groupBy("group").agg(
-            F.covar_samp("x", "y").alias("covar_samp")
-        ).collect()
-        
+
+        result = (
+            df.groupBy("group")
+            .agg(F.covar_samp("x", "y").alias("covar_samp"))
+            .collect()
+        )
+
         assert len(result) == 2
         # Group A has positive covariance
         group_a = [r for r in result if r["group"] == "A"][0]
@@ -230,9 +230,9 @@ class TestCorrelationFunctions:
             {"x": 3.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result = df.agg(F.corr("x", "x").alias("corr")).collect()[0]
-        
+
         # Correlation with itself should be 1.0
         assert abs(result["corr"] - 1.0) < 0.001
 
@@ -244,10 +244,9 @@ class TestCorrelationFunctions:
             {"x": 3.0},
         ]
         df = spark.createDataFrame(data)
-        
+
         result_covar = df.agg(F.covar_samp("x", "x").alias("covar")).collect()[0]
         result_var = df.agg(F.var_samp("x").alias("var")).collect()[0]
-        
+
         # covar_samp(x, x) should equal var_samp(x)
         assert abs(result_covar["covar"] - result_var["var"]) < 0.001
-

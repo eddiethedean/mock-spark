@@ -82,7 +82,9 @@ class TestSafeExpressionEvaluator:
     def test_evaluate_logical_and(self):
         """Test evaluating logical AND expression."""
         context = {"age": 25, "active": True}
-        result = SafeExpressionEvaluator.evaluate_boolean("age > 20 and active", context)
+        result = SafeExpressionEvaluator.evaluate_boolean(
+            "age > 20 and active", context
+        )
         assert result is True
 
     def test_evaluate_logical_or(self):
@@ -191,7 +193,9 @@ class TestSafeExpressionEvaluator:
     def test_evaluate_invalid_syntax_returns_false(self):
         """Test that invalid syntax returns False (boolean) or handles gracefully."""
         context = {"a": 5}
-        result = SafeExpressionEvaluator.evaluate_boolean("invalid syntax here", context)
+        result = SafeExpressionEvaluator.evaluate_boolean(
+            "invalid syntax here", context
+        )
         # Should return False for invalid syntax
         assert result is False
 
@@ -199,10 +203,14 @@ class TestSafeExpressionEvaluator:
         """Test evaluating SQL-normalized expressions (AND, OR, NOT)."""
         context = {"age": 25, "active": True}
         # These are normalized from SQL-style expressions
-        result = SafeExpressionEvaluator.evaluate_boolean("age > 20 and active", context)
+        result = SafeExpressionEvaluator.evaluate_boolean(
+            "age > 20 and active", context
+        )
         assert result is True
 
-        result = SafeExpressionEvaluator.evaluate_boolean("age < 20 or not active", context)
+        result = SafeExpressionEvaluator.evaluate_boolean(
+            "age < 20 or not active", context
+        )
         assert result is False
 
     def test_evaluate_with_target_namespace(self):
@@ -219,7 +227,9 @@ class TestSafeExpressionEvaluator:
         """Test that code injection attempts are safely handled."""
         context = {"x": 5}
         # Attempted code injection should not execute
-        result = SafeExpressionEvaluator.evaluate("__import__('os').system('rm -rf /')", context)
+        result = SafeExpressionEvaluator.evaluate(
+            "__import__('os').system('rm -rf /')", context
+        )
         # Should return None or handle gracefully, not execute
         assert result is None or isinstance(result, (bool, int, float, str))
 
@@ -251,4 +261,3 @@ class TestSafeExpressionEvaluator:
         context = {"int_val": 5, "float_val": 3.14}
         result = SafeExpressionEvaluator.evaluate("int_val + float_val", context)
         assert result == 8.14
-

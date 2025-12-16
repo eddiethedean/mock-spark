@@ -61,27 +61,28 @@ class GroupedData:
             New DataFrame with aggregated results.
         """
         from ...functions import F
-        from ...core.type_utils import is_column, is_column_operation
 
         # Track expression processing order to preserve column ordering
         # For dict syntax, PySpark preserves dict order; otherwise we sort alphabetically
         expression_order: list[str] = []
         is_dict_syntax = len(exprs) == 1 and isinstance(exprs[0], dict)
-        
-        # PySpark-style strict validation: all expressions must be Column or ColumnOperation
-        # Skip this for dict syntax (handled separately below)
+
+        # PySpark-style strict validation: all expressions must be Column or ColumnOperation.
+        # Skip this for dict syntax (handled separately below).
+        # NOTE (BUG-022): PySpark also accepts AggregateFunction objects in many contexts
+        # (e.g., F.first, F.last, F.collect_list). We therefore allow AggregateFunction
+        # instances through validation and handle them explicitly later in this method
+        # instead of rejecting them up-front.
         if not is_dict_syntax:
             for i, expr in enumerate(exprs):
-                # Allow AggregateFunction for backward compatibility, but warn
-                # PySpark requires Column/ColumnOperation only
-                if isinstance(expr, AggregateFunction):
-                    raise AssertionError(
-                        f"all exprs should be Column, got {type(expr).__name__} at argument {i}. "
-                        "AggregateFunction objects should be converted to Column/ColumnOperation "
-                        "before passing to agg()."
-                    )
                 # Allow strings for backward compatibility
-                if not isinstance(expr, str) and not (is_column(expr) or is_column_operation(expr)):
+                if isinstance(expr, str):
+                    continue
+                # Allow AggregateFunction instances - they are handled explicitly
+                # later in this method (see the AggregateFunction branch below).
+                if isinstance(expr, AggregateFunction):
+                    continue
+                if not (is_column(expr) or is_column_operation(expr)):
                     raise AssertionError(
                         f"all exprs should be Column, got {type(expr).__name__} at argument {i}"
                     )
@@ -160,7 +161,7 @@ class GroupedData:
         for group_key, group_rows in groups.items():
             result_row = dict(zip(self.group_columns, group_key))
 
-            for expr in exprs:  # type: ignore[assignment]
+            for expr in exprs:
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key, result_value = self._evaluate_string_expression(
@@ -188,7 +189,10 @@ class GroupedData:
                     # Handle ColumnOperation first (before AggregateFunction check)
                     # ColumnOperation has function_name but should be handled differently
                     # Check if this ColumnOperation wraps an aggregate function (PySpark-style)
-                    if hasattr(expr, "_aggregate_function") and expr._aggregate_function is not None:
+                    if (
+                        hasattr(expr, "_aggregate_function")
+                        and expr._aggregate_function is not None
+                    ):
                         # This is a ColumnOperation wrapping an AggregateFunction (e.g., corr, covar_samp)
                         result_key, result_value = self._evaluate_aggregate_function(
                             expr._aggregate_function, group_rows
@@ -310,7 +314,7 @@ class GroupedData:
         # Track which expressions are literals for proper nullable inference
         # (used in both branches)
         literal_keys: set[str] = set()
-        for expr in exprs:  # type: ignore[assignment]
+        for expr in exprs:
             if is_literal_type(expr):
                 lit_key = get_expression_name(expr)
                 literal_keys.add(lit_key)
@@ -391,7 +395,7 @@ class GroupedData:
 
             # Infer schema from aggregation expressions
             # (literal_keys already defined above)
-            for expr in exprs:  # type: ignore[assignment]
+            for expr in exprs:
                 if isinstance(expr, str):
                     # Handle string expressions like "sum(age)"
                     result_key = expr  # Use expression as key
@@ -1181,7 +1185,9 @@ class GroupedData:
                     if row.get(col_name) is not None and row.get(col2_name) is not None
                 ]
 
-                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for sample covariance
+                if (
+                    len(values1) > 1 and len(values2) > 1
+                ):  # Need at least 2 points for sample covariance
                     # Mypy has limitations with statistics.mean and list comprehensions
                     mean1 = statistics.mean(values1)  # type: ignore[type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[type-var]
@@ -1225,7 +1231,9 @@ class GroupedData:
                     if row.get(col_name) is not None and row.get(col2_name) is not None
                 ]
 
-                if len(values1) > 1 and len(values2) > 1:  # Need at least 2 points for correlation
+                if (
+                    len(values1) > 1 and len(values2) > 1
+                ):  # Need at least 2 points for correlation
                     # Mypy has limitations with statistics.mean and list comprehensions
                     mean1 = statistics.mean(values1)  # type: ignore[type-var]
                     mean2 = statistics.mean(values2)  # type: ignore[type-var]
@@ -1235,13 +1243,17 @@ class GroupedData:
                             (x1 - mean1) * (x2 - mean2)
                             for x1, x2 in zip(values1, values2)
                         ) / (len(values1) - 1)
-                        
+
                         # Calculate standard deviations
-                        var1 = sum((x1 - mean1) ** 2 for x1 in values1) / (len(values1) - 1)
-                        var2 = sum((x2 - mean2) ** 2 for x2 in values2) / (len(values2) - 1)
-                        std1 = var1 ** 0.5 if var1 > 0 else 0.0
-                        std2 = var2 ** 0.5 if var2 > 0 else 0.0
-                        
+                        var1 = sum((x1 - mean1) ** 2 for x1 in values1) / (
+                            len(values1) - 1
+                        )
+                        var2 = sum((x2 - mean2) ** 2 for x2 in values2) / (
+                            len(values2) - 1
+                        )
+                        std1 = var1**0.5 if var1 > 0 else 0.0
+                        std2 = var2**0.5 if var2 > 0 else 0.0
+
                         # Correlation = covariance / (std1 * std2)
                         if std1 > 0 and std2 > 0:
                             corr = covar / (std1 * std2)
@@ -1250,9 +1262,7 @@ class GroupedData:
                     else:
                         corr = 0.0
                     result_key = (
-                        alias_name
-                        if alias_name
-                        else f"corr({col_name}, {col2_name})"
+                        alias_name if alias_name else f"corr({col_name}, {col2_name})"
                     )
                     return result_key, corr
                 else:
