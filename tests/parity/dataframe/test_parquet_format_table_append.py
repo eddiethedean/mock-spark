@@ -8,6 +8,7 @@ import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless.spark_types import StructType, StructField, IntegerType, StringType
 from sparkless.sql import SparkSession
+from sparkless.backend.polars.storage import PolarsStorageManager
 
 
 class TestParquetFormatTableAppend(ParityTestBase):
@@ -182,7 +183,9 @@ class TestParquetFormatTableAppend(ParityTestBase):
         names = {row["name"] for row in result.collect()}
         assert names == {"alpha", "beta"}
 
-    def test_parquet_format_append_detached_df_visible_to_multiple_sessions(self, spark):
+    def test_parquet_format_append_detached_df_visible_to_multiple_sessions(
+        self, spark
+    ):
         """Detached DataFrame writes should sync to all active sessions."""
         schema = StructType(
             [
@@ -222,3 +225,24 @@ class TestParquetFormatTableAppend(ParityTestBase):
             spark2.sql(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE")
         finally:
             spark2.stop()
+
+    def test_storage_manager_detached_write_visible_to_session(self, spark):
+        """Writes via a standalone PolarsStorageManager should surface in the active session."""
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("name", StringType(), True),
+            ]
+        )
+
+        storage = PolarsStorageManager()
+        storage.create_schema(self.schema_name)
+        storage.create_table(self.schema_name, self.table_name, schema.fields)
+
+        data = [{"id": 1, "name": "omega"}, {"id": 2, "name": "sigma"}]
+        storage.insert_data(self.schema_name, self.table_name, data)
+
+        result = spark.table(self.table_fqn)
+        assert result.count() == 2
+        names = {row["name"] for row in result.collect()}
+        assert names == {"omega", "sigma"}

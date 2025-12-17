@@ -263,6 +263,7 @@ class PolarsStorageManager(IStorageManager):
         self.db_path = db_path or ":memory:"
         self.schemas: dict[str, PolarsSchema] = {}
         self._current_schema = "default"
+        self._syncing: bool = False
         # Use ":memory:" for schema registry when using in-memory storage
         # The schema registry already handles ":memory:" by skipping file operations
         schema_storage_path = self.db_path
@@ -579,6 +580,16 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         table.insert(data)
 
+        # Synchronize writes to other active sessions if this storage is not shared.
+        # Guard with _syncing to avoid recursion when propagating.
+        if not getattr(self, "_syncing", False):
+            self._syncing = True
+            try:
+                table_schema = table.schema
+                self._sync_active_sessions(schema_name, table_name, table_schema, data)
+            finally:
+                self._syncing = False
+
     def query_data(
         self, schema_name: str, table_name: str, **filters: Any
     ) -> list[dict[str, Any]]:
@@ -677,6 +688,59 @@ class PolarsStorageManager(IStorageManager):
         table = schema.tables[table_name]
         table._metadata.update(metadata_updates)
         table._metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    def _sync_active_sessions(
+        self,
+        schema_name: str,
+        table_name: str,
+        schema: StructType,
+        data: list[dict[str, Any]],
+    ) -> None:
+        """Replicate writes into other active SparkSession storages (best effort)."""
+        try:
+            from sparkless.session.core.session import SparkSession
+        except Exception:
+            return
+
+        active_sessions = getattr(SparkSession, "_active_sessions", [])
+        if not active_sessions:
+            return
+
+        target_storages = [
+            getattr(session, "_storage", None) for session in active_sessions
+        ]
+        target_storages = [s for s in target_storages if s is not None]
+        if not target_storages:
+            return
+
+        # Only sync when this storage is detached from all active sessions.
+        if self in target_storages:
+            return
+
+        for session in list(active_sessions):
+            try:
+                target_storage = getattr(session, "_storage", None)
+                if target_storage is None or target_storage is self:
+                    continue
+
+                # Ensure schema and table exist on the target storage
+                if not target_storage.schema_exists(schema_name):
+                    target_storage.create_schema(schema_name)
+                if not target_storage.table_exists(schema_name, table_name):
+                    target_storage.create_table(schema_name, table_name, schema.fields)
+
+                # Insert data into target storage without re-synchronizing
+                reset_sync = hasattr(target_storage, "_syncing")
+                if reset_sync:
+                    target_storage._syncing = True
+                try:
+                    target_storage.insert_data(schema_name, table_name, data)
+                finally:
+                    if reset_sync:
+                        target_storage._syncing = False
+            except Exception:
+                # Best effort: ignore propagation failures to avoid breaking the writer
+                continue
 
     def create_temp_view(self, name: str, dataframe: Any) -> None:
         """Create a temporary view from a DataFrame.
