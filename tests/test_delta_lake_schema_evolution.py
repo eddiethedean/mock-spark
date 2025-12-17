@@ -267,6 +267,49 @@ class TestDeltaLakeSchemaEvolution:
         except Exception:
             pass
 
+    def test_delta_create_or_replace_table_as_select(self, spark):
+        """CTAS with OR REPLACE should allow schema evolution for Delta tables."""
+        if _backend != BackendType.MOCK:
+            pytest.skip(
+                "Delta CTAS replacement is only validated in sparkless mock mode"
+            )
+
+        import uuid
+
+        table_suffix = str(uuid.uuid4()).replace("-", "_")[:8]
+        schema_name = f"ctas_schema_{table_suffix}"
+        table_name = f"{schema_name}.clean_events"
+
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+
+        base_df = spark.createDataFrame(
+            [("u1", "Alice", 100), ("u2", "Bob", 200)],
+            ["user_id", "name", "value"],
+        )
+        base_df.write.format("delta").mode("overwrite").saveAsTable(table_name)
+
+        spark.sql(
+            f"""
+            CREATE OR REPLACE TABLE {table_name}
+            USING delta AS
+            SELECT user_id, name, value, '2025-01-01' AS processed_at
+            FROM {table_name}
+            """
+        )
+
+        result = spark.table(table_name)
+        assert set(result.columns) == {"user_id", "name", "value", "processed_at"}
+        rows = {r["user_id"]: r for r in result.collect()}
+        assert rows["u1"]["processed_at"] == "2025-01-01"
+        assert rows["u2"]["processed_at"] == "2025-01-01"
+        assert result.count() == 2
+
+        try:
+            spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+            spark.sql(f"DROP SCHEMA IF EXISTS {schema_name}")
+        except Exception:
+            pass
+
     def test_immediate_table_access(self, spark):
         """Test that table is immediately accessible after saveAsTable."""
         import uuid

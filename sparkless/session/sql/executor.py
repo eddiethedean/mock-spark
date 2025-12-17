@@ -20,8 +20,9 @@ Example:
     >>> result.show()
 """
 
-from typing import TYPE_CHECKING, Any, Union, cast
+import contextlib
 import re
+from typing import TYPE_CHECKING, Any, Union, cast
 from ...core.exceptions.execution import QueryExecutionException
 from ...core.interfaces.dataframe import IDataFrame
 from ...core.interfaces.session import ISession
@@ -1072,6 +1073,30 @@ class SQLExecutor:
                                 case_expr = case_expr.alias(alias)
                             select_exprs_no_group.append(case_expr)
                         else:
+                            literal_expr: Any = None
+                            is_string_literal = (
+                                col.startswith("'") and col.endswith("'")
+                            ) or (col.startswith('"') and col.endswith('"'))
+                            if (
+                                col_upper in ("NULL", "TRUE", "FALSE")
+                                or is_string_literal
+                                or re.fullmatch(r"[-+]?\d+(?:\.\d+)?", col)
+                            ):
+                                literal_value = self._parse_sql_value(col)
+                                lit_col = F.lit(literal_value)
+                                if is_string_literal:
+                                    from ...spark_types import StringType
+
+                                    lit_col = cast("Any", lit_col.cast(StringType()))
+
+                                literal_expr = (
+                                    lit_col.alias(alias) if alias else lit_col
+                                )
+
+                            if literal_expr is not None:
+                                select_exprs_no_group.append(literal_expr)
+                                continue
+
                             # Handle table alias prefix (e.g., "e.name" -> "e_name" after join)
                             # After a join, columns are renamed with table alias prefix
                             if (
@@ -1215,6 +1240,8 @@ class SQLExecutor:
         object_name = components.get("object_name", "unknown")
         # Default to True for backward compatibility and safer behavior
         ignore_if_exists = components.get("ignore_if_exists", True)
+        replace_if_exists = components.get("replace", False)
+        table_format = components.get("table_format")
 
         # Import required types (used by all code paths)
         from ...dataframe import DataFrame
@@ -1240,18 +1267,28 @@ class SQLExecutor:
                 schema_name = storage.get_current_schema()
 
             # Check if table exists
-            if storage.table_exists(schema_name, table_name):
-                if not ignore_if_exists:
+            table_exists = storage.table_exists(schema_name, table_name)
+
+            # Check if this is CREATE TABLE AS SELECT (CTAS)
+            select_query = components.get("select_query")
+
+            if table_exists:
+                if replace_if_exists:
+                    # For CTAS, don't drop before executing SELECT to allow self-references;
+                    # the writer will overwrite after the SELECT result is materialized.
+                    if not select_query:
+                        storage.drop_table(schema_name, table_name)
+                        table_exists = False
+                elif not ignore_if_exists:
                     from ...errors import AnalysisException
 
                     raise AnalysisException(
                         f"Table {schema_name}.{table_name} already exists"
                     )
-                # Table exists and IF NOT EXISTS is specified, skip creation
-                return cast("IDataFrame", DataFrame([], StructType([])))
+                else:
+                    # Table exists and IF NOT EXISTS is specified, skip creation
+                    return cast("IDataFrame", DataFrame([], StructType([])))
 
-            # Check if this is CREATE TABLE AS SELECT
-            select_query = components.get("select_query")
             if select_query:
                 # Execute the SELECT query
                 select_ast = self.parser.parse(select_query)
@@ -1275,7 +1312,10 @@ class SQLExecutor:
                 )
 
                 # Write to table using saveAsTable
-                result_df.write.mode("overwrite").saveAsTable(table_full_name)
+                writer = result_df.write
+                if table_format:
+                    writer = writer.format(table_format)
+                writer.mode("overwrite").saveAsTable(table_full_name)
 
                 # Return empty DataFrame to indicate success
                 return cast("IDataFrame", DataFrame([], StructType([])))
@@ -1303,6 +1343,11 @@ class SQLExecutor:
 
             # Create table in storage backend
             storage.create_table(schema_name, table_name, schema.fields)
+            if table_format:
+                with contextlib.suppress(Exception):
+                    storage.update_table_metadata(
+                        schema_name, table_name, {"format": table_format}
+                    )
 
         # Return empty DataFrame to indicate success
         return cast("IDataFrame", DataFrame([], StructType([])))
