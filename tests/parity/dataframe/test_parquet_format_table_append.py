@@ -7,6 +7,7 @@ import os
 import pytest
 from tests.fixtures.parity_base import ParityTestBase
 from sparkless.spark_types import StructType, StructField, IntegerType, StringType
+from sparkless.sql import SparkSession
 
 
 class TestParquetFormatTableAppend(ParityTestBase):
@@ -180,3 +181,44 @@ class TestParquetFormatTableAppend(ParityTestBase):
         assert result.count() == 2
         names = {row["name"] for row in result.collect()}
         assert names == {"alpha", "beta"}
+
+    def test_parquet_format_append_detached_df_visible_to_multiple_sessions(self, spark):
+        """Detached DataFrame writes should sync to all active sessions."""
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("name", StringType(), True),
+            ]
+        )
+
+        # Create a second active session to verify synchronization
+        spark2 = SparkSession("second_session")
+
+        from sparkless.dataframe import DataFrame
+
+        detached_df = DataFrame(
+            [
+                {"id": 1, "name": "gamma"},
+                {"id": 2, "name": "delta"},
+            ],
+            schema,
+        )
+
+        detached_df.write.format("parquet").mode("append").saveAsTable(self.table_fqn)
+
+        # Visible in the original session
+        result1 = spark.table(self.table_fqn)
+        assert result1.count() == 2
+        assert {row["name"] for row in result1.collect()} == {"gamma", "delta"}
+
+        # Visible in the second active session
+        result2 = spark2.table(self.table_fqn)
+        assert result2.count() == 2
+        assert {row["name"] for row in result2.collect()} == {"gamma", "delta"}
+
+        # Clean up second session artifacts
+        try:
+            spark2.sql(f"DROP TABLE IF EXISTS {self.table_fqn}")
+            spark2.sql(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE")
+        finally:
+            spark2.stop()
