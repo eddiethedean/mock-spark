@@ -431,15 +431,17 @@ class SQLParser:
         # Pattern: FROM table [alias] [INNER|LEFT|RIGHT|FULL]? JOIN table2 [alias2] ON condition]
         # The join condition should capture until WHERE, GROUP BY, ORDER BY, LIMIT, or end of query
         from_match = re.search(
-            r"FROM\s+(\w+)(?:\s+(\w+))?(?:\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+(\w+)(?:\s+(\w+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
+            r"FROM\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+(?:INNER|LEFT|RIGHT|FULL\s+OUTER)?\s+JOIN\s+([`\w.]+)(?:\s+([`\w]+))?(?:\s+ON\s+((?:(?!\s+(?:WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|$)).)+))?)?",
             query,
             re.IGNORECASE | re.DOTALL,
         )
         if from_match:
-            table1 = from_match.group(1)
-            alias1 = from_match.group(2)
-            table2 = from_match.group(3)
-            alias2 = from_match.group(4)
+            table1 = from_match.group(1).strip("`")
+            alias1 = (from_match.group(2) or "").strip("`") or None
+            table2_raw = from_match.group(3)
+            table2 = table2_raw.strip("`") if table2_raw else None
+            alias2_raw = from_match.group(4)
+            alias2 = alias2_raw.strip("`") if alias2_raw else None
             join_condition = from_match.group(5)
 
             # Extract join type (INNER, LEFT, RIGHT, FULL OUTER)
@@ -571,15 +573,74 @@ class SQLParser:
                 "definition": query,
             }
 
-        # Parse CREATE TABLE [IF NOT EXISTS] [schema.]table_name AS SELECT ...
+        # Parse CREATE OR REPLACE TABLE [schema.]table_name [USING <fmt>] AS SELECT ...
+        create_or_replace_table_as_select_match = re.search(
+            r"CREATE\s+OR\s+REPLACE\s+TABLE\s+([`\w.]+)\s*"
+            r"(?:USING\s+([`\w]+)\s+)?AS\s+(SELECT.*)",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if create_or_replace_table_as_select_match:
+            table_name = create_or_replace_table_as_select_match.group(1).strip("`")
+            table_format = create_or_replace_table_as_select_match.group(2)
+            select_query = create_or_replace_table_as_select_match.group(3).strip()
+
+            # Parse schema.table or just table
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
+            else:
+                schema = None  # Will use current schema
+                table = table_name
+
+            return {
+                "object_type": "TABLE",
+                "object_name": table,
+                "schema_name": schema,
+                "select_query": select_query,
+                "table_format": table_format.lower() if table_format else None,
+                "replace": True,
+                "ignore_if_exists": False,
+                "definition": query,
+            }
+
+        # Parse CREATE OR REPLACE TABLE [schema.]table_name (column_definitions)
+        create_or_replace_table_match = re.match(
+            r"CREATE\s+OR\s+REPLACE\s+TABLE\s+([`\w.]+)\s*\((.*?)\)",
+            query,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if create_or_replace_table_match:
+            table_name = create_or_replace_table_match.group(1).strip("`")
+            column_definitions = create_or_replace_table_match.group(2).strip()
+
+            # Parse schema.table or just table
+            if "." in table_name:
+                schema, table = table_name.split(".", 1)
+            else:
+                schema = None  # Will use current schema
+                table = table_name
+
+            return {
+                "object_type": "TABLE",
+                "object_name": table,
+                "schema_name": schema,
+                "column_definitions": column_definitions,
+                "replace": True,
+                "ignore_if_exists": False,
+                "definition": query,
+            }
+
+        # Parse CREATE TABLE [IF NOT EXISTS] [schema.]table_name [USING <fmt>] AS SELECT ...
         create_table_as_select_match = re.search(
-            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)\s+AS\s+(SELECT.*)",
+            r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\w.]+)\s*"
+            r"(?:USING\s+([`\w]+)\s+)?AS\s+(SELECT.*)",
             query,
             re.IGNORECASE | re.DOTALL,
         )
         if create_table_as_select_match:
             table_name = create_table_as_select_match.group(1).strip("`")
-            select_query = create_table_as_select_match.group(2).strip()
+            table_format = create_table_as_select_match.group(2)
+            select_query = create_table_as_select_match.group(3).strip()
             if_not_exists = "IF NOT EXISTS" in query.upper()
 
             # Parse schema.table or just table
@@ -594,6 +655,7 @@ class SQLParser:
                 "object_name": table,
                 "schema_name": schema,
                 "select_query": select_query,
+                "table_format": table_format.lower() if table_format else None,
                 "ignore_if_exists": if_not_exists,
                 "definition": query,
             }
