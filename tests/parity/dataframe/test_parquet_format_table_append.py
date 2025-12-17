@@ -152,3 +152,31 @@ class TestParquetFormatTableAppend(ParityTestBase):
         rows = result.collect()
         ids = {row["id"] for row in rows}
         assert ids == {1, 2, 3, 4, 5}, "All rows should be present"
+
+    def test_parquet_format_append_detached_df_visible_to_active_session(self, spark):
+        """Detached DataFrame writes should be immediately visible to the active session."""
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), True),
+                StructField("name", StringType(), True),
+            ]
+        )
+
+        # Construct DataFrame without using the session (no shared storage)
+        from sparkless.dataframe import DataFrame
+
+        detached_df = DataFrame(
+            [
+                {"id": 1, "name": "alpha"},
+                {"id": 2, "name": "beta"},
+            ],
+            schema,
+        )
+
+        # Write via detached DataFrame; should sync into the active session's storage
+        detached_df.write.format("parquet").mode("append").saveAsTable(self.table_fqn)
+
+        result = spark.table(self.table_fqn)
+        assert result.count() == 2
+        names = {row["name"] for row in result.collect()}
+        assert names == {"alpha", "beta"}

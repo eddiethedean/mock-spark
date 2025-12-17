@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from sparkless.backend.protocols import StorageBackend
     from .dataframe import DataFrame
 
-from ..spark_types import StructType
+from ..spark_types import StructField, StructType
 
 
 class DataFrameWriter:
@@ -367,6 +367,15 @@ class DataFrameWriter:
         # Convert Row objects to dictionaries
         dict_data = [row.asDict() for row in data]
         self.storage.insert_data(schema, table, dict_data)
+
+        # Ensure tables written through detached DataFrames are visible to active sessions.
+        # Some callers construct DataFrames outside of a SparkSession (e.g., LogWriter),
+        # so their writer.storage may differ from the session storage used by
+        # `spark.table(...)`. To preserve PySpark semantics, replicate the write into any
+        # active sessions that use a different storage backend but share the same backend
+        # type.
+        with contextlib.suppress(Exception):
+            self._sync_active_sessions(schema, table, df_schema.fields, dict_data)
 
         # CRITICAL: Ensure table is immediately accessible in catalog
         # This synchronizes catalog and storage - table must be available right after saveAsTable()
@@ -845,6 +854,47 @@ class DataFrameWriter:
             f"in storage but is not yet visible in the catalog. "
             f"If this is an aggregated DataFrame, check that schema extraction is working correctly."
         )
+
+    def _sync_active_sessions(
+        self,
+        schema: str,
+        table: str,
+        fields: list[StructField],
+        data: list[dict[str, Any]],
+    ) -> None:
+        """Replicate table creation/data into active SparkSessions when storage differs.
+
+        This keeps writes performed via detached DataFrames (those not created by
+        a SparkSession and therefore holding their own StorageBackend instance)
+        visible to the currently active sessions that will be used for subsequent
+        reads (e.g., spark.table()).
+        """
+        try:
+            from sparkless.session.core.session import SparkSession
+        except Exception:
+            return
+
+        active_sessions = getattr(SparkSession, "_active_sessions", [])
+        if not active_sessions:
+            return
+
+        for session in list(active_sessions):
+            try:
+                target_storage = getattr(session, "_storage", None)
+                if target_storage is None or target_storage is self.storage:
+                    continue
+
+                # Ensure schema/table exist in the target storage
+                if not target_storage.schema_exists(schema):
+                    target_storage.create_schema(schema)
+                if not target_storage.table_exists(schema, table):
+                    target_storage.create_table(schema, table, fields)
+
+                if data:
+                    target_storage.insert_data(schema, table, data)
+            except Exception:
+                # Best-effort sync; do not block the primary write path
+                continue
 
     def _extract_schema_for_catalog(self, df: DataFrame) -> StructType:
         """Extract schema from DataFrame for catalog registration.
