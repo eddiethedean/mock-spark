@@ -536,7 +536,7 @@ class ConditionEvaluator:
         else:
             # For other functions, delegate to the existing function evaluation
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str: str = operation_type  # type: ignore[assignment]
+            op_str: str = operation_type
             return ConditionEvaluator._evaluate_function_operation(col_value, op_str)
 
     @staticmethod
@@ -627,7 +627,7 @@ class ConditionEvaluator:
         # Comparison operations
         if operation_type in ["==", "!=", ">", ">=", "<", "<="]:
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str: str = operation_type  # type: ignore[assignment]
+            op_str: str = operation_type
             return ConditionEvaluator._evaluate_comparison(
                 col_value, op_str, operation.value
             )
@@ -717,7 +717,7 @@ class ConditionEvaluator:
             "from_unixtime",
         ]:
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str2: str = operation_type  # type: ignore[assignment]
+            op_str2: str = operation_type
             return cast(
                 "bool",
                 ConditionEvaluator._evaluate_function_operation(col_value, op_str2),
@@ -1212,13 +1212,15 @@ class ConditionEvaluator:
         Returns:
             Column value.
         """
-        if isinstance(column, Column):
+        # Check ColumnOperation BEFORE Column since ColumnOperation is a subclass of Column
+        # This ensures nested operations are properly evaluated, not treated as simple column references
+        if isinstance(column, ColumnOperation):
+            # Recursively evaluate the operation
+            return ConditionEvaluator._evaluate_column_operation_value(row, column)
+        elif isinstance(column, Column):
             return row.get(column.name)
         elif isinstance(column, str):
             return row.get(column)
-        elif isinstance(column, ColumnOperation):
-            # Recursively evaluate the operation
-            return ConditionEvaluator._evaluate_column_operation_value(row, column)
         elif hasattr(column, "value"):
             # Literal or similar object with a value attribute
             return column.value
