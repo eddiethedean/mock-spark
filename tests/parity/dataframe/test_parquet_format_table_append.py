@@ -246,3 +246,41 @@ class TestParquetFormatTableAppend(ParityTestBase):
         assert result.count() == 2
         names = {row["name"] for row in result.collect()}
         assert names == {"omega", "sigma"}
+
+    def test_pipeline_logs_like_write_visible_immediately(self, spark):
+        """Simulate pipeline_logs writes: append to new table then read back immediately."""
+        schema = StructType(
+            [
+                StructField("run_id", StringType(), True),
+                StructField("step", StringType(), True),
+                StructField("status", StringType(), True),
+            ]
+        )
+
+        rows = [
+            {"run_id": "run1", "step": "pipeline", "status": "success"},
+            {"run_id": "run1", "step": "extract", "status": "success"},
+            {"run_id": "run1", "step": "transform", "status": "success"},
+            {"run_id": "run1", "step": "load", "status": "success"},
+        ]
+
+        df = spark.createDataFrame(rows, schema)
+        df.write.format("parquet").mode("append").saveAsTable(self.table_fqn)
+
+        result = spark.table(self.table_fqn)
+        assert result.count() == 4, (
+            "pipeline_logs table should return all appended rows"
+        )
+
+        # Append a second run to mimic incremental pipeline logging
+        rows2 = [
+            {"run_id": "run2", "step": "pipeline", "status": "success"},
+            {"run_id": "run2", "step": "validate", "status": "success"},
+        ]
+        df2 = spark.createDataFrame(rows2, schema)
+        df2.write.format("parquet").mode("append").saveAsTable(self.table_fqn)
+
+        result_after = spark.table(self.table_fqn)
+        assert result_after.count() == 6, (
+            "All runs should be visible immediately after append"
+        )

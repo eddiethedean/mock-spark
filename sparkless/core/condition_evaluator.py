@@ -536,7 +536,7 @@ class ConditionEvaluator:
         else:
             # For other functions, delegate to the existing function evaluation
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str: str = operation_type
+            op_str: str = cast("str", operation_type)
             return ConditionEvaluator._evaluate_function_operation(col_value, op_str)
 
     @staticmethod
@@ -627,7 +627,7 @@ class ConditionEvaluator:
         # Comparison operations
         if operation_type in ["==", "!=", ">", ">=", "<", "<="]:
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str: str = operation_type
+            op_str: str = cast("str", operation_type)
             return ConditionEvaluator._evaluate_comparison(
                 col_value, op_str, operation.value
             )
@@ -717,7 +717,7 @@ class ConditionEvaluator:
             "from_unixtime",
         ]:
             # operation_type is guaranteed to be a string in ColumnOperation
-            op_str2: str = operation_type
+            op_str2: str = cast("str", operation_type)
             return cast(
                 "bool",
                 ConditionEvaluator._evaluate_function_operation(col_value, op_str2),
