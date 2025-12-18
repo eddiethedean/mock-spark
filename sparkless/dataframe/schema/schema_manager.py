@@ -216,6 +216,12 @@ class SchemaManager:
                     operation, col_any.column, col_name
                 )
                 fields_map[col_name] = StructField(alias, StringType())
+            elif operation == "to_date":
+                # to_date returns DateType
+                fields_map[col_name] = StructField(col_name, DateType())
+            elif operation == "to_timestamp":
+                # to_timestamp returns TimestampType
+                fields_map[col_name] = StructField(col_name, TimestampType())
             else:
                 fields_map[col_name] = StructField(col_name, StringType())
         elif isinstance(col, Literal):
@@ -353,6 +359,12 @@ class SchemaManager:
                     operation, getattr(col, "column", None), col.name
                 )
                 return StructField(alias, StringType())
+            elif operation == "to_date":
+                # to_date returns DateType
+                return StructField(col.name, DateType())
+            elif operation == "to_timestamp":
+                # to_timestamp returns TimestampType
+                return StructField(col.name, TimestampType())
             else:
                 # Default to StringType for unknown operations
                 return StructField(col.name, StringType())
