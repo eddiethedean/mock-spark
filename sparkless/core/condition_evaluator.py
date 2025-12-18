@@ -43,11 +43,13 @@ class ConditionEvaluator:
         Returns:
             True if condition is met, False otherwise.
         """
-        if isinstance(condition, Column):
-            return row.get(condition.name) is not None
-
+        # Check ColumnOperation BEFORE Column since ColumnOperation is a subclass of Column
+        # This ensures comparison operations (==, !=, etc.) are properly evaluated
         if isinstance(condition, ColumnOperation):
             return ConditionEvaluator._evaluate_column_operation(row, condition)
+
+        if isinstance(condition, Column):
+            return row.get(condition.name) is not None
 
         # For simple values, check if truthy
         return bool(condition) if condition is not None else False
