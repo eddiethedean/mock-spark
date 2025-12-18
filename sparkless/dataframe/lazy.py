@@ -1969,6 +1969,32 @@ class LazyEvaluationEngine:
         ):
             # Math operations typically return DoubleType
             new_fields.append(StructField(col_name, DoubleType()))
+        elif (
+            isinstance(col, ColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation == "to_date"
+        ):
+            # to_date returns DateType
+            from ..spark_types import DateType
+
+            new_fields.append(StructField(col_name, DateType()))
+        elif (
+            isinstance(col, ColumnOperation)
+            and hasattr(col, "operation")
+            and col.operation == "to_timestamp"
+        ):
+            # to_timestamp returns TimestampType
+            from ..spark_types import TimestampType
+
+            new_fields.append(StructField(col_name, TimestampType()))
+        elif isinstance(col, ColumnOperation) and hasattr(col, "operation"):
+            # For other ColumnOperations, use SchemaManager to infer type
+            from ..schema.schema_manager import SchemaManager
+
+            inferred_field = SchemaManager._infer_expression_type(col)
+            new_fields.append(
+                StructField(col_name, inferred_field.dataType, inferred_field.nullable)
+            )
         else:
             # For other column types, default to StringType
             # Additional type inference can be added here for more operations

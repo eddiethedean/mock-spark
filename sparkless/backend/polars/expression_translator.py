@@ -1126,12 +1126,30 @@ class PolarsExpressionTranslator:
             elif operation == "to_date":
                 # to_date(col, format) or to_date(col)
                 if op.value is not None:
-                    # With format string
+                    # With format string - convert Java SimpleDateFormat to Polars format
                     format_str = op.value
-                    return col_expr.str.strptime(pl.Date, format_str)
+                    import re
+
+                    # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
+                    format_str = re.sub(r"'([^']*)'", r"\1", format_str)
+                    # Convert Java format to Polars format
+                    format_map = {
+                        "yyyy": "%Y",
+                        "MM": "%m",
+                        "dd": "%d",
+                        "HH": "%H",
+                        "mm": "%M",
+                        "ss": "%S",
+                    }
+                    # Sort by length descending to process longest matches first
+                    for java_pattern, polars_pattern in sorted(
+                        format_map.items(), key=lambda x: len(x[0]), reverse=True
+                    ):
+                        format_str = format_str.replace(java_pattern, polars_pattern)
+                    return col_expr.str.strptime(pl.Date, format_str, strict=False)
                 else:
                     # Without format - try to parse common formats
-                    return col_expr.str.strptime(pl.Date)
+                    return col_expr.str.strptime(pl.Date, strict=False)
             elif operation == "to_timestamp":
                 # to_timestamp(col, format) or to_timestamp(col)
                 if op.value is not None:
