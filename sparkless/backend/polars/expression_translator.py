@@ -814,13 +814,56 @@ class PolarsExpressionTranslator:
                 ):
                     format_str = format_str.replace(java_pattern, polars_pattern)
 
-                # Use str.strptime() for string parsing - works correctly in lazy evaluation
-                # This handles the most common case (string input with format) efficiently
-                # Cast to string first to handle any input type (most common is string)
-                # str.strptime() is more reliable than map_elements in lazy evaluation
-                # Note: For datetime pass-through with format, this will cast to string and parse back
-                return col_expr.cast(pl.String).str.strptime(
-                    pl.Datetime(time_unit="us"), format=format_str, strict=False
+                # Use map_batches to handle all input types correctly, including datetime pass-through
+                # This allows us to check the type at runtime and return datetime as-is when appropriate
+                def convert_to_timestamp_batch_with_format(
+                    series: pl.Series,
+                ) -> pl.Series:
+                    """Convert batch of values to timestamps with format."""
+                    from datetime import datetime, timezone, date
+
+                    def convert_single(val: Any) -> Any:
+                        if val is None:
+                            return None
+                        # If already a datetime, return as-is (TimestampType pass-through)
+                        if isinstance(val, datetime):
+                            return val
+                        # If date, convert to datetime at midnight
+                        if isinstance(val, date) and not isinstance(val, datetime):
+                            return datetime.combine(val, datetime.min.time())
+                        # If numeric (int/long/double), treat as Unix timestamp
+                        if isinstance(val, (int, float)):
+                            try:
+                                timestamp = float(val)
+                                # Interpret as UTC and convert to local timezone (PySpark behavior)
+                                dt_utc = datetime.fromtimestamp(
+                                    timestamp, tz=timezone.utc
+                                )
+                                return dt_utc.astimezone().replace(tzinfo=None)
+                            except (ValueError, TypeError, OverflowError, OSError):
+                                return None
+                        # If string, parse with format
+                        if isinstance(val, str):
+                            try:
+                                return datetime.strptime(val, format_str)
+                            except (ValueError, TypeError):
+                                return None
+                        # For other types, try converting to string and parsing
+                        try:
+                            return datetime.strptime(str(val), format_str)
+                        except (ValueError, TypeError):
+                            return None
+
+                    # Convert values and create Series with explicit dtype
+                    # This avoids the dtype mismatch issue in lazy evaluation
+                    converted_values = [convert_single(val) for val in series]
+                    return pl.Series(
+                        converted_values, dtype=pl.Datetime(time_unit="us")
+                    )
+
+                return col_expr.map_batches(
+                    convert_to_timestamp_batch_with_format,
+                    return_dtype=pl.Datetime(time_unit="us"),
                 )
             else:
                 # Without format - handle all types
