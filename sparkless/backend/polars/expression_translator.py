@@ -6,6 +6,7 @@ to Polars expressions (pl.Expr) for DataFrame operations.
 """
 
 from typing import Any, Optional, cast
+from datetime import datetime, date
 import polars as pl
 import math
 import threading
@@ -81,6 +82,9 @@ class PolarsExpressionTranslator:
             result = pl.col(expr)
         elif isinstance(expr, (int, float, bool)):
             # Literal value
+            result = pl.lit(expr)
+        elif isinstance(expr, (datetime, date)):
+            # Datetime or date literal value
             result = pl.lit(expr)
         elif isinstance(expr, tuple):
             # Tuple - this is likely a function argument tuple, not a literal
@@ -352,6 +356,9 @@ class PolarsExpressionTranslator:
             else:
                 right = pl.lit(value.value)
         elif isinstance(value, (int, float, bool, str)):
+            right = pl.lit(value)
+        elif isinstance(value, (datetime, date)):
+            # Datetime or date literal value
             right = pl.lit(value)
         elif value is None:
             right = pl.lit(None)
