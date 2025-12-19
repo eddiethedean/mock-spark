@@ -78,6 +78,7 @@ Issues = "https://github.com/eddiethedean/sparkless/issues"
 [tool.setuptools]
 # Prevent setuptools from adding License-File metadata field (not supported by PyPI)
 include-package-data = false
+license-files = []  # Explicitly prevent automatic license file detection
 
 [tool.setuptools.packages.find]
 where = ["."]
