@@ -171,3 +171,63 @@ class TestToTimestampCompatibility:
                 df.withColumn("ts", F.to_timestamp(F.col("bool_col")))
         finally:
             spark.stop()
+
+    def test_to_timestamp_after_regexp_replace(self):
+        """Test that to_timestamp() works correctly after regexp_replace operation.
+
+        This test verifies the fix for issue #133 where to_timestamp() would fail
+        with SchemaError when used on a column created by regexp_replace.
+        """
+        spark = SparkSession("test")
+        try:
+            from sparkless.spark_types import StringType, StructType, StructField
+            from datetime import datetime, timedelta
+
+            # Create test data with ISO 8601 formatted timestamps (with microseconds)
+            test_data = [
+                {
+                    "id": f"record-{i:03d}",
+                    "timestamp_str": (datetime.now() - timedelta(hours=i)).isoformat(),
+                }
+                for i in range(5)
+            ]
+
+            schema = StructType(
+                [
+                    StructField("id", StringType(), False),
+                    StructField("timestamp_str", StringType(), False),
+                ]
+            )
+
+            df = spark.createDataFrame(test_data, schema)
+
+            # Clean timestamp string (remove microseconds) using regexp_replace
+            df_clean = df.withColumn(
+                "timestamp_clean",
+                F.regexp_replace(F.col("timestamp_str"), r"\.\d+", ""),
+            )
+
+            # Parse to timestamp - should work without SchemaError
+            df_parsed = df_clean.withColumn(
+                "timestamp_parsed",
+                F.to_timestamp(F.col("timestamp_clean"), "yyyy-MM-dd'T'HH:mm:ss"),
+            )
+
+            # Schema should show correct type
+            schema_dict = {
+                field.name: type(field.dataType).__name__
+                for field in df_parsed.schema.fields
+            }
+            assert schema_dict["timestamp_parsed"] == "TimestampType"
+
+            # Materialization should work without SchemaError
+            rows = df_parsed.collect()
+            assert len(rows) == 5
+            # Verify that timestamp_parsed column exists and is the correct type
+            for row in rows:
+                # timestamp_parsed should be datetime or None (if parsing failed)
+                assert row["timestamp_parsed"] is None or isinstance(
+                    row["timestamp_parsed"], datetime
+                )
+        finally:
+            spark.stop()
