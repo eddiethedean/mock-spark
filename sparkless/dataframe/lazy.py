@@ -1289,6 +1289,7 @@ class LazyEvaluationEngine:
                     # Perform the join
                     joined_data = []
                     for left_row in current.data:
+                        matched = False
                         for right_row in other_df.data:
                             # Check if join condition is met
                             join_match = True
@@ -1298,26 +1299,43 @@ class LazyEvaluationEngine:
                                     break
 
                             if join_match:
+                                matched = True
                                 # Combine rows
                                 joined_row = left_row.copy()
                                 for key, value in right_row.items():
-                                    # Avoid duplicate column names
+                                    # Avoid duplicate column names (Polars deduplicates)
                                     if key not in joined_row:
                                         joined_row[key] = value
-                                    else:
-                                        # Handle column name conflicts by prefixing
-                                        joined_row[f"right_{key}"] = value
+                                    # Skip duplicates - Polars automatically deduplicates
                                 joined_data.append(joined_row)
 
                                 # For inner join, only add matching rows
                                 if how.lower() in ["inner", "inner_join"]:
                                     break
 
+                        # For left/outer joins, if no match found, add left row with null values for right columns
+                        if not matched and how.lower() in [
+                            "left",
+                            "outer",
+                            "full",
+                            "full_outer",
+                        ]:
+                            joined_row = left_row.copy()
+                            # Add null values for right DataFrame columns that don't exist in left
+                            existing_left_cols = set(left_row.keys())
+                            for field in other_df.schema.fields:
+                                if field.name not in existing_left_cols:
+                                    joined_row[field.name] = None
+                            joined_data.append(joined_row)
+
                     # Create new schema combining both schemas
                     # For semi/anti joins, only use left DataFrame schema
                     if how.lower() in ["semi", "anti"]:
                         new_schema = current.schema
                     else:
+                        # Explicitly import StructField and StructType to avoid UnboundLocalError
+                        from ..spark_types import StructField, StructType
+
                         merged_fields: list[StructField] = [
                             existing_field
                             for existing_field in current.schema.fields
@@ -1326,17 +1344,11 @@ class LazyEvaluationEngine:
                         for field in other_df.schema.fields:
                             if field is None:
                                 continue
-                            # Avoid duplicate field names
+                            # Avoid duplicate field names (Polars deduplicates automatically)
+                            # So we should match that behavior in schema
                             if not any(f.name == field.name for f in merged_fields):
                                 merged_fields.append(field)
-                            else:
-                                # Handle field name conflicts by prefixing
-                                new_field = StructField(
-                                    f"right_{field.name}",
-                                    field.dataType,
-                                    field.nullable,
-                                )
-                                merged_fields.append(new_field)
+                            # Skip duplicates - Polars deduplicates columns automatically
                         new_schema = StructType(merged_fields)
                     current = DataFrame(joined_data, new_schema, current.storage)
                 elif op_name == "union":
