@@ -212,7 +212,7 @@ class PolarsMaterializer:
 
         # Apply optimized operations in sequence
         # If no optimization happened, optimized_operations will be the same as operations
-        for op_name, payload in optimized_operations:
+        for current_op_index, (op_name, payload) in enumerate(optimized_operations):
             if op_name == "filter":
                 # Filter operation - optimize to use computed columns if available
                 # Note: When filter is pushed before select, computed_expressions will be empty
@@ -238,8 +238,20 @@ class PolarsMaterializer:
                 if df_materialized is not None:
                     df_collected = df_materialized
                     df_materialized = None
+                    # DEBUG: Using materialized DataFrame for select
+                    print(
+                        f"[DEBUG] select: Using df_materialized with columns = {df_collected.columns}"
+                    )
                 else:
                     df_collected = lazy_df.collect()
+                    # DEBUG: Collecting from lazy DataFrame for select
+                    print(
+                        f"[DEBUG] select: Collected from lazy_df with columns = {df_collected.columns}"
+                    )
+                # DEBUG: Before apply_select
+                print(
+                    f"[DEBUG] select: Before apply_select, df_collected.columns = {df_collected.columns}, payload = {payload}"
+                )
                 # Apply select - this should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
                 lazy_df = self.operation_executor.apply_select(
@@ -266,9 +278,23 @@ class PolarsMaterializer:
                     df_collected, column_name, expression
                 )
 
-                # Convert result back to lazy
-                # Window functions are already fully materialized in apply_with_column
-                lazy_df = result_df.lazy()
+                # Keep materialized DataFrame only if next operation is withColumnRenamed
+                # This ensures columns added by withColumn are preserved through rename operations
+                next_op_index = current_op_index + 1
+                if next_op_index < len(optimized_operations):
+                    next_op_name, _ = optimized_operations[next_op_index]
+                    if next_op_name == "withColumnRenamed":
+                        # Keep materialized for next withColumnRenamed operation
+                        df_materialized = result_df
+                        lazy_df = result_df.lazy()  # Still set lazy_df for consistency
+                    else:
+                        # Convert result back to lazy for other operations
+                        lazy_df = result_df.lazy()
+                        df_materialized = None
+                else:
+                    # No more operations, convert back to lazy for final collection
+                    lazy_df = result_df.lazy()
+                    df_materialized = None
                 # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
@@ -640,8 +666,47 @@ class PolarsMaterializer:
                     current_available_columns.discard(col)
             elif op_name == "withColumnRenamed":
                 # WithColumnRenamed operation
+                # If we have a materialized DataFrame, rename directly in it to preserve columns
+                # Otherwise, rename in the lazy DataFrame
                 old_name, new_name = payload
-                lazy_df = lazy_df.rename({old_name: new_name})
+                if df_materialized is not None:
+                    # Rename directly in the materialized DataFrame to ensure all columns are preserved
+                    df_materialized = df_materialized.rename({old_name: new_name})
+                    # Update lazy_df to match (for consistency)
+                    lazy_df = df_materialized.lazy()
+                    # Keep df_materialized set if there are more operations
+                    # This ensures columns are preserved for subsequent operations
+                    next_op_index = current_op_index + 1
+                    if next_op_index < len(optimized_operations):
+                        next_op_name, _ = optimized_operations[next_op_index]
+                        # Only convert to lazy for operations that explicitly need it
+                        lazy_ops = {
+                            "filter",
+                            "distinct",
+                            "limit",
+                            "offset",
+                            "orderBy",
+                            "sort",
+                        }
+                        if next_op_name in lazy_ops:
+                            # Next operation needs lazy - convert
+                            lazy_df = df_materialized.lazy()
+                            df_materialized = None
+                        # Otherwise, keep df_materialized set for operations like select, withColumn, withColumnRenamed
+                    # If no more operations, keep df_materialized for final collection
+                else:
+                    # Rename in the lazy DataFrame
+                    lazy_df = lazy_df.rename({old_name: new_name})
+                # Update schema and available columns after rename
+                from ...dataframe.schema.schema_manager import SchemaManager
+
+                current_schema = SchemaManager.project_schema_with_operations(
+                    current_schema, [(op_name, payload)]
+                )
+                # Update available columns set
+                if old_name in current_available_columns:
+                    current_available_columns.remove(old_name)
+                    current_available_columns.add(new_name)
             else:
                 raise ValueError(f"Unsupported operation: {op_name}")
 

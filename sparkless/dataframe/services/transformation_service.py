@@ -294,8 +294,11 @@ class TransformationService:
 
     def withColumnRenamed(self, existing: str, new: str) -> "SupportsDataFrameOps":
         """Rename a column."""
+        # Materialize if lazy to ensure we work with actual data including all columns
+        materialized = self._df._materialize_if_lazy()
+
         new_data = []
-        for row in self._df.data:
+        for row in materialized.data:
             new_row = {}
             for k, v in row.items():
                 if k == existing:
@@ -306,7 +309,7 @@ class TransformationService:
 
         # Update schema
         new_fields = []
-        for field in self._df.schema.fields:
+        for field in materialized.schema.fields:
             if field.name == existing:
                 new_fields.append(StructField(new, field.dataType))
             else:
