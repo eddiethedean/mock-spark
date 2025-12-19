@@ -777,6 +777,130 @@ class PolarsExpressionTranslator:
             # Polars list.sort() with descending=False for ascending, descending=True for descending
             return col_expr.list.sort(descending=not asc)
 
+        # Handle to_timestamp before other checks since it can have op.value=None or op.value=format
+        # to_timestamp needs special handling for multiple input types
+        if operation == "to_timestamp":
+            # to_timestamp(col, format) or to_timestamp(col)
+            # PySpark accepts multiple input types:
+            # - StringType: parse with format (or default format)
+            # - TimestampType: pass-through (return as-is)
+            # - IntegerType/LongType: Unix timestamp in seconds
+            # - DateType: convert Date to Timestamp
+            # - DoubleType: Unix timestamp with decimal seconds
+            #
+            # Use map_elements to handle all types since str.strptime() only works on string columns
+            # and raises SchemaError for other types during lazy evaluation
+            from datetime import datetime, timezone, date
+
+            if op.value is not None:
+                # With format string
+                format_str = op.value
+                # Handle optional fractional seconds like [.SSSSSS]
+                import re
+
+                # Remove optional fractional pattern from format string
+                format_str = re.sub(r"\[\.S+\]", "", format_str)
+                # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
+                format_str = re.sub(r"'([^']*)'", r"\1", format_str)
+                # Convert Java format to Polars format
+                format_map = {
+                    "yyyy": "%Y",
+                    "MM": "%m",
+                    "dd": "%d",
+                    "HH": "%H",
+                    "mm": "%M",
+                    "ss": "%S",
+                }
+                # Sort by length descending to process longest matches first
+                for java_pattern, polars_pattern in sorted(
+                    format_map.items(), key=lambda x: len(x[0]), reverse=True
+                ):
+                    format_str = format_str.replace(java_pattern, polars_pattern)
+
+                def convert_to_timestamp(val: Any) -> Any:
+                    if val is None:
+                        return None
+                    # If already a datetime, return as-is (TimestampType pass-through)
+                    if isinstance(val, datetime):
+                        return val
+                    # If date, convert to datetime at midnight
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return datetime.combine(val, datetime.min.time())
+                    # If numeric (int/long/double), treat as Unix timestamp
+                    if isinstance(val, (int, float)):
+                        try:
+                            timestamp = float(val)
+                            # Interpret as UTC and convert to local timezone (PySpark behavior)
+                            dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                            return dt_utc.astimezone().replace(tzinfo=None)
+                        except (ValueError, TypeError, OverflowError, OSError):
+                            return None
+                    # If string, parse with format
+                    if isinstance(val, str):
+                        try:
+                            return datetime.strptime(val, format_str)
+                        except (ValueError, TypeError):
+                            return None
+                    # For other types, try converting to string and parsing
+                    try:
+                        return datetime.strptime(str(val), format_str)
+                    except (ValueError, TypeError):
+                        return None
+
+                return col_expr.map_elements(
+                    convert_to_timestamp,
+                    return_dtype=pl.Datetime(time_unit="us"),
+                )
+            else:
+                # Without format - handle all types
+                def convert_to_timestamp_no_format(val: Any) -> Any:
+                    if val is None:
+                        return None
+                    # If already a datetime, return as-is (TimestampType pass-through)
+                    if isinstance(val, datetime):
+                        return val
+                    # If date, convert to datetime at midnight
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return datetime.combine(val, datetime.min.time())
+                    # If numeric (int/long/double), treat as Unix timestamp
+                    if isinstance(val, (int, float)):
+                        try:
+                            timestamp = float(val)
+                            # Interpret as UTC and convert to local timezone (PySpark behavior)
+                            dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                            return dt_utc.astimezone().replace(tzinfo=None)
+                        except (ValueError, TypeError, OverflowError, OSError):
+                            return None
+                    # If string, try parsing with common formats
+                    if isinstance(val, str):
+                        for fmt in [
+                            "%Y-%m-%d %H:%M:%S",
+                            "%Y-%m-%dT%H:%M:%S",
+                            "%Y-%m-%d",
+                        ]:
+                            try:
+                                return datetime.strptime(val, fmt)
+                            except ValueError:
+                                continue
+                        return None
+                    # For other types, try converting to string and parsing
+                    val_str = str(val)
+                    for fmt in [
+                        "%Y-%m-%d %H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%d",
+                    ]:
+                        try:
+                            return datetime.strptime(val_str, fmt)
+                        except ValueError:
+                            continue
+                    return None
+
+                return col_expr.map_elements(
+                    convert_to_timestamp_no_format,
+                    return_dtype=pl.Datetime(time_unit="us"),
+                )
+
         # Map function names to Polars expressions
         # Handle functions with arguments (operation is already extracted above)
         if op.value is not None:
@@ -1150,46 +1274,6 @@ class PolarsExpressionTranslator:
                 else:
                     # Without format - try to parse common formats
                     return col_expr.str.strptime(pl.Date, strict=False)
-            elif operation == "to_timestamp":
-                # to_timestamp(col, format) or to_timestamp(col)
-                if op.value is not None:
-                    # With format string - convert Java SimpleDateFormat to Polars format
-                    format_str = op.value
-                    # Handle optional fractional seconds like [.SSSSSS]
-                    import re
-
-                    # Check if format has optional fractional seconds
-                    has_optional_fractional = bool(re.search(r"\[\.S+\]", format_str))
-                    # Remove optional fractional pattern from format string
-                    format_str = re.sub(r"\[\.S+\]", "", format_str)
-                    # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
-                    format_str = re.sub(r"'([^']*)'", r"\1", format_str)
-                    # Convert Java format to Polars format
-                    format_map = {
-                        "yyyy": "%Y",
-                        "MM": "%m",
-                        "dd": "%d",
-                        "HH": "%H",
-                        "mm": "%M",
-                        "ss": "%S",
-                    }
-                    # Sort by length descending to process longest matches first
-                    for java_pattern, polars_pattern in sorted(
-                        format_map.items(), key=lambda x: len(x[0]), reverse=True
-                    ):
-                        format_str = format_str.replace(java_pattern, polars_pattern)
-                    # If there was optional fractional seconds, try parsing with and without
-                    if has_optional_fractional:
-                        # Try with microseconds format - use %.f for Polars (not .%f)
-                        format_with_us = format_str + "%.f"
-                        # Use strict=False to handle optional parts
-                        return col_expr.str.strptime(
-                            pl.Datetime, format_with_us, strict=False
-                        )
-                    return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
-                else:
-                    # Without format - try to parse common formats
-                    return col_expr.str.strptime(pl.Datetime, strict=False)
             elif operation == "date_format":
                 # date_format(col, format) - format a date/timestamp column
                 if isinstance(op.value, str):

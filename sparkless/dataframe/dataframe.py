@@ -429,7 +429,7 @@ class DataFrame:
             self._operations_queue = []
         # Mark as materialized after show (schema and data are now updated)
         self._mark_materialized()
-        return self._display.show(n, truncate)
+        self._display.show(n, truncate)
 
     def _to_markdown(
         self,
@@ -442,7 +442,7 @@ class DataFrame:
 
     def printSchema(self) -> None:
         """Print DataFrame schema."""
-        return self._display.printSchema()
+        self._display.printSchema()
 
     def collect(self) -> list["Row"]:
         """Collect all data as list of Row objects."""
@@ -473,23 +473,18 @@ class DataFrame:
         if n is None:
             # No argument provided - return single Row (PySpark behavior)
             result = self._display.head(1)
-            if result is None:
-                return None  # type: ignore
+            # _display.head(1) always returns list[Row]
             if isinstance(result, list):
-                return result[0] if result else None  # type: ignore
-            return result  # type: ignore
+                return cast("Row", result[0] if result else None)
+            return cast("Row", result)  # type: ignore[unreachable]
 
         # Explicit n provided - return list (PySpark behavior)
         result = self._display.head(n)
-        # _display.head(n) always returns list[Row], but defensive check for None
-        if result is None:
-            return []  # type: ignore[unreachable]
-        # result is already a list from _display.head(), but handle defensively
+        # _display.head(n) always returns list[Row]
         if isinstance(result, list):
             return result
-        # Type narrowing: if we reach here, result is not None and not a list
         # Wrap single Row in list (shouldn't happen, but defensive)
-        return [result]  # type: ignore[unreachable]
+        return [cast("Row", result)]  # type: ignore[unreachable]
 
     def tail(self, n: int = 1) -> list["Row"]:
         """Return last n rows. Always returns a list, matching PySpark behavior."""
@@ -568,19 +563,19 @@ class DataFrame:
     # Assertion operations
     def _assert_has_columns(self, expected_columns: list[str]) -> None:
         """Assert that DataFrame has the expected columns."""
-        return self._assertions.assert_has_columns(expected_columns)
+        self._assertions.assert_has_columns(expected_columns)
 
     def _assert_row_count(self, expected_count: int) -> None:
         """Assert that DataFrame has the expected row count."""
-        return self._assertions.assert_row_count(expected_count)
+        self._assertions.assert_row_count(expected_count)
 
     def _assert_schema_matches(self, expected_schema: StructType) -> None:
         """Assert that DataFrame schema matches the expected schema."""
-        return self._assertions.assert_schema_matches(expected_schema)
+        self._assertions.assert_schema_matches(expected_schema)
 
     def _assert_data_equals(self, expected_data: list[dict[str, Any]]) -> None:
         """Assert that DataFrame data equals the expected data."""
-        return self._assertions.assert_data_equals(expected_data)
+        self._assertions.assert_data_equals(expected_data)
 
     # Miscellaneous operations
     def dropna(
@@ -759,11 +754,11 @@ class DataFrame:
 
     def foreach(self, f: Any) -> None:
         """Apply function to each row."""
-        return self._misc.foreach(f)
+        self._misc.foreach(f)
 
     def foreachPartition(self, f: Any) -> None:
         """Apply function to each partition."""
-        return self._misc.foreachPartition(f)
+        self._misc.foreachPartition(f)
 
     def writeTo(self, table: str) -> Any:
         """Write DataFrame to a table using the Table API."""
@@ -932,13 +927,36 @@ class DataFrame:
                     ):
                         actual_input_type = StringType()
 
-                # to_timestamp requires StringType input (PySpark compatibility)
-                # If column is already datetime type, to_timestamp() fails
+                # to_timestamp accepts multiple input types (PySpark compatibility):
+                # - StringType (with format parameter)
+                # - TimestampType (pass-through)
+                # - IntegerType/LongType (Unix timestamp in seconds)
+                # - DateType (convert Date to Timestamp)
+                # - DoubleType (Unix timestamp with decimal seconds)
                 if func_name == "to_timestamp":
-                    if not isinstance(actual_input_type, StringType):
+                    from sparkless.spark_types import (
+                        TimestampType,
+                        IntegerType,
+                        LongType,
+                        DateType,
+                        DoubleType,
+                    )
+
+                    if not isinstance(
+                        actual_input_type,
+                        (
+                            StringType,
+                            TimestampType,
+                            IntegerType,
+                            LongType,
+                            DateType,
+                            DoubleType,
+                        ),
+                    ):
                         raise TypeError(
-                            f"{func_name}() requires StringType input, got {input_type}. "
-                            f"Cast the column to string first: F.col('{col_name}').cast('string')"
+                            f"{func_name}() requires StringType, TimestampType, "
+                            f"IntegerType, LongType, DateType, or DoubleType input, "
+                            f"got {input_type}."
                         )
                 # to_date accepts StringType or DateType (already a date)
                 elif func_name == "to_date" and not isinstance(
@@ -1102,9 +1120,10 @@ class DataFrame:
         Returns:
             Evaluated value of the expression.
         """
-        return self._get_condition_handler().evaluate_column_expression(
+        result = self._get_condition_handler().evaluate_column_expression(
             row, column_expression
         )
+        return cast("Any", result)
 
     def _evaluate_window_functions(
         self, data: list[dict[str, Any]], window_functions: list[tuple[Any, ...]]
@@ -1118,7 +1137,7 @@ class DataFrame:
         self, data: list[dict[str, Any]], window_func: Any, col_name: str, is_lead: bool
     ) -> None:
         """Evaluate lag or lead window function."""
-        return self._get_window_handler()._evaluate_lag_lead(
+        self._get_window_handler()._evaluate_lag_lead(
             data, window_func, col_name, is_lead
         )
 
@@ -1144,7 +1163,7 @@ class DataFrame:
         is_lead: bool,
     ) -> None:
         """Apply lag or lead to a specific partition."""
-        return self._get_window_handler()._apply_lag_lead_to_partition(
+        self._get_window_handler()._apply_lag_lead_to_partition(
             data, indices, source_col, target_col, offset, default_value, is_lead
         )
 
@@ -1152,9 +1171,7 @@ class DataFrame:
         self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate rank or dense_rank window function."""
-        return self._get_window_handler()._evaluate_rank_functions(
-            data, window_func, col_name
-        )
+        self._get_window_handler()._evaluate_rank_functions(data, window_func, col_name)
 
     def _apply_rank_to_partition(
         self,
@@ -1165,7 +1182,7 @@ class DataFrame:
         is_dense: bool,
     ) -> None:
         """Apply rank or dense_rank to a specific partition."""
-        return self._get_window_handler()._apply_rank_to_partition(
+        self._get_window_handler()._apply_rank_to_partition(
             data, indices, order_by_cols, col_name, is_dense
         )
 
@@ -1173,7 +1190,7 @@ class DataFrame:
         self, data: list[dict[str, Any]], window_func: Any, col_name: str
     ) -> None:
         """Evaluate aggregate window functions like avg, sum, count, etc."""
-        return self._get_window_handler()._evaluate_aggregate_window_functions(
+        self._get_window_handler()._evaluate_aggregate_window_functions(
             data, window_func, col_name
         )
 
@@ -1185,7 +1202,7 @@ class DataFrame:
         col_name: str,
     ) -> None:
         """Apply aggregate function to a specific partition."""
-        return self._get_window_handler()._apply_aggregate_to_partition(
+        self._get_window_handler()._apply_aggregate_to_partition(
             data, indices, window_func, col_name
         )
 
