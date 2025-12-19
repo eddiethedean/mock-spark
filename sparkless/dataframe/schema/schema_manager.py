@@ -88,16 +88,11 @@ class SchemaManager:
                 fields_map = SchemaManager._handle_drop_operation(fields_map, op_val)
             elif op_name == "join":
                 other_df, on, how = op_val
-                # For semi/anti joins, only return left DataFrame columns
-                if (
-                    how
-                    and how.lower() in ("semi", "anti", "left_semi", "left_anti")
-                    and using_list
-                ):
-                    # For semi/anti joins, only keep left columns
-                    # Filter to keep only fields that were in the left side before this join
-                    # We can't perfectly track this, so just return current list
-                    # In practice, semi/anti joins should preserve left columns only
+                # For semi/anti joins, only return left DataFrame columns (don't add right columns)
+                if how and how.lower() in ("semi", "anti", "left_semi", "left_anti"):
+                    # For semi/anti joins, don't add right-side columns
+                    # If using list, keep the list as-is (only left columns)
+                    # If using dict, keep the dict as-is (only left columns)
                     continue
 
                 # Convert dict to list if this is the first join
@@ -105,17 +100,24 @@ class SchemaManager:
                     fields_list = list(fields_map.values())
                     using_list = True
 
-                # Track existing field names (for deduplication)
-                # Polars automatically deduplicates columns in joins, so we should match that behavior
+                # Determine if join is on a single column name (string) or column expression
+                # PySpark behavior:
+                # - Single column join (string): deduplicates the join key column
+                # - Column expression join: allows duplicates (keeps both columns)
+                is_single_column_join = isinstance(on, str) or (
+                    isinstance(on, list) and len(on) == 1 and isinstance(on[0], str)
+                )
+
+                # Add fields from right DataFrame
                 if fields_list is not None:
                     existing_field_names = {f.name for f in fields_list}
-
-                    # Add fields from right DataFrame, skipping duplicates
-                    # This matches Polars' behavior of deduplicating columns
                     for field in other_df.schema.fields:
-                        if field.name not in existing_field_names:
-                            fields_list.append(field)
-                            existing_field_names.add(field.name)
+                        if is_single_column_join and field.name in existing_field_names:
+                            # Single column join: skip duplicate join key (PySpark deduplicates)
+                            continue
+                        # For column expression joins or non-duplicate columns, add the field
+                        fields_list.append(field)
+                        existing_field_names.add(field.name)
 
         # Return appropriate format
         if using_list and fields_list is not None:

@@ -500,6 +500,38 @@ class LazyEvaluationEngine:
                 ):
                     return LazyEvaluationEngine._materialize_manual(df)
 
+                # Update schema to match actual columns in materialized data
+                # This handles Polars deduplication/renaming of duplicate columns.
+                # Python dicts can only have unique keys, so materialized_data has deduplicated columns.
+                # The schema should match the actual data structure after materialization.
+                if materialized_data:
+                    actual_data_keys = set(materialized_data[0].keys())
+                    schema_column_names = {f.name for f in final_schema.fields}
+                    # Check if schema has duplicates (length of fields list > length of unique names set)
+                    # or if the unique column sets don't match
+                    schema_has_duplicates = len(final_schema.fields) > len(
+                        schema_column_names
+                    )
+                    if schema_has_duplicates or actual_data_keys != schema_column_names:
+                        # Schema has duplicates but data is deduplicated - update schema to match data
+                        from ..core.schema_inference import infer_schema_from_data
+
+                        try:
+                            final_schema = infer_schema_from_data(materialized_data)
+                        except ValueError:
+                            # If schema inference fails (e.g., empty data with complex types),
+                            # keep the projected schema but deduplicate it
+                            # Build deduplicated schema from projected schema
+                            seen_names = set()
+                            deduplicated_fields = []
+                            for field in final_schema.fields:
+                                if field.name not in seen_names:
+                                    deduplicated_fields.append(field)
+                                    seen_names.add(field.name)
+                            from ..spark_types import StructType
+
+                            final_schema = StructType(deduplicated_fields)
+
                 # Create new eager DataFrame with materialized data and final schema
                 # IMPORTANT: Clear operations queue since all operations have been materialized
                 # Also preserve cached state for PySpark compatibility
@@ -1300,14 +1332,24 @@ class LazyEvaluationEngine:
 
                             if join_match:
                                 matched = True
-                                # Combine rows
-                                joined_row = left_row.copy()
-                                for key, value in right_row.items():
-                                    # Avoid duplicate column names (Polars deduplicates)
-                                    if key not in joined_row:
-                                        joined_row[key] = value
-                                    # Skip duplicates - Polars automatically deduplicates
-                                joined_data.append(joined_row)
+                                # For semi/anti joins, only use left row (no right columns)
+                                if how.lower() in [
+                                    "semi",
+                                    "left_semi",
+                                    "anti",
+                                    "left_anti",
+                                ]:
+                                    joined_row = left_row.copy()
+                                    joined_data.append(joined_row)
+                                else:
+                                    # For other joins, combine rows
+                                    joined_row = left_row.copy()
+                                    for key, value in right_row.items():
+                                        # Avoid duplicate column names (Polars deduplicates)
+                                        if key not in joined_row:
+                                            joined_row[key] = value
+                                        # Skip duplicates - Polars automatically deduplicates
+                                    joined_data.append(joined_row)
 
                                 # For inner join, only add matching rows
                                 if how.lower() in ["inner", "inner_join"]:
@@ -1330,8 +1372,15 @@ class LazyEvaluationEngine:
 
                     # Create new schema combining both schemas
                     # For semi/anti joins, only use left DataFrame schema
-                    if how.lower() in ["semi", "anti"]:
+                    if how.lower() in ["semi", "left_semi", "anti", "left_anti"]:
                         new_schema = current.schema
+                        # For semi/anti joins, remove duplicates from joined_data
+                        # by keeping only left columns
+                        left_col_names = {f.name for f in current.schema.fields}
+                        joined_data = [
+                            {k: v for k, v in row.items() if k in left_col_names}
+                            for row in joined_data
+                        ]
                     else:
                         # Explicitly import StructField and StructType to avoid UnboundLocalError
                         from ..spark_types import StructField, StructType

@@ -673,6 +673,7 @@ class PolarsMaterializer:
             # Create Row from dict - Row will handle the conversion
             # The schema will be applied later in _convert_materialized_rows
             rows.append(Row(row_dict, schema=None))
+
         return rows
 
     def close(self) -> None:
