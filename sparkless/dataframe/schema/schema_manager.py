@@ -54,33 +54,74 @@ class SchemaManager:
             # Preserve base schema fields - this works even for empty DataFrames with schemas
             fields_map = {f.name: f for f in base_schema.fields}
 
+        # Track whether we're using list-based fields (for joins with duplicates) or dict-based
+        fields_list: Optional[list[StructField]] = None
+        using_list = False
+
         for op_name, op_val in operations_queue:
             if op_name == "filter":
                 # no schema change
                 continue
             elif op_name == "select":
+                if using_list and fields_list is not None:
+                    # Convert list back to dict for select operation
+                    fields_map = {f.name: f for f in fields_list}
+                    fields_list = None
+                    using_list = False
                 fields_map = SchemaManager._handle_select_operation(fields_map, op_val)
             elif op_name == "withColumn":
+                if using_list and fields_list is not None:
+                    # Convert list back to dict for withColumn operation
+                    fields_map = {f.name: f for f in fields_list}
+                    fields_list = None
+                    using_list = False
                 col_name, col = op_val
                 fields_map = SchemaManager._handle_withcolumn_operation(
                     fields_map, col_name, col, base_schema
                 )
             elif op_name == "drop":
+                if using_list and fields_list is not None:
+                    # Convert list back to dict for drop operation
+                    fields_map = {f.name: f for f in fields_list}
+                    fields_list = None
+                    using_list = False
                 fields_map = SchemaManager._handle_drop_operation(fields_map, op_val)
             elif op_name == "join":
                 other_df, on, how = op_val
-                # For joins, return immediately to preserve duplicate column names (PySpark behavior)
-                # Build a list instead of dict to allow duplicates
-                fields_list = list(fields_map.values())
-                # Add all fields from right DataFrame (may create duplicates - that's PySpark behavior)
-                for field in other_df.schema.fields:
-                    fields_list.append(field)
                 # For semi/anti joins, only return left DataFrame columns
-                if how and how.lower() in ("semi", "anti", "left_semi", "left_anti"):
-                    return StructType(list(fields_map.values()))
-                return StructType(fields_list)
+                if (
+                    how
+                    and how.lower() in ("semi", "anti", "left_semi", "left_anti")
+                    and using_list
+                ):
+                    # For semi/anti joins, only keep left columns
+                    # Filter to keep only fields that were in the left side before this join
+                    # We can't perfectly track this, so just return current list
+                    # In practice, semi/anti joins should preserve left columns only
+                    continue
 
-        return StructType(list(fields_map.values()))
+                # Convert dict to list if this is the first join
+                if not using_list:
+                    fields_list = list(fields_map.values())
+                    using_list = True
+
+                # Track existing field names (for deduplication)
+                # Polars automatically deduplicates columns in joins, so we should match that behavior
+                if fields_list is not None:
+                    existing_field_names = {f.name for f in fields_list}
+
+                    # Add fields from right DataFrame, skipping duplicates
+                    # This matches Polars' behavior of deduplicating columns
+                    for field in other_df.schema.fields:
+                        if field.name not in existing_field_names:
+                            fields_list.append(field)
+                            existing_field_names.add(field.name)
+
+        # Return appropriate format
+        if using_list and fields_list is not None:
+            return StructType(fields_list)
+        else:
+            return StructType(list(fields_map.values()))
 
     @staticmethod
     def _handle_select_operation(
