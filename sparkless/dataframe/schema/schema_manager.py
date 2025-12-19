@@ -86,6 +86,21 @@ class SchemaManager:
                     fields_list = None
                     using_list = False
                 fields_map = SchemaManager._handle_drop_operation(fields_map, op_val)
+            elif op_name == "withColumnRenamed":
+                # Handle column rename - update field names in schema
+                if using_list and fields_list is not None:
+                    # Convert list back to dict for rename operation
+                    fields_map = {f.name: f for f in fields_list}
+                    fields_list = None
+                    using_list = False
+                old_name, new_name = op_val
+                if old_name in fields_map:
+                    # Rename the field
+                    field = fields_map.pop(old_name)
+                    # Create new field with new name but same type and nullable
+                    fields_map[new_name] = StructField(
+                        new_name, field.dataType, field.nullable
+                    )
             elif op_name == "join":
                 other_df, on, how = op_val
                 # For semi/anti joins, only return left DataFrame columns (don't add right columns)
