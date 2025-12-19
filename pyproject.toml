@@ -75,6 +75,10 @@ Homepage = "https://github.com/eddiethedean/sparkless"
 Repository = "https://github.com/eddiethedean/sparkless"
 Issues = "https://github.com/eddiethedean/sparkless/issues"
 
+[tool.setuptools]
+# Prevent setuptools from adding License-File metadata field (not supported by PyPI)
+include-package-data = false
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["sparkless*"]
