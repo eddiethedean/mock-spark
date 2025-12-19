@@ -25,12 +25,10 @@ class TestIssue137DatetimeValidation:
                 data, ["patient_id", "first_name", "date_of_birth"]
             )
 
-            transformed = (
-                df.withColumn(
-                    "birth_date", to_date(col("date_of_birth"), "yyyy-MM-dd")
-                ).withColumn(
-                    "age", floor(datediff(current_date(), col("birth_date")) / 365.25)
-                )
+            transformed = df.withColumn(
+                "birth_date", to_date(col("date_of_birth"), "yyyy-MM-dd")
+            ).withColumn(
+                "age", floor(datediff(current_date(), col("birth_date")) / 365.25)
             )
 
             # Validation rules that should pass
@@ -82,12 +80,10 @@ class TestIssue137DatetimeValidation:
                 data, ["patient_id", "first_name", "date_of_birth"]
             )
 
-            transformed = (
-                df.withColumn(
-                    "birth_date", to_date(col("date_of_birth"), "yyyy-MM-dd")
-                ).withColumn(
-                    "age", floor(datediff(current_date(), col("birth_date")) / 365.25)
-                )
+            transformed = df.withColumn(
+                "birth_date", to_date(col("date_of_birth"), "yyyy-MM-dd")
+            ).withColumn(
+                "age", floor(datediff(current_date(), col("birth_date")) / 365.25)
             )
 
             # Validation with multiple conditions
@@ -102,4 +98,3 @@ class TestIssue137DatetimeValidation:
 
         finally:
             spark.stop()
-
