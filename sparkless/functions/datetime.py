@@ -795,30 +795,45 @@ class DateTimeFunctions:
     def to_timestamp(
         column: Union[Column, str], format: Optional[str] = None
     ) -> ColumnOperation:
-        """Convert string to timestamp.
+        """Convert to timestamp.
 
         Args:
-            column: The column to convert (must be StringType).
-            format: Optional timestamp format string.
+            column: The column to convert. Accepts StringType, TimestampType,
+                IntegerType, LongType, DateType, or DoubleType (matching PySpark behavior).
+            format: Optional timestamp format string (used for StringType input).
 
         Returns:
             ColumnOperation representing the to_timestamp function.
 
         Raises:
-            TypeError: If input column type is not StringType
+            TypeError: If input column type is not one of the supported types.
         """
-        from sparkless.spark_types import StringType
+        from sparkless.spark_types import (
+            StringType,
+            TimestampType,
+            IntegerType,
+            LongType,
+            DateType,
+            DoubleType,
+        )
 
         if isinstance(column, str):
             column = Column(column)
 
-        # PySpark requires string input for to_timestamp
-        # Check if we can determine the column type
+        # PySpark accepts multiple input types for to_timestamp:
+        # - StringType (with format parameter)
+        # - TimestampType (pass-through)
+        # - IntegerType/LongType (Unix timestamp in seconds)
+        # - DateType (convert Date to Timestamp)
+        # - DoubleType (Unix timestamp with decimal seconds)
         input_type = getattr(column, "column_type", None)
-        if input_type is not None and not isinstance(input_type, StringType):
+        if input_type is not None and not isinstance(
+            input_type,
+            (StringType, TimestampType, IntegerType, LongType, DateType, DoubleType),
+        ):
             raise TypeError(
-                f"to_timestamp() requires StringType input, got {input_type}. "
-                f"Cast the column to string first: F.col('{column.name}').cast('string')"
+                f"to_timestamp() requires StringType, TimestampType, IntegerType, "
+                f"LongType, DateType, or DoubleType input, got {input_type}."
             )
 
         # Generate a simple name for the operation
@@ -1413,12 +1428,9 @@ class DateTimeFunctions:
         elif isinstance(end, Column):
             # Already a Column, use as-is
             end_col = end
-        elif isinstance(end, Literal):  # type: ignore[unreachable]
-            # Already a Literal, use as-is
-            end_col = end
         else:
             # Fallback: for ColumnOperation or other types, create Column from name
-            end_col = Column(str(end))
+            end_col = Column(str(end))  # type: ignore[unreachable]
 
         start_col: Union[Literal, Column]
         if isinstance(start, Literal):
@@ -1432,12 +1444,9 @@ class DateTimeFunctions:
         elif isinstance(start, Column):
             # Already a Column, use as-is
             start_col = start
-        elif isinstance(start, Literal):  # type: ignore[unreachable]
-            # Already a Literal, use as-is
-            start_col = start
         else:
             # Fallback: for ColumnOperation or other types, create Column from name
-            start_col = Column(str(start))
+            start_col = Column(str(start))  # type: ignore[unreachable]
 
         end_name = (
             end_col.name
@@ -1518,11 +1527,10 @@ class DateTimeFunctions:
             timestamp_col = Column(str(timestamp))  # type: ignore[unreachable]
 
         # Get name safely
-        timestamp_name = (
-            timestamp_col.name
-            if hasattr(timestamp_col, "name")
-            else "current_timestamp"
-        )
+        if hasattr(timestamp_col, "name"):
+            timestamp_name = timestamp_col.name
+        else:
+            timestamp_name = "current_timestamp"
 
         return ColumnOperation(
             timestamp_col,
