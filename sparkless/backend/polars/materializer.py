@@ -238,20 +238,8 @@ class PolarsMaterializer:
                 if df_materialized is not None:
                     df_collected = df_materialized
                     df_materialized = None
-                    # DEBUG: Using materialized DataFrame for select
-                    print(
-                        f"[DEBUG] select: Using df_materialized with columns = {df_collected.columns}"
-                    )
                 else:
                     df_collected = lazy_df.collect()
-                    # DEBUG: Collecting from lazy DataFrame for select
-                    print(
-                        f"[DEBUG] select: Collected from lazy_df with columns = {df_collected.columns}"
-                    )
-                # DEBUG: Before apply_select
-                print(
-                    f"[DEBUG] select: Before apply_select, df_collected.columns = {df_collected.columns}, payload = {payload}"
-                )
                 # Apply select - this should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
                 lazy_df = self.operation_executor.apply_select(
