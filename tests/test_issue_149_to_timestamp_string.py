@@ -6,21 +6,27 @@ sparkless expects Datetime('μs') in validation and type-checking contexts.
 This occurs when using to_timestamp() with regexp_replace().cast("string").
 """
 
-from sparkless import SparkSession
-from sparkless.functions import col, to_timestamp, regexp_replace
+from tests.fixtures.spark_imports import get_spark_imports
+
+# Get the appropriate imports based on backend (sparkless or PySpark)
+# This will automatically use PySpark functions when MOCK_SPARK_TEST_BACKEND=pyspark
+imports = get_spark_imports()
+F = imports.F
+col = F.col
+to_timestamp = F.to_timestamp
+regexp_replace = F.regexp_replace
 
 
 class TestIssue149ToTimestampString:
     """Test cases for issue #149: to_timestamp() string type detection."""
 
-    def test_to_timestamp_with_regexp_replace_cast_string(self):
+    def test_to_timestamp_with_regexp_replace_cast_string(self, spark):
         """Test that to_timestamp() correctly detects string type from regexp_replace().cast("string").
 
         This test verifies the fix for issue #149 where to_timestamp() would fail
         with "expected output type 'Datetime('μs')', got 'String'" when the input
         comes from regexp_replace().cast("string").
         """
-        spark = SparkSession.builder.appName("test_issue_149").getOrCreate()
 
         # Create test data with datetime strings containing microseconds
         data = [("2024-01-15T10:30:45.123456",)]
@@ -52,9 +58,8 @@ class TestIssue149ToTimestampString:
         # but the important thing is that the schema is correct
         assert date_parsed_field.nullable is True
 
-    def test_to_timestamp_with_nested_cast_string(self):
+    def test_to_timestamp_with_nested_cast_string(self, spark):
         """Test that to_timestamp() correctly detects string type from nested cast operations."""
-        spark = SparkSession.builder.appName("test_issue_149_nested").getOrCreate()
 
         data = [("2024-01-15T10:30:45",)]
         df = spark.createDataFrame(data, ["date_string"])
@@ -77,9 +82,8 @@ class TestIssue149ToTimestampString:
             f"Expected TimestampType, got {date_parsed_field.dataType}"
         )
 
-    def test_to_timestamp_with_string_operations(self):
+    def test_to_timestamp_with_string_operations(self, spark):
         """Test that to_timestamp() correctly detects string type from string operations."""
-        spark = SparkSession.builder.appName("test_issue_149_string_ops").getOrCreate()
 
         data = [("2024-01-15T10:30:45",)]
         df = spark.createDataFrame(data, ["date_string"])
