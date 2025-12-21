@@ -256,8 +256,11 @@ class PolarsMaterializer:
                 if df_materialized is not None:
                     df_collected = df_materialized
                     df_materialized = None
-                else:
+                elif lazy_df is not None:
                     df_collected = lazy_df.collect()
+                else:
+                    # Should not happen, but handle gracefully
+                    raise ValueError("No DataFrame available for withColumn operation")
 
                 column_name, expression = payload
 
@@ -287,21 +290,40 @@ class PolarsMaterializer:
 
                 # Keep materialized DataFrame only if next operation is withColumnRenamed
                 # This ensures columns added by withColumn are preserved through rename operations
+                # For to_timestamp operations, keep materialized to avoid schema validation issues
+                # when converting back to lazy (Polars validates against expression input types)
+                from sparkless.spark_types import TimestampType
+
+                is_timestamp_column = expected_field is not None and isinstance(
+                    expected_field.dataType, TimestampType
+                )
+
                 next_op_index = current_op_index + 1
                 if next_op_index < len(optimized_operations):
                     next_op_name, _ = optimized_operations[next_op_index]
-                    if next_op_name == "withColumnRenamed":
-                        # Keep materialized for next withColumnRenamed operation
+                    if next_op_name == "withColumnRenamed" or is_timestamp_column:
+                        # Keep materialized for next withColumnRenamed operation or for to_timestamp
+                        # This avoids Polars schema validation issues when converting to lazy
                         df_materialized = result_df
-                        lazy_df = result_df.lazy()  # Still set lazy_df for consistency
+                        # For to_timestamp, don't create lazy_df to avoid validation issues
+                        # The materialized DataFrame will be used directly
+                        lazy_df = (
+                            None if is_timestamp_column else result_df.lazy()
+                        )  # Don't create lazy frame for to_timestamp
                     else:
                         # Convert result back to lazy for other operations
                         lazy_df = result_df.lazy()
                         df_materialized = None
                 else:
-                    # No more operations, convert back to lazy for final collection
-                    lazy_df = result_df.lazy()
-                    df_materialized = None
+                    # No more operations
+                    if is_timestamp_column:
+                        # Keep materialized for to_timestamp to avoid validation on final collection
+                        df_materialized = result_df
+                        lazy_df = None  # Don't create lazy frame for to_timestamp
+                    else:
+                        # Convert result back to lazy for final collection
+                        lazy_df = result_df.lazy()
+                        df_materialized = None
                 # Update schema and available columns after withColumn
                 from ...dataframe.schema.schema_manager import SchemaManager
 
