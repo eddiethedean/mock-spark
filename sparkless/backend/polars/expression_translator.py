@@ -684,6 +684,15 @@ class PolarsExpressionTranslator:
             if len(self._translation_cache) > self._cache_size:
                 self._translation_cache.popitem(last=False)
 
+    def clear_cache(self) -> None:
+        """Clear the expression translation cache.
+
+        This should be called when columns are dropped to invalidate cached
+        expressions that reference those columns.
+        """
+        with self._cache_lock:
+            self._translation_cache.clear()
+
     def _translate_function_call(
         self, op: ColumnOperation, input_col_dtype: Any = None
     ) -> pl.Expr:
