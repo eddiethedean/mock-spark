@@ -890,6 +890,16 @@ class LazyEvaluationEngine:
         # Also preserve cached state for PySpark compatibility
         current = DataFrame(df.data, df.schema, df.storage)
         current._is_cached = getattr(df, "_is_cached", False)
+        
+        # Track schema at each step to validate expressions against the correct schema
+        # This fixes issue #160 where expressions created before a select() operation
+        # are validated against the schema after select(), causing "cannot resolve" errors
+        # Start with the base schema (before any operations)
+        from ..dataframe.schema.schema_manager import SchemaManager
+        base_schema = df._schema  # Use _schema to get base schema, not projected schema
+        operations_applied_so_far = []
+        schema_at_operation = base_schema
+        
         for op_name, op_val in df._operations_queue:
             try:
                 if op_name == "filter":
@@ -903,8 +913,23 @@ class LazyEvaluationEngine:
                     current = DataFrame(filtered_data, current.schema, current.storage)
                 elif op_name == "withColumn":
                     col_name, col = op_val
-                    current_ops = cast("SupportsDataFrameOps", current)
-                    current = cast("DataFrame", current_ops.withColumn(col_name, col))
+                    # Temporarily set the schema to the one that existed when this operation was queued
+                    # This ensures expressions are validated against the correct schema
+                    # (fixes issue #160 where expressions are validated against schema after select())
+                    original_schema = current.schema
+                    current._schema = schema_at_operation  # Set _schema directly to avoid projection
+                    try:
+                        current_ops = cast("SupportsDataFrameOps", current)
+                        current = cast("DataFrame", current_ops.withColumn(col_name, col))
+                    finally:
+                        # Compute the schema after this withColumn operation for next operation
+                        # Update operations_applied_so_far and recompute schema
+                        operations_applied_so_far.append((op_name, op_val))
+                        schema_at_operation = SchemaManager.project_schema_with_operations(
+                            base_schema, operations_applied_so_far
+                        )
+                        # Restore current._schema to the projected schema (current.schema will use projection)
+                        current._schema = schema_at_operation
                 elif op_name == "select":
                     # Manual select implementation
                     from ..core.schema_inference import SchemaInferenceEngine
@@ -1272,6 +1297,11 @@ class LazyEvaluationEngine:
                     # Update current with new data and schema, preserving cached state
                     current = DataFrame(new_data, new_schema, current.storage)
                     current._is_cached = getattr(current, "_is_cached", False)
+                    # Update schema tracking for next operation
+                    operations_applied_so_far.append((op_name, op_val))
+                    schema_at_operation = SchemaManager.project_schema_with_operations(
+                        base_schema, operations_applied_so_far
+                    )
                 elif op_name == "groupBy":
                     current_ops = cast("SupportsDataFrameOps", current)
                     grouped = current_ops.groupBy(*op_val)  # Returns GroupedData
