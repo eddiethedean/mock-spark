@@ -274,11 +274,27 @@ class PolarsMaterializer:
                     df_materialized = None
                 else:
                     df_collected = lazy_df.collect()
+
+                # Check if columns are being dropped (columns before select vs after)
+                columns_before = set(df_collected.columns)
+
                 # Apply select - this should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
                 lazy_df = self.operation_executor.apply_select(
                     df_collected, payload
                 ).lazy()
+
+                # Get columns after select
+                df_after_select = lazy_df.collect()
+                columns_after = set(df_after_select.columns)
+                lazy_df = df_after_select.lazy()
+
+                # If columns were dropped, clear the expression cache to invalidate
+                # cached expressions that reference the dropped columns
+                # This fixes issue #160 where cached expressions reference dropped columns
+                if columns_before - columns_after:
+                    self.translator.clear_cache()
+
                 # Update schema after select
                 from ...dataframe.schema.schema_manager import SchemaManager
 
