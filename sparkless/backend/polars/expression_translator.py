@@ -914,21 +914,29 @@ class PolarsExpressionTranslator:
                                 is_string_type = True
 
                 if is_string_type:
-                    # Use str.strptime() for string types/operations
-                    # This works for regexp_replace output and avoids schema inference issues
-                    return col_expr.str.strptime(
+                    # For string types, ensure the expression is explicitly cast to string first,
+                    # then use str.strptime. This helps Polars recognize it as a string operation
+                    # and avoid schema validation issues where it expects String but gets datetime.
+                    # This fixes issue #151 where Polars expected String but got datetime.
+                    # Cast to string first to ensure Polars recognizes the input as string
+                    string_expr = col_expr.cast(pl.Utf8)
+                    # Now use str.strptime which Polars will recognize as producing Datetime
+                    result_expr = string_expr.str.strptime(
                         pl.Datetime(time_unit="us"), format_str, strict=False
                     )
+                    return result_expr
                 else:
                     # Use map_elements for non-string types (datetime, date, numeric)
                     # This handles all types correctly at runtime
                     def to_timestamp_with_format(val: Any) -> Any:
                         return convert_to_timestamp_single_with_format(val, format_str)
 
-                    return col_expr.map_elements(
+                    result_expr = col_expr.map_elements(
                         to_timestamp_with_format,
                         return_dtype=pl.Datetime(time_unit="us"),
                     )
+                    # Explicitly cast to ensure Polars recognizes the type during schema validation
+                    return result_expr.cast(pl.Datetime(time_unit="us"))
             else:
                 # Without format - handle all types
                 def convert_to_timestamp_no_format(val: Any) -> Any:
@@ -2824,8 +2832,66 @@ class PolarsExpressionTranslator:
         # but may need explicit handling
 
         # For string columns (most common case in tests):
-        parsed = expr.str.strptime(pl.Datetime, strict=False)
-        return extractor(parsed)
+        # We need to handle both string and datetime columns
+        # For string columns: parse with str.strptime() first
+        # For datetime columns: use dt methods directly
+        # Since we can't check type at expression build time, we use map_elements
+        # with a function that handles both cases
+        import datetime as dt_module
+        from typing import Any, Optional
+
+        def extract_part(value: Any) -> Optional[int]:
+            """Extract datetime part from value, handling both string and datetime."""
+            if value is None:
+                return None
+            # If it's already a datetime, use it directly
+            if isinstance(value, (dt_module.datetime, dt_module.date)):
+                parsed = value
+            # If it's a string, try to parse it
+            elif isinstance(value, str):
+                try:
+                    # Try parsing as datetime (most common format)
+                    parsed = dt_module.datetime.fromisoformat(value.replace(" ", "T"))
+                except Exception:
+                    try:
+                        # Try parsing as date
+                        parsed = dt_module.datetime.strptime(value, "%Y-%m-%d")
+                    except Exception:
+                        return None
+            else:
+                return None
+
+            # Extract the requested part (return as int to ensure Int32 type)
+            if part == "year":
+                return int(parsed.year)
+            elif part == "month":
+                return int(parsed.month)
+            elif part == "day":
+                return int(parsed.day)
+            elif part == "hour":
+                return int(parsed.hour) if isinstance(parsed, dt_module.datetime) else 0
+            elif part == "minute":
+                return (
+                    int(parsed.minute) if isinstance(parsed, dt_module.datetime) else 0
+                )
+            elif part == "second":
+                return (
+                    int(parsed.second) if isinstance(parsed, dt_module.datetime) else 0
+                )
+            elif part == "dayofweek":
+                # PySpark: Sun=1,Mon=2,...,Sat=7
+                # Python: Mon=0,Tue=1,...,Sun=6
+                return int((parsed.weekday() + 1) % 7 + 1)
+            elif part == "dayofyear":
+                return int(parsed.timetuple().tm_yday)
+            elif part == "weekofyear":
+                return int(parsed.isocalendar()[1])
+            elif part == "quarter":
+                return int((parsed.month - 1) // 3 + 1)
+            else:
+                return None
+
+        return expr.map_elements(extract_part, return_dtype=pl.Int64)
 
     def _translate_aggregate_function(self, agg_func: AggregateFunction) -> pl.Expr:
         """Translate aggregate function.

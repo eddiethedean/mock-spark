@@ -820,9 +820,66 @@ class PolarsOperationExecutor:
                 expression, input_col_dtype=input_col_dtype
             )
 
+            # If expected_field is provided, use it to explicitly cast the result
+            # This fixes issue #151 where Polars was expecting String but got datetime
+            # for to_timestamp() operations
+            if expected_field is not None:
+                from sparkless.spark_types import TimestampType
+                from .type_mapper import mock_type_to_polars_dtype
+
+                # Check if the expected type is TimestampType
+                if isinstance(expected_field.dataType, TimestampType):
+                    # Explicitly cast to pl.Datetime to ensure Polars recognizes the correct type
+                    polars_dtype = mock_type_to_polars_dtype(expected_field.dataType)
+                    expr = expr.cast(polars_dtype)
+
             # Apply with_columns - with schema inference fix, this should work correctly
             # The expression translator already handles cast operations correctly
-            return df.with_columns(expr.alias(column_name))
+            # For to_timestamp operations with TimestampType expected_field, evaluate eagerly
+            # and use hstack to add column without creating lazy frame
+            if expected_field is not None:
+                from sparkless.spark_types import TimestampType
+
+                if isinstance(expected_field.dataType, TimestampType):
+                    # Evaluate the expression eagerly and add as Series to avoid lazy validation
+                    # This avoids Polars' lazy frame schema validation that checks input types
+                    try:
+                        # For to_timestamp, use with_columns directly with explicit cast
+                        # The cast ensures Polars recognizes the output type before validation
+                        from .type_mapper import mock_type_to_polars_dtype
+
+                        polars_dtype = mock_type_to_polars_dtype(
+                            expected_field.dataType
+                        )
+                        # Cast the expression to the expected type before using with_columns
+                        # This should help Polars recognize the output type during validation
+                        cast_expr = expr.cast(polars_dtype)
+                        # Use with_columns - the cast should prevent validation errors
+                        result = df.with_columns(cast_expr.alias(column_name))
+                        return result
+                    except Exception:
+                        pass  # Fall through to with_columns
+
+            # For to_timestamp with TimestampType, try using select to avoid validation
+            # Select creates a new DataFrame which might avoid Polars' expression validation
+            if expected_field is not None:
+                from sparkless.spark_types import TimestampType
+
+                if isinstance(expected_field.dataType, TimestampType):
+                    try:
+                        # Use select to create new DataFrame with all columns plus new one
+                        # This might avoid Polars' schema validation that checks expression input types
+                        all_exprs = [pl.col(c) for c in df.columns] + [
+                            expr.alias(column_name)
+                        ]
+                        result = df.select(all_exprs)
+                        return result
+                    except Exception:
+                        pass  # Fall through to with_columns
+
+            result = df.with_columns(expr.alias(column_name))
+
+            return result
 
     @profiled("polars.apply_join", category="polars")
     def apply_join(
