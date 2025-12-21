@@ -227,7 +227,38 @@ class PolarsMaterializer:
                 )
                 filter_expr = self.translator.translate(optimized_condition)
                 # Apply filter to lazy DataFrame
-                lazy_df = lazy_df.filter(filter_expr)
+                # Catch Polars ColumnNotFoundError and convert to SparkColumnNotFoundError
+                try:
+                    lazy_df = lazy_df.filter(filter_expr)
+                except pl.exceptions.ColumnNotFoundError as e:
+                    # Convert Polars error to our consistent error format
+                    from ...core.exceptions.operation import SparkColumnNotFoundError
+                    
+                    # Extract column name from error message
+                    error_msg = str(e)
+                    # Polars error format: "unable to find column "col_name"; valid columns: [...]"
+                    # Extract column name and available columns
+                    import re
+                    col_match = re.search(r'unable to find column\s+"([^"]+)"', error_msg)
+                    valid_match = re.search(r'valid columns:\s*\[([^\]]+)\]', error_msg)
+                    
+                    if col_match and valid_match:
+                        col_name = col_match.group(1)
+                        valid_cols_str = valid_match.group(1)
+                        # Parse valid columns (remove quotes and split)
+                        available_columns = [
+                            col.strip().strip('"').strip("'")
+                            for col in valid_cols_str.split(",")
+                        ]
+                        raise SparkColumnNotFoundError(col_name, available_columns)
+                    else:
+                        # Fallback: try to extract column name from error message
+                        # or use the original error message
+                        raise SparkColumnNotFoundError(
+                            "unknown_column",
+                            list(lazy_df.collect().columns) if lazy_df is not None else [],
+                            f"Column not found during filter operation: {error_msg}",
+                        )
                 # Verify filter worked by checking row count (for debugging)
                 # Note: We don't update current_schema for filter as it doesn't change columns
             elif op_name == "select":

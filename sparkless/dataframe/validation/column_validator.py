@@ -231,17 +231,13 @@ class ColumnValidator:
                     ):
                         # This is a Literal used as a column - skip validation
                         pass
-                    elif col_name != "*" and (
-                        not in_lazy_materialization or operation != "filter"
-                    ):
+                    elif col_name != "*":
                         # Skip validation for wildcard selector
-                        # In lazy materialization mode (filter after select), allow column references
-                        # that might be from original DataFrame context
+                        # Always validate column exists in schema, even for filters
+                        # This ensures consistent error messages and catches errors early
                         ColumnValidator.validate_column_exists(
                             schema, col_name, operation
                         )
-                        # For filter operations in lazy context, allow column references
-                        # that don't exist in current schema - they'll be resolved during materialization
 
             # Recursively validate nested expressions
             if hasattr(expression, "column"):
