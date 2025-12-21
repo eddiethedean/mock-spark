@@ -51,11 +51,12 @@ class PolarsExpressionTranslator:
         self._translation_cache: OrderedDict[Any, pl.Expr] = OrderedDict()
         self._cache_size = 512
 
-    def translate(self, expr: Any) -> pl.Expr:
+    def translate(self, expr: Any, input_col_dtype: Any = None) -> pl.Expr:
         """Translate Column expression to Polars expression.
 
         Args:
             expr: Column, ColumnOperation, or other expression
+            input_col_dtype: Optional Polars dtype of input column (for to_timestamp optimization)
 
         Returns:
             Polars expression (pl.Expr)
@@ -67,7 +68,7 @@ class PolarsExpressionTranslator:
                 return cached
 
         if isinstance(expr, ColumnOperation):
-            result = self._translate_operation(expr)
+            result = self._translate_operation(expr, input_col_dtype=input_col_dtype)
         elif isinstance(expr, Column):
             result = self._translate_column(expr)
         elif isinstance(expr, Literal):
@@ -139,7 +140,9 @@ class PolarsExpressionTranslator:
             value = lit.value
         return pl.lit(value)
 
-    def _translate_operation(self, op: ColumnOperation) -> pl.Expr:
+    def _translate_operation(
+        self, op: ColumnOperation, input_col_dtype: Any = None
+    ) -> pl.Expr:
         """Translate ColumnOperation to Polars expression.
 
         Args:
@@ -155,7 +158,7 @@ class PolarsExpressionTranslator:
         # Translate left side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(column, ColumnOperation):
-            left = self._translate_operation(column)
+            left = self._translate_operation(column, input_col_dtype=None)
         elif isinstance(column, Column):
             left = pl.col(column.name)
         elif isinstance(column, Literal):
@@ -262,7 +265,7 @@ class PolarsExpressionTranslator:
             "map_entries",
             "map_concat",
         ]:
-            return self._translate_function_call(op)
+            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
 
         # Handle unary operations
         if value is None:
@@ -346,7 +349,7 @@ class PolarsExpressionTranslator:
         # Translate right side
         # Check ColumnOperation before Column since ColumnOperation is a subclass of Column
         if isinstance(value, ColumnOperation):
-            right = self._translate_operation(value)
+            right = self._translate_operation(value, input_col_dtype=None)
         elif isinstance(value, Column):
             right = pl.col(value.name)
         elif isinstance(value, Literal):
@@ -402,10 +405,10 @@ class PolarsExpressionTranslator:
             return self._translate_string_operation(left, op_str, value)
         elif operation == "contains":
             # Handle contains as a function call
-            return self._translate_function_call(op)
+            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
         elif hasattr(op, "function_name"):
             # Handle function calls (e.g., upper, lower, sum, etc.)
-            return self._translate_function_call(op)
+            return self._translate_function_call(op, input_col_dtype=input_col_dtype)
         else:
             raise ValueError(f"Unsupported operation: {operation}")
 
@@ -457,40 +460,10 @@ class PolarsExpressionTranslator:
 
         # Special handling for casting to StringType
         if isinstance(target_type, StringType):
-            # For arrays and maps, Polars can't directly cast to string
-            # Use map_elements to convert to string representation
-            # PySpark formats:
-            # - Arrays: "[1, 2, 3]"
-            # - Maps: "{key -> value, key2 -> value2}"
-            def to_string(val: Any) -> Optional[str]:
-                if val is None:
-                    return None
-                # Handle Polars List (arrays) - may come as Series or list
-                if hasattr(val, "to_list"):
-                    # Polars Series
-                    lst = val.to_list()
-                    return "[" + ", ".join(str(v) for v in lst) + "]"
-                elif isinstance(val, list):
-                    # Already a list
-                    return "[" + ", ".join(str(v) for v in val) + "]"
-                elif isinstance(val, dict):
-                    # Format map as PySpark: {key -> value, key2 -> value2}
-                    parts = [f"{k} -> {v}" for k, v in val.items()]
-                    return "{" + ", ".join(parts) + "}"
-                elif hasattr(val, "__dict__"):
-                    # Struct-like object (Polars struct)
-                    parts = [
-                        f"{k} -> {v}"
-                        for k, v in val.__dict__.items()
-                        if not k.startswith("_")
-                    ]
-                    return "{" + ", ".join(parts) + "}"
-                return str(val)
-
-            # For complex types (arrays, maps, structs), use map_elements
-            # For simple types, direct cast works
-            # We'll use map_elements for all to be safe (it works for simple types too)
-            return expr.map_elements(to_string, return_dtype=pl.Utf8)
+            # For datetime/date types, use direct cast to string
+            # This fixes issue #145 where explicit string casts weren't working correctly
+            # Use cast(pl.Utf8, strict=False) which works for all types including datetime
+            return expr.cast(pl.Utf8, strict=False)
 
         polars_dtype = mock_type_to_polars_dtype(target_type)
 
@@ -711,7 +684,9 @@ class PolarsExpressionTranslator:
             if len(self._translation_cache) > self._cache_size:
                 self._translation_cache.popitem(last=False)
 
-    def _translate_function_call(self, op: ColumnOperation) -> pl.Expr:
+    def _translate_function_call(
+        self, op: ColumnOperation, input_col_dtype: Any = None
+    ) -> pl.Expr:
         """Translate function call operations.
 
         Args:
@@ -761,10 +736,42 @@ class PolarsExpressionTranslator:
                 # Use int_range to generate sequential IDs
                 return pl.int_range(pl.len())
 
+        # Extract operation for use in comparisons
+        operation = op.operation  # Extract operation for use in comparisons
+
+        # SPECIAL CASE: Check for nested to_date(to_timestamp(...)) BEFORE translating col_expr
+        # This allows us to detect the nested structure and handle it specially
+        if (
+            operation == "to_date"
+            and isinstance(column, ColumnOperation)
+            and column.operation == "to_timestamp"
+        ):
+            # For to_date(to_timestamp(...)), the input is already datetime
+            # Use map_elements with a simple datetime->date conversion
+            # This avoids schema validation issues that dt.date() might cause
+            # First translate the nested to_timestamp to get the datetime expression
+            nested_ts_expr = self._translate_operation(column, input_col_dtype=None)
+
+            def datetime_to_date(val: Any) -> Any:
+                from datetime import datetime, date
+
+                if val is None:
+                    return None
+                if isinstance(val, datetime):
+                    return val.date()
+                if isinstance(val, date):
+                    return val
+                return None
+
+            return nested_ts_expr.map_elements(
+                datetime_to_date,
+                return_dtype=pl.Date,
+            )
+
         # Translate column expression
         # Check ColumnOperation BEFORE Column since ColumnOperation inherits from Column
         if isinstance(column, ColumnOperation):
-            col_expr = self._translate_operation(column)
+            col_expr = self._translate_operation(column, input_col_dtype=None)
         elif isinstance(column, Column):
             col_expr = pl.col(column.name)
         elif isinstance(column, str):
@@ -773,8 +780,6 @@ class PolarsExpressionTranslator:
             col_expr = self.translate(column)
 
         # Handle array_sort before other checks since it can have op.value=None or op.value=bool
-        # Extract operation for use in comparisons
-        operation = op.operation  # Extract operation for use in comparisons
         if operation == "array_sort":
             # array_sort(col, asc) - sort array elements
             # op.value can be None (default ascending) or a boolean
@@ -786,6 +791,7 @@ class PolarsExpressionTranslator:
 
         # Handle to_timestamp before other checks since it can have op.value=None or op.value=format
         # to_timestamp needs special handling for multiple input types
+        # Note: We can optionally pass the input column dtype to help choose the right method
         if operation == "to_timestamp":
             # to_timestamp(col, format) or to_timestamp(col)
             # PySpark accepts multiple input types:
@@ -821,57 +827,86 @@ class PolarsExpressionTranslator:
                 ):
                     format_str = format_str.replace(java_pattern, polars_pattern)
 
-                # Use map_batches to handle all input types correctly, including datetime pass-through
-                # This allows us to check the type at runtime and return datetime as-is when appropriate
-                def convert_to_timestamp_batch_with_format(
-                    series: pl.Series,
-                ) -> pl.Series:
-                    """Convert batch of values to timestamps with format."""
+                # Use str.strptime() for string columns to avoid schema inference issues
+                # This is the most efficient approach and avoids Polars incorrectly inferring
+                # the input column type as datetime
+                # For non-string inputs, fall back to map_elements
+                def convert_to_timestamp_single_with_format(
+                    val: Any, fmt: str = format_str
+                ) -> Any:
+                    """Convert single value to timestamp with format."""
                     from datetime import datetime, timezone, date
 
-                    def convert_single(val: Any) -> Any:
-                        if val is None:
-                            return None
-                        # If already a datetime, return as-is (TimestampType pass-through)
-                        if isinstance(val, datetime):
-                            return val
-                        # If date, convert to datetime at midnight
-                        if isinstance(val, date) and not isinstance(val, datetime):
-                            return datetime.combine(val, datetime.min.time())
-                        # If numeric (int/long/double), treat as Unix timestamp
-                        if isinstance(val, (int, float)):
-                            try:
-                                timestamp = float(val)
-                                # Interpret as UTC and convert to local timezone (PySpark behavior)
-                                dt_utc = datetime.fromtimestamp(
-                                    timestamp, tz=timezone.utc
-                                )
-                                return dt_utc.astimezone().replace(tzinfo=None)
-                            except (ValueError, TypeError, OverflowError, OSError):
-                                return None
-                        # If string, parse with format
-                        if isinstance(val, str):
-                            try:
-                                return datetime.strptime(val, format_str)
-                            except (ValueError, TypeError):
-                                return None
-                        # For other types, try converting to string and parsing
+                    if val is None:
+                        return None
+                    # If already a datetime, return as-is (TimestampType pass-through)
+                    if isinstance(val, datetime):
+                        return val
+                    # If date, convert to datetime at midnight
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return datetime.combine(val, datetime.min.time())
+                    # If numeric (int/long/double), treat as Unix timestamp
+                    if isinstance(val, (int, float)):
                         try:
-                            return datetime.strptime(str(val), format_str)
+                            timestamp = float(val)
+                            # Interpret as UTC and convert to local timezone (PySpark behavior)
+                            dt_utc = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                            return dt_utc.astimezone().replace(tzinfo=None)
+                        except (ValueError, TypeError, OverflowError, OSError):
+                            return None
+                    # If string, parse with format
+                    if isinstance(val, str):
+                        try:
+                            return datetime.strptime(val, fmt)
                         except (ValueError, TypeError):
                             return None
+                    # For other types, try converting to string and parsing
+                    try:
+                        return datetime.strptime(str(val), fmt)
+                    except (ValueError, TypeError):
+                        return None
 
-                    # Convert values and create Series with explicit dtype
-                    # This avoids the dtype mismatch issue in lazy evaluation
-                    converted_values = [convert_single(val) for val in series]
-                    return pl.Series(
-                        converted_values, dtype=pl.Datetime(time_unit="us")
+                # Check if the input is a string type (from dtype or string operation).
+                # For string types, use str.strptime() which works correctly and avoids
+                # schema inference issues with map_elements.
+                # For other types (datetime, date, numeric), use map_elements which
+                # handles all types correctly at runtime.
+                is_string_type = False
+
+                # Check if we have dtype information from the DataFrame
+                # input_col_dtype is a Polars dtype (e.g., pl.Utf8 for String)
+                if input_col_dtype is not None and input_col_dtype == pl.Utf8:
+                    is_string_type = True
+                # Also check if it's a string operation
+                if not is_string_type and isinstance(op.column, ColumnOperation):
+                    string_ops = [
+                        "regexp_replace",
+                        "substring",
+                        "concat",
+                        "upper",
+                        "lower",
+                        "trim",
+                        "ltrim",
+                        "rtrim",
+                    ]
+                    is_string_type = op.column.operation in string_ops
+
+                if is_string_type:
+                    # Use str.strptime() for string types/operations
+                    # This works for regexp_replace output and avoids schema inference issues
+                    return col_expr.str.strptime(
+                        pl.Datetime(time_unit="us"), format_str, strict=False
                     )
+                else:
+                    # Use map_elements for non-string types (datetime, date, numeric)
+                    # This handles all types correctly at runtime
+                    def to_timestamp_with_format(val: Any) -> Any:
+                        return convert_to_timestamp_single_with_format(val, format_str)
 
-                return col_expr.map_batches(
-                    convert_to_timestamp_batch_with_format,
-                    return_dtype=pl.Datetime(time_unit="us"),
-                )
+                    return col_expr.map_elements(
+                        to_timestamp_with_format,
+                        return_dtype=pl.Datetime(time_unit="us"),
+                    )
             else:
                 # Without format - handle all types
                 def convert_to_timestamp_no_format(val: Any) -> Any:
@@ -1326,6 +1361,76 @@ class PolarsExpressionTranslator:
                 return col_expr.pow(exponent)
             elif operation == "to_date":
                 # to_date(col, format) or to_date(col)
+                # PySpark accepts StringType, TimestampType, or DateType
+                # If input is already TimestampType or DateType, convert directly
+                # If input is StringType, parse with format
+
+                # IMPORTANT: Check for nested to_timestamp BEFORE translating col_expr
+                # This allows us to detect the nested structure before it's converted to a Polars expression
+                is_nested_to_timestamp = (
+                    isinstance(op.column, ColumnOperation)
+                    and op.column.operation == "to_timestamp"
+                )
+
+                if is_nested_to_timestamp:
+                    # For to_date(to_timestamp(...)), the input is already datetime
+                    # Use map_elements with a simple datetime->date conversion
+                    # This avoids schema validation issues that dt.date() might cause
+                    # First translate the nested to_timestamp to get the datetime expression
+                    nested_ts_expr = self._translate_operation(op.column)
+
+                    def datetime_to_date(val: Any) -> Any:
+                        from datetime import datetime, date
+
+                        if val is None:
+                            return None
+                        if isinstance(val, datetime):
+                            return val.date()
+                        if isinstance(val, date):
+                            return val
+                        return None
+
+                    return nested_ts_expr.map_elements(
+                        datetime_to_date,
+                        return_dtype=pl.Date,
+                    )
+
+                # Use map_elements to handle both StringType and TimestampType/DateType inputs
+                # This avoids the issue where .str.strptime fails on datetime columns
+                def convert_to_date(val: Any, format_str: Optional[str] = None) -> Any:
+                    from datetime import datetime, date
+
+                    if val is None:
+                        return None
+                    # If already a date, return as-is
+                    if isinstance(val, date) and not isinstance(val, datetime):
+                        return val
+                    # If datetime, convert to date
+                    if isinstance(val, datetime):
+                        return val.date()
+                    # If string, parse with format
+                    if isinstance(val, str):
+                        if format_str:
+                            try:
+                                dt = datetime.strptime(val, format_str)
+                                return dt.date()
+                            except (ValueError, TypeError):
+                                return None
+                        else:
+                            # Try common formats
+                            for fmt in [
+                                "%Y-%m-%d %H:%M:%S",
+                                "%Y-%m-%dT%H:%M:%S",
+                                "%Y-%m-%d",
+                            ]:
+                                try:
+                                    dt = datetime.strptime(val, fmt)
+                                    return dt.date()
+                                except ValueError:
+                                    continue
+                            return None
+                    return None
+
                 if op.value is not None:
                     # With format string - convert Java SimpleDateFormat to Polars format
                     format_str = op.value
@@ -1347,10 +1452,18 @@ class PolarsExpressionTranslator:
                         format_map.items(), key=lambda x: len(x[0]), reverse=True
                     ):
                         format_str = format_str.replace(java_pattern, polars_pattern)
-                    return col_expr.str.strptime(pl.Date, format_str, strict=False)
+                    # Use map_elements to handle both StringType and TimestampType inputs
+                    # Wrap in a lambda that captures format_str to avoid closure issues
+                    return col_expr.map_elements(
+                        lambda x, fmt=format_str: convert_to_date(x, fmt),
+                        return_dtype=pl.Date,
+                    )
                 else:
-                    # Without format - try to parse common formats
-                    return col_expr.str.strptime(pl.Date, strict=False)
+                    # Without format - use map_elements which checks type at runtime
+                    return col_expr.map_elements(
+                        lambda x: convert_to_date(x),
+                        return_dtype=pl.Date,
+                    )
             elif operation == "date_format":
                 # date_format(col, format) - format a date/timestamp column
                 if isinstance(op.value, str):
