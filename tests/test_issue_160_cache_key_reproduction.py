@@ -173,9 +173,7 @@ def test_reuse_cached_expression_after_drop(enable_cache):
 
     # Try to create a new DataFrame with the same structure but without impression_date
     # and see if cached expressions cause issues
-    spark.createDataFrame(
-        [("imp_002", "campaign_2")], ["impression_id", "campaign_id"]
-    )
+    spark.createDataFrame([("imp_002", "campaign_2")], ["impression_id", "campaign_id"])
 
     # Try to use a similar expression but with a different column
     # If cache key is wrong, it might use the cached expression for impression_date

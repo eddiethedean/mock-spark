@@ -106,9 +106,7 @@ def test_lazy_frame_reuse_after_select(enable_cache):
         (f"imp_{i:03d}", f"2024-01-15T10:30:45.{i:06d}", f"campaign_{i}")
         for i in range(200)
     ]
-    spark.createDataFrame(
-        data, ["impression_id", "impression_date", "campaign_id"]
-    )
+    spark.createDataFrame(data, ["impression_id", "impression_date", "campaign_id"])
 
     # Create a Polars DataFrame and convert to lazy
     polars_df = pl.DataFrame(
