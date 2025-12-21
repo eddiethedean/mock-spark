@@ -31,15 +31,11 @@ class TestIssue152SQLColumnAliases:
         """
         # Create test data
         employees_data = [("Alice", 1), ("Bob", 2)]
-        employees_df = spark.createDataFrame(
-            employees_data, ["name", "dept_id"]
-        )
+        employees_df = spark.createDataFrame(employees_data, ["name", "dept_id"])
         employees_df.write.mode("overwrite").saveAsTable("employees")
 
         departments_data = [(1, "IT"), (2, "HR")]
-        departments_df = spark.createDataFrame(
-            departments_data, ["id", "name"]
-        )
+        departments_df = spark.createDataFrame(departments_data, ["id", "name"])
         departments_df.write.mode("overwrite").saveAsTable("departments")
 
         # Execute SQL query with aliases
@@ -65,22 +61,22 @@ class TestIssue152SQLColumnAliases:
         row_dicts = [row.asDict() for row in rows]
         # Use the actual column name (e_name or name)
         name_col = "e_name" if "e_name" in result.columns else "name"
-        assert any(row[name_col] == "Alice" and row["dept_name"] == "IT" for row in row_dicts)
-        assert any(row[name_col] == "Bob" and row["dept_name"] == "HR" for row in row_dicts)
+        assert any(
+            row[name_col] == "Alice" and row["dept_name"] == "IT" for row in row_dicts
+        )
+        assert any(
+            row[name_col] == "Bob" and row["dept_name"] == "HR" for row in row_dicts
+        )
 
     def test_sql_with_left_join_and_aliases(self, spark):
         """Test that SQL queries with LEFT JOIN and column aliases work correctly."""
         # Create test data
         employees_data = [("Alice", 1), ("Bob", 99)]  # Bob has invalid dept_id
-        employees_df = spark.createDataFrame(
-            employees_data, ["name", "dept_id"]
-        )
+        employees_df = spark.createDataFrame(employees_data, ["name", "dept_id"])
         employees_df.write.mode("overwrite").saveAsTable("employees")
 
         departments_data = [(1, "IT")]
-        departments_df = spark.createDataFrame(
-            departments_data, ["id", "name"]
-        )
+        departments_df = spark.createDataFrame(departments_data, ["id", "name"])
         departments_df.write.mode("overwrite").saveAsTable("departments")
 
         # Execute SQL query with aliases
@@ -105,7 +101,6 @@ class TestIssue152SQLColumnAliases:
         name_col = "e_name" if "e_name" in result.columns else "name"
         alice_row = next(row for row in row_dicts if row[name_col] == "Alice")
         assert alice_row["dept_name"] == "IT"
-        
+
         bob_row = next(row for row in row_dicts if row[name_col] == "Bob")
         assert bob_row["dept_name"] is None
-

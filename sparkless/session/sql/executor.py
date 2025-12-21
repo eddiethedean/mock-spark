@@ -1058,11 +1058,15 @@ class SQLExecutor:
                         # Support aliases with underscores and multiple words (e.g., "dept_name", "my_col")
                         alias = None
                         # Match " AS alias" or " as alias" at the end, where alias can contain underscores
-                        alias_match = re.search(r"\s+[Aa][Ss]\s+([a-zA-Z_][a-zA-Z0-9_]*)$", col)
+                        alias_match = re.search(
+                            r"\s+[Aa][Ss]\s+([a-zA-Z_][a-zA-Z0-9_]*)$", col
+                        )
                         if alias_match:
                             alias = alias_match.group(1)
                             # Remove alias from col expression (match case-insensitive)
-                            col = re.sub(r"\s+[Aa][Ss]\s+[a-zA-Z_][a-zA-Z0-9_]*$", "", col).strip()
+                            col = re.sub(
+                                r"\s+[Aa][Ss]\s+[a-zA-Z_][a-zA-Z0-9_]*$", "", col
+                            ).strip()
 
                         # Check if this is a CASE WHEN expression
                         col_upper = col.upper().strip()
