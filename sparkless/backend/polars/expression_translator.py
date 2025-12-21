@@ -811,8 +811,9 @@ class PolarsExpressionTranslator:
                 # Remove optional fractional pattern from format string
                 format_str = re.sub(r"\[\.S+\]", "", format_str)
                 # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
+                # Remove quotes but keep the literal characters
                 format_str = re.sub(r"'([^']*)'", r"\1", format_str)
-                # Convert Java format to Polars format
+                # Convert Java/Spark format to Python format (Polars str.strptime uses Python format)
                 format_map = {
                     "yyyy": "%Y",
                     "MM": "%m",
@@ -822,10 +823,10 @@ class PolarsExpressionTranslator:
                     "ss": "%S",
                 }
                 # Sort by length descending to process longest matches first
-                for java_pattern, polars_pattern in sorted(
+                for java_pattern, python_pattern in sorted(
                     format_map.items(), key=lambda x: len(x[0]), reverse=True
                 ):
-                    format_str = format_str.replace(java_pattern, polars_pattern)
+                    format_str = format_str.replace(java_pattern, python_pattern)
 
                 # Use str.strptime() for string columns to avoid schema inference issues
                 # This is the most efficient approach and avoids Polars incorrectly inferring
@@ -859,7 +860,20 @@ class PolarsExpressionTranslator:
                         try:
                             return datetime.strptime(val, fmt)
                         except (ValueError, TypeError):
-                            return None
+                            # If parsing fails, try to strip common extra patterns and retry
+                            # This handles cases where regexp_replace didn't work or extra data exists
+                            val_cleaned = val
+                            # Remove microseconds pattern (e.g., .123456)
+                            import re
+
+                            val_cleaned = re.sub(r"\.\d+$", "", val_cleaned)
+                            # Remove timezone patterns (e.g., +00:00, Z)
+                            val_cleaned = re.sub(r"[+-]\d{2}:\d{2}$", "", val_cleaned)
+                            val_cleaned = val_cleaned.rstrip("Z")
+                            try:
+                                return datetime.strptime(val_cleaned, fmt)
+                            except (ValueError, TypeError):
+                                return None
                     # For other types, try converting to string and parsing
                     try:
                         return datetime.strptime(str(val), fmt)
@@ -914,15 +928,16 @@ class PolarsExpressionTranslator:
                                 is_string_type = True
 
                 if is_string_type:
-                    # For string types, ensure the expression is explicitly cast to string first,
-                    # then use str.strptime. This helps Polars recognize it as a string operation
-                    # and avoid schema validation issues where it expects String but gets datetime.
-                    # This fixes issue #151 where Polars expected String but got datetime.
-                    # Cast to string first to ensure Polars recognizes the input as string
-                    string_expr = col_expr.cast(pl.Utf8)
-                    # Now use str.strptime which Polars will recognize as producing Datetime
-                    result_expr = string_expr.str.strptime(
-                        pl.Datetime(time_unit="us"), format_str, strict=False
+                    # For string types, use map_elements with Python's strptime.
+                    # This allows us to handle edge cases like extra microseconds that regexp_replace
+                    # might not remove, and ensures consistent behavior.
+                    # This fixes issue #153 where to_timestamp() was returning None for all values.
+                    def to_timestamp_string_with_format(val: Any) -> Any:
+                        return convert_to_timestamp_single_with_format(val, format_str)
+
+                    result_expr = col_expr.map_elements(
+                        to_timestamp_string_with_format,
+                        return_dtype=pl.Datetime(time_unit="us"),
                     )
                     return result_expr
                 else:
