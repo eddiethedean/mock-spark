@@ -382,8 +382,13 @@ class DataFrameReader:
 
         infer_schema = options.get("inferSchema")
         if infer_schema is not None and self._to_bool(infer_schema):
-            # 0 means use all rows for inference
-            csv_opts["infer_schema_length"] = 0
+            # Explicitly enable schema inference
+            # Don't set infer_schema_length - let Polars use default (all rows)
+            csv_opts["infer_schema"] = True
+        else:
+            # Explicitly set infer_schema=False to match PySpark default
+            # PySpark defaults to inferSchema=False (all columns as strings)
+            csv_opts["infer_schema"] = False
 
         return csv_opts
 
