@@ -151,7 +151,8 @@ class SparkColumnNotFoundError(SparkException, AttributeError):
         if custom_message:
             msg = custom_message
         else:
-            msg = f"'DataFrame' object has no attribute '{column_name}'. Available columns: {', '.join(available_columns)}"
+            # Use PySpark-style error message format
+            msg = f"cannot resolve '{column_name}' given input columns: [{', '.join(available_columns)}]"
         super().__init__(msg)
 
 
