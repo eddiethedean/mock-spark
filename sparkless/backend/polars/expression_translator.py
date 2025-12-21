@@ -877,7 +877,7 @@ class PolarsExpressionTranslator:
                 # input_col_dtype is a Polars dtype (e.g., pl.Utf8 for String)
                 if input_col_dtype is not None and input_col_dtype == pl.Utf8:
                     is_string_type = True
-                # Also check if it's a string operation
+                # Also check if it's a string operation or cast to string
                 if not is_string_type and isinstance(op.column, ColumnOperation):
                     string_ops = [
                         "regexp_replace",
@@ -889,7 +889,29 @@ class PolarsExpressionTranslator:
                         "ltrim",
                         "rtrim",
                     ]
-                    is_string_type = op.column.operation in string_ops
+                    # Check if it's a string operation
+                    if op.column.operation in string_ops:
+                        is_string_type = True
+                    # Check if it's a cast to string
+                    elif op.column.operation == "cast":
+                        cast_target = op.column.value
+                        if isinstance(cast_target, str) and cast_target.lower() in [
+                            "string",
+                            "varchar",
+                        ]:
+                            is_string_type = True
+                    # For nested ColumnOperations, check recursively
+                    elif isinstance(op.column.column, ColumnOperation):
+                        inner_op = op.column.column
+                        if inner_op.operation in string_ops:
+                            is_string_type = True
+                        elif inner_op.operation == "cast":
+                            cast_target = inner_op.value
+                            if isinstance(cast_target, str) and cast_target.lower() in [
+                                "string",
+                                "varchar",
+                            ]:
+                                is_string_type = True
 
                 if is_string_type:
                     # Use str.strptime() for string types/operations
