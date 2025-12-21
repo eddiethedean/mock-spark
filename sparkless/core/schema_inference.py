@@ -14,7 +14,7 @@ Key behaviors:
 - Supports sparse data (different keys per row)
 """
 
-from typing import Any
+from typing import Any, Union
 
 from ..spark_types import (
     StructType,
@@ -91,11 +91,13 @@ class SchemaInferenceEngine:
             # Infer type from first non-null value
             field_type = SchemaInferenceEngine._infer_type(values_for_key[0])
 
-            # Check for type conflicts across rows (PySpark raises TypeError)
+            # Check for type conflicts across rows
+            # Note: PySpark does NOT promote types in createDataFrame - it raises TypeError
+            # Type promotion (int+float -> DoubleType) only happens in CSV reading with inferSchema=True
             for value in values_for_key[1:]:
                 inferred_type = SchemaInferenceEngine._infer_type(value)
                 if type(field_type) is not type(inferred_type):
-                    # Type conflict - cannot merge
+                    # Type conflict - cannot merge (PySpark raises TypeError)
                     raise TypeError(
                         f"field {key}: Can not merge type {type(field_type).__name__} "
                         f"and {type(inferred_type).__name__}"
@@ -175,6 +177,43 @@ class SchemaInferenceEngine:
             if hasattr(value, "date") and hasattr(value, "time"):
                 return TimestampType()
             return StringType()  # Default fallback
+
+    @staticmethod
+    def _promote_types(type1: Any, type2: Any) -> Union[Any, None]:
+        """Promote types to a common type if possible (matching PySpark behavior).
+
+        PySpark promotes:
+        - int + float → DoubleType
+        - int + double → DoubleType
+        - float + double → DoubleType
+
+        Args:
+            type1: First type
+            type2: Second type
+
+        Returns:
+            Promoted type if promotion is possible, None otherwise
+        """
+        from ..spark_types import LongType, DoubleType, FloatType
+
+        # Check if both are numeric types that can be promoted
+        numeric_types = {LongType, DoubleType, FloatType}
+        type1_class = type(type1)
+        type2_class = type(type2)
+
+        if type1_class in numeric_types and type2_class in numeric_types:
+            # If either is DoubleType, promote to DoubleType
+            if type1_class is DoubleType or type2_class is DoubleType:
+                return DoubleType()
+            # If either is FloatType, promote to FloatType (but PySpark uses DoubleType)
+            # Actually, PySpark promotes int+float to DoubleType, not FloatType
+            if type1_class is FloatType or type2_class is FloatType:
+                return DoubleType()
+            # LongType + LongType stays LongType
+            if type1_class is LongType and type2_class is LongType:
+                return LongType()
+
+        return None
 
     @staticmethod
     def _is_date_string(value: str) -> bool:

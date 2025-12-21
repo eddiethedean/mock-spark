@@ -130,18 +130,20 @@ class PolarsMaterializer:
 
             schema_keys = {field.name for field in schema.fields}
             # If schema doesn't match data, infer from data (only for dict format)
-            if is_dict_format and data_keys != schema_keys:
-                from ...spark_types import StructType, StructField
-                from .type_mapper import polars_dtype_to_mock_type
+            # BUT: Skip inference if we have operations, as the schema already includes
+            # computed columns from operations. Inference should only happen when creating
+            # a new DataFrame (no operations).
+            if (
+                is_dict_format
+                and data_keys != schema_keys
+                and not operations
+            ):
+                # Use SchemaInferenceEngine for PySpark-compatible type inference
+                # instead of Polars' automatic inference
+                from ...core.schema_inference import SchemaInferenceEngine
 
-                # Create Polars DataFrame to infer types from dict data
-                temp_df = pl.DataFrame(data)
-                original_fields = []
-                for col_name in temp_df.columns:
-                    polars_dtype = temp_df[col_name].dtype
-                    mock_type = polars_dtype_to_mock_type(polars_dtype)
-                    original_fields.append(StructField(col_name, mock_type, True))
-                original_schema = StructType(original_fields)
+                inferred_schema, _ = SchemaInferenceEngine.infer_from_data(data)
+                original_schema = inferred_schema
 
         original_columns = {field.name for field in original_schema.fields}
 
