@@ -6,7 +6,6 @@ sparkless expects Datetime('μs') in validation and type-checking contexts.
 This occurs when using to_timestamp() with regexp_replace().cast("string").
 """
 
-import pytest
 from sparkless import SparkSession
 from sparkless.functions import col, to_timestamp, regexp_replace
 
@@ -44,9 +43,9 @@ class TestIssue149ToTimestampString:
         date_parsed_field = next(
             f for f in df_transformed.schema.fields if f.name == "date_parsed"
         )
-        assert (
-            date_parsed_field.dataType.__class__.__name__ == "TimestampType"
-        ), f"Expected TimestampType, got {date_parsed_field.dataType}"
+        assert date_parsed_field.dataType.__class__.__name__ == "TimestampType", (
+            f"Expected TimestampType, got {date_parsed_field.dataType}"
+        )
 
         # Verify the operation completes without schema validation errors
         # The actual parsing result may be None if the format doesn't match,
@@ -74,9 +73,9 @@ class TestIssue149ToTimestampString:
         date_parsed_field = next(
             f for f in df_transformed.schema.fields if f.name == "date_parsed"
         )
-        assert (
-            date_parsed_field.dataType.__class__.__name__ == "TimestampType"
-        ), f"Expected TimestampType, got {date_parsed_field.dataType}"
+        assert date_parsed_field.dataType.__class__.__name__ == "TimestampType", (
+            f"Expected TimestampType, got {date_parsed_field.dataType}"
+        )
 
     def test_to_timestamp_with_string_operations(self):
         """Test that to_timestamp() correctly detects string type from string operations."""
@@ -102,7 +101,6 @@ class TestIssue149ToTimestampString:
         date_parsed_field = next(
             f for f in df_transformed.schema.fields if f.name == "date_parsed"
         )
-        assert (
-            date_parsed_field.dataType.__class__.__name__ == "TimestampType"
-        ), f"Expected TimestampType, got {date_parsed_field.dataType}"
-
+        assert date_parsed_field.dataType.__class__.__name__ == "TimestampType", (
+            f"Expected TimestampType, got {date_parsed_field.dataType}"
+        )
