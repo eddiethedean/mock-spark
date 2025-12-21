@@ -626,7 +626,11 @@ class PolarsOperationExecutor:
 
     @profiled("polars.apply_with_column", category="polars")
     def apply_with_column(
-        self, df: pl.DataFrame, column_name: str, expression: Any
+        self,
+        df: pl.DataFrame,
+        column_name: str,
+        expression: Any,
+        expected_field: Any = None,
     ) -> pl.DataFrame:
         """Apply a withColumn operation.
 
@@ -748,7 +752,27 @@ class PolarsOperationExecutor:
 
             return result
         else:
-            expr = self.translator.translate(expression)
+            # Check if this is a to_timestamp operation and if the input column is a string
+            # This helps us choose the right method (str.strptime vs map_elements)
+            input_col_dtype = None
+            from sparkless.functions.core.column import ColumnOperation, Column
+
+            if (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "to_timestamp"
+                and isinstance(expression.column, Column)
+            ):
+                # Check the dtype of the input column in the DataFrame
+                col_name = expression.column.name
+                if col_name in df.columns:
+                    input_col_dtype = df[col_name].dtype
+
+            expr = self.translator.translate(
+                expression, input_col_dtype=input_col_dtype
+            )
+
+            # Apply with_columns - with schema inference fix, this should work correctly
+            # The expression translator already handles cast operations correctly
             return df.with_columns(expr.alias(column_name))
 
     @profiled("polars.apply_join", category="polars")
