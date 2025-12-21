@@ -102,7 +102,7 @@ from .errors import (  # noqa: E402
 #   - sparkless.data_generation - Test data generation
 # ==============================================================================
 
-__version__ = "3.18.3"
+__version__ = "3.18.4"
 __author__ = "Odos Matthews"
 __email__ = "odosmatthews@gmail.com"
 
