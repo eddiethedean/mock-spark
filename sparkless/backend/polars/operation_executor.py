@@ -760,12 +760,61 @@ class PolarsOperationExecutor:
             if (
                 isinstance(expression, ColumnOperation)
                 and expression.operation == "to_timestamp"
-                and isinstance(expression.column, Column)
             ):
-                # Check the dtype of the input column in the DataFrame
-                col_name = expression.column.name
-                if col_name in df.columns:
-                    input_col_dtype = df[col_name].dtype
+                # Check if the input column is a simple Column (direct column reference)
+                if isinstance(expression.column, Column) and not isinstance(
+                    expression.column, ColumnOperation
+                ):
+                    # Check the dtype of the input column in the DataFrame
+                    col_name = expression.column.name
+                    if col_name in df.columns:
+                        input_col_dtype = df[col_name].dtype
+                elif isinstance(expression.column, ColumnOperation):
+                    # For ColumnOperation chains, check if the result is a string type
+                    # This handles cases like regexp_replace().cast("string")
+                    col_op = expression.column
+                    # Check if it's a cast to string
+                    if col_op.operation == "cast":
+                        cast_target = col_op.value
+                        if isinstance(cast_target, str) and cast_target.lower() in [
+                            "string",
+                            "varchar",
+                        ]:
+                            input_col_dtype = pl.Utf8
+                    # Check if it's a string operation (regexp_replace, substring, etc.)
+                    elif col_op.operation in [
+                        "regexp_replace",
+                        "substring",
+                        "concat",
+                        "upper",
+                        "lower",
+                        "trim",
+                        "ltrim",
+                        "rtrim",
+                    ]:
+                        input_col_dtype = pl.Utf8
+                    # For nested ColumnOperations, check recursively
+                    elif isinstance(col_op.column, ColumnOperation):
+                        # Recursively check the inner operation
+                        inner_op = col_op.column
+                        if inner_op.operation == "cast":
+                            cast_target = inner_op.value
+                            if isinstance(cast_target, str) and cast_target.lower() in [
+                                "string",
+                                "varchar",
+                            ]:
+                                input_col_dtype = pl.Utf8
+                        elif inner_op.operation in [
+                            "regexp_replace",
+                            "substring",
+                            "concat",
+                            "upper",
+                            "lower",
+                            "trim",
+                            "ltrim",
+                            "rtrim",
+                        ]:
+                            input_col_dtype = pl.Utf8
 
             expr = self.translator.translate(
                 expression, input_col_dtype=input_col_dtype
