@@ -12,9 +12,7 @@ The bug occurs when:
 The bug ONLY occurs with 150+ rows, NOT with 2 rows.
 """
 
-import pytest
 from sparkless import SparkSession, functions as F
-from sparkless.core.exceptions.operation import SparkColumnNotFoundError
 from datetime import datetime, timedelta
 
 
@@ -28,40 +26,54 @@ class TestIssue160ReproduceBug:
         # Create test data (150 rows - bug occurs with larger datasets)
         data = []
         for i in range(150):
-            data.append({
-                "impression_id": f"IMP-{i:08d}",
-                "campaign_id": f"CAMP-{i % 10:02d}",
-                "customer_id": f"CUST-{i % 40:04d}",
-                "impression_date": (datetime.now() - timedelta(hours=i % 720)).isoformat(),
-                "channel": ["google", "facebook", "twitter", "email", "display"][i % 5],
-                "ad_id": f"AD-{i % 20:03d}",
-                "cost_per_impression": round(0.01 + (i % 50) / 1000, 3),
-                "device_type": ["desktop", "mobile", "tablet"][i % 3],
-            })
+            data.append(
+                {
+                    "impression_id": f"IMP-{i:08d}",
+                    "campaign_id": f"CAMP-{i % 10:02d}",
+                    "customer_id": f"CUST-{i % 40:04d}",
+                    "impression_date": (
+                        datetime.now() - timedelta(hours=i % 720)
+                    ).isoformat(),
+                    "channel": ["google", "facebook", "twitter", "email", "display"][
+                        i % 5
+                    ],
+                    "ad_id": f"AD-{i % 20:03d}",
+                    "cost_per_impression": round(0.01 + (i % 50) / 1000, 3),
+                    "device_type": ["desktop", "mobile", "tablet"][i % 3],
+                }
+            )
 
-        bronze_df = spark.createDataFrame(data, [
-            "impression_id",
-            "campaign_id",
-            "customer_id",
-            "impression_date",  # This column will be dropped
-            "channel",
-            "ad_id",
-            "cost_per_impression",
-            "device_type",
-        ])
+        bronze_df = spark.createDataFrame(
+            data,
+            [
+                "impression_id",
+                "campaign_id",
+                "customer_id",
+                "impression_date",  # This column will be dropped
+                "channel",
+                "ad_id",
+                "cost_per_impression",
+                "device_type",
+            ],
+        )
 
         # Apply transform that uses impression_date then drops it
         silver_df = (
             bronze_df.withColumn(
                 "impression_date_parsed",
                 F.to_timestamp(
-                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
+                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast(
+                        "string"
+                    ),
                     "yyyy-MM-dd'T'HH:mm:ss",
                 ),
             )
             .withColumn("hour_of_day", F.hour(F.col("impression_date_parsed")))
             .withColumn("day_of_week", F.dayofweek(F.col("impression_date_parsed")))
-            .withColumn("is_mobile", F.when(F.col("device_type") == "mobile", True).otherwise(False))
+            .withColumn(
+                "is_mobile",
+                F.when(F.col("device_type") == "mobile", True).otherwise(False),
+            )
             .select(
                 "impression_id",
                 "campaign_id",
@@ -124,29 +136,37 @@ class TestIssue160ReproduceBug:
             },
         ]
 
-        bronze_df = spark.createDataFrame(data, [
-            "impression_id",
-            "campaign_id",
-            "customer_id",
-            "impression_date",  # This column will be dropped
-            "channel",
-            "ad_id",
-            "cost_per_impression",
-            "device_type",
-        ])
+        bronze_df = spark.createDataFrame(
+            data,
+            [
+                "impression_id",
+                "campaign_id",
+                "customer_id",
+                "impression_date",  # This column will be dropped
+                "channel",
+                "ad_id",
+                "cost_per_impression",
+                "device_type",
+            ],
+        )
 
         # Apply transform that uses impression_date then drops it
         silver_df = (
             bronze_df.withColumn(
                 "impression_date_parsed",
                 F.to_timestamp(
-                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
+                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast(
+                        "string"
+                    ),
                     "yyyy-MM-dd'T'HH:mm:ss",
                 ),
             )
             .withColumn("hour_of_day", F.hour(F.col("impression_date_parsed")))
             .withColumn("day_of_week", F.dayofweek(F.col("impression_date_parsed")))
-            .withColumn("is_mobile", F.when(F.col("device_type") == "mobile", True).otherwise(False))
+            .withColumn(
+                "is_mobile",
+                F.when(F.col("device_type") == "mobile", True).otherwise(False),
+            )
             .select(
                 "impression_id",
                 "campaign_id",
