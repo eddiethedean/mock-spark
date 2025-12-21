@@ -26,7 +26,6 @@ from ..spark_types import (
     ArrayType,
     MapType,
     BinaryType,
-    DateType,
     TimestampType,
     NullType,
 )
@@ -166,11 +165,9 @@ class SchemaInferenceEngine:
             # Assume string keys and string values for simplicity
             return MapType(StringType(), StringType())
         elif isinstance(value, str):
-            # Try to detect date/timestamp strings
-            if SchemaInferenceEngine._is_date_string(value):
-                return DateType()
-            elif SchemaInferenceEngine._is_timestamp_string(value):
-                return TimestampType()
+            # PySpark treats all strings as StringType, regardless of content
+            # It does NOT infer DateType or TimestampType from string patterns
+            # Users must explicitly cast strings to date/timestamp types
             return StringType()
         else:
             # Check for datetime objects

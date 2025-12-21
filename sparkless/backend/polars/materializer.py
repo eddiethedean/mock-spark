@@ -133,11 +133,7 @@ class PolarsMaterializer:
             # BUT: Skip inference if we have operations, as the schema already includes
             # computed columns from operations. Inference should only happen when creating
             # a new DataFrame (no operations).
-            if (
-                is_dict_format
-                and data_keys != schema_keys
-                and not operations
-            ):
+            if is_dict_format and data_keys != schema_keys and not operations:
                 # Use SchemaInferenceEngine for PySpark-compatible type inference
                 # instead of Polars' automatic inference
                 from ...core.schema_inference import SchemaInferenceEngine
@@ -264,9 +260,30 @@ class PolarsMaterializer:
                     df_collected = lazy_df.collect()
 
                 column_name, expression = payload
-                result_df = self.operation_executor.apply_with_column(
-                    df_collected, column_name, expression
+
+                # Get the expected schema after this operation BEFORE applying withColumn
+                # This allows us to pass the expected type to enforce correct casting
+                from ...dataframe.schema.schema_manager import SchemaManager
+
+                updated_schema = SchemaManager.project_schema_with_operations(
+                    current_schema, [(op_name, payload)]
                 )
+
+                # Find the expected type for this column from the updated schema
+                expected_field = None
+                for field in updated_schema.fields:
+                    if field.name == column_name:
+                        expected_field = field
+                        break
+
+                # Apply withColumn with expected schema type enforcement
+                result_df = self.operation_executor.apply_with_column(
+                    df_collected, column_name, expression, expected_field
+                )
+
+                # Don't align after withColumn - the result should already match the schema
+                # Alignment can cause issues when the expression produces the correct type
+                # but alignment tries to enforce a different type
 
                 # Keep materialized DataFrame only if next operation is withColumnRenamed
                 # This ensures columns added by withColumn are preserved through rename operations
