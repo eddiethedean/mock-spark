@@ -30,19 +30,16 @@ class TestIssue158DroppedColumnError:
         )
 
         # Apply transform that drops the column
-        df_transformed = (
-            df.withColumn(
-                "impression_date_parsed",
-                F.to_timestamp(
-                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
-                    "yyyy-MM-dd'T'HH:mm:ss",
-                ),
-            )
-            .select(
-                "impression_id",
-                "campaign_id",
-                "impression_date_parsed",  # New column, original 'impression_date' is dropped
-            )
+        df_transformed = df.withColumn(
+            "impression_date_parsed",
+            F.to_timestamp(
+                F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
+                "yyyy-MM-dd'T'HH:mm:ss",
+            ),
+        ).select(
+            "impression_id",
+            "campaign_id",
+            "impression_date_parsed",  # New column, original 'impression_date' is dropped
         )
 
         # Verify column is dropped
@@ -119,4 +116,3 @@ class TestIssue158DroppedColumnError:
         assert "cannot resolve" in error_msg.lower()
         assert "col2" in error_msg
         assert "col1" in error_msg
-

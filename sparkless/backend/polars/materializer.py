@@ -233,15 +233,18 @@ class PolarsMaterializer:
                 except pl.exceptions.ColumnNotFoundError as e:
                     # Convert Polars error to our consistent error format
                     from ...core.exceptions.operation import SparkColumnNotFoundError
-                    
+
                     # Extract column name from error message
                     error_msg = str(e)
                     # Polars error format: "unable to find column "col_name"; valid columns: [...]"
                     # Extract column name and available columns
                     import re
-                    col_match = re.search(r'unable to find column\s+"([^"]+)"', error_msg)
-                    valid_match = re.search(r'valid columns:\s*\[([^\]]+)\]', error_msg)
-                    
+
+                    col_match = re.search(
+                        r'unable to find column\s+"([^"]+)"', error_msg
+                    )
+                    valid_match = re.search(r"valid columns:\s*\[([^\]]+)\]", error_msg)
+
                     if col_match and valid_match:
                         col_name = col_match.group(1)
                         valid_cols_str = valid_match.group(1)
@@ -256,7 +259,9 @@ class PolarsMaterializer:
                         # or use the original error message
                         raise SparkColumnNotFoundError(
                             "unknown_column",
-                            list(lazy_df.collect().columns) if lazy_df is not None else [],
+                            list(lazy_df.collect().columns)
+                            if lazy_df is not None
+                            else [],
                             f"Column not found during filter operation: {error_msg}",
                         )
                 # Verify filter worked by checking row count (for debugging)
