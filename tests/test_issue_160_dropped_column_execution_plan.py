@@ -13,9 +13,7 @@ These tests verify that the fix works correctly - they ensure that materializati
 even when columns are used in transformations and then dropped via select().
 """
 
-import pytest
 from sparkless import SparkSession, functions as F
-from sparkless.core.exceptions.operation import SparkColumnNotFoundError
 
 
 class TestIssue160DroppedColumnExecutionPlan:
@@ -27,33 +25,59 @@ class TestIssue160DroppedColumnExecutionPlan:
 
         # Create test data
         data = [
-            ("imp_001", "2024-01-15T10:30:45.123456", "campaign_1", "customer_1", "web", "ad_1", "mobile", 0.05),
-            ("imp_002", "2024-01-16T14:20:30.789012", "campaign_2", "customer_2", "mobile", "ad_2", "mobile", 0.03),
+            (
+                "imp_001",
+                "2024-01-15T10:30:45.123456",
+                "campaign_1",
+                "customer_1",
+                "web",
+                "ad_1",
+                "mobile",
+                0.05,
+            ),
+            (
+                "imp_002",
+                "2024-01-16T14:20:30.789012",
+                "campaign_2",
+                "customer_2",
+                "mobile",
+                "ad_2",
+                "mobile",
+                0.03,
+            ),
         ]
 
-        bronze_df = spark.createDataFrame(data, [
-            "impression_id",
-            "impression_date",  # This column will be dropped
-            "campaign_id",
-            "customer_id",
-            "channel",
-            "ad_id",
-            "device_type",
-            "cost_per_impression",
-        ])
+        bronze_df = spark.createDataFrame(
+            data,
+            [
+                "impression_id",
+                "impression_date",  # This column will be dropped
+                "campaign_id",
+                "customer_id",
+                "channel",
+                "ad_id",
+                "device_type",
+                "cost_per_impression",
+            ],
+        )
 
         # Apply transform that uses impression_date then drops it
         silver_df = (
             bronze_df.withColumn(
                 "impression_date_parsed",
                 F.to_timestamp(
-                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
+                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast(
+                        "string"
+                    ),
                     "yyyy-MM-dd'T'HH:mm:ss",
                 ),
             )
             .withColumn("hour_of_day", F.hour(F.col("impression_date_parsed")))
             .withColumn("day_of_week", F.dayofweek(F.col("impression_date_parsed")))
-            .withColumn("is_mobile", F.when(F.col("device_type") == "mobile", True).otherwise(False))
+            .withColumn(
+                "is_mobile",
+                F.when(F.col("device_type") == "mobile", True).otherwise(False),
+            )
             .select(
                 "impression_id",
                 "campaign_id",
@@ -91,33 +115,50 @@ class TestIssue160DroppedColumnExecutionPlan:
 
         # Create test data with 150+ rows to trigger cache behavior
         data = [
-            (f"imp_{i:03d}", f"2024-01-15T10:30:45.{i:06d}", f"campaign_{i}", f"customer_{i}", "web", f"ad_{i}", "mobile", 0.05)
+            (
+                f"imp_{i:03d}",
+                f"2024-01-15T10:30:45.{i:06d}",
+                f"campaign_{i}",
+                f"customer_{i}",
+                "web",
+                f"ad_{i}",
+                "mobile",
+                0.05,
+            )
             for i in range(200)
         ]
 
-        bronze_df = spark.createDataFrame(data, [
-            "impression_id",
-            "impression_date",  # This column will be dropped
-            "campaign_id",
-            "customer_id",
-            "channel",
-            "ad_id",
-            "device_type",
-            "cost_per_impression",
-        ])
+        bronze_df = spark.createDataFrame(
+            data,
+            [
+                "impression_id",
+                "impression_date",  # This column will be dropped
+                "campaign_id",
+                "customer_id",
+                "channel",
+                "ad_id",
+                "device_type",
+                "cost_per_impression",
+            ],
+        )
 
         # Apply transform that uses impression_date then drops it
         silver_df = (
             bronze_df.withColumn(
                 "impression_date_parsed",
                 F.to_timestamp(
-                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast("string"),
+                    F.regexp_replace(F.col("impression_date"), r"\.\d+", "").cast(
+                        "string"
+                    ),
                     "yyyy-MM-dd'T'HH:mm:ss",
                 ),
             )
             .withColumn("hour_of_day", F.hour(F.col("impression_date_parsed")))
             .withColumn("day_of_week", F.dayofweek(F.col("impression_date_parsed")))
-            .withColumn("is_mobile", F.when(F.col("device_type") == "mobile", True).otherwise(False))
+            .withColumn(
+                "is_mobile",
+                F.when(F.col("device_type") == "mobile", True).otherwise(False),
+            )
             .select(
                 "impression_id",
                 "campaign_id",
@@ -148,4 +189,3 @@ class TestIssue160DroppedColumnExecutionPlan:
         assert len(rows) == 200
 
         spark.stop()
-
