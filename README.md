@@ -8,7 +8,7 @@
 [![PySpark 3.2-3.5](https://img.shields.io/badge/pyspark-3.2--3.5-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/sparkless.svg)](https://badge.fury.io/py/sparkless)
-[![Tests](https://img.shields.io/badge/tests-650+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
+[![Tests](https://img.shields.io/badge/tests-400+%20passing%20%7C%200%20failing-brightgreen.svg)](https://github.com/eddiethedean/sparkless)
 [![Type Checked](https://img.shields.io/badge/mypy-260%20files%20clean-blue.svg)](https://github.com/python/mypy)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -41,7 +41,7 @@ from sparkless.sql import SparkSession
 | 📦 **Zero Java** | Pure Python with Polars backend (thread-safe, no SQL required) |
 | 🧪 **100% Compatible** | Full PySpark 3.2-3.5 API support |
 | 🔄 **Lazy Evaluation** | Mirrors PySpark's execution model |
-| 🏭 **Production Ready** | 650+ passing tests, 100% mypy typed |
+| 🏭 **Production Ready** | 400+ passing tests, 100% mypy typed |
 | 🧵 **Thread-Safe** | Polars backend designed for parallel execution |
 | 🔧 **Modular Design** | DDL parsing via standalone spark-ddl-parser package |
 | 🎯 **Type Safe** | Full type checking with `ty`, comprehensive type annotations |
@@ -461,7 +461,7 @@ Real-world test suite improvements:
 - 🗑️ **Code Cleanup** - Removed unused legacy SQL translation modules (`sql_translator.py`, `spark_function_mapper.py`)
 - ✅ **Type Safety** - Fixed 177 type errors using `ty` type checker, improved return type annotations
 - 🔍 **Linting** - Fixed all 63 ruff linting errors, codebase fully formatted
-- ✅ **All Tests Passing** - Full test suite validated (641+ tests, all passing)
+- ✅ **All Tests Passing** - Full test suite validated (400+ tests, all passing)
 - 📦 **Cleaner Dependencies** - Reduced dependency footprint, faster installation
 
 ### Version 3.0.0 - MAJOR UPDATE
