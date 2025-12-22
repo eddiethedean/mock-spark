@@ -777,6 +777,20 @@ class PolarsExpressionTranslator:
                 return_dtype=pl.Date,
             )
 
+        # Handle unix_timestamp() without arguments (current timestamp) BEFORE translating column
+        if operation == "unix_timestamp":
+            from sparkless.functions.core.literals import Literal
+
+            is_current_timestamp = False
+            if column is None or isinstance(column, str) and column == "current_timestamp" or isinstance(column, Literal) and column.value == "current_timestamp":
+                is_current_timestamp = True
+
+            if is_current_timestamp:
+                # Return current Unix timestamp
+                from datetime import datetime
+
+                return pl.lit(int(datetime.now().timestamp()))
+
         # Translate column expression
         # Check ColumnOperation BEFORE Column since ColumnOperation inherits from Column
         if isinstance(column, ColumnOperation):
@@ -2055,6 +2069,88 @@ class PolarsExpressionTranslator:
                     return col_expr.str.strptime(pl.Datetime, format_str, strict=False)
                 else:
                     return col_expr.str.strptime(pl.Datetime, strict=False)
+            elif operation == "unix_timestamp":
+                # unix_timestamp(timestamp, format) or unix_timestamp() - convert to Unix timestamp (seconds since epoch)
+                # Note: unix_timestamp() without arguments is handled earlier, before col_expr is created
+                # If format is provided, parse string first, then convert to Unix timestamp
+
+                # If format is provided, parse string first
+                if op.value is not None:
+                    format_str = op.value
+                    import re
+                    from datetime import datetime as dt
+
+                    # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
+                    format_str = re.sub(r"'([^']*)'", r"\1", format_str)
+                    # Convert Java format to Python format
+                    format_map = {
+                        "yyyy": "%Y",
+                        "MM": "%m",
+                        "dd": "%d",
+                        "HH": "%H",
+                        "mm": "%M",
+                        "ss": "%S",
+                    }
+                    # Sort by length descending to process longest matches first
+                    for java_pattern, python_pattern in sorted(
+                        format_map.items(), key=lambda x: len(x[0]), reverse=True
+                    ):
+                        format_str = format_str.replace(java_pattern, python_pattern)
+
+                    # Parse string to datetime, then convert to Unix timestamp
+                    def parse_and_convert(val: Any, fmt: str) -> Any:
+                        if val is None:
+                            return None
+                        if isinstance(val, str):
+                            try:
+                                dt_obj = dt.strptime(val, fmt)
+                                return int(dt_obj.timestamp())
+                            except (ValueError, TypeError):
+                                return None
+                        return None
+
+                    return col_expr.map_elements(
+                        lambda x, fmt=format_str: parse_and_convert(x, fmt),
+                        return_dtype=pl.Int64,
+                    )
+                else:
+                    # No format - assume column is already datetime/timestamp
+                    # Use map_elements to handle both Polars datetime columns and Python datetime objects
+                    def datetime_to_unix(val: Any) -> Any:
+                        from datetime import datetime as dt
+
+                        if val is None:
+                            return None
+                        if isinstance(val, dt):
+                            return int(val.timestamp())
+                        if isinstance(val, str):
+                            # Try to parse common formats
+                            for fmt in [
+                                "%Y-%m-%d %H:%M:%S",
+                                "%Y-%m-%dT%H:%M:%S",
+                                "%Y-%m-%d",
+                            ]:
+                                try:
+                                    dt_obj = dt.strptime(val, fmt)
+                                    return int(dt_obj.timestamp())
+                                except ValueError:
+                                    continue
+                            return None
+                        # If it's already a number, assume it's already a Unix timestamp
+                        if isinstance(val, (int, float)):
+                            return int(val)
+                        # Try to convert to datetime if it has datetime-like attributes
+                        if hasattr(val, "timestamp"):
+                            try:
+                                return int(val.timestamp())
+                            except (AttributeError, TypeError):
+                                pass
+                        return None
+
+                    return col_expr.map_elements(
+                        datetime_to_unix,
+                        return_dtype=pl.Int64,
+                    )
             # New null-safe try functions (PySpark 3.5+)
             elif operation == "try_add":
                 # try_add(left, right) - null-safe addition
@@ -2558,6 +2654,7 @@ class PolarsExpressionTranslator:
             "to_number": lambda e: e,  # Will be handled in operation-specific code
             "to_binary": lambda e: e,  # Will be handled in operation-specific code
             "to_unix_timestamp": lambda e: e,  # Will be handled in operation-specific code
+            "unix_timestamp": lambda e: e,  # Will be handled in operation-specific code
             "unix_date": lambda e: e,  # Will be handled in operation-specific code
             "unix_seconds": lambda e: e,  # Will be handled in operation-specific code
             "unix_millis": lambda e: e,  # Will be handled in operation-specific code

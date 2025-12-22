@@ -757,29 +757,31 @@ class DateTimeFunctions:
     def to_date(
         column: Union[Column, str], format: Optional[str] = None
     ) -> ColumnOperation:
-        """Convert string to date.
+        """Convert string, timestamp, or date to date.
 
         Args:
-            column: The column to convert (must be StringType).
-            format: Optional date format string.
+            column: The column to convert (StringType, TimestampType, or DateType).
+            format: Optional date format string (only used for StringType input).
 
         Returns:
             ColumnOperation representing the to_date function.
 
         Raises:
-            TypeError: If input column type is not StringType
+            TypeError: If input column type is not StringType, TimestampType, or DateType
         """
-        from sparkless.spark_types import StringType
+        from sparkless.spark_types import StringType, TimestampType, DateType
 
         if isinstance(column, str):
             column = Column(column)
 
-        # PySpark requires string input for to_date
+        # PySpark accepts StringType, TimestampType, or DateType for to_date
         # Check if we can determine the column type
         input_type = getattr(column, "column_type", None)
-        if input_type is not None and not isinstance(input_type, StringType):
+        if input_type is not None and not isinstance(
+            input_type, (StringType, TimestampType, DateType)
+        ):
             raise TypeError(
-                f"to_date() requires StringType input, got {input_type}. "
+                f"to_date() requires StringType, TimestampType, or DateType input, got {input_type}. "
                 f"Cast the column to string first: F.col('{column.name}').cast('string')"
             )
 
