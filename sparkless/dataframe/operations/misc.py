@@ -1240,15 +1240,14 @@ class MiscellaneousOperations:
             New DataFrame repartitioned by range (mock: sorted)
         """
         # For mock purposes, sort by columns to simulate range partitioning
-        from typing import cast
 
         if isinstance(numPartitions, int):
             result = self.orderBy(*cols)
-            return cast("SupportsDataFrameOps", result)
+            return result
         else:
             # numPartitions is actually the first column
             result = self.orderBy(numPartitions, *cols)
-            return cast("SupportsDataFrameOps", result)
+            return result
 
     def sortWithinPartitions(
         self: SupportsDataFrameOps, *cols: Union[str, "Column"], **kwargs: Any
@@ -1263,10 +1262,9 @@ class MiscellaneousOperations:
             New DataFrame sorted within partitions (mock: equivalent to orderBy)
         """
         # For mock purposes, treat as regular sort since we have single partition
-        from typing import cast
 
         result = self.orderBy(*cols, **kwargs)
-        return cast("SupportsDataFrameOps", result)
+        return result
 
     def toLocalIterator(
         self: SupportsDataFrameOps, prefetchPartitions: bool = False

@@ -70,6 +70,8 @@ from ..spark_types import (
     IntegerType,
     ArrayType,
     MapType,
+    TimestampType,
+    DateType,
 )
 from ..functions import Column, ColumnOperation
 from ..functions.core.literals import Literal
@@ -927,6 +929,12 @@ class DataFrame:
                     ):
                         actual_input_type = StringType()
 
+                # Import types needed for validation
+                from sparkless.spark_types import (
+                    IntegerType,
+                    DoubleType,
+                )
+
                 # to_timestamp accepts multiple input types (PySpark compatibility):
                 # - StringType (with format parameter)
                 # - TimestampType (pass-through)
@@ -934,14 +942,6 @@ class DataFrame:
                 # - DateType (convert Date to Timestamp)
                 # - DoubleType (Unix timestamp with decimal seconds)
                 if func_name == "to_timestamp":
-                    from sparkless.spark_types import (
-                        TimestampType,
-                        IntegerType,
-                        LongType,
-                        DateType,
-                        DoubleType,
-                    )
-
                     if not isinstance(
                         actual_input_type,
                         (
@@ -958,12 +958,12 @@ class DataFrame:
                             f"IntegerType, LongType, DateType, or DoubleType input, "
                             f"got {input_type}."
                         )
-                # to_date accepts StringType or DateType (already a date)
+                # to_date accepts StringType, TimestampType, or DateType
                 elif func_name == "to_date" and not isinstance(
-                    input_type, (StringType, DateType)
+                    input_type, (StringType, TimestampType, DateType)
                 ):
                     raise TypeError(
-                        f"{func_name}() requires StringType or DateType input, got {input_type}. "
+                        f"{func_name}() requires StringType, TimestampType, or DateType input, got {input_type}. "
                         f"Cast the column to string first: F.col('{col_name}').cast('string')"
                     )
 
@@ -1301,7 +1301,6 @@ class DataFrame:
         """Parse a cast type string to DataType."""
         from ..spark_types import (
             BooleanType,
-            DateType,
             TimestampType,
             DecimalType,
         )

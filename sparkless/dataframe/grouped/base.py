@@ -231,15 +231,18 @@ class GroupedData:
                     result_row[result_key] = result_value
                 elif is_column(expr):
                     # Handle Column (but not ColumnOperation, which is handled above)
+                    # is_column narrows to Column, but _evaluate_column_expression accepts Union
                     result_key, result_value = self._evaluate_column_expression(
-                        cast("Union[Column, ColumnOperation]", expr), group_rows
+                        expr, group_rows
                     )
                     # Track result key order (same for all groups)
                     if result_key not in result_key_order:
                         result_key_order.append(result_key)
                     result_row[result_key] = result_value
-                elif isinstance(expr, dict):
+                elif isinstance(expr, dict):  # type: ignore[unreachable]
                     # Skip dict expressions - should have been converted already
+                    # This branch handles dict expressions that weren't converted
+                    # Type system doesn't allow expr to be both Column and dict after other checks
                     pass
 
             # Reorder result_row to match PySpark's column ordering:

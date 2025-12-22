@@ -20,7 +20,7 @@ from packaging.version import Version
 try:  # Python 3.11+
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - fallback for older interpreters
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

@@ -491,18 +491,18 @@ class ConditionalFunctions:
 
         if is_column(condition):
             col = condition
-            value = None
+            value: ColumnOperation | None = None
         elif is_column_operation(condition):
             # Type guard narrows condition to ColumnOperation
-            col = cast("ColumnOperation", condition).column
+            col = condition.column
             value = condition
         elif isinstance(condition, str):
             col = Column(condition)
             value = None
         else:
-            # For other types, try to get column attribute if it exists
-            col = getattr(condition, "column", condition)
-            value = condition
+            # This branch should not be reached due to type annotation
+            # Union[Column, ColumnOperation, str] is exhaustive
+            assert False, f"Unexpected condition type: {type(condition)}"
 
         name_str = (
             get_expression_name(condition)
@@ -510,9 +510,8 @@ class ConditionalFunctions:
             else condition
         )
 
-        # Ensure col is a Column for ColumnOperation constructor
-        if not isinstance(col, Column):
-            col = Column(str(col))
+        # col is guaranteed to be a Column after the if/elif/elif branches
+        # No need for additional isinstance check
 
         return ColumnOperation(
             col,

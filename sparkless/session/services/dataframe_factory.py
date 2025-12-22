@@ -149,9 +149,49 @@ class DataFrameFactory:
                 # Normalize data so every row has every column in schema order
                 data = normalize_data_for_schema(data, schema)
             else:
-                # For non-tuple data with column names, use StringType as default
-                fields = [StructField(name, StringType()) for name in schema]
-                schema = StructType(fields)
+                # For non-tuple data with column names, infer types from actual data values
+                # This matches PySpark behavior where column names don't force StringType
+                from sparkless.core.schema_inference import (
+                    SchemaInferenceEngine,
+                    normalize_data_for_schema,
+                )
+
+                inferred_fields: list[StructField] = []
+                for name in schema:
+                    # Collect non-null values for this column
+                    values_for_key = [
+                        row[name]
+                        for row in data
+                        if isinstance(row, dict)
+                        and name in row
+                        and row[name] is not None
+                    ]
+                    if not values_for_key:
+                        # Match SchemaInferenceEngine behavior for all-null columns
+                        raise ValueError(
+                            "Some of types cannot be determined after inferring"
+                        )
+
+                    field_type = SchemaInferenceEngine._infer_type(values_for_key[0])
+                    # Check for type conflicts across rows (same logic as
+                    # SchemaInferenceEngine.infer_from_data)
+                    for value in values_for_key[1:]:
+                        inferred_type = SchemaInferenceEngine._infer_type(value)
+                        if type(field_type) is not type(inferred_type):
+                            raise TypeError(
+                                f"field {name}: Can not merge type "
+                                f"{type(field_type).__name__} and "
+                                f"{type(inferred_type).__name__}"
+                            )
+
+                    nullable = getattr(field_type, "nullable", True)
+                    inferred_fields.append(
+                        StructField(name, field_type, nullable=nullable)
+                    )
+
+                schema = StructType(inferred_fields)
+                # Normalize data so every row has every column in schema order
+                data = normalize_data_for_schema(data, schema)
 
         if schema is None:
             # Infer schema from data using SchemaInferenceEngine
@@ -281,7 +321,6 @@ class DataFrameFactory:
         """
         from sparkless.spark_types import (
             DataType,
-            StringType,
             IntegerType,
             LongType,
             FloatType,
