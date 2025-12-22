@@ -651,7 +651,14 @@ class PolarsMaterializer:
                 # This ensures dependent columns are preserved even if dependency graph is incomplete
                 if current_op_index + 1 < len(optimized_operations):
                     # Collect current state to materialize all columns
-                    df_collected = lazy_df.collect()
+                    # Use materialized DataFrame if available, otherwise collect from lazy
+                    if df_materialized is not None:
+                        df_collected = df_materialized
+                        df_materialized = None  # Clear after use
+                    elif lazy_df is not None:
+                        df_collected = lazy_df.collect()
+                    else:
+                        raise ValueError("No DataFrame available for drop operation")
 
                     # Drop columns using select to preserve schema correctly
                     # Using select instead of drop ensures schema is properly maintained
@@ -715,7 +722,14 @@ class PolarsMaterializer:
                         df_materialized = None
                 elif columns_to_preserve:
                     # No future operations but we have columns to preserve
-                    df_collected = lazy_df.collect()
+                    # Use materialized DataFrame if available, otherwise collect from lazy
+                    if df_materialized is not None:
+                        df_collected = df_materialized
+                        df_materialized = None  # Clear after use
+                    elif lazy_df is not None:
+                        df_collected = lazy_df.collect()
+                    else:
+                        raise ValueError("No DataFrame available for drop operation")
                     current_cols = set(df_collected.columns)
                     cols_to_keep = list(current_cols - set(columns_to_drop))
                     if not cols_to_keep:
@@ -728,7 +742,14 @@ class PolarsMaterializer:
                 else:
                     # No dependencies and no future operations - can drop directly
                     # But we still need to handle non-existent columns and all-columns case
-                    df_collected = lazy_df.collect()
+                    # Use materialized DataFrame if available, otherwise collect from lazy
+                    if df_materialized is not None:
+                        df_collected = df_materialized
+                        df_materialized = None  # Clear after use
+                    elif lazy_df is not None:
+                        df_collected = lazy_df.collect()
+                    else:
+                        raise ValueError("No DataFrame available for drop operation")
                     cols_to_keep = [
                         col
                         for col in df_collected.columns
