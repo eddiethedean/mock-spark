@@ -837,7 +837,10 @@ class PolarsExpressionTranslator:
                 # Handle optional fractional seconds like [.SSSSSS]
                 import re
 
-                # Remove optional fractional pattern from format string
+                # Check if format includes microseconds/fractional seconds
+                # PySpark supports [.SSSSSS] for optional fractional seconds
+                # Remove optional fractional pattern from format string for now
+                # We'll handle microseconds automatically in the parsing function
                 format_str = re.sub(r"\[\.S+\]", "", format_str)
                 # Handle single-quoted literals (e.g., 'T' in yyyy-MM-dd'T'HH:mm:ss)
                 # Remove quotes but keep the literal characters
@@ -861,6 +864,7 @@ class PolarsExpressionTranslator:
                 # This is the most efficient approach and avoids Polars incorrectly inferring
                 # the input column type as datetime
                 # For non-string inputs, fall back to map_elements
+
                 def convert_to_timestamp_single_with_format(
                     val: Any, fmt: str = format_str
                 ) -> Any:
@@ -886,21 +890,37 @@ class PolarsExpressionTranslator:
                             return None
                     # If string, parse with format
                     if isinstance(val, str):
-                        try:
-                            return datetime.strptime(val, fmt)
-                        except (ValueError, TypeError):
-                            # If parsing fails, try to strip common extra patterns and retry
-                            # This handles cases where regexp_replace didn't work or extra data exists
-                            val_cleaned = val
-                            # Remove microseconds pattern (e.g., .123456)
-                            import re
+                        import re
 
-                            val_cleaned = re.sub(r"\.\d+$", "", val_cleaned)
-                            # Remove timezone patterns (e.g., +00:00, Z)
+                        # PySpark's to_timestamp is lenient and automatically handles microseconds
+                        # even if they're not in the format string. Strip microseconds before parsing
+                        # if the format doesn't include them.
+                        val_cleaned = val
+
+                        # Check if format includes microseconds (look for %f or similar patterns)
+                        has_microseconds_in_format = "%f" in fmt or "S" in fmt.upper()
+
+                        # If format doesn't include microseconds, strip them from the value
+                        # Match microseconds pattern: . followed by digits (1-6 digits typical)
+                        # This pattern can appear after seconds but before timezone or end of string
+                        if not has_microseconds_in_format:
+                            # Remove microseconds pattern: . followed by 1-6 digits
+                            # Match: .123456 or .123 (before timezone or end of string)
+                            val_cleaned = re.sub(
+                                r"\.\d{1,6}(?=[+-]|\d{2}:\d{2}|Z|$)", "", val_cleaned
+                            )
+
+                        # Remove timezone patterns (e.g., +00:00, Z) if not in format
+                        if "%z" not in fmt and "%Z" not in fmt:
                             val_cleaned = re.sub(r"[+-]\d{2}:\d{2}$", "", val_cleaned)
                             val_cleaned = val_cleaned.rstrip("Z")
+
+                        try:
+                            return datetime.strptime(val_cleaned, fmt)
+                        except (ValueError, TypeError):
+                            # If parsing still fails, try original value as fallback
                             try:
-                                return datetime.strptime(val_cleaned, fmt)
+                                return datetime.strptime(val, fmt)
                             except (ValueError, TypeError):
                                 return None
                     # For other types, try converting to string and parsing
@@ -957,18 +977,34 @@ class PolarsExpressionTranslator:
                                 is_string_type = True
 
                 if is_string_type:
-                    # For string types, use map_elements with Python's strptime.
-                    # This allows us to handle edge cases like extra microseconds that regexp_replace
-                    # might not remove, and ensures consistent behavior.
-                    # This fixes issue #153 where to_timestamp() was returning None for all values.
-                    def to_timestamp_string_with_format(val: Any) -> Any:
-                        return convert_to_timestamp_single_with_format(val, format_str)
+                    # For string types, preprocess to strip microseconds if format doesn't include them,
+                    # then use str.strptime() directly. This avoids map_elements schema validation issues.
+                    # PySpark's to_timestamp automatically handles microseconds even if not in format.
+                    has_microseconds_in_format = "%f" in format_str
 
-                    result_expr = col_expr.map_elements(
-                        to_timestamp_string_with_format,
-                        return_dtype=pl.Datetime(time_unit="us"),
-                    )
-                    return result_expr
+                    if not has_microseconds_in_format:
+                        # Strip microseconds from the string column before parsing
+                        # PySpark's to_timestamp automatically handles microseconds even if not in format
+                        # Use Polars string operations to remove microseconds pattern
+                        # Pattern: Remove .\d+ after seconds (HH:mm:ss.123456 -> HH:mm:ss)
+                        # Use a single pattern that handles most cases: (:\d{2})\.\d+ -> :\d{2}
+                        cleaned_expr = col_expr.str.replace_all(
+                            r"(:\d{2})\.\d+", r"$1", literal=False
+                        )
+                        # Also remove any remaining .\d+ at the end (handles edge cases)
+                        cleaned_expr = cleaned_expr.str.replace_all(
+                            r"\.\d+$", "", literal=False
+                        )
+                        # Now use str.strptime on the cleaned expression
+                        # This should work without schema validation issues
+                        return cleaned_expr.str.strptime(
+                            pl.Datetime, format_str, strict=False
+                        )
+                    else:
+                        # Format includes microseconds, use str.strptime directly
+                        return col_expr.str.strptime(
+                            pl.Datetime, format_str, strict=False
+                        )
                 else:
                     # Use map_elements for non-string types (datetime, date, numeric)
                     # This handles all types correctly at runtime

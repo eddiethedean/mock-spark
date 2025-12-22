@@ -495,9 +495,11 @@ class LazyEvaluationEngine:
 
                 # Check if backend returned default values (0.0 for numeric functions)
                 # If so, fall back to manual materialization
-                if LazyEvaluationEngine._has_default_values(
+                has_defaults = LazyEvaluationEngine._has_default_values(
                     materialized_data, final_schema
-                ):
+                )
+
+                if has_defaults:
                     return LazyEvaluationEngine._materialize_manual(df)
 
                 # Update schema to match actual columns in materialized data
@@ -543,6 +545,7 @@ class LazyEvaluationEngine:
                     df.storage,
                     operations=[],  # Clear operations queue - all operations have been applied
                 )
+
                 # Preserve cached state
                 result_df._is_cached = getattr(df, "_is_cached", False)
 
@@ -628,9 +631,39 @@ class LazyEvaluationEngine:
             # This is a heuristic - empty result might be valid
             return False
 
+        # First, check for unevaluated operation objects (e.g., WindowFunction objects)
+        # This is a clear indicator that the backend couldn't handle the operation
+        # and returned the operation object instead of evaluating it
+        for row in data:
+            for field in schema.fields:
+                if field.name in row:
+                    value = row[field.name]
+                    # Check if value is an unevaluated operation object
+                    # WindowFunction objects should be evaluated, not returned as-is
+                    # Check by class name first (more reliable than isinstance due to import timing)
+                    if hasattr(value, "__class__"):
+                        class_name = value.__class__.__name__
+                        if class_name == "WindowFunction":
+                            # Backend returned WindowFunction object instead of evaluating it
+                            return True
+                    # Also try isinstance check as backup
+                    try:
+                        from sparkless.functions.window_execution import WindowFunction
+
+                        if isinstance(value, WindowFunction):
+                            return True
+                    except (ImportError, AttributeError):
+                        pass
+
         # Check if any numeric fields have default values (0.0, 0, None)
         # But ignore None values in fields that start with "right_" as these are expected from joins
         # Also ignore None values in nullable fields - they are valid (e.g., window function lag/lead)
+        # IMPORTANT: For numeric defaults (0.0, 0), only return True if ALL rows have the same default value.
+        # If only some rows have 0, it's likely a valid value (e.g., 0 * 2 = 0), not a default.
+        # This fixes the issue where valid 0 values trigger fallback to manual materialization.
+        # For other cases (None in StringType, None in non-nullable fields), return True immediately
+        # to catch backend failures quickly.
+        default_value_fields: dict[str, list[Any]] = {}
         for row in data:
             for field in schema.fields:
                 if field.name in row:
@@ -642,27 +675,38 @@ class LazyEvaluationEngine:
                     if value is None and field.nullable:
                         continue
                     # Check for default values that indicate the backend couldn't evaluate the function
-                    if value == 0.0 and field.dataType.__class__.__name__ in [
-                        "DoubleType",
-                        "FloatType",
-                    ]:
+                    # For numeric fields, track which fields have default values (need all rows check)
+                    if (
+                        value == 0.0
+                        and field.dataType.__class__.__name__
+                        in [
+                            "DoubleType",
+                            "FloatType",
+                        ]
+                    ) or (
+                        value == 0
+                        and field.dataType.__class__.__name__
+                        in [
+                            "IntegerType",
+                            "LongType",
+                        ]
+                    ):
+                        if field.name not in default_value_fields:
+                            default_value_fields[field.name] = []
+                        default_value_fields[field.name].append(value)
+                    # For non-numeric cases, return True immediately (original behavior)
+                    elif value is None and (
+                        field.dataType.__class__.__name__ in ["StringType"]
+                        or not getattr(field, "nullable", True)
+                    ):
                         return True
-                    if value == 0 and field.dataType.__class__.__name__ in [
-                        "IntegerType",
-                        "LongType",
-                    ]:
-                        return True
-                    if value is None and field.dataType.__class__.__name__ in [
-                        "StringType"
-                    ]:
-                        return True
-                    # Check for None values in any field (indicates backend couldn't evaluate)
-                    # BUT: None is a valid value (NULL) in databases, so we need to be careful
-                    # Only consider it a failure if it's a non-nullable field or if ALL values are None
-                    # For now, we'll be more lenient - None alone doesn't indicate failure
-                    # Only check if it's a non-nullable field that's None
-                    if value is None and not getattr(field, "nullable", True):
-                        return True
+
+        # Only return True if ALL rows have the same default value for numeric fields
+        # This indicates the backend couldn't handle the operation, not that 0 is a valid result
+        for field_name, values in default_value_fields.items():
+            if len(values) == len(data):
+                # All rows have the same default value - likely indicates backend failure
+                return True
 
         return False
 
@@ -675,6 +719,10 @@ class LazyEvaluationEngine:
             if op_name == "select":
                 # Check if select contains operations that require manual materialization
                 for col in op_val:
+                    # Check for WindowFunction objects (window functions like lag, lead, etc.)
+                    # Polars backend cannot handle these, so they need manual materialization
+                    if LazyEvaluationEngine._has_window_function(col):
+                        return True
                     # Check for CaseWhen (when/otherwise expressions)
                     # CaseWhen can be translated by Polars, so don't force manual materialization
                     if hasattr(col, "conditions"):
@@ -692,26 +740,31 @@ class LazyEvaluationEngine:
                         # "otherwise",  # Removed - Polars handles when/otherwise via CaseWhen
                     ]:
                         return True
-                        # Check for comparison operations
-                        # Note: Polars can handle comparison operations, so removed
-                        # if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
-                        #     return True
-                        # Check for arithmetic operations with cast
-                        # Note: Polars can handle cast operations, so removed this check
-                        # if col.operation in ["+", "-", "*", "/", "%"]:
-                        #     # Check if operands contain cast operations
-                        #     if (
-                        #         hasattr(col, "column")
-                        #         and hasattr(col.column, "operation")
-                        #         and col.column.operation == "cast"
-                        #     ):
-                        #         return True
-                        #     if (
-                        #         hasattr(col, "value")
-                        #         and hasattr(col.value, "operation")
-                        #         and col.value.operation == "cast"
-                        #     ):
-                        #         return True
+            elif op_name == "withColumn":
+                # Check if withColumn contains WindowFunction objects
+                col_name, expression = op_val
+                if LazyEvaluationEngine._has_window_function(expression):
+                    return True
+                    # Check for comparison operations
+                    # Note: Polars can handle comparison operations, so removed
+                    # if col.operation in ["==", "!=", "<", ">", "<=", ">="]:
+                    #     return True
+                    # Check for arithmetic operations with cast
+                    # Note: Polars can handle cast operations, so removed this check
+                    # if col.operation in ["+", "-", "*", "/", "%"]:
+                    #     # Check if operands contain cast operations
+                    #     if (
+                    #         hasattr(col, "column")
+                    #         and hasattr(col.column, "operation")
+                    #         and col.column.operation == "cast"
+                    #     ):
+                    #         return True
+                    #     if (
+                    #         hasattr(col, "value")
+                    #         and hasattr(col.value, "operation")
+                    #         and col.value.operation == "cast"
+                    #     ):
+                    #         return True
             elif op_name == "filter":
                 # Check if filter contains F.expr() expressions or complex operations
                 # that the backend might not handle correctly
@@ -719,6 +772,33 @@ class LazyEvaluationEngine:
                 if LazyEvaluationEngine._has_expr_expression(filter_expr):
                     return True
         return False
+
+    @staticmethod
+    def _has_window_function(expr: Any) -> bool:
+        """Check if expression contains WindowFunction objects that require manual materialization.
+
+        Args:
+            expr: Expression to check (Column, ColumnOperation, WindowFunction, or nested structure)
+
+        Returns:
+            True if expression contains WindowFunction objects
+        """
+        # Check if this is a WindowFunction directly
+        if hasattr(expr, "__class__") and expr.__class__.__name__ == "WindowFunction":
+            return True
+        # Recursively check nested expressions
+        if hasattr(expr, "column") and LazyEvaluationEngine._has_window_function(
+            expr.column
+        ):
+            return True
+        if hasattr(expr, "value") and LazyEvaluationEngine._has_window_function(
+            expr.value
+        ):
+            return True
+        return bool(
+            hasattr(expr, "function")
+            and LazyEvaluationEngine._has_window_function(expr.function)
+        )
 
     @staticmethod
     def _has_expr_expression(expr: Any) -> bool:
@@ -888,7 +968,9 @@ class LazyEvaluationEngine:
         # Preserve schema from original DataFrame - this ensures empty DataFrames
         # with explicit schemas maintain their column information
         # Also preserve cached state for PySpark compatibility
-        current = DataFrame(df.data, df.schema, df.storage)
+        # Use df._schema (base schema) instead of df.schema (projected schema) for current
+        # This ensures current._schema is the base schema, not the projected schema
+        current = DataFrame(df.data, df._schema, df.storage)
         current._is_cached = getattr(df, "_is_cached", False)
 
         # Track schema at each step to validate expressions against the correct schema
@@ -897,7 +979,40 @@ class LazyEvaluationEngine:
         # Start with the base schema (before any operations)
         from ..dataframe.schema.schema_manager import SchemaManager
 
-        base_schema = df._schema  # Use _schema to get base schema, not projected schema
+        # When df has queued operations, df._schema is NOT the base schema - it's the schema
+        # after those operations were applied. We need to infer the true base schema from
+        # the data itself, which hasn't been transformed yet during materialization.
+        # This fixes issue #173 where validation fails because base_schema was wrong.
+        if df.data and len(df.data) > 0:
+            # Infer base schema from actual data (this gives us the true base schema)
+            try:
+                from sparkless.core.schema_inference import infer_schema_from_data
+
+                base_schema = infer_schema_from_data(df.data)
+            except (ValueError, Exception):
+                # If schema inference fails (e.g., all-null columns, type conflicts),
+                # extract only fields from df._schema that exist in df.data.
+                # This gives us the true base schema (columns in original data) even when
+                # inference fails, instead of using df._schema which includes columns from
+                # queued operations.
+                from ..spark_types import StructType, StructField
+
+                # Get keys that exist in the actual data
+                data_keys: set[str] = set()
+                for row in df.data:
+                    if isinstance(row, dict):
+                        data_keys.update(row.keys())
+
+                # Filter df._schema.fields to only include fields whose names exist in data
+                base_fields = [
+                    field for field in df._schema.fields if field.name in data_keys
+                ]
+
+                # We have matching fields - this is the true base schema, or fall back to df._schema
+                base_schema = StructType(base_fields) if base_fields else df._schema
+        else:
+            # Fall back to df._schema if no data available
+            base_schema = df._schema
         operations_applied_so_far = []
         schema_at_operation = base_schema
 
@@ -912,6 +1027,7 @@ class LazyEvaluationEngine:
                         if ConditionEvaluator.evaluate_condition(row, op_val):
                             filtered_data.append(row)
                     current = DataFrame(filtered_data, current.schema, current.storage)
+
                 elif op_name == "withColumn":
                     col_name, col = op_val
                     # Temporarily set the schema to the one that existed when this operation was queued
@@ -921,10 +1037,94 @@ class LazyEvaluationEngine:
                         schema_at_operation  # Set _schema directly to avoid projection
                     )
                     try:
-                        current_ops = cast("SupportsDataFrameOps", current)
-                        current = cast(
-                            "DataFrame", current_ops.withColumn(col_name, col)
+                        # Manually evaluate withColumn instead of queuing it again
+                        # This ensures column values are actually computed during materialization
+                        from ..dataframe.evaluation.expression_evaluator import (
+                            ExpressionEvaluator,
                         )
+                        from ..spark_types import StructType, StructField
+                        from ..core.schema_inference import SchemaInferenceEngine
+
+                        # Check if this is a WindowFunction that needs special handling
+                        # WindowFunction.evaluate() returns a sequence for all rows, not per-row
+                        if hasattr(col, "function_name") and hasattr(
+                            col, "window_spec"
+                        ):
+                            # Window function (lag, lead, rank, etc.)
+                            try:
+                                # Evaluate window function for all rows at once
+                                result_raw = col.evaluate(current.data)
+                                result_seq: Optional[Sequence[Any]]
+                                if result_raw is None:
+                                    result_seq = None
+                                elif isinstance(result_raw, Sequence):
+                                    result_seq = result_raw
+                                else:
+                                    result_seq = cast("Sequence[Any]", result_raw)
+
+                                # Create new data with window function results
+                                new_data = []
+                                for row_index, row in enumerate(current.data):
+                                    new_row = row.copy()
+                                    # Get the result for this specific row using the row_index
+                                    if result_seq is not None and row_index < len(
+                                        result_seq
+                                    ):
+                                        new_row[col_name] = result_seq[row_index]
+                                    else:
+                                        new_row[col_name] = None
+                                    new_data.append(new_row)
+                            except Exception:
+                                # If window function evaluation fails, set all to None
+                                new_data = []
+                                for row in current.data:
+                                    new_row = row.copy()
+                                    new_row[col_name] = None
+                                    new_data.append(new_row)
+                        else:
+                            # Regular expression - use ExpressionEvaluator
+                            evaluator = ExpressionEvaluator(current)
+
+                            # Evaluate the column expression for each row
+                            new_data = []
+                            for row in current.data:
+                                new_row = row.copy()
+                                try:
+                                    # Evaluate the column expression
+                                    col_value = evaluator.evaluate_expression(row, col)
+                                    new_row[col_name] = col_value
+                                except Exception:
+                                    # If evaluation fails, set to None
+                                    new_row[col_name] = None
+                                new_data.append(new_row)
+
+                        # Infer the new column's type from the evaluated values
+                        col_values = [
+                            row.get(col_name) for row in new_data if col_name in row
+                        ]
+                        if col_values:
+                            col_type = SchemaInferenceEngine._infer_type(col_values[0])
+                        else:
+                            # Fallback to inferring from the expression itself
+                            col_type = SchemaInferenceEngine._infer_type(col)
+
+                        # Add the new field to the schema
+                        new_fields = list(current.schema.fields)
+                        # Check if column already exists (replace case)
+                        existing_field_index = None
+                        for i, field in enumerate(new_fields):
+                            if field.name == col_name:
+                                existing_field_index = i
+                                break
+
+                        new_field = StructField(col_name, col_type, nullable=True)
+                        if existing_field_index is not None:
+                            new_fields[existing_field_index] = new_field
+                        else:
+                            new_fields.append(new_field)
+
+                        new_schema = StructType(new_fields)
+                        current = DataFrame(new_data, new_schema, current.storage)
                     finally:
                         # Compute the schema after this withColumn operation for next operation
                         # Update operations_applied_so_far and recompute schema
@@ -948,11 +1148,12 @@ class LazyEvaluationEngine:
                         if isinstance(col, str):
                             # String column name - find in current schema
                             found = False
+                            schema_field: Optional[StructField] = None
                             if hasattr(current.schema, "_field_map"):
-                                field = current.schema._field_map.get(col)
-                                if field:
-                                    new_fields.append(field)
-                                    found = True
+                                schema_field = current.schema._field_map.get(col)
+                            if schema_field is not None:
+                                new_fields.append(schema_field)
+                                found = True
                             if not found:
                                 # Column not found in schema, might be from join or new column
                                 # Use StringType as fallback
@@ -963,9 +1164,10 @@ class LazyEvaluationEngine:
                             not hasattr(col, "operation") or col.operation is None
                         ):
                             # Simple column reference
+                            field = None
                             if hasattr(current.schema, "_field_map"):
                                 field = current.schema._field_map.get(col.name)
-                            if field:
+                            if field is not None:
                                 new_fields.append(field)
                         elif isinstance(col, ColumnOperation):
                             # Column operation - need to evaluate
@@ -1041,13 +1243,14 @@ class LazyEvaluationEngine:
                                 )  # IntegerType
                             elif col.function_name in ["lag", "lead"]:
                                 # Try to infer from source column
+                                field = None
                                 if col.column_name and hasattr(
                                     current.schema, "_field_map"
                                 ):
                                     field = current.schema._field_map.get(
                                         col.column_name
                                     )
-                                    if field:
+                                    if field is not None:
                                         col_type = field.dataType
                                     else:
                                         col_type = SchemaInferenceEngine._infer_type(
@@ -1271,21 +1474,23 @@ class LazyEvaluationEngine:
                                 try:
                                     # The col is already a WindowFunction, just evaluate it
                                     result_raw = col.evaluate(current.data)
-                                    result_seq: Optional[Sequence[Any]]
+                                    result_seq_select: Optional[Sequence[Any]]
                                     if result_raw is None:
-                                        result_seq = None
+                                        result_seq_select = None
                                     elif isinstance(result_raw, Sequence):
-                                        result_seq = result_raw
+                                        result_seq_select = result_raw
                                     else:
-                                        result_seq = cast("Sequence[Any]", result_raw)
+                                        result_seq_select = cast(
+                                            "Sequence[Any]", result_raw
+                                        )
 
                                     # Get the result for this specific row using the row_index
                                     if (
-                                        result_seq is not None
-                                        and row_index < len(result_seq)
+                                        result_seq_select is not None
+                                        and row_index < len(result_seq_select)
                                         and i < len(new_fields)
                                     ):
-                                        new_row[new_fields[i].name] = result_seq[
+                                        new_row[new_fields[i].name] = result_seq_select[
                                             row_index
                                         ]
                                     elif i < len(new_fields):
@@ -1436,6 +1641,15 @@ class LazyEvaluationEngine:
                             # Skip duplicates - Polars deduplicates columns automatically
                         new_schema = StructType(merged_fields)
                     current = DataFrame(joined_data, new_schema, current.storage)
+                    # Update operations_applied_so_far and schema_at_operation after join
+                    # This ensures subsequent withColumn operations can validate against
+                    # the correct schema that includes join columns (fixes test_columns_preserved_in_double_join_with_empty_aggregated)
+                    operations_applied_so_far.append((op_name, op_val))
+                    schema_at_operation = SchemaManager.project_schema_with_operations(
+                        base_schema, operations_applied_so_far
+                    )
+                    # Update current._schema to match the projected schema
+                    current._schema = schema_at_operation
                 elif op_name == "union":
                     other_df = op_val
                     # Use SetOperations for union

@@ -83,6 +83,7 @@ class PolarsMaterializer:
                     df = pl.DataFrame(data)
             else:
                 df = pl.DataFrame(data)
+
             # Only enforce schema types if we have a union operation (to prevent type mismatches)
             # For other operations, let Polars infer types naturally
             if has_union_operation and schema.fields:
@@ -226,10 +227,12 @@ class PolarsMaterializer:
                     )
                 )
                 filter_expr = self.translator.translate(optimized_condition)
+
                 # Apply filter to lazy DataFrame
                 # Catch Polars ColumnNotFoundError and convert to SparkColumnNotFoundError
                 try:
                     lazy_df = lazy_df.filter(filter_expr)
+
                 except pl.exceptions.ColumnNotFoundError as e:
                     # Convert Polars error to our consistent error format
                     from ...core.exceptions.operation import SparkColumnNotFoundError
@@ -269,9 +272,12 @@ class PolarsMaterializer:
             elif op_name == "select":
                 # Select operation - need to collect first for window functions
                 # Use materialized DataFrame if available, otherwise collect from lazy
+                # Preserve materialized state if it contains computed values (e.g., from to_timestamp)
                 if df_materialized is not None:
                     df_collected = df_materialized
-                    df_materialized = None
+
+                    # Don't clear df_materialized yet - we'll clear it after select if needed
+                    # This ensures computed values are preserved through select
                 else:
                     df_collected = lazy_df.collect()
 
@@ -280,14 +286,22 @@ class PolarsMaterializer:
 
                 # Apply select - this should work even if filter was applied first
                 # because select expressions reference column names, not DataFrame objects
-                lazy_df = self.operation_executor.apply_select(
-                    df_collected, payload
-                ).lazy()
+                result_df = self.operation_executor.apply_select(df_collected, payload)
+
+                # If we started with df_materialized, keep the result materialized
+                # to preserve computed values (e.g., from to_timestamp operations)
+                had_materialized_before_select = df_materialized is not None
 
                 # Get columns after select
-                df_after_select = lazy_df.collect()
-                columns_after = set(df_after_select.columns)
-                lazy_df = df_after_select.lazy()
+                columns_after = set(result_df.columns)
+
+                # If we had materialized data before, keep it materialized after select
+                # This preserves computed values through select operations
+                if had_materialized_before_select:
+                    df_materialized = result_df
+                    lazy_df = None
+                else:
+                    lazy_df = result_df.lazy()
 
                 # If columns were dropped, clear the expression cache to invalidate
                 # cached expressions that reference the dropped columns
@@ -305,8 +319,12 @@ class PolarsMaterializer:
                 # WithColumn operation - need to collect first for window functions
                 # Use materialized DataFrame if available, otherwise collect from lazy
                 # This avoids schema mismatch issues when converting back to lazy after drop
+                # Track if we had materialized data before clearing it (to preserve computed values)
+                had_materialized_before = df_materialized is not None
+
                 if df_materialized is not None:
                     df_collected = df_materialized
+
                     df_materialized = None
                 elif lazy_df is not None:
                     df_collected = lazy_df.collect()
@@ -344,6 +362,7 @@ class PolarsMaterializer:
                 # This ensures columns added by withColumn are preserved through rename operations
                 # For to_timestamp operations, keep materialized to avoid schema validation issues
                 # when converting back to lazy (Polars validates against expression input types)
+                # Also keep materialized if we had materialized data before (to preserve computed values)
                 from sparkless.spark_types import TimestampType
 
                 is_timestamp_column = expected_field is not None and isinstance(
@@ -353,25 +372,38 @@ class PolarsMaterializer:
                 next_op_index = current_op_index + 1
                 if next_op_index < len(optimized_operations):
                     next_op_name, _ = optimized_operations[next_op_index]
-                    if next_op_name == "withColumnRenamed" or is_timestamp_column:
-                        # Keep materialized for next withColumnRenamed operation or for to_timestamp
+                    # Keep materialized if:
+                    # 1. Next operation is withColumnRenamed
+                    # 2. This is a timestamp column (to avoid validation issues)
+                    # 3. We had materialized data before (to preserve computed values through multiple withColumn ops)
+                    if (
+                        next_op_name == "withColumnRenamed"
+                        or is_timestamp_column
+                        or had_materialized_before
+                    ):
+                        # Keep materialized for next withColumnRenamed operation, for to_timestamp,
+                        # or to preserve computed values from previous withColumn operations
                         # This avoids Polars schema validation issues when converting to lazy
+                        # and ensures computed values are preserved
                         df_materialized = result_df
-                        # For to_timestamp, don't create lazy_df to avoid validation issues
+                        # For to_timestamp or when preserving materialized state, don't create lazy_df
                         # The materialized DataFrame will be used directly
                         lazy_df = (
-                            None if is_timestamp_column else result_df.lazy()
-                        )  # Don't create lazy frame for to_timestamp
+                            None
+                            if (is_timestamp_column or had_materialized_before)
+                            else result_df.lazy()
+                        )  # Don't create lazy frame for to_timestamp or when preserving materialized
                     else:
                         # Convert result back to lazy for other operations
                         lazy_df = result_df.lazy()
                         df_materialized = None
                 else:
                     # No more operations
-                    if is_timestamp_column:
-                        # Keep materialized for to_timestamp to avoid validation on final collection
+                    if is_timestamp_column or had_materialized_before:
+                        # Keep materialized for to_timestamp or when we had materialized data
+                        # This avoids validation on final collection and preserves computed values
                         df_materialized = result_df
-                        lazy_df = None  # Don't create lazy frame for to_timestamp
+                        lazy_df = None  # Don't create lazy frame for to_timestamp or when preserving materialized
                     else:
                         # Convert result back to lazy for final collection
                         lazy_df = result_df.lazy()
@@ -843,6 +875,7 @@ class PolarsMaterializer:
         # For joins with duplicate columns, Polars uses _right suffix
         # We need to convert these to match PySpark's duplicate column handling
         rows = []
+
         for row_dict in result_df.to_dicts():
             # Create Row from dict - Row will handle the conversion
             # The schema will be applied later in _convert_materialized_rows

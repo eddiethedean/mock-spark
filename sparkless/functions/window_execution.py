@@ -760,12 +760,59 @@ class WindowFunction:
         return self._evaluate_first_value(data)
 
     def _evaluate_last(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate last() window function with proper partitioning and ordering."""
-        # last() behaves the same as last_value() for window functions
-        return self._evaluate_last_value(data)
+        """Evaluate last() window function with proper partitioning and ordering.
+
+        Note: With orderBy, PySpark's default frame is UNBOUNDED PRECEDING AND CURRENT ROW,
+        so last() returns the current row's value (last in the frame up to current row),
+        not the last value in the entire partition.
+        """
+        if not data or not self.column_name:
+            return [None] * len(data) if data else []
+
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
+
+        # If orderBy is specified, last() returns the current row's value
+        # (because default frame is UNBOUNDED PRECEDING AND CURRENT ROW)
+        if order_by_cols:
+            # Create partition groups
+            partition_groups: dict[Any, list[int]] = {}
+            for i, row in enumerate(data):
+                if partition_by_cols:
+                    partition_key = tuple(
+                        row.get(col.name if hasattr(col, "name") else str(col))
+                        for col in partition_by_cols
+                    )
+                else:
+                    partition_key = None
+
+                if partition_key not in partition_groups:
+                    partition_groups[partition_key] = []
+                partition_groups[partition_key].append(i)
+
+            # Initialize results
+            results = [None] * len(data)
+
+            # Process each partition
+            for partition_indices in partition_groups.values():
+                # Sort indices by order_by columns
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+
+                # For each row in sorted order, last() returns that row's value
+                # (because frame up to current row ends at current row)
+                for sorted_pos, idx in enumerate(sorted_indices):
+                    results[idx] = data[idx].get(self.column_name)
+
+            return results
+        else:
+            # Without orderBy, last() behaves like last_value() - returns last value in partition
+            return self._evaluate_last_value(data)
 
     def _evaluate_sum(self, data: list[dict[str, Any]]) -> list[Any]:
-        """Evaluate sum() window function."""
+        """Evaluate sum() window function with proper partitioning."""
         if not data:
             return []
 
@@ -774,17 +821,51 @@ class WindowFunction:
         if not col_name:
             return [None] * len(data)
 
-        # Calculate sum for each position
-        result = []
-        running_sum = 0.0
+        # Get partition and order columns from window spec
+        partition_by_cols = getattr(self.window_spec, "_partition_by", [])
+        order_by_cols = getattr(self.window_spec, "_order_by", [])
 
-        for row in data:
-            if col_name in row and row[col_name] is not None:
-                with contextlib.suppress(ValueError, TypeError):
-                    running_sum += float(row[col_name])
-            result.append(running_sum)
+        # Create partition groups
+        partition_groups: dict[Any, list[int]] = {}
+        for i, row in enumerate(data):
+            if partition_by_cols:
+                partition_key = tuple(
+                    row.get(col.name if hasattr(col, "name") else str(col))
+                    for col in partition_by_cols
+                )
+            else:
+                partition_key = None  # Single partition = all rows
 
-        return result
+            if partition_key not in partition_groups:
+                partition_groups[partition_key] = []
+            partition_groups[partition_key].append(i)
+
+        # Initialize results
+        results: list[Any] = [None] * len(data)
+
+        # Process each partition
+        for partition_indices in partition_groups.values():
+            # Sort indices by order_by columns if specified
+            if order_by_cols:
+                sorted_indices = self._sort_indices_by_columns(
+                    data, partition_indices, order_by_cols
+                )
+            else:
+                sorted_indices = partition_indices
+
+            # Calculate sum for this partition
+            partition_sum = 0.0
+            for idx in sorted_indices:
+                row = data[idx]
+                if col_name in row and row[col_name] is not None:
+                    with contextlib.suppress(ValueError, TypeError):
+                        partition_sum += float(row[col_name])
+
+            # Assign same sum to all rows in partition
+            for idx in partition_indices:
+                results[idx] = partition_sum
+
+        return results
 
     def _evaluate_avg(self, data: list[dict[str, Any]]) -> list[Any]:
         """Evaluate avg() window function."""
