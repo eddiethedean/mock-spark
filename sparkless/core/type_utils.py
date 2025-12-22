@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 
 # Try to import TypeGuard from typing (Python 3.10+), fallback to typing_extensions
 try:
-    from typing import TypeGuard
+    from typing import TypeGuard  # type: ignore[attr-defined,unused-ignore]
 except (ImportError, AttributeError):
     from typing_extensions import TypeGuard
 

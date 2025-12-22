@@ -37,7 +37,7 @@ class JoinOperations(Generic[SupportsDF]):
         if isinstance(on, str):
             on = [on]
 
-        return self._queue_op("join", (other, on, how))
+        return cast("SupportsDF", self._queue_op("join", (other, on, how)))  # type: ignore[redundant-cast,unused-ignore]
 
     def crossJoin(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Cross join (Cartesian product) with another DataFrame.
@@ -92,7 +92,7 @@ class JoinOperations(Generic[SupportsDF]):
 
     def union(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Union with another DataFrame."""
-        return self._queue_op("union", other)
+        return cast("SupportsDF", self._queue_op("union", other))  # type: ignore[redundant-cast,unused-ignore]
 
     def unionByName(
         self: SupportsDF,
@@ -193,7 +193,7 @@ class JoinOperations(Generic[SupportsDF]):
         warnings.warn(
             "unionAll is deprecated. Use union instead.", FutureWarning, stacklevel=2
         )
-        return self.union(other)
+        return cast("SupportsDF", self.union(other))  # type: ignore[redundant-cast,unused-ignore]
 
     def intersect(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Intersect with another DataFrame.

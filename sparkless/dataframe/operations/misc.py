@@ -1243,11 +1243,17 @@ class MiscellaneousOperations:
 
         if isinstance(numPartitions, int):
             result = self.orderBy(*cols)
-            return result
+            return cast(
+                "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+                result,
+            )
         else:
             # numPartitions is actually the first column
             result = self.orderBy(numPartitions, *cols)
-            return result
+            return cast(
+                "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+                result,
+            )
 
     def sortWithinPartitions(
         self: SupportsDataFrameOps, *cols: Union[str, "Column"], **kwargs: Any
@@ -1264,7 +1270,10 @@ class MiscellaneousOperations:
         # For mock purposes, treat as regular sort since we have single partition
 
         result = self.orderBy(*cols, **kwargs)
-        return result
+        return cast(
+            "SupportsDataFrameOps",  # type: ignore[redundant-cast,unused-ignore]
+            result,
+        )
 
     def toLocalIterator(
         self: SupportsDataFrameOps, prefetchPartitions: bool = False

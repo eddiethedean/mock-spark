@@ -106,10 +106,9 @@ class TransformationOperations(Generic[SupportsDF]):
                     self._validate_expression_columns(col, "select")
 
             # Always use lazy evaluation
-            return self._queue_op("select", columns)
-
+            return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast,unused-ignore]
         # If there are pending joins, skip validation and go directly to lazy evaluation
-        return self._queue_op("select", columns)
+        return cast("SupportsDF", self._queue_op("select", columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def selectExpr(self: SupportsDF, *exprs: str) -> SupportsDF:
         """Select columns or expressions using SQL-like syntax.
@@ -231,7 +230,7 @@ class TransformationOperations(Generic[SupportsDF]):
 
                     columns.append(F.expr(text))  # type: ignore[arg-type]
 
-        return self.select(*columns)
+        return cast("SupportsDF", self.select(*columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def filter(
         self: SupportsDF,
@@ -241,7 +240,7 @@ class TransformationOperations(Generic[SupportsDF]):
         # Pre-validation: validate filter expression
         self._validate_filter_expression(condition, "filter")
 
-        return self._queue_op("filter", condition)
+        return cast("SupportsDF", self._queue_op("filter", condition))  # type: ignore[redundant-cast,unused-ignore]
 
     def where(
         self: SupportsDF,
@@ -255,7 +254,7 @@ class TransformationOperations(Generic[SupportsDF]):
         Returns:
             Filtered DataFrame
         """
-        return self.filter(condition)
+        return cast("SupportsDF", self.filter(condition))  # type: ignore[redundant-cast,unused-ignore]
 
     def withColumn(
         self: SupportsDF,
@@ -276,7 +275,7 @@ class TransformationOperations(Generic[SupportsDF]):
                 getattr(self, "_validate_operation_types")(col, "withColumn")
         # For Literal and other cases, skip validation
 
-        return self._queue_op("withColumn", (col_name, col))
+        return cast("SupportsDF", self._queue_op("withColumn", (col_name, col)))  # type: ignore[redundant-cast,unused-ignore]
 
     def withColumns(
         self: SupportsDF,
@@ -371,7 +370,7 @@ class TransformationOperations(Generic[SupportsDF]):
     ) -> SupportsDF:
         """Drop duplicate rows."""
         if subset is None:
-            return self.distinct()
+            return cast("SupportsDF", self.distinct())  # type: ignore[redundant-cast,unused-ignore]
 
         seen = set()
         distinct_data = []
@@ -396,11 +395,11 @@ class TransformationOperations(Generic[SupportsDF]):
         Returns:
             DataFrame with duplicates removed
         """
-        return self.dropDuplicates(subset)
+        return cast("SupportsDF", self.dropDuplicates(subset))  # type: ignore[redundant-cast,unused-ignore]
 
     def orderBy(self: SupportsDF, *columns: Union[str, Column]) -> SupportsDF:
         """Order by columns."""
-        return self._queue_op("orderBy", columns)
+        return cast("SupportsDF", self._queue_op("orderBy", columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def sort(
         self: SupportsDF, *columns: Union[str, Column], **kwargs: Any
@@ -414,11 +413,11 @@ class TransformationOperations(Generic[SupportsDF]):
         Returns:
             Sorted DataFrame
         """
-        return self.orderBy(*columns)
+        return cast("SupportsDF", self.orderBy(*columns))  # type: ignore[redundant-cast,unused-ignore]
 
     def limit(self: SupportsDF, n: int) -> SupportsDF:
         """Limit number of rows."""
-        return self._queue_op("limit", n)
+        return cast("SupportsDF", self._queue_op("limit", n))  # type: ignore[redundant-cast,unused-ignore]
 
     def offset(self: SupportsDF, n: int) -> SupportsDF:
         """Skip first n rows (SQL OFFSET clause).
@@ -436,7 +435,7 @@ class TransformationOperations(Generic[SupportsDF]):
             from ...core.exceptions import PySparkValueError
 
             raise PySparkValueError(f"OFFSET must be non-negative, got {n}")
-        return self._queue_op("offset", n)
+        return cast("SupportsDF", self._queue_op("offset", n))  # type: ignore[redundant-cast,unused-ignore]
 
     def repartition(self: SupportsDF, numPartitions: int, *cols: Any) -> SupportsDF:
         """Repartition DataFrame (no-op in mock; returns self)."""

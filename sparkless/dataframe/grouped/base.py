@@ -232,14 +232,16 @@ class GroupedData:
                 elif is_column(expr):
                     # Handle Column (but not ColumnOperation, which is handled above)
                     # is_column narrows to Column, but _evaluate_column_expression accepts Union
+                    # Cast to help mypy understand the type in Python 3.9
                     result_key, result_value = self._evaluate_column_expression(
-                        expr, group_rows
+                        cast("Union[Column, ColumnOperation]", expr),
+                        group_rows,  # type: ignore[redundant-cast,unused-ignore]
                     )
                     # Track result key order (same for all groups)
                     if result_key not in result_key_order:
                         result_key_order.append(result_key)
                     result_row[result_key] = result_value
-                elif isinstance(expr, dict):  # type: ignore[unreachable]
+                elif isinstance(expr, dict):  # type: ignore[unreachable,unused-ignore]
                     # Skip dict expressions - should have been converted already
                     # This branch handles dict expressions that weren't converted
                     pass

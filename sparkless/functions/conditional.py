@@ -494,8 +494,10 @@ class ConditionalFunctions:
             value: Optional[ColumnOperation] = None
         elif is_column_operation(condition):
             # Type guard narrows condition to ColumnOperation
-            col = condition.column
-            value = condition
+            # Cast to help mypy understand the type narrowing in Python 3.9
+            col_op = cast("ColumnOperation", condition)  # type: ignore[redundant-cast,unused-ignore]
+            col = col_op.column
+            value = col_op
         elif isinstance(condition, str):
             col = Column(condition)
             value = None

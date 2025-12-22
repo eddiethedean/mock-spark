@@ -8,7 +8,7 @@ between DataFrame and SupportsDataFrameOps protocol.
 from typing import TYPE_CHECKING
 
 try:
-    from typing import TypeAlias
+    from typing import TypeAlias  # type: ignore[attr-defined,unused-ignore]
 except (ImportError, AttributeError):
     from typing_extensions import TypeAlias
 
