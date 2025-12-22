@@ -242,6 +242,7 @@ class GroupedData:
                 elif isinstance(expr, dict):  # type: ignore[unreachable]
                     # Skip dict expressions - should have been converted already
                     # This branch handles dict expressions that weren't converted
+                    pass
                     # Type system doesn't allow expr to be both Column and dict after other checks
                     pass
 

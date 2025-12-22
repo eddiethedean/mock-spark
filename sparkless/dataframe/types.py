@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 try:
     from typing import TypeAlias
-except ImportError:
+except (ImportError, AttributeError):
     from typing_extensions import TypeAlias
 
 from .protocols import SupportsDataFrameOps

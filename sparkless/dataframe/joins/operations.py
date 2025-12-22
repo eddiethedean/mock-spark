@@ -193,8 +193,7 @@ class JoinOperations(Generic[SupportsDF]):
         warnings.warn(
             "unionAll is deprecated. Use union instead.", FutureWarning, stacklevel=2
         )
-        result = self.union(other)
-        return result
+        return self.union(other)
 
     def intersect(self: SupportsDF, other: SupportsDataFrameOps) -> SupportsDF:
         """Intersect with another DataFrame.

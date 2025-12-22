@@ -491,7 +491,7 @@ class ConditionalFunctions:
 
         if is_column(condition):
             col = condition
-            value: ColumnOperation | None = None
+            value: Optional[ColumnOperation] = None
         elif is_column_operation(condition):
             # Type guard narrows condition to ColumnOperation
             col = condition.column
