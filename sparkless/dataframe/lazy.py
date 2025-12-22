@@ -467,6 +467,23 @@ class LazyEvaluationEngine:
             backend_type = BackendFactory.get_backend_type(df.storage)
             materializer = BackendFactory.create_materializer(backend_type)
             try:
+                # Check capabilities upfront before materialization
+                can_handle_all, unsupported_ops = materializer.can_handle_operations(
+                    df._operations_queue
+                )
+
+                if not can_handle_all:
+                    # Fail fast with clear error message
+                    from ..core.exceptions.operation import (
+                        SparkUnsupportedOperationError,
+                    )
+
+                    raise SparkUnsupportedOperationError(
+                        operation=f"Operations: {', '.join(unsupported_ops)}",
+                        reason=f"Backend '{backend_type}' does not support these operations",
+                        alternative="Consider using _materialize_manual() or a different backend",
+                    )
+
                 # Compute final schema after all operations
                 from ..dataframe.schema.schema_manager import SchemaManager
 
@@ -492,15 +509,6 @@ class LazyEvaluationEngine:
                             materialized_data, df._operations_queue, final_schema
                         )
                     )
-
-                # Check if backend returned default values (0.0 for numeric functions)
-                # If so, fall back to manual materialization
-                has_defaults = LazyEvaluationEngine._has_default_values(
-                    materialized_data, final_schema
-                )
-
-                if has_defaults:
-                    return LazyEvaluationEngine._materialize_manual(df)
 
                 # Update schema to match actual columns in materialized data
                 # This handles Polars deduplication/renaming of duplicate columns.
@@ -624,7 +632,12 @@ class LazyEvaluationEngine:
 
     @staticmethod
     def _has_default_values(data: list[dict[str, Any]], schema: "StructType") -> bool:
-        """Check if data contains default values that indicate backend couldn't handle the operations."""
+        """Check if data contains default values that indicate backend couldn't handle the operations.
+
+        .. deprecated::
+            This heuristic-based method is deprecated in favor of explicit capability checks
+            via materializer.can_handle_operations(). It may be removed in a future version.
+        """
         if not data:
             # Empty data could be valid (e.g., filter with no matches, join with no matches)
             # Only return True if we have a schema but no data AND schema has fields
@@ -714,7 +727,12 @@ class LazyEvaluationEngine:
     def _requires_manual_materialization(
         operations_queue: list[tuple[str, Any]],
     ) -> bool:
-        """Check if operations require manual materialization."""
+        """Check if operations require manual materialization.
+
+        .. deprecated::
+            This heuristic-based method is deprecated in favor of explicit capability checks
+            via materializer.can_handle_operations(). It may be removed in a future version.
+        """
         for op_name, op_val in operations_queue:
             if op_name == "select":
                 # Check if select contains operations that require manual materialization

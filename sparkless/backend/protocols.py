@@ -71,6 +71,33 @@ class DataMaterializer(Protocol):
         """
         ...
 
+    def can_handle_operation(self, op_name: str, op_payload: Any) -> bool:
+        """Check if this materializer can handle a specific operation.
+
+        Args:
+            op_name: Name of the operation (e.g., "to_timestamp", "filter")
+            op_payload: Operation payload (operation-specific)
+
+        Returns:
+            True if the materializer can handle this operation, False otherwise
+        """
+        ...
+
+    def can_handle_operations(
+        self, operations: list[tuple[str, Any]]
+    ) -> tuple[bool, list[str]]:
+        """Check if this materializer can handle a list of operations.
+
+        Args:
+            operations: List of (operation_name, payload) tuples
+
+        Returns:
+            Tuple of (can_handle_all, unsupported_operations)
+            - can_handle_all: True if all operations are supported
+            - unsupported_operations: List of operation names that are unsupported
+        """
+        ...
+
     def close(self) -> None:
         """Close the materializer and clean up resources."""
         ...
