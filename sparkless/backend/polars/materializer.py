@@ -986,8 +986,7 @@ class PolarsMaterializer:
         if hasattr(expr, "value") and self._has_unsupported_operation(expr.value):
             return True
         return bool(
-            hasattr(expr, "function")
-            and self._has_unsupported_operation(expr.function)
+            hasattr(expr, "function") and self._has_unsupported_operation(expr.function)
         )
 
     def can_handle_operation(self, op_name: str, op_payload: Any) -> bool:
