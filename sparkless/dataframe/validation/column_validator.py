@@ -175,6 +175,19 @@ class ColumnValidator:
         # as they will be handled by SQL generation
 
     @staticmethod
+    def _column_exists_in_schema(schema: StructType, column_name: str) -> bool:
+        """Check if column exists in schema.
+
+        Args:
+            schema: The DataFrame schema to check against.
+            column_name: Name of the column to check.
+
+        Returns:
+            True if column exists in schema, False otherwise.
+        """
+        return column_name in [field.name for field in schema.fields]
+
+    @staticmethod
     def validate_expression_columns(
         schema: StructType,
         expression: Any,
@@ -210,9 +223,21 @@ class ColumnValidator:
                     pass  # Skip DataFrame objects
                 elif isinstance(expression.column, ColumnOperation):
                     # The column itself is a ColumnOperation (e.g., struct, array) - validate it recursively
-                    ColumnValidator.validate_expression_columns(
-                        schema, expression.column, operation, in_lazy_materialization
-                    )
+                    # But first check if this ColumnOperation represents a column that exists in the schema
+                    # If it does, skip recursive validation to avoid checking dropped columns (issue #168)
+                    should_skip_recursive = False
+                    if hasattr(expression.column, "name"):
+                        col_name = expression.column.name
+                        if ColumnValidator._column_exists_in_schema(schema, col_name):
+                            should_skip_recursive = True
+
+                    if not should_skip_recursive:
+                        ColumnValidator.validate_expression_columns(
+                            schema,
+                            expression.column,
+                            operation,
+                            in_lazy_materialization,
+                        )
                 elif isinstance(expression.column, Column):
                     # Skip validation for dummy columns created by F.expr() and F.struct()
                     if expression.column.name in (
@@ -238,22 +263,67 @@ class ColumnValidator:
                         ColumnValidator.validate_column_exists(
                             schema, col_name, operation
                         )
+                        # If column exists in schema, skip recursive validation of its internal structure
+                        # This prevents validation errors when the column was created from expressions
+                        # that referenced dropped columns (issue #168)
+                        if ColumnValidator._column_exists_in_schema(schema, col_name):
+                            # Column exists in schema - skip recursive validation of internal structure
+                            # The column is already validated as existing, so we don't need to check
+                            # its internal ColumnOperation structure which might reference dropped columns
+                            pass
+                        else:
+                            # Column doesn't exist in schema - might be a complex expression being built
+                            # Continue with recursive validation
+                            pass
 
             # Recursively validate nested expressions
+            # Only validate if the column doesn't exist in schema (for complex expressions being built)
             if hasattr(expression, "column"):
                 if is_literal(expression.column):
                     # Skip validation for literals used as columns
                     pass
                 elif isinstance(expression.column, ColumnOperation):
-                    ColumnValidator.validate_expression_columns(
-                        schema, expression.column, operation, in_lazy_materialization
-                    )
+                    # Only recursively validate if the ColumnOperation doesn't represent an existing column
+                    # Check if this ColumnOperation represents a column that exists in the schema
+                    # If it does, skip recursive validation to avoid checking dropped columns
+                    should_skip_recursive = False
+                    if hasattr(expression.column, "name"):
+                        col_name = expression.column.name
+                        if ColumnValidator._column_exists_in_schema(schema, col_name):
+                            should_skip_recursive = True
+
+                    if not should_skip_recursive:
+                        ColumnValidator.validate_expression_columns(
+                            schema,
+                            expression.column,
+                            operation,
+                            in_lazy_materialization,
+                        )
+                elif isinstance(expression.column, Column):
+                    # If this Column exists in schema, skip recursive validation
+                    col_name = expression.column.name
+                    if ColumnValidator._column_exists_in_schema(schema, col_name):
+                        # Column exists - already validated, skip recursive validation
+                        pass
+                    else:
+                        # Column doesn't exist - might need recursive validation for complex expressions
+                        # But for simple Column references, we've already validated above
+                        pass
             if hasattr(expression, "value") and isinstance(
                 expression.value, ColumnOperation
             ):
-                ColumnValidator.validate_expression_columns(
-                    schema, expression.value, operation, in_lazy_materialization
-                )
+                # Check if this ColumnOperation represents a column that exists in the schema
+                # If it does, skip recursive validation to avoid checking dropped columns (issue #168)
+                should_skip_recursive = False
+                if hasattr(expression.value, "name"):
+                    col_name = expression.value.name
+                    if ColumnValidator._column_exists_in_schema(schema, col_name):
+                        should_skip_recursive = True
+
+                if not should_skip_recursive:
+                    ColumnValidator.validate_expression_columns(
+                        schema, expression.value, operation, in_lazy_materialization
+                    )
             elif hasattr(expression, "value") and is_literal(expression.value):
                 # Skip validation for literals
                 pass
@@ -277,9 +347,20 @@ class ColumnValidator:
                         continue  # Skip literals
                     elif isinstance(item, ColumnOperation):
                         # Recursively validate nested ColumnOperations (e.g., struct inside array)
-                        ColumnValidator.validate_expression_columns(
-                            schema, item, operation, in_lazy_materialization
-                        )
+                        # But first check if this ColumnOperation represents a column that exists in the schema
+                        # If it does, skip recursive validation to avoid checking dropped columns (issue #168)
+                        should_skip_recursive = False
+                        if hasattr(item, "name"):
+                            col_name = item.name
+                            if ColumnValidator._column_exists_in_schema(
+                                schema, col_name
+                            ):
+                                should_skip_recursive = True
+
+                        if not should_skip_recursive:
+                            ColumnValidator.validate_expression_columns(
+                                schema, item, operation, in_lazy_materialization
+                            )
                     elif (
                         isinstance(item, Column)
                         and not in_lazy_materialization
