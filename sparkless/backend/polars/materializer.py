@@ -582,7 +582,14 @@ class PolarsMaterializer:
                 lazy_df = lazy_df.slice(n)
             elif op_name == "groupBy":
                 # GroupBy operation - need to collect first
-                df_collected = lazy_df.collect()
+                # Use materialized DataFrame if available, otherwise collect from lazy
+                if df_materialized is not None:
+                    df_collected = df_materialized
+                    df_materialized = None  # Clear after use
+                elif lazy_df is not None:
+                    df_collected = lazy_df.collect()
+                else:
+                    raise ValueError("No DataFrame available for groupBy operation")
                 group_by, aggs = payload
                 result_df = self.operation_executor.apply_group_by_agg(
                     df_collected, group_by, aggs
