@@ -1448,26 +1448,13 @@ class PolarsExpressionTranslator:
 
                 if is_nested_to_timestamp:
                     # For to_date(to_timestamp(...)), the input is already datetime
-                    # Use map_elements with a simple datetime->date conversion
-                    # This avoids schema validation issues that dt.date() might cause
+                    # Use .dt.date() directly for datetime columns to avoid schema validation issues
                     # First translate the nested to_timestamp to get the datetime expression
-                    nested_ts_expr = self._translate_operation(op.column)
-
-                    def datetime_to_date(val: Any) -> Any:
-                        from datetime import datetime, date
-
-                        if val is None:
-                            return None
-                        if isinstance(val, datetime):
-                            return val.date()
-                        if isinstance(val, date):
-                            return val
-                        return None
-
-                    return nested_ts_expr.map_elements(
-                        datetime_to_date,
-                        return_dtype=pl.Date,
+                    nested_ts_expr = self._translate_operation(
+                        op.column, input_col_dtype=None
                     )
+                    # Use .dt.date() for datetime columns - this avoids schema validation issues
+                    return nested_ts_expr.dt.date()
 
                 # Use map_elements to handle both StringType and TimestampType/DateType inputs
                 # This avoids the issue where .str.strptime fails on datetime columns

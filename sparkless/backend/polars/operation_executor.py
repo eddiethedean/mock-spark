@@ -877,6 +877,65 @@ class PolarsOperationExecutor:
                     except Exception:
                         pass  # Fall through to with_columns
 
+            # For to_date() operations on datetime columns, use .dt.date() directly
+            # This avoids schema validation issues that map_elements can cause
+            if (
+                isinstance(expression, ColumnOperation)
+                and expression.operation == "to_date"
+            ):
+                from sparkless.functions.core.column import Column
+
+                # Check if the input column is a simple Column reference (not a ColumnOperation)
+                input_col = expression.column
+                if isinstance(input_col, Column) and not isinstance(
+                    input_col, ColumnOperation
+                ):
+                    # Simple column reference - check if it's a datetime type in the DataFrame
+                    col_name = input_col.name
+                    if col_name in df.columns:
+                        # Check the actual Polars dtype
+                        col_dtype = df[col_name].dtype
+                        is_datetime = (
+                            isinstance(col_dtype, pl.Datetime)
+                            or str(col_dtype).startswith("Datetime")
+                            or (hasattr(pl, "Datetime") and col_dtype == pl.Datetime)
+                        )
+                        is_date = col_dtype == pl.Date
+
+                        if is_datetime or is_date:
+                            # For datetime/date columns, use .dt.date() directly
+                            # This avoids schema validation issues
+                            try:
+                                if expression.value is None:
+                                    # No format - use .dt.date() for datetime/date columns
+                                    date_expr = pl.col(col_name).dt.date()
+                                    result = df.with_columns(
+                                        date_expr.alias(column_name)
+                                    )
+                                    return result
+                                else:
+                                    # With format - still need to use map_elements for string parsing
+                                    # But try select to avoid validation
+                                    all_exprs = [pl.col(c) for c in df.columns] + [
+                                        expr.alias(column_name)
+                                    ]
+                                    result = df.select(all_exprs)
+                                    return result
+                            except Exception:
+                                pass  # Fall back to with_columns
+
+                # For complex expressions or string columns, try using select to avoid validation
+                try:
+                    # Use select to avoid schema validation issues
+                    # This works for both StringType and TimestampType inputs
+                    all_exprs = [pl.col(c) for c in df.columns] + [
+                        expr.alias(column_name)
+                    ]
+                    result = df.select(all_exprs)
+                    return result
+                except Exception:
+                    pass  # Fall through to with_columns
+
             result = df.with_columns(expr.alias(column_name))
 
             return result
