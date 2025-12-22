@@ -258,14 +258,17 @@ class DisplayService:
 
     def count(self) -> int:
         """Count number of rows."""
+
         # Materialize lazy operations if needed
         if self._df._operations_queue:
             materialized = self._df._materialize_if_lazy()
+
             # Don't call count() recursively - just return the length of materialized data
             return len(materialized.data)
 
         if self._df._cached_count is None:
             self._df._cached_count = len(self._df.data)
+
         return self._df._cached_count
 
     def isEmpty(self) -> bool:

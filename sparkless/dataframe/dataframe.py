@@ -826,7 +826,9 @@ class DataFrame:
         """Materialize lazy operations if any are queued."""
         if self._operations_queue:
             lazy_engine = self._get_lazy_engine()
-            return cast("SupportsDataFrameOps", lazy_engine.materialize(self))
+            result = cast("SupportsDataFrameOps", lazy_engine.materialize(self))
+
+            return result
         return cast("SupportsDataFrameOps", self)
 
     def __repr__(self) -> str:
@@ -1046,16 +1048,36 @@ class DataFrame:
             frame = inspect.currentframe()
             try:
                 # Walk up the call stack to see if we're in lazy materialization
+                # Start from the caller (skip current frame)
+                if frame is not None:
+                    frame = frame.f_back
                 while frame:
+                    # Check if we're in _materialize_manual
                     if frame.f_code.co_name == "_materialize_manual":
+                        in_lazy_materialization = True
+                        break
+                    # Also check the filename to be more specific
+                    if (
+                        hasattr(frame.f_code, "co_filename")
+                        and "_materialize_manual" in frame.f_code.co_filename
+                        and "_materialize_manual" in str(frame.f_code.co_name)
+                    ):
+                        # Check if the function name matches (in case of name mangling)
                         in_lazy_materialization = True
                         break
                     frame = frame.f_back
             finally:
                 del frame
 
+        # When in lazy materialization, use _schema directly instead of self.schema
+        # because self.schema projects the final schema (after all operations including select),
+        # but we need the schema at the time the operation was queued (which _materialize_manual sets)
+        # We rely on call stack detection to determine if we're in lazy materialization.
+        # During normal withColumn calls (not in materialization), we should use self.schema
+        # (the projected schema) which includes columns from queued operations.
+        validation_schema = self._schema if in_lazy_materialization else self.schema
         self._get_validation_handler().validate_expression_columns(
-            self.schema, expression, operation, in_lazy_materialization
+            validation_schema, expression, operation, in_lazy_materialization
         )
 
     def _project_schema_with_operations(self) -> StructType:
