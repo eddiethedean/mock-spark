@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Optional, Protocol, Union
 
 try:  # Python <3.11 compatibility
-    from typing import Self  # type: ignore[attr-defined]
+    from typing import Self
 except ImportError:  # pragma: no cover - fallback for older versions
     from typing_extensions import Self
 

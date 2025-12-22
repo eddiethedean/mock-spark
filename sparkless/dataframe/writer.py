@@ -733,19 +733,20 @@ class DataFrameWriter:
                 if field is not None:
                     # Add column with null values of the correct type
                     field_data_type = field.dataType
-                    from .protocols import SupportsDataFrameOps
 
-                    merged_df = cast("SupportsDataFrameOps", merged_df).withColumn(
-                        col_name, Functions.lit(None).cast(field_data_type)
+                    merged_df = cast(
+                        "DataFrame",
+                        merged_df.withColumn(
+                            col_name, Functions.lit(None).cast(field_data_type)
+                        ),
                     )
 
             # Reorder columns: existing first, then new (sorted)
             all_columns = list(existing_schema.fieldNames()) + sorted(
                 current_columns - existing_columns
             )
-            from .protocols import SupportsDataFrameOps  # noqa: TC001
 
-            merged_df = cast("SupportsDataFrameOps", merged_df).select(*all_columns)
+            merged_df = cast("DataFrame", merged_df.select(*all_columns))
 
         return merged_df, merged_schema
 

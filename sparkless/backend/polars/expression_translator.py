@@ -782,7 +782,13 @@ class PolarsExpressionTranslator:
             from sparkless.functions.core.literals import Literal
 
             is_current_timestamp = False
-            if column is None or isinstance(column, str) and column == "current_timestamp" or isinstance(column, Literal) and column.value == "current_timestamp":
+            if (
+                column is None
+                or isinstance(column, str)
+                and column == "current_timestamp"
+                or isinstance(column, Literal)
+                and column.value == "current_timestamp"
+            ):
                 is_current_timestamp = True
 
             if is_current_timestamp:

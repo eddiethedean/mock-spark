@@ -156,7 +156,7 @@ class DataFrameFactory:
                     normalize_data_for_schema,
                 )
 
-                fields: list[StructField] = []
+                inferred_fields: list[StructField] = []
                 for name in schema:
                     # Collect non-null values for this column
                     values_for_key = [
@@ -185,9 +185,11 @@ class DataFrameFactory:
                             )
 
                     nullable = getattr(field_type, "nullable", True)
-                    fields.append(StructField(name, field_type, nullable=nullable))
+                    inferred_fields.append(
+                        StructField(name, field_type, nullable=nullable)
+                    )
 
-                schema = StructType(fields)
+                schema = StructType(inferred_fields)
                 # Normalize data so every row has every column in schema order
                 data = normalize_data_for_schema(data, schema)
 
