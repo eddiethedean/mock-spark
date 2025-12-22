@@ -15,6 +15,32 @@ from .operation_executor import PolarsOperationExecutor
 class PolarsMaterializer:
     """Materializes lazy operations using Polars."""
 
+    # Explicit capability declarations
+    SUPPORTED_OPERATIONS = {
+        "select",
+        "filter",
+        "withColumn",
+        "drop",
+        "join",
+        "union",
+        "orderBy",
+        "limit",
+        "offset",
+        "groupBy",
+        "distinct",
+        "withColumnRenamed",
+    }
+
+    # Operations that are explicitly unsupported (require manual materialization)
+    UNSUPPORTED_OPERATIONS = {
+        "months_between",
+        "pi",
+        "e",
+    }
+
+    # Optional: Operation-specific metadata (for future extensibility)
+    OPERATION_METADATA: dict[str, dict[str, Any]] = {}
+
     def __init__(self) -> None:
         """Initialize Polars materializer."""
         self.translator = PolarsExpressionTranslator()
@@ -882,6 +908,161 @@ class PolarsMaterializer:
             rows.append(Row(row_dict, schema=None))
 
         return rows
+
+    def _has_window_function(self, expr: Any) -> bool:
+        """Check if expression contains WindowFunction objects that require manual materialization.
+
+        Args:
+            expr: Expression to check (Column, ColumnOperation, WindowFunction, or nested structure)
+
+        Returns:
+            True if expression contains WindowFunction objects
+        """
+        # Check if this is a WindowFunction directly
+        if hasattr(expr, "__class__") and expr.__class__.__name__ == "WindowFunction":
+            return True
+        # Also try isinstance check as backup
+        try:
+            from sparkless.functions.window_execution import WindowFunction
+
+            if isinstance(expr, WindowFunction):
+                return True
+        except (ImportError, AttributeError):
+            pass
+        # Recursively check nested expressions
+        if hasattr(expr, "column") and self._has_window_function(expr.column):
+            return True
+        if hasattr(expr, "value") and self._has_window_function(expr.value):
+            return True
+        return bool(
+            hasattr(expr, "function") and self._has_window_function(expr.function)
+        )
+
+    def _has_expr_expression(self, expr: Any) -> bool:
+        """Check if expression contains F.expr() or complex operations that need manual materialization.
+
+        Args:
+            expr: Expression to check (Column, ColumnOperation, or nested structure)
+
+        Returns:
+            True if expression contains operations that require manual materialization
+        """
+        # Check if this expression was created by F.expr()
+        if hasattr(expr, "_from_expr") and expr._from_expr:
+            return True
+        # Check if this is a ColumnOperation with expr operation
+        if hasattr(expr, "operation"):
+            # Check for direct expr operation (old F.expr() style)
+            if expr.operation == "expr":
+                return True
+            # Check for function_name="expr" (another F.expr() marker)
+            if hasattr(expr, "function_name") and expr.function_name == "expr":
+                return True
+            # Recursively check nested expressions
+            if hasattr(expr, "column") and self._has_expr_expression(expr.column):
+                return True
+            if hasattr(expr, "value") and self._has_expr_expression(expr.value):
+                return True
+        # Check if this is a Column (simple reference, no issue)
+        elif hasattr(expr, "name") and not hasattr(expr, "operation"):
+            return False
+        return False
+
+    def _has_unsupported_operation(self, expr: Any) -> bool:
+        """Check if expression contains unsupported operations.
+
+        Args:
+            expr: Expression to check (Column, ColumnOperation, or nested structure)
+
+        Returns:
+            True if expression contains unsupported operations
+        """
+        # Check if this is a ColumnOperation with an unsupported operation
+        if hasattr(expr, "operation") and expr.operation in self.UNSUPPORTED_OPERATIONS:
+            return True
+        # Recursively check nested expressions
+        if hasattr(expr, "column") and self._has_unsupported_operation(expr.column):
+            return True
+        if hasattr(expr, "value") and self._has_unsupported_operation(expr.value):
+            return True
+        return bool(
+            hasattr(expr, "function")
+            and self._has_unsupported_operation(expr.function)
+        )
+
+    def can_handle_operation(self, op_name: str, op_payload: Any) -> bool:
+        """Check if this materializer can handle a specific operation.
+
+        Args:
+            op_name: Name of the operation (e.g., "to_timestamp", "filter")
+            op_payload: Operation payload (operation-specific)
+
+        Returns:
+            True if the materializer can handle this operation, False otherwise
+        """
+        # Check unsupported operations first
+        if op_name in self.UNSUPPORTED_OPERATIONS:
+            return False
+
+        # For complex operations, inspect payload for unsupported nested operations
+        if op_name == "select":
+            # Payload is a list of column expressions
+            if isinstance(op_payload, (list, tuple)):
+                for col in op_payload:
+                    # Check for window functions
+                    if self._has_window_function(col):
+                        return False
+                    # Check for unsupported operations
+                    if self._has_unsupported_operation(col):
+                        return False
+            return op_name in self.SUPPORTED_OPERATIONS
+
+        elif op_name == "withColumn":
+            # Payload is (col_name, expression)
+            if isinstance(op_payload, (list, tuple)) and len(op_payload) == 2:
+                _, expression = op_payload
+                # Check for window functions
+                if self._has_window_function(expression):
+                    return False
+                # Check for unsupported operations
+                if self._has_unsupported_operation(expression):
+                    return False
+            return op_name in self.SUPPORTED_OPERATIONS
+
+        elif op_name == "filter":
+            # Payload is filter expression
+            # Check for F.expr() expressions
+            if self._has_expr_expression(op_payload):
+                return False
+            # Check for unsupported operations
+            if self._has_unsupported_operation(op_payload):
+                return False
+            return op_name in self.SUPPORTED_OPERATIONS
+
+        # For simple operations, check supported operations set
+        # Default: assume unsupported for safety
+        return op_name in self.SUPPORTED_OPERATIONS
+
+    def can_handle_operations(
+        self, operations: list[tuple[str, Any]]
+    ) -> tuple[bool, list[str]]:
+        """Check if this materializer can handle a list of operations.
+
+        Args:
+            operations: List of (operation_name, payload) tuples
+
+        Returns:
+            Tuple of (can_handle_all, unsupported_operations)
+            - can_handle_all: True if all operations are supported
+            - unsupported_operations: List of operation names that are unsupported
+        """
+        unsupported_operations: list[str] = []
+        for op_name, op_payload in operations:
+            if not self.can_handle_operation(op_name, op_payload):
+                unsupported_operations.append(op_name)
+
+        can_handle_all = len(unsupported_operations) == 0
+        return (can_handle_all, unsupported_operations)
 
     def close(self) -> None:
         """Close the materializer and clean up resources."""
